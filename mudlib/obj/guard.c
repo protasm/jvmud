@@ -1,15 +1,15 @@
 #include "living.h"
 
 /*
- * The heart beat is started in living.h when we are attacked.
- */
+* The heart beat is started in living.h when we are attacked.
+*/
 
-reset(arg)
+void reset(arg)
 {
     object weapon;
 
     if (arg)
-       return;
+        return;
     max_hp = 200;
     hit_point = 200;
     level = 10;
@@ -31,30 +31,30 @@ reset(arg)
     call_other(weapon, "wield", "sword");
 }
 
-short() {
-   return "A guard";
+string short() {
+    return "A guard";
 }
 
-long() {
+void long() {
     write("A very big and strong guard.");
     if (hit_point > max_hp - 40)
-       write("He seems to be in a good shape.\n");
+        write("He seems to be in a good shape.\n");
 }
 
-id(str) { return str == name; }
+status id(str) { return str == name; }
 
-heart_beat()
+void heart_beat()
 {
     age += 1;
     if (!attack())
-	set_heart_beat(0);
+        set_heart_beat(0);
 }
 
-can_put_and_get(str)
+int can_put_and_get(str)
 {
     if (!str) {
         write(name + " says: Over my dead body.\n");
-	return 0;
+        return 0;
     }
     return 1;
 }

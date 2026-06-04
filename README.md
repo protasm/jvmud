@@ -1,8 +1,8 @@
 # JVMud
 
 JVMud is an experimental LPMUD platform for the JVM. This repository is a
-monorepo: the LPC compiler lives under `compiler/`, with future runtime and
-mudlib work kept alongside it.
+monorepo: the LPC compiler lives under `compiler/`, a basic LPC mudlib lives
+under `mudlib/`, and future runtime/server work will live under `runtime/`.
 
 ## Repository Layout
 
@@ -10,7 +10,7 @@ mudlib work kept alongside it.
 | --- | --- |
 | `compiler/` | JVMud compiler Java source. It currently contains the LPC scanner, preprocessor, parser, semantic analysis, IR, bytecode compiler, efun interfaces, and host-facing runtime loader classes. |
 | `runtime/` | Placeholder for JVMud runtime/server code that will host compiled LPC objects and provide game-engine services. |
-| `mudlib/` | Placeholder for LPC mudlib source and fixtures that the compiler/runtime will eventually load. |
+| `mudlib/` | Basic LPC mudlib content. It currently includes reusable objects under `obj/` and rooms/world content under `room/`. |
 | `docs/` | Static project site published from simple HTML. |
 
 ## Compiler Status

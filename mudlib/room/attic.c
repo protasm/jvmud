@@ -1,13 +1,13 @@
 int lamp_is_lit;
 
-reset(arg)
+void reset(arg)
 {
     if (arg)
-	return;
+        return;
     set_light(1);
 }
 
-init()
+void init()
 {
     add_action("west"); add_verb("west");
     add_action("open"); add_verb("open");
@@ -16,19 +16,19 @@ init()
     add_action("close"); add_verb("close");
 }
 
-short() {
+string short() {
     return "The attic";
 }
 
-long(str)
+void long(str)
 {
     if (str == "door") {
-	if (!call_other("room/elevator", "query_door", 0) &&
-	    call_other("room/elevator", "query_level", 0))
-	    write("The door is open.\n");
-	else
-	    write("The door is closed.\n");
-	return;
+        if (!call_other("room/elevator", "query_door", 0) &&
+            call_other("room/elevator", "query_level", 0))
+            write("The door is open.\n");
+        else
+            write("The door is closed.\n");
+        return;
     }
     write("This is the attic above the church.\n");
     if (lamp_is_lit)
@@ -36,55 +36,55 @@ long(str)
 
 }
 
-id(str) {
+status id(str) {
     return str == "door";
 }
 
-west() {
+int west() {
     if (call_other("room/elevator", "query_door", 0) ||
-	call_other("room/elevator", "query_level", 0) != 3) {
-	write("The door is closed.\n");
-	return 1;
+        call_other("room/elevator", "query_level", 0) != 3) {
+        write("The door is closed.\n");
+        return 1;
     }
     call_other(this_player(), "move_player", "west#room/elevator");
 }
 
-open(str)
+int open(str)
 {
     if (str != "door")
-	return 0;
+        return 0;
     if (call_other("room/elevator", "query_level", 0) != 3) {
-	write("You can't when the elevator isn't here.\n");
-	return 1;
+        write("You can't when the elevator isn't here.\n");
+        return 1;
     }
     call_other("room/elevator", "open_door", "door");
     return 1;
 }
 
-close(str)
+int close(str)
 {
     if (str != "door")
-	return 0;
+        return 0;
     call_other("room/elevator", "close_door", "door");
     return 1;
 }
 
-push(str)
+int push(str)
 {
     if (str && str != "button")
-	return 0;
+        return 0;
     if (call_other("room/elevator", "call_elevator", 3))
-	lamp_is_lit = 1;
+        lamp_is_lit = 1;
     return 1;
 }
 
-elevator_arrives()
+void elevator_arrives()
 {
     say("The lamp on the button beside the elevator goes out.\n");
     lamp_is_lit = 0;
 }
 
-prevent_look_at_inv(str)
+status prevent_look_at_inv(str)
 {
     return str != 0;
 }

@@ -1,75 +1,75 @@
 /*
- * This is a generic valuable object. Clone a copy, and
- * setup local values.
- */
+* This is a generic valuable object. Clone a copy, and
+* setup local values.
+*/
 
 string short_desc, long_desc;
 int value, local_weight;
 string name, alias_name;
 string read_msg;
 
-id(str)
+status id(str)
 {
     return str == name || str == alias_name;
 }
 
-short() {
+string short() {
     return short_desc;
 }
 
-long() {
+void long() {
     write(long_desc);
 }
 
-query_value() { return value; }
+int query_value() { return value; }
 
-set_id(str) {
+void set_id(str) {
     local_weight = 1;
     name = str;
 }
 
-set_alias(str) {
+void set_alias(str) {
     alias_name = str;
 }
 
-set_short(str) {
+void set_short(str) {
     short_desc = str;
     long_desc = "You see nothing special.\n";
 }
 
-set_long(str) {
+void set_long(str) {
     long_desc = str;
 }
 
-set_value(v) {
+void set_value(v) {
     value = v;
 }
 
-set_weight(w) {
+void set_weight(w) {
     local_weight = w;
 }
 
-set_read(str) {
+void set_read(str) {
     read_msg = str;
 }
 
-get() {
+int get() {
     return 1;
 }
 
-query_weight() {
+int query_weight() {
     return local_weight;
 }
 
-init() {
+void init() {
     if (!read_msg)
-	return;
+        return;
     add_action("read"); add_verb("read");
 }
 
-read(str) {
+int read(str) {
     if (str != name &&  str != alias_name)
-	return 0;
+        return 0;
     write(read_msg);
     return 1;
 }

@@ -1,8 +1,8 @@
 #include "living.h"
 
-reset(arg) {
+void reset(arg) {
     if (arg)
-	return;
+        return;
     set_heart_beat(1);
     name = "beggar";
     cap_name = "Beggar";
@@ -19,21 +19,21 @@ reset(arg) {
     enable_commands();
 }
 
-short() { return name; }
+string short() { return name; }
 
-long() {
+void long() {
     write("A really filthy looking poor beggar.\n");
 }
 
-id(str) {
+status id(str) {
     return str == name;
 }
 
-catch_tell(str) {
+void catch_tell(str) {
     string who, what;
 }
 
-heart_beat()
+void heart_beat()
 {
     age += 1;
     attack();

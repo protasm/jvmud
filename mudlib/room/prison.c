@@ -1,22 +1,22 @@
-short() {
+string short() {
     return "The local prison";
 }
 
-long() {
+void long() {
     write("You are in the local prison.\n");
     write("There are no exits.\n");
 }
 
-reset(arg) {
+void reset(arg) {
     if (arg)
-	return;
+        return;
     set_light(1);
 }
 
-init() {
+void init() {
     add_action("quit"); add_verb("quit");
 }
 
-quit() { return 1; }
+int quit() { return 1; }
 
-realm() {return "NT";}
+string realm() {return "NT";}

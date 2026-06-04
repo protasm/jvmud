@@ -1,70 +1,70 @@
 /*
- * This "room" is a special object which can be dropped once.
- */
+* This "room" is a special object which can be dropped once.
+*/
 int dropped;
 int grow_stage;
 string owner;
 
-init() {
+void init() {
     add_action("quit"); add_verb("quit");
 }
 
-quit() {
+int quit() {
     write("You cannot quit until you place your portable castle!\n");
     return 1;
 }
 
-set_owner(n) {
+void set_owner(n) {
     owner = n;
 }
 
-reset(arg) {
+void reset(arg) {
     if (arg)
-	return;
+        return;
     dropped = 0;
     grow_stage = 5;
 }
 
-short() {
+string short() {
     return (owner + "'s portable castle");
 }
 
-long() {
+void long() {
     write(short() + ".\n");
 }
 
-get() {
+int get() {
     write("Once dropped, can not be moved again.\n");
     return 0;
 }
 
-heart_beat() {
+void heart_beat() {
     if (!dropped)
-	return;
+        return;
     if (grow_stage > 0) {
-	say("The castle grows...\n");
-	grow_stage -= 1;
-	return;
+        say("The castle grows...\n");
+        grow_stage -= 1;
+        return;
     }
     if (grow_stage == 0) {
-	string name;
-	say("The portable castle has grown into a full castle!\n");
-	shout("Something in the world has changed.\n");
-	name = create_wizard(lower_case(owner));
-	if (name)
-	    move_object(name, environment());
-	else
-	    say("Castle creation failed.");
-	destruct(this_object());
-	return;
+        string name;
+        say("The portable castle has grown into a full castle!\n");
+        shout("Something in the world has changed.\n");
+        name = create_wizard(lower_case(owner));
+        if (name)
+            move_object(name, environment());
+        else
+            say("Castle creation failed.");
+        destruct(this_object());
+        return;
     }
 }
 
-id(str) {
+status id(str) {
     return str == "castle";
 }
 
-drop() {
+int drop() {
     dropped = 1;
     shout("There is a mighty crash, and thunder.\n");
     set_heart_beat(1);

@@ -2,17 +2,17 @@
 
 int lamp_is_lit;
 
-reset(arg)
+void reset(arg)
 {
     if (arg)
-	return;
+        return;
     set_light(1);
 }
 
-init()
+void init()
 {
     if (call_other(this_player(), "query_level", 0) >= 20) {
-	add_action("xyzzy"); add_verb("xyzzy");
+        add_action("xyzzy"); add_verb("xyzzy");
     }
     add_action("east"); add_verb("east");
     add_action("west"); add_verb("west");
@@ -24,19 +24,19 @@ init()
     add_action("south"); add_verb("south");
 }
 
-short() {
+string short() {
     return "Endoplasmatorium";
 }
 
-long(str)
+void long(str)
 {
     if (str == "elevator" || str == "door") {
-	if (!call_other("room/elevator", "query_door", 0) &&
-	    call_other("room/elevator", "query_level", 0))
-	    write("The door is open.\n");
-	else
-	    write("The door is closed.\n");
-	return;
+        if (!call_other("room/elevator", "query_door", 0) &&
+            call_other("room/elevator", "query_level", 0))
+            write("The door is open.\n");
+        else
+            write("The door is closed.\n");
+        return;
     }
     write("This is the Endoplasmatorium.  As the name implies, it is a place where\n");
     write("people without bodies come to get them.  Ghosts come here to regenerate.\n");
@@ -48,76 +48,76 @@ long(str)
 
 }
 
-id(str) {
+status id(str) {
     return (str == "door" || str == "elevator");
 }
 
-xyzzy() {
+void xyzzy() {
     write("Everything shimmers.\n");
     write("You wake up elsewhere...\n");
     call_other(this_player(), "move_player", "elsewhere#room/test");
 }
 
-west() {
+int west() {
     if (call_other("room/elevator", "query_door", 0) ||
-	call_other("room/elevator", "query_level", 0) != 2) {
-	write("The door is closed.\n");
-	return 1;
+        call_other("room/elevator", "query_level", 0) != 2) {
+        write("The door is closed.\n");
+        return 1;
     }
     call_other(this_player(), "move_player", "west#room/elevator");
     return 1;
 }
 
-east() {
+int east() {
     call_other(this_player(), "move_player", "east#room/clinic");
     return 1;
 }
 
-open(str)
+int open(str)
 {
     if (str != "door")
-	return 0;
+        return 0;
     if (call_other("room/elevator", "query_level", 0) != 2) {
-	write("You can't when the elevator isn't here.\n");
-	return 1;
+        write("You can't when the elevator isn't here.\n");
+        return 1;
     }
     call_other("room/elevator", "open_door", "door");
     return 1;
 }
 
-close(str)
+int close(str)
 {
     if (str != "door")
-	return 0;
+        return 0;
     call_other("room/elevator", "close_door", "door");
     return 1;
 }
 
-push(str)
+int push(str)
 {
     if (str && str != "button")
-	return 0;
+        return 0;
     if (call_other("room/elevator", "call_elevator", 2))
-	lamp_is_lit = 1;
+        lamp_is_lit = 1;
     return 1;
 }
 
-elevator_arrives()
+void elevator_arrives()
 {
     say("The lamp on the button beside the elevator goes out.\n");
     lamp_is_lit = 0;
 }
 
-regenerate() {
+mixed regenerate() {
     return call_other(this_player(), "remove_ghost", 0);
 }
 
-prevent_look_at_inv(str)
+status prevent_look_at_inv(str)
 {
     return str != 0;
 }
 
-south() {
+int south() {
     call_other(this_player(), "move_player", "south#room/vill_green");
     return 1;
 }

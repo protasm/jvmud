@@ -1,7 +1,7 @@
 # JVMud Agent Notes
 
 This repository is the JVMud monorepo. It currently contains the JVMud compiler
-source plus placeholders for the runtime/server and mudlib.
+source, a basic LPC mudlib, and a placeholder for the runtime/server.
 
 ## Top-Level Areas
 
@@ -11,7 +11,8 @@ source plus placeholders for the runtime/server and mudlib.
 - `runtime/`: future JVMud runtime/server code. Do not assume this directory is
   the same thing as `compiler/src/main/java/io/github/protasm/jvmud/compiler/runtime/`,
   which contains compiler helper classes used by generated code.
-- `mudlib/`: future LPC mudlib source, examples, and fixtures.
+- `mudlib/`: LPC mudlib source. `obj/` contains reusable object definitions and
+  `room/` contains world/room content, headers, and startup-oriented files.
 - `docs/`: static project site.
 
 ## Package Layout
@@ -33,6 +34,7 @@ ASM as a dependency.
   after migration.
 - Keep compiler changes under `compiler/` unless the task is explicitly about
   runtime, mudlib, or docs.
+- Treat `mudlib/` as LPC source/content, not Java module source.
 - Keep runtime/server concepts separate from compiler execution helpers.
 - Prefer small documentation updates that reflect the current repo state over
   speculative roadmaps.

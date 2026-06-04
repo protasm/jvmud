@@ -2,54 +2,54 @@ string type;
 string code;
 
 
-short()
+string short()
 {
- return "A " + type + " key";
+    return "A " + type + " key";
 }
 
-set_key_data( str)
+int set_key_data( str)
 {
-  if ( sscanf(str, "%s %s", type, code) == 2) 
+    if ( sscanf(str, "%s %s", type, code) == 2)
+        return 1;
+    return 2;
+}
+void long()
+{
+    write("\nThis a " + type + " key, wonder where it fits?\n");
+}
+
+int id( strang)
+{
+    if ( ( strang == "key" )||( strang == type + " key")||( strang == "H_key") )
+        return 1;
+    return 0;
+}
+
+int get()
+{
     return 1;
-  return 2;
 }
-long()
+
+int query_value()
 {
- write("\nThis a " + type + " key, wonder where it fits?\n");
+    return 10;
 }
 
-id( strang)
-{
- if ( ( strang == "key" )||( strang == type + " key")||( strang == "H_key") )
-   return 1;
- return 0;
-}
+string query_type() { return type; }
+string query_code() { return code; }
 
-get()
-{
-  return 1;
-}
+void set_type( str) { type = str; }
+void set_code( str) { code = str; }
 
-query_value()
-{
- return 10;
-}
-
-query_type() { return type; }
-query_code() { return code; }
-
-set_type( str) { type = str; }
-set_code( str) { code = str; }
-
-init()
+void init()
 {
 }
 
-reset( arg)
+void reset( arg)
 {
- if(arg)
-   return;
- type = 0;
- code = 0;
+    if(arg)
+        return;
+    type = 0;
+    code = 0;
 }
 

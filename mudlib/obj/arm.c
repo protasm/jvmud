@@ -4,109 +4,109 @@ int worn, ac;
 object worn_by;
 object next;
 
-link(ob)
+void link(ob)
 {
     next = ob;
 }
 
-remove_link(str)
+mixed remove_link(str)
 {
     if (str == name) {
-	return next;
+        return next;
     }
     if (next)
-	next = call_other(next, "remove_link", str);
+        next = call_other(next, "remove_link", str);
     return this_object();
 }
 
-init() {
+void init() {
     add_action("wear"); add_verb("wear");
     add_action("remove"); add_verb("remove");
 }
 
-short() {
+string short() {
     if (worn)
-	return short_desc + " (worn)";
+        return short_desc + " (worn)";
     return short_desc;
 }
 
-long(str) {
+void long(str) {
     write(long_desc);
 }
 
-id(str)
+status id(str)
 {
     return str == name || str == alias || str == type;
 }
 
-test_type(str)
+mixed test_type(str)
 {
     if(str == type)
-	return this_object();
+        return this_object();
     if(next)
-	return call_other(next, "test_type", str);
+        return call_other(next, "test_type", str);
     return 0;
 }
 
-tot_ac()
+mixed tot_ac()
 {
     if(next)
-	return ac + call_other(next, "tot_ac");
+        return ac + call_other(next, "tot_ac");
     return ac;
 }
 
-query_type() { return type; }
+string query_type() { return type; }
 
-query_value() { return value; }
+int query_value() { return value; }
 
-query_worn() { return worn; }
+int query_worn() { return worn; }
 
-query_name() { return name; }
+string query_name() { return name; }
 
-armor_class() { return ac; }
+mixed armor_class() { return ac; }
 
-wear(str)
+int wear(str)
 {
     object ob;
 
     if (!id(str))
-	return 0;
+        return 0;
     if (environment() != this_player()) {
-	write("You must get it first!\n");
-	return 1;
+        write("You must get it first!\n");
+        return 1;
     }
     if (worn) {
-	write("You already wear it!\n");
-	return 1;
+        write("You already wear it!\n");
+        return 1;
     }
     ob = call_other(this_player(), "wear", this_object());
     if(!ob) {
-	worn_by = this_player();
-	worn = 1;
-	return 1;
+        worn_by = this_player();
+        worn = 1;
+        return 1;
     }
     write("You already have an armor of class " + type + ".\n");
     return 1;
 }
 
-get() { return 1; }
+int get() { return 1; }
 
-drop(silently) {
+int drop(silently) {
     if (worn) {
-	call_other(worn_by, "stop_wearing",name);
-	worn = 0;
-	worn_by = 0;
-	if (!silently)
-	    write("You drop your worn armor.\n");
+        call_other(worn_by, "stop_wearing",name);
+        worn = 0;
+        worn_by = 0;
+        if (!silently)
+            write("You drop your worn armor.\n");
     }
     return 0;
 }
 
-remove(str) {
+int remove(str) {
     if (!id(str))
-	return 0;
+        return 0;
     if (!worn) {
-	return 0;
+        return 0;
     }
     call_other(worn_by, "stop_wearing",name);
     worn_by = 0;
@@ -114,14 +114,14 @@ remove(str) {
     return 1;
 }
 
-query_weight() { return weight; }
+int query_weight() { return weight; }
 
-set_name(n) { name = n; }
-set_short(s) { short_desc = s; long_desc = s + ".\n"; }
-set_value(v) { value = v; }
-set_weight(w) { weight = w; }
-set_ac(a) { ac = a; }
-set_alias(a) { alias = a; }
-set_long(l) { long_desc = l; }
-set_type(t) { type = t; }
-set_arm_light(l) { set_light(l); }
+void set_name(n) { name = n; }
+void set_short(s) { short_desc = s; long_desc = s + ".\n"; }
+void set_value(v) { value = v; }
+void set_weight(w) { weight = w; }
+void set_ac(a) { ac = a; }
+void set_alias(a) { alias = a; }
+void set_long(l) { long_desc = l; }
+void set_type(t) { type = t; }
+void set_arm_light(l) { set_light(l); }
