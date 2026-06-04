@@ -1,0 +1,24 @@
+package io.github.protasm.jvmud.compiler.ir;
+
+import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
+import java.util.List;
+import java.util.Objects;
+
+public record IRInstanceCall(
+        int line,
+        String ownerInternalName,
+        String methodName,
+        boolean parentDispatch,
+        List<IRExpression> arguments,
+        List<RuntimeType> parameterTypes,
+        RuntimeType type) implements IRExpression {
+    public IRInstanceCall {
+        if (!parentDispatch)
+            Objects.requireNonNull(ownerInternalName, "ownerInternalName");
+        Objects.requireNonNull(methodName, "methodName");
+        Objects.requireNonNull(parameterTypes, "parameterTypes");
+        arguments = List.copyOf(arguments);
+        parameterTypes = List.copyOf(parameterTypes);
+        Objects.requireNonNull(type, "type");
+    }
+}
