@@ -4,13 +4,14 @@ import io.github.protasm.jvmud.compiler.efun.Efun;
 import io.github.protasm.jvmud.compiler.efun.EfunRegistry;
 import io.github.protasm.jvmud.compiler.preproc.IncludeResolver;
 import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.LinkedHashMap;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -30,8 +31,13 @@ public final class RuntimeContext {
     private final Map<Object, String> objectIds = new IdentityHashMap<>();
     private final Map<Object, Object> environments = new IdentityHashMap<>();
     private final Map<Object, List<Object>> inventories = new IdentityHashMap<>();
+    private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
     private final StringBuilder outputTranscript = new StringBuilder();
     private final ThreadLocal<Deque<Object>> currentObjectStack =
+            ThreadLocal.withInitial(ArrayDeque::new);
+    private final ThreadLocal<Deque<Object>> commandActorStack =
+            ThreadLocal.withInitial(ArrayDeque::new);
+    private final ThreadLocal<Deque<String>> pendingActionStack =
             ThreadLocal.withInitial(ArrayDeque::new);
     private Consumer<String> outputSink = ignored -> {};
     private Function<String, Object> objectFactory = path -> null;
@@ -123,6 +129,28 @@ public final class RuntimeContext {
         return objectFactory.apply(sourcePath);
     }
 
+    public Object invokeObject(Object target, String methodName, Object... args) {
+        if (target == null) {
+            return 0;
+        }
+
+        Object[] actualArgs = args == null ? new Object[0] : args;
+        try {
+            Method method = findMethod(target.getClass(), methodName, actualArgs.length);
+            return withCurrentObject(target, () -> {
+                try {
+                    return method.invoke(target, actualArgs);
+                } catch (ReflectiveOperationException e) {
+                    throw new IllegalArgumentException(
+                            "Failed to call " + methodName + " on " + objectIdOrDescription(target), e);
+                }
+            });
+        } catch (NoSuchMethodException e) {
+            throw new IllegalArgumentException(
+                    "Failed to call " + methodName + " on " + objectIdOrDescription(target), e);
+        }
+    }
+
     public void moveObject(Object object, Object destination) {
         Objects.requireNonNull(object, "object");
         Object oldEnvironment = environments.remove(object);
@@ -186,6 +214,8 @@ public final class RuntimeContext {
 
         moveObject(object, null);
         inventories.remove(object);
+        commandActions.remove(object);
+        removeCommandHandler(object);
         String id = objectIds.remove(object);
         if (id != null) {
             objects.remove(id);
@@ -194,6 +224,10 @@ public final class RuntimeContext {
 
     public Object currentObject() {
         return currentObjectStack.get().peek();
+    }
+
+    public Object currentCommandActor() {
+        return commandActorStack.get().peek();
     }
 
     public void pushCurrentObject(Object object) {
@@ -227,8 +261,104 @@ public final class RuntimeContext {
         });
     }
 
+    public <T> T withCommandActor(Object actor, Supplier<T> action) {
+        Objects.requireNonNull(actor, "actor");
+        Objects.requireNonNull(action, "action");
+        commandActorStack.get().push(actor);
+        try {
+            return action.get();
+        } finally {
+            commandActorStack.get().pop();
+        }
+    }
+
+    public void rememberActionMethod(String methodName) {
+        pendingActionStack.get().push(Objects.requireNonNull(methodName, "methodName"));
+    }
+
+    public void registerVerb(String verb) {
+        Objects.requireNonNull(verb, "verb");
+        Deque<String> pendingActions = pendingActionStack.get();
+        if (pendingActions.isEmpty()) {
+            return;
+        }
+
+        Object actor = currentCommandActor();
+        Object handler = currentObject();
+        if (actor == null || handler == null) {
+            return;
+        }
+
+        String methodName = pendingActions.pop();
+        commandActions
+                .computeIfAbsent(actor, ignored -> new LinkedHashMap<>())
+                .computeIfAbsent(verb, ignored -> new ArrayList<>())
+                .add(new CommandAction(handler, methodName));
+    }
+
+    public void clearCommandActions(Object actor) {
+        commandActions.remove(actor);
+    }
+
+    public void clearPendingActionMethods() {
+        pendingActionStack.get().clear();
+    }
+
+    public Object dispatchCommand(Object actor, String commandLine) {
+        Objects.requireNonNull(actor, "actor");
+        Objects.requireNonNull(commandLine, "commandLine");
+        String trimmed = commandLine.trim();
+        if (trimmed.isEmpty()) {
+            return 0;
+        }
+
+        String verb = trimmed;
+        String argument = null;
+        int space = trimmed.indexOf(' ');
+        if (space != -1) {
+            verb = trimmed.substring(0, space);
+            argument = trimmed.substring(space + 1).trim();
+            if (argument.isEmpty()) {
+                argument = null;
+            }
+        }
+
+        List<CommandAction> actions = commandActions
+                .getOrDefault(actor, Map.of())
+                .getOrDefault(verb, List.of());
+        for (CommandAction action : actions) {
+            Object result = invokeObject(action.handler(), action.methodName(), argument);
+            if (Truth.isTruthy(result)) {
+                return result;
+            }
+        }
+        return 0;
+    }
+
     private List<Object> inventoryFor(Object object) {
         return inventories.computeIfAbsent(object, ignored -> new ArrayList<>());
+    }
+
+    private Method findMethod(Class<?> targetClass, String methodName, int arity) throws NoSuchMethodException {
+        for (Method method : targetClass.getMethods()) {
+            if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
+                return method;
+            }
+        }
+        throw new NoSuchMethodException(targetClass.getName() + "." + methodName + "/" + arity);
+    }
+
+    private String objectIdOrDescription(Object object) {
+        String id = objectId(object);
+        return id != null ? id : String.valueOf(object);
+    }
+
+    private void removeCommandHandler(Object handler) {
+        for (Map<String, List<CommandAction>> actionsByVerb : commandActions.values()) {
+            actionsByVerb.values().forEach(actions -> actions.removeIf(action -> action.handler() == handler));
+            actionsByVerb.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+        }
+        commandActions.entrySet().removeIf(entry -> entry.getValue().isEmpty());
     }
 
     private boolean matchesIdentifier(Object object, Object identifier) {
@@ -248,4 +378,6 @@ public final class RuntimeContext {
 
         return identifier.toString().equals(objectId(object));
     }
+
+    private record CommandAction(Object handler, String methodName) {}
 }

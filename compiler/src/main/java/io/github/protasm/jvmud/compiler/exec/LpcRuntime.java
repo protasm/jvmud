@@ -44,7 +44,7 @@ import java.util.function.Supplier;
  * }</pre>
  */
 public final class LpcRuntime {
-    private final LpcRuntimeClassLoader classLoader;
+    private LpcRuntimeClassLoader classLoader;
     private final RuntimeContext runtimeContext;
     private final CompilationPipeline pipeline;
     private final Path baseIncludePath;
@@ -61,6 +61,26 @@ public final class LpcRuntime {
     public LpcObjectHandle load(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         return load(resolveSourcePathWithExtensions(sourcePath));
+    }
+
+    public LpcObjectHandle reload(String sourcePath) {
+        Objects.requireNonNull(sourcePath, "sourcePath");
+        return reload(resolveSourcePathWithExtensions(sourcePath));
+    }
+
+    public LpcObjectHandle reload(Path sourcePath) {
+        Objects.requireNonNull(sourcePath, "sourcePath");
+        Path normalized = resolveSourcePathWithExtensions(sourcePath);
+        String internalName = normalizeInternalName(deriveSourceName(normalized, baseIncludePath));
+        Object existing = runtimeContext.getObject(internalName);
+        if (existing != null) {
+            runtimeContext.destructObject(existing);
+        }
+
+        // JVM classes cannot be redefined in the same classloader. A fresh loader lets the
+        // reloaded LPC source produce a new generated class while old live objects keep working.
+        classLoader = new LpcRuntimeClassLoader(classLoader.getParent());
+        return load(normalized);
     }
 
     public LpcObjectHandle load(Path sourcePath) {
@@ -193,6 +213,37 @@ public final class LpcRuntime {
         runtimeContext.destructObject(object);
     }
 
+    public Object invokeObject(Object object, String methodName, Object... args) {
+        return withRuntimeContext(() -> runtimeContext.invokeObject(object, methodName, args));
+    }
+
+    public void refreshCommandActions(Object actor) {
+        Objects.requireNonNull(actor, "actor");
+        withRuntimeContext(() -> runtimeContext.withCommandActor(actor, () -> {
+            runtimeContext.clearCommandActions(actor);
+            runtimeContext.clearPendingActionMethods();
+            try {
+                initializeIfPresent(actor);
+                Object environment = runtimeContext.environment(actor);
+                if (environment != null) {
+                    initializeIfPresent(environment);
+                    forEachInventory(environment, this::initializeIfPresent);
+                }
+                forEachInventory(actor, this::initializeIfPresent);
+            } finally {
+                runtimeContext.clearPendingActionMethods();
+            }
+            return null;
+        }));
+    }
+
+    public Object dispatchCommand(Object actor, String commandLine) {
+        Objects.requireNonNull(actor, "actor");
+        Objects.requireNonNull(commandLine, "commandLine");
+        return withRuntimeContext(() -> runtimeContext.withCommandActor(actor, () ->
+                runtimeContext.dispatchCommand(actor, commandLine)));
+    }
+
     public LpcObjectInspection inspectObject(Object object) {
         Objects.requireNonNull(object, "object");
         Object environment = runtimeContext.environment(object);
@@ -271,6 +322,26 @@ public final class LpcRuntime {
                 throw new LpcRuntimeException("Failed to instantiate LPC object: " + compiledClass.getName(), e);
             }
         });
+    }
+
+    private void forEachInventory(Object container, Consumer<Object> action) {
+        Object child = runtimeContext.firstInventory(container);
+        while (child != null) {
+            Object next = runtimeContext.nextInventory(child);
+            action.accept(child);
+            child = next;
+        }
+    }
+
+    private void initializeIfPresent(Object object) {
+        try {
+            object.getClass().getMethod("init");
+        } catch (NoSuchMethodException ignored) {
+            // Objects are not required to define init().
+            return;
+        }
+
+        runtimeContext.invokeObject(object, "init");
     }
 
     private List<LpcObjectInspection.FieldValue> inspectFields(Object object) {

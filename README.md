@@ -64,9 +64,9 @@ efun, and runtime gaps while keeping the green build useful.
 
 See `ROADMAP.md` for the full-stack project waypoints.
 
-## Admin CLI
+## Local CLI
 
-The `cli` module provides a local single-admin shell backed by the real runtime.
+The `cli` module provides a local shell backed by the real runtime.
 After building, run it with:
 
 ```text
@@ -76,11 +76,12 @@ After building, run it with:
 The launcher compiles the CLI and compiler modules, then starts the shell with
 the local build output. Optionally pass a mudlib root as the first argument.
 
-Optionally pass a mudlib root as the first argument to the Java main class. The
-initial shell supports `boot`, `load`, `clone`, `call`, `move`, `look`,
-`objects`, `where`, `destruct`, `pwd`, `cd`, `ls`, `cat`, and `quit`.
-Each command also has a single-character shortcut; run `help` in the shell to
-see the complete alias list.
+The shell treats plain input as player/world input and slash-prefixed input as
+shell/admin input. Slash commands include `/actor`, `/boot`, `/call`, `/cat`,
+`/cd`, `/clone`, `/destruct`, `/dispatch`, `/inspect`, `/load`, `/look`, `/ls`,
+`/move`, `/objects`, `/pwd`, `/reload`, `/verbosity`, `/where`, and `/quit`.
+Some commands have single-character shortcuts; run `/help` in the shell to see
+the current alias list and per-command usage notes.
 
 The CLI includes a mudlib-rooted virtual filesystem. If the mudlib root is
 `/Users/jonathan/Projects/jvmud/mudlib`, then CLI path `/` maps to that real
@@ -90,6 +91,16 @@ Use `verbosity quiet`, `verbosity normal`, or `verbosity watch` to control shell
 output. `watch` prints compiler stage progress for commands such as `load` and
 `clone`, which is useful when inspecting parser, analyzer, lowering, or bytecode
 failures.
+
+The first command-dispatch slice is also available locally. Use `/actor <handle>`
+to choose the current command actor. After that, ordinary input is routed through
+LPC `init`, `add_action`, and `add_verb` registrations on nearby or carried
+objects. Use slash commands such as `/objects` or `/inspect <handle>` whenever
+you want shell/admin tooling instead of in-world input. This is intentionally
+small: it proves the player-like command path before Telnet, login, movement,
+and full mudlib boot are introduced. Plain `help` is treated like any other
+player command: it only works when the mudlib registers a `help` verb. Use
+`/help` for the shell command reference.
 
 ## Development Notes
 

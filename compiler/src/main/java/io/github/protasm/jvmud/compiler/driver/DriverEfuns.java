@@ -6,7 +6,6 @@ import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -53,13 +52,15 @@ public final class DriverEfuns {
         efuns.add(efun("this_object", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.currentObject()));
         efuns.add(efun("this_player", LPCType.LPCOBJECT, List.of(),
-                (runtime, args) -> runtime.currentObject()));
+                (runtime, args) -> runtime.currentCommandActor() != null
+                        ? runtime.currentCommandActor()
+                        : runtime.currentObject()));
         efuns.add(efun("call_other", LPCType.LPCMIXED,
-                List.of(LPCType.LPCOBJECT, LPCType.LPCSTRING),
-                (runtime, args) -> callOther(args[0], String.valueOf(args[1]))));
+                List.of(LPCType.LPCMIXED, LPCType.LPCSTRING),
+                (runtime, args) -> callOther(runtime, args[0], String.valueOf(args[1]))));
         efuns.add(efun("call_other", LPCType.LPCMIXED,
-                List.of(LPCType.LPCOBJECT, LPCType.LPCSTRING, LPCType.LPCMIXED),
-                (runtime, args) -> callOther(args[0], String.valueOf(args[1]), args[2])));
+                List.of(LPCType.LPCMIXED, LPCType.LPCSTRING, LPCType.LPCMIXED),
+                (runtime, args) -> callOther(runtime, args[0], String.valueOf(args[1]), args[2])));
         efuns.add(efun("clone_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.cloneObject(String.valueOf(args[0]))));
         efuns.add(efun("move_object", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
@@ -79,10 +80,18 @@ public final class DriverEfuns {
                 (runtime, args) -> args[0]));
         efuns.add(efun("set_heart_beat", LPCType.LPCVOID, List.of(LPCType.LPCINT),
                 (runtime, args) -> null));
+        efuns.add(efun("enable_commands", LPCType.LPCVOID, List.of(),
+                (runtime, args) -> null));
         efuns.add(efun("add_action", LPCType.LPCVOID, List.of(LPCType.LPCSTRING),
-                (runtime, args) -> null));
+                (runtime, args) -> {
+                    runtime.rememberActionMethod(String.valueOf(args[0]));
+                    return null;
+                }));
         efuns.add(efun("add_verb", LPCType.LPCVOID, List.of(LPCType.LPCSTRING),
-                (runtime, args) -> null));
+                (runtime, args) -> {
+                    runtime.registerVerb(String.valueOf(args[0]));
+                    return null;
+                }));
         efuns.add(efun("environment", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.environment(null)));
         efuns.add(efun("destruct", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT),
@@ -93,35 +102,37 @@ public final class DriverEfuns {
         return efuns;
     }
 
-    private static Object callOther(Object target, String methodName) {
-        return callOther(target, methodName, null);
+    private static Object callOther(RuntimeContext runtime, Object target, String methodName) {
+        return callOther(runtime, target, methodName, null);
     }
 
-    private static Object callOther(Object target, String methodName, Object argument) {
-        if (target == null) {
+    private static Object callOther(RuntimeContext runtime, Object target, String methodName, Object argument) {
+        Object resolvedTarget = resolveTarget(runtime, target);
+        if (resolvedTarget == null) {
             return 0;
         }
 
-        try {
-            Object[] args = isNoArgumentSentinel(argument) ? new Object[0] : new Object[] {argument};
-            Method method = findMethod(target.getClass(), methodName, args.length);
-            return method.invoke(target, args);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalArgumentException("call_other failed for method '" + methodName + "'", e);
+        Object[] args = isNoArgumentSentinel(argument) ? new Object[0] : new Object[] {argument};
+        return runtime.invokeObject(resolvedTarget, methodName, args);
+    }
+
+    private static Object resolveTarget(RuntimeContext runtime, Object target) {
+        if (target instanceof String path) {
+            return runtime.getObject(stripLeadingSlash(path));
         }
+        return target;
     }
 
     private static boolean isNoArgumentSentinel(Object argument) {
         return argument == null || Integer.valueOf(0).equals(argument);
     }
 
-    private static Method findMethod(Class<?> targetClass, String methodName, int arity) throws NoSuchMethodException {
-        for (Method method : targetClass.getMethods()) {
-            if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
-                return method;
-            }
+    private static String stripLeadingSlash(String path) {
+        String stripped = path;
+        while (stripped.startsWith("/")) {
+            stripped = stripped.substring(1);
         }
-        throw new NoSuchMethodException(targetClass.getName() + "." + methodName + "/" + arity);
+        return stripped;
     }
 
     private static Efun efun(String name, LPCType returnType, List<LPCType> parameters, EfunBody body) {

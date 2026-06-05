@@ -37,17 +37,17 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
-        cli.execute("load room");
-        cli.execute("clone thing");
-        cli.execute("move thing room");
-        cli.execute("where thing");
-        cli.execute("inspect thing");
-        cli.execute("look room");
-        cli.execute("call thing short");
-        cli.execute("objects");
-        cli.execute("destruct thing");
-        cli.execute("quit");
+        cli.execute("/boot " + tempDir);
+        cli.execute("/load room");
+        cli.execute("/clone thing");
+        cli.execute("/move thing room");
+        cli.execute("/where thing");
+        cli.execute("/inspect thing");
+        cli.execute("/look room");
+        cli.execute("/call thing short");
+        cli.execute("/objects");
+        cli.execute("/destruct thing");
+        cli.execute("/quit");
 
         String output = transcript.toString();
         assertTrue(output.contains("Booted runtime"));
@@ -76,14 +76,14 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
-        cli.execute("pwd");
-        cli.execute("ls");
-        cli.execute("cd room");
-        cli.execute("pwd");
-        cli.execute("ls");
-        cli.execute("cat /README.txt");
-        cli.execute("load start");
+        cli.execute("/boot " + tempDir);
+        cli.execute("/pwd");
+        cli.execute("/ls");
+        cli.execute("/cd room");
+        cli.execute("/pwd");
+        cli.execute("/ls");
+        cli.execute("/cat /README.txt");
+        cli.execute("/load start");
 
         String output = transcript.toString();
         assertTrue(output.contains("/\n"));
@@ -100,9 +100,9 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
-        cli.execute("cd ..");
-        cli.execute("cat ../outside.txt");
+        cli.execute("/boot " + tempDir);
+        cli.execute("/cd ..");
+        cli.execute("/cat ../outside.txt");
 
         String output = transcript.toString();
         assertTrue(output.contains("Error: Path escapes mudlib root: .."));
@@ -114,23 +114,27 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("help");
+        cli.execute("/help");
 
         String output = transcript.toString();
-        assertTrue(output.contains("Commands:"));
-        assertTrue(output.contains("l  load <path>"));
+        assertTrue(output.contains("Slash commands:"));
+        assertTrue(output.contains("l  /load <path>"));
         assertTrue(output.contains("Compile, load, and register an LPC object."));
-        assertTrue(output.contains("v  verbosity [quiet|normal|watch]"));
-        assertTrue(output.contains("Show or change compiler/admin output detail."));
-        assertTrue(output.indexOf("h  help") < output.indexOf("b  boot"));
-        assertTrue(output.indexOf("b  boot") < output.indexOf("call"));
-        assertTrue(output.indexOf("call") < output.indexOf("cat"));
-        assertTrue(output.indexOf("cat") < output.indexOf("cd"));
-        assertTrue(output.indexOf("cd") < output.indexOf("n  clone"));
-        assertTrue(output.indexOf("n  clone") < output.indexOf("x  destruct"));
-        assertTrue(output.indexOf("x  destruct") < output.indexOf("i  inspect"));
-        assertTrue(output.indexOf("i  inspect") < output.indexOf("l  load"));
-        assertTrue(output.indexOf("w  where") < output.indexOf("q  quit"));
+        assertTrue(output.contains("v  /verbosity [quiet|normal|watch]"));
+        assertTrue(output.contains("Show or change compiler/shell output detail."));
+        assertTrue(output.indexOf("h  /help") < output.indexOf("b  /boot"));
+        assertTrue(output.indexOf("/actor") < output.indexOf("b  /boot"));
+        assertTrue(output.indexOf("b  /boot") < output.indexOf("/call"));
+        assertTrue(output.indexOf("/call") < output.indexOf("/cat"));
+        assertTrue(output.indexOf("/cat") < output.indexOf("/cd"));
+        assertTrue(output.indexOf("/cd") < output.indexOf("n  /clone"));
+        assertTrue(output.indexOf("n  /clone") < output.indexOf("x  /destruct"));
+        assertTrue(output.indexOf("x  /destruct") < output.indexOf("/dispatch <command"));
+        assertTrue(output.indexOf("x  /destruct") < output.indexOf("i  /inspect"));
+        assertTrue(output.indexOf("i  /inspect") < output.indexOf("l  /load"));
+        assertTrue(output.indexOf("/ls") < output.indexOf("m  /move"));
+        assertTrue(output.indexOf("/pwd") < output.indexOf("r  /reload"));
+        assertTrue(output.indexOf("w  /where") < output.indexOf("q  /quit"));
     }
 
     @Test
@@ -149,11 +153,11 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
-        cli.execute("verbosity quiet");
-        cli.execute("load quiet");
-        cli.execute("verbosity watch");
-        cli.execute("load watch");
+        cli.execute("/boot " + tempDir);
+        cli.execute("/verbosity quiet");
+        cli.execute("/load quiet");
+        cli.execute("/verbosity watch");
+        cli.execute("/load watch");
 
         String output = transcript.toString();
         assertTrue(output.contains("verbosity set to quiet"));
@@ -176,22 +180,24 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("b " + tempDir);
-        cli.execute("cd room");
-        cli.execute("pwd");
-        cli.execute("ls");
-        cli.execute("l item");
-        cli.execute("i room/item");
-        cli.execute("call room/item short");
-        cli.execute("o");
-        cli.execute("v quiet");
-        cli.execute("q");
+        cli.execute("/b " + tempDir);
+        cli.execute("/cd room");
+        cli.execute("/pwd");
+        cli.execute("/ls");
+        cli.execute("/l item");
+        cli.execute("/r item");
+        cli.execute("/i room/item");
+        cli.execute("/call room/item short");
+        cli.execute("/o");
+        cli.execute("/v quiet");
+        cli.execute("/q");
 
         String output = transcript.toString();
         assertTrue(output.contains("Booted runtime"));
         assertTrue(output.contains("/room"));
         assertTrue(output.contains("item.c"));
         assertTrue(output.contains("Loaded room/item"));
+        assertTrue(output.contains("Reloaded room/item"));
         assertTrue(output.contains("runtime id: room/item"));
         assertTrue(output.contains("=> aliased item"));
         assertTrue(output.contains("room/item :"));
@@ -205,19 +211,19 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("a room/item short");
-        cli.execute("t README.txt");
-        cli.execute("d room");
-        cli.execute("s");
-        cli.execute("p");
+        cli.execute("/a room/item short");
+        cli.execute("/t README.txt");
+        cli.execute("/d room");
+        cli.execute("/s");
+        cli.execute("/p");
 
         String output = transcript.toString();
-        assertTrue(output.contains("Unknown command: a"));
-        assertTrue(output.contains("Unknown command: t"));
-        assertTrue(output.contains("Unknown command: d"));
-        assertTrue(output.contains("Unknown command: s"));
-        assertTrue(output.contains("Unknown command: p"));
-        assertTrue(output.contains("Usage: help"));
+        assertTrue(output.contains("Unknown slash command: /a"));
+        assertTrue(output.contains("Unknown slash command: /t"));
+        assertTrue(output.contains("Unknown slash command: /d"));
+        assertTrue(output.contains("Unknown slash command: /s"));
+        assertTrue(output.contains("Unknown slash command: /p"));
+        assertTrue(output.contains("Usage: /help"));
     }
 
     @Test
@@ -225,13 +231,170 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("call missingOnlyMethod");
-        cli.execute("inspect");
+        cli.execute("/call missingOnlyMethod");
+        cli.execute("/inspect");
 
         String output = transcript.toString();
         assertTrue(output.contains("Error: Missing argument 1 for call"));
-        assertTrue(output.contains("Usage: call <handle> <method> [args...]"));
+        assertTrue(output.contains("Usage: /call <handle> <method> [args...]"));
         assertTrue(output.contains("Error: Missing argument 0 for inspect"));
-        assertTrue(output.contains("Usage: inspect <handle>"));
+        assertTrue(output.contains("Usage: /inspect <handle>"));
+    }
+
+    @Test
+    void reloadReplacesLoadedObjectWithNewSource() throws Exception {
+        Files.writeString(tempDir.resolve("thing.c"), """
+                string short() {
+                    return "old";
+                }
+                """);
+
+        StringWriter transcript = new StringWriter();
+        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
+
+        cli.execute("/boot " + tempDir);
+        cli.execute("/load thing");
+        cli.execute("/call thing short");
+
+        Files.writeString(tempDir.resolve("thing.c"), """
+                string short() {
+                    return "new";
+                }
+                """);
+        cli.execute("/reload thing");
+        cli.execute("/call thing short");
+
+        String output = transcript.toString();
+        assertTrue(output.contains("=> old"));
+        assertTrue(output.contains("Reloaded thing"));
+        assertTrue(output.contains("=> new"));
+    }
+
+    @Test
+    void dispatchRunsObjectDefinedVerbForSelectedActor() throws Exception {
+        Files.writeString(tempDir.resolve("actor.c"), """
+                string short() {
+                    return "actor";
+                }
+                """);
+        Files.writeString(tempDir.resolve("tool.c"), """
+                void init() {
+                    add_action("wave");
+                    add_verb("wave");
+                }
+
+                int wave(str) {
+                    write("waved " + str + "\\n");
+                    return 1;
+                }
+                """);
+
+        StringWriter transcript = new StringWriter();
+        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
+
+        cli.execute("/boot " + tempDir);
+        cli.execute("/load actor");
+        cli.execute("/clone tool");
+        cli.execute("/move tool actor");
+        cli.execute("/actor actor");
+        cli.execute("/dispatch wave hello");
+        cli.execute("/dispatch dance");
+
+        String output = transcript.toString();
+        assertTrue(output.contains("Command actor is actor"));
+        assertTrue(output.contains("waved hello"));
+        assertTrue(output.contains("=> 1"));
+        assertTrue(output.contains("actor does not understand: dance"));
+    }
+
+    @Test
+    void plainInputDispatchesAsPlayerCommandsAndSlashInputRunsAdminCommands() throws Exception {
+        Files.writeString(tempDir.resolve("actor.c"), """
+                string short() {
+                    return "actor";
+                }
+                """);
+        Files.writeString(tempDir.resolve("tool.c"), """
+                void init() {
+                    add_action("wave");
+                    add_verb("wave");
+                }
+
+                int wave(str) {
+                    write("waved " + str + "\\n");
+                    return 1;
+                }
+                """);
+
+        StringWriter transcript = new StringWriter();
+        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
+
+        cli.execute("/boot " + tempDir);
+        cli.execute("/load actor");
+        cli.execute("/clone tool");
+        cli.execute("/move tool actor");
+        cli.execute("/actor actor");
+        cli.execute("wave hello");
+        cli.execute("dance");
+        cli.execute("/objects");
+        cli.execute("dance");
+        cli.execute("/help");
+        cli.execute("/objects");
+
+        String output = transcript.toString();
+        assertTrue(output.contains("waved hello"));
+        assertFalse(output.contains("=> 1"));
+        assertTrue(output.contains("You can't do that."));
+        assertTrue(output.contains("actor : actor"));
+        assertTrue(output.contains("Slash commands:"));
+    }
+
+    @Test
+    void plainInputRequiresSelectedActor() {
+        StringWriter transcript = new StringWriter();
+        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
+
+        cli.execute("/boot " + tempDir);
+        cli.execute("look");
+
+        String output = transcript.toString();
+        assertTrue(output.contains("No player is active. Use /actor <handle> or /help."));
+    }
+
+    @Test
+    void plainHelpIsAMudlibCommandNotAShellFallback() throws Exception {
+        Files.writeString(tempDir.resolve("actor.c"), """
+                string short() {
+                    return "actor";
+                }
+                """);
+        Files.writeString(tempDir.resolve("guide.c"), """
+                void init() {
+                    add_action("help");
+                    add_verb("help");
+                }
+
+                int help(str) {
+                    write("Mudlib help.\\n");
+                    return 1;
+                }
+                """);
+
+        StringWriter transcript = new StringWriter();
+        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
+
+        cli.execute("/boot " + tempDir);
+        cli.execute("/load actor");
+        cli.execute("/actor actor");
+        cli.execute("help");
+        cli.execute("/clone guide");
+        cli.execute("/move guide actor");
+        cli.execute("help");
+        cli.execute("/help");
+
+        String output = transcript.toString();
+        assertTrue(output.contains("You can't do that."));
+        assertTrue(output.contains("Mudlib help."));
+        assertTrue(output.contains("Slash commands:"));
     }
 }

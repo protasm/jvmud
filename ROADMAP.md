@@ -15,12 +15,12 @@ The baseline proves:
 - generated classes can be loaded, instantiated, and invoked from Java;
 - inherited source files can be resolved and compiled;
 - registered efuns can be called from generated LPC bytecode;
-- early driver efuns provide testable output and basic call dispatch;
+- early driver efuns provide testable output and shared object invocation;
 - a mudlib compatibility scan can report current gaps without failing the build.
 
 The current driver efun slice includes output capture (`write`, `say`,
-`tell_object`), current object/player lookup, reflective `call_other`, and
-minimal signatures for early object lifecycle efuns such as `clone_object`,
+`tell_object`), current object/player lookup, shared `call_other` invocation,
+and minimal signatures for early object lifecycle efuns such as `clone_object`,
 `move_object`, inventory traversal, `set_light`, and `set_heart_beat`.
 
 The first object runtime slice adds real clone/load bridging, environment
@@ -30,13 +30,20 @@ takes over broader server lifecycle responsibilities.
 
 The first admin CLI slice adds a separate `cli` Maven module with a local shell
 for one admin user. It can boot a runtime, load and clone LPC objects, call
-methods, move objects, inspect environments, list handles, destruct objects, and
-quit. It also has a mudlib-rooted virtual filesystem with `pwd`, `cd`, `ls`, and
-`cat`, so an admin can navigate content using LPC-style root-relative paths. This
-shell is intentionally local-only until command/session behavior is ready for
-networking. The shell also supports `verbosity quiet`, `verbosity normal`, and
-`verbosity watch`; watch mode displays coarse compiler stage progress for
-compilation-backed commands.
+methods, move objects, inspect environments, list handles, reload compiled
+objects, destruct objects, and quit. It also has a mudlib-rooted virtual
+filesystem with `pwd`, `cd`, `ls`, and `cat`, so an admin can navigate content
+using LPC-style root-relative paths. This shell is intentionally local-only until
+command/session behavior is ready for networking. The shell also supports
+`verbosity quiet`, `verbosity normal`, and `verbosity watch`; watch mode displays
+coarse compiler stage progress for compilation-backed commands.
+
+The first command-system slice now exists behind the CLI. The runtime tracks a
+current command actor, supports minimal `enable_commands`, `add_action`, and
+`add_verb` efuns, refreshes nearby `init` registrations, and dispatches explicit
+`/dispatch <command...>` input through object-defined verb handlers. The same CLI
+is now player-facing by default: ordinary input is routed directly through that
+command-dispatch path, while slash-prefixed input reaches shell/admin tooling.
 
 ## Waypoints
 
@@ -66,7 +73,10 @@ compilation-backed commands.
 6. **Command System And Player-Like Session**
    Add `enable_commands`, `add_action`, `add_verb`, command dispatch, current
    actor context, and enough built-in command behavior for a local admin/player
-   to look, move, get, and drop through LPC-defined objects.
+   to look, move, get, and drop through LPC-defined objects. The first explicit
+   CLI dispatch path and player-facing input loop are in place; the next work is
+   to make common player commands feel natural with mudlib boot, starting rooms,
+   and movement support.
 
 7. **Mudlib Boot Slice**
    Interpret `mudlib/room/init_file`, load startup objects, boot a starting room,

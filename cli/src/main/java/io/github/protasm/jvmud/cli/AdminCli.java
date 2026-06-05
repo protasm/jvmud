@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-/** Local single-admin shell backed by the real JVMud runtime. */
+/** Local JVMud shell backed by the real runtime. */
 public final class AdminCli {
     private final PrintWriter out;
     private final Map<String, Object> handles = new java.util.LinkedHashMap<>();
@@ -28,6 +28,8 @@ public final class AdminCli {
     private LpcRuntime runtime;
     private Path mudlibRoot;
     private Path virtualCwd = Path.of("");
+    private Object commandActor;
+    private String commandActorHandle;
     private Verbosity verbosity = Verbosity.NORMAL;
     private boolean running = true;
 
@@ -44,7 +46,7 @@ public final class AdminCli {
     }
 
     public void run(BufferedReader in) throws IOException {
-        out.println("JVMud admin CLI. Type 'help' for commands.");
+        out.println("JVMud CLI. Type '/help' for commands.");
         while (running) {
             out.print("jvmud> ");
             out.flush();
@@ -61,11 +63,22 @@ public final class AdminCli {
     }
 
     public void execute(String line) {
-        CommandLine command = CommandLine.parse(line);
-        if (command.isBlank()) {
+        if (line == null || line.isBlank()) {
             return;
         }
 
+        if (line.startsWith("/")) {
+            CommandLine command = CommandLine.parse(line.substring(1));
+            if (!command.isBlank()) {
+                executeAdminCommand(command);
+            }
+            return;
+        }
+
+        dispatchPlayerCommand(line);
+    }
+
+    private void executeAdminCommand(CommandLine command) {
         String canonicalName = canonicalCommand(command.name());
 
         try {
@@ -78,6 +91,7 @@ public final class AdminCli {
             case "cat" -> cat(command.required(0));
             case "verbosity" -> verbosity(command.optional(0, ""));
             case "load" -> load(command.required(0));
+            case "reload" -> reload(command.required(0));
             case "clone" -> clone(command.required(0));
             case "call" -> call(command.required(0), command.required(1), command.argumentsAfter(2));
             case "move" -> move(command.required(0), command.required(1));
@@ -85,18 +99,20 @@ public final class AdminCli {
             case "objects" -> objects();
             case "where" -> where(command.required(0));
             case "inspect" -> inspect(command.required(0));
+            case "actor" -> actor(command.required(0));
+            case "dispatch" -> dispatch(command.argumentsAfter(0));
             case "destruct" -> destruct(command.required(0));
             case "quit", "exit" -> running = false;
             default -> {
-                out.println("Unknown command: " + command.name());
-                out.println("Usage: help");
+                out.println("Unknown slash command: /" + command.name());
+                out.println("Usage: /help");
             }
             }
         } catch (RuntimeException e) {
             out.println("Error: " + e.getMessage());
             String syntax = syntaxFor(canonicalName);
             if (syntax != null) {
-                out.println("Usage: " + syntax);
+                out.println("Usage: /" + syntax);
             }
         }
     }
@@ -111,18 +127,22 @@ public final class AdminCli {
         DriverEfuns.registerCore(runtime);
         handles.clear();
         objectNames.clear();
+        commandActor = null;
+        commandActorHandle = null;
         info("Booted runtime with mudlib root " + this.mudlibRoot);
     }
 
     private void help() {
-        out.println("Commands:");
+        out.println("Slash commands:");
         helpLine("h", "help", "Show this command reference.");
+        helpLine("", "actor <handle>", "Select the local command actor for dispatch.");
         helpLine("b", "boot [mudlib]", "Start a fresh runtime rooted at a mudlib directory.");
         helpLine("", "call <handle> <method> [args...]", "Invoke a method on a loaded object handle.");
         helpLine("", "cat <path>", "Print a file from the virtual mudlib filesystem.");
         helpLine("", "cd [path]", "Change the current virtual mudlib directory.");
         helpLine("n", "clone <path>", "Compile if needed and create a new LPC object instance.");
         helpLine("x", "destruct <handle>", "Remove an object from the runtime.");
+        helpLine("", "dispatch <command...>", "Run an LPC command as the selected actor.");
         helpLine("i", "inspect <handle>", "Show object state, inventory, environment, and methods.");
         helpLine("l", "load <path>", "Compile, load, and register an LPC object.");
         helpLine("k", "look <handle>", "Call long() or short() and display object text.");
@@ -130,13 +150,14 @@ public final class AdminCli {
         helpLine("m", "move <handle> <dest>", "Move one object handle into another object's inventory.");
         helpLine("o", "objects", "List known CLI object handles.");
         helpLine("", "pwd", "Print the current virtual mudlib directory.");
-        helpLine("v", "verbosity [quiet|normal|watch]", "Show or change compiler/admin output detail.");
+        helpLine("r", "reload <path>", "Recompile and replace a loaded LPC object.");
+        helpLine("v", "verbosity [quiet|normal|watch]", "Show or change compiler/shell output detail.");
         helpLine("w", "where <handle>", "Show the environment containing an object.");
-        helpLine("q", "quit", "Exit the local admin shell.");
+        helpLine("q", "quit", "Exit the local shell.");
     }
 
     private void helpLine(String alias, String command, String description) {
-        out.printf("  %-2s %-36s %s%n", alias, command, description);
+        out.printf("  %-2s /%-35s %s%n", alias, command, description);
     }
 
     private void verbosity(String value) {
@@ -209,6 +230,23 @@ public final class AdminCli {
         info("Loaded " + handle.internalName());
     }
 
+    private void reload(String path) {
+        ensureBooted();
+        String runtimePath = runtimePath(path);
+        Object previous = handles.remove(runtimePath);
+        if (previous != null) {
+            objectNames.remove(previous);
+            if (previous == commandActor) {
+                commandActor = null;
+                commandActorHandle = null;
+            }
+        }
+
+        LpcObjectHandle handle = runtime.reload(resolveVirtualPath(path));
+        remember(handle.internalName(), handle.instance());
+        info("Reloaded " + handle.internalName());
+    }
+
     private void clone(String path) {
         ensureBooted();
         String runtimePath = runtimePath(path);
@@ -238,6 +276,61 @@ public final class AdminCli {
         Object destination = object(destinationHandle);
         runtime.moveObject(object, destination);
         info("Moved " + handle + " to " + destinationHandle);
+    }
+
+    private void actor(String handle) {
+        ensureBooted();
+        commandActor = object(handle);
+        commandActorHandle = handle;
+        info("Command actor is " + handle);
+    }
+
+    private void dispatch(String[] commandParts) {
+        ensureBooted();
+        if (commandParts.length == 0) {
+            throw new IllegalArgumentException("Missing command text for dispatch");
+        }
+        if (commandActor == null) {
+            throw new IllegalArgumentException("No command actor selected. Use actor <handle>.");
+        }
+
+        String commandLine = String.join(" ", commandParts);
+        Object result = dispatchCommand(commandLine);
+        if (Integer.valueOf(0).equals(result)) {
+            out.println(commandActorHandle + " does not understand: " + commandLine);
+        } else {
+            out.println("=> " + result);
+        }
+    }
+
+    private void dispatchPlayerCommand(String commandLine) {
+        ensureBooted();
+        if (commandActor == null) {
+            out.println("No player is active. Use /actor <handle> or /help.");
+            return;
+        }
+
+        try {
+            Object result = dispatchCommand(commandLine);
+            if (Integer.valueOf(0).equals(result)) {
+                out.println("You can't do that.");
+            }
+        } catch (RuntimeException e) {
+            out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private Object dispatchCommand(String commandLine) {
+        runtime.refreshCommandActions(commandActor);
+        Object result = runtime.dispatchCommand(commandActor, commandLine);
+        String output = consumeOutput();
+        if (!output.isEmpty()) {
+            out.print(output);
+            if (!output.endsWith("\n")) {
+                out.println();
+            }
+        }
+        return result;
     }
 
     private void look(String handle) {
@@ -311,6 +404,10 @@ public final class AdminCli {
         runtime.destructObject(object);
         handles.remove(handle);
         objectNames.remove(object);
+        if (object == commandActor) {
+            commandActor = null;
+            commandActorHandle = null;
+        }
         info("Destructed " + handle);
     }
 
@@ -327,19 +424,7 @@ public final class AdminCli {
     }
 
     private Object invoke(Object object, String method, String[] args) {
-        return runtime.withCurrentObject(object, () -> {
-            try {
-                Class<?>[] parameterTypes = new Class<?>[args.length];
-                Object[] values = new Object[args.length];
-                for (int i = 0; i < args.length; i++) {
-                    parameterTypes[i] = Object.class;
-                    values[i] = args[i];
-                }
-                return object.getClass().getMethod(method, parameterTypes).invoke(object, values);
-            } catch (ReflectiveOperationException e) {
-                throw new IllegalArgumentException("Failed to call " + method + " on " + objectNames.get(object), e);
-            }
-        });
+        return runtime.invokeObject(object, method, (Object[]) args);
     }
 
     private String consumeOutput() {
@@ -389,6 +474,7 @@ public final class AdminCli {
         case "b" -> "boot";
         case "v" -> "verbosity";
         case "l" -> "load";
+        case "r" -> "reload";
         case "n" -> "clone";
         case "i" -> "inspect";
         case "m" -> "move";
@@ -403,6 +489,7 @@ public final class AdminCli {
 
     private String syntaxFor(String command) {
         return switch (command) {
+        case "actor" -> "actor <handle>";
         case "help" -> "help";
         case "boot" -> "boot [mudlib]";
         case "call" -> "call <handle> <method> [args...]";
@@ -410,6 +497,7 @@ public final class AdminCli {
         case "cd" -> "cd [path]";
         case "clone" -> "clone <path>";
         case "destruct" -> "destruct <handle>";
+        case "dispatch" -> "dispatch <command...>";
         case "inspect" -> "inspect <handle>";
         case "load" -> "load <path>";
         case "look" -> "look <handle>";
@@ -417,6 +505,7 @@ public final class AdminCli {
         case "move" -> "move <handle> <dest>";
         case "objects" -> "objects";
         case "pwd" -> "pwd";
+        case "reload" -> "reload <path>";
         case "verbosity" -> "verbosity [quiet|normal|watch]";
         case "where" -> "where <handle>";
         case "quit", "exit" -> "quit";
