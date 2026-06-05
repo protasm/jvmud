@@ -27,6 +27,7 @@ if (!dragon || !living(dragon)) {\
     move_object(treas, dragon);\
     move_object(dragon, this_object());\
 }
+
 ONE_EXIT("room/mine/tunnel28", "west",
     "Dead end",
     "Dead end.\n", 0)

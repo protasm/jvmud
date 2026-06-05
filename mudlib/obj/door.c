@@ -8,31 +8,42 @@ int trap_prob;
 object trap_loc;
 
 int query_dir() { return direction;}
+
 void set_dir( str) { direction = str;}
+
 void set_code( str) { key_code = str;}
+
 void set_type( str) { key_type = str;}
+
 void set_door( obj) { partner_door = obj;}
+
 void set_trap_prob( val) { trap_prob = val;}
+
 void set_trap_loc(obj) { trap_loc = obj;}
-void set_closed( val)
-{
+
+void set_closed( val) {
     if ( is_closed != val ) {
         tell_room( environment( this_object()), "The " + direction + " door ");
+
         if ( val)
             tell_room( environment( this_object()),"closes.\n");
         else
             tell_room( environment( this_object()),"opens.\n");
     }
+
     is_closed = val;
 }
+
 void set_locked( val) {
     if ( is_locked != val )
         door_sound("Klick!");
+
     is_locked = val;
 }
+
 void set_can_lock( val) { can_lock = val; }
-void set_both_status()
-{
+
+void set_both_status() {
     call_other( partner_door, "set_closed", is_closed);
     call_other( partner_door, "set_locked", is_locked);
     call_other( partner_door, "set_can_lock", can_lock);
@@ -40,54 +51,54 @@ void set_both_status()
     call_other( partner_door, "set_code", key_code);
     call_other( partner_door, "set_door_long", door_long);
 }
-void set_door_long( str)
-{
+
+void set_door_long( str) {
     door_long = str;
 }
 
 string door_room;
 
-int set_all( str)
-{
+int set_all( str) {
     if (!str)
         return 0;
+
     if ( sscanf( str, "%s %s %s %s %d %d %d", door_room, direction, key_type,
         key_code, is_closed, is_locked, can_lock) == 7 ) {
         if( key_type == "0")
             key_type = 0;
         trap_prob = 0;
+
         move_object(this_object(), door_room);
+
         return 1;
     }
+
     return 0;
 }
 
-int query_room()
-{
+int query_room() {
     return door_room;
 }
 
-void player_enters( str)
-{
+void player_enters( str) {
     tell_room( environment( this_object()), str + " enters through the " +
         direction + " door.\n");
 }
 
-void door_sound( str)
-{
+void door_sound( str) {
     tell_room( environment( this_object()),
         str + " is heard from the " + direction + " door.\n");
 }
 
-void both_door_sound( str)
-{
+void both_door_sound( str) {
     door_sound( str);
+
     call_other( partner_door, "door_sound", str);
 }
 
-string short()
-{
+string short() {
     string str;
+
     if ( is_closed ) str = " ( closed )";
     else
         str = " ( open )";
@@ -95,39 +106,42 @@ string short()
     return "A door to the " + direction + str;
 }
 
-void long()
-{
+void long() {
     string str;
     int rnd;
+
     write( door_long);
+
     if ( key_type)
         write( "On the door there is a " + key_type + " lock.\n");
 
     if ( is_closed ) str = "closed.\n";
     else
         str = "open.\n";
+
     write( "The door is " + str);
 
     rnd = random( 20);
+
     if ( rnd == 7 ) {
         write("You notice a small sign stating:\n");
         write("A product from Hebol Inc.\n");
+
         if ( this_player())
             call_other( this_player(), "add_exp", 10);
     }
 }
 
-int id( strang)
-{
+int id( strang) {
     if ( ( strang == "door" ) ||
         ( strang == direction + " door" ) ||
         ( strang == "H_door" ) )
         return 1;
+
     return 0;
 }
 
-void init()
-{
+void init() {
     if ( direction ) {
         add_action( "go_door");
         add_verb( direction);
@@ -151,16 +165,17 @@ void init()
     }
 }
 
-int go( str)
-{
+int go( str) {
     int tmp;
 
     if ( !str)
         return 0;
 
     tmp = this_door( str);
+
     if ( tmp == 2 ) {
         go_door();
+
         return 1;
     }
     else
@@ -170,16 +185,17 @@ int go( str)
         return 0;
 }
 
-int open( str)
-{
+int open( str) {
     int tmp;
 
     if ( !str)
         return 0;
 
     tmp = this_door( str);
+
     if ( tmp == 2 ) {
         open_door();
+
         return 1;
     }
     else
@@ -189,16 +205,17 @@ int open( str)
         return 0;
 }
 
-int close( str)
-{
+int close( str) {
     int tmp;
 
     if ( !str)
         return 0;
 
     tmp = this_door( str);
+
     if ( tmp == 2 ) {
         close_door();
+
         return 1;
     }
     else
@@ -208,8 +225,7 @@ int close( str)
         return 0;
 }
 
-mixed unlock( str)
-{
+mixed unlock( str) {
     object ob;
     int tmp;
     string type, door;
@@ -219,27 +235,32 @@ mixed unlock( str)
 
     if ( str == "door" ) {
         write( "Unlock the door with what?\n");
+
         return 1;
     }
+
     type = 0;
 
     if (sscanf(str, "%s with %s", door, type) == 2) {
         tmp = this_door( door);
+
         if ( tmp != 2 )
             return tmp;
 
         tmp = this_key( type);
+
         if ( tmp != 2 )
             return 1;
+
         ob = get_key( type);
 
         unlock_door( ob);
+
         return 1;
     }
 }
 
-mixed lock( str)
-{
+mixed lock( str) {
     object ob;
     int tmp;
     string type, door;
@@ -249,21 +270,27 @@ mixed lock( str)
 
     if ( str == "door" ) {
         write( "Lock the door with what?\n");
+
         return 1;
     }
+
     type = 0;
 
     if (sscanf(str, "%s with %s", door, type) == 2) {
         tmp = this_door( door);
+
         if ( tmp != 2 )
             return tmp;
 
         tmp = this_key( type);
+
         if ( tmp != 2 )
             return 1;
+
         ob = get_key( type);
 
         lock_door( ob);
+
         return 1;
     }
 }
@@ -276,8 +303,7 @@ player that this has occurred.
 2 => str refers to this door.
 */
 
-int this_door( str)
-{
+int this_door( str) {
     string type;
 
 
@@ -300,8 +326,7 @@ int this_door( str)
     return 0;
 }
 
-int this_key( str)
-{
+int this_key( str) {
     string type;
 
     if ( !str)
@@ -313,6 +338,7 @@ int this_key( str)
         else
             if ( number_of_keys() == 0) {
                 write("You haven't got a key!\n");
+
             return 1;
         }
         else
@@ -324,6 +350,7 @@ int this_key( str)
     if (sscanf(str, "%s key", type) == 1) {
         if ( present( type + " key", this_player()))
             return 2;
+
         write("You haven't got such a key!\n");
     }
 
@@ -331,13 +358,13 @@ int this_key( str)
 }
 
 
-void open_door()
-{
+void open_door() {
     string str;
     int tmp;
 
     if ( ! is_closed ) {
         write("But why? It's already open!\n");
+
         return;
     }
 
@@ -345,20 +372,22 @@ void open_door()
         write("You can't open the " + direction + " door, it's locked!\n");
     else  {
         write("You open the " + direction + " door.\n");
+
         set_closed( 0);
+
         call_other( partner_door, "set_closed", is_closed);
     }
 
     return;
 }
 
-void close_door()
-{
+void close_door() {
     string str;
     int tmp;
 
     if ( is_closed ) {
         write("But why? It's already closed!\n");
+
         return;
     }
 
@@ -366,7 +395,9 @@ void close_door()
         write("You can't close the " + direction + " door, it's locked!\n");
     else {
         write("You close the " + direction + " door.\n");
+
         set_closed(1);
+
         call_other( partner_door, "set_closed", is_closed);
     }
 
@@ -374,21 +405,24 @@ void close_door()
 }
 
 
-void lock_door( key)
-{
+void lock_door( key) {
     string str;
     int tmp;
 
     if ( is_locked ) {
         write("But why? It's already locked!\n");
+
         return;
     }
+
     if ( key)
         str = call_other( key, "query_code", 0);
 
     if ( ( str == key_code ) || ( str == "zap" ) ) {
         write("\nYou lock the " + direction + " door.\n");
+
         set_locked( 1);
+
         call_other( partner_door, "set_locked", is_locked);
     }
     else
@@ -398,12 +432,12 @@ void lock_door( key)
 }
 
 
-void unlock_door( key)
-{
+void unlock_door( key) {
     string str;
 
     if ( ! is_locked ){
         write("But why? It's already unlocked!\n");
+
         return;
     }
 
@@ -416,8 +450,11 @@ void unlock_door( key)
                 return;
             }
         }
+
         write("You unlock the " + direction + " door.\n");
+
         set_locked( 0);
+
         call_other( partner_door, "set_locked", is_locked);
     }
     else
@@ -426,48 +463,53 @@ void unlock_door( key)
     return;
 }
 
-int go_door()
-{
+int go_door() {
     string str;
 
     if ( is_closed ) {
         write("You can't do that, the door is closed.\n");
+
         return 1;
     }
 
     if ( partner_door) {
         str = call_other( this_player(), "query_name", 0);
+
         call_other( partner_door, "player_enters", str);
+
         write( "You go through the " + direction + " door.\n");
+
         /*
         move_object( this_player(), environment(partner_door));
+
         */
         call_other(this_player(), "move_player",
             direction + "#" + call_other(partner_door, "query_room"));
     }
+
     return 1;
 
 }
 
-mixed number_of_doors()
-{
+mixed number_of_doors() {
     object ob;
     int num_door;
 
     num_door = 0;
 
     ob = first_inventory(environment(this_object()));
+
     while(ob) {
         if (call_other(ob, "id", "H_door"))
             num_door += 1;
 
         ob = next_inventory(ob);
     }
+
     return num_door;
 }
 
-void which_door()
-{
+void which_door() {
     object ob;
     int num_door;
     int tmp_num;
@@ -479,6 +521,7 @@ void which_door()
     write("Which door do You mean");
 
     ob = first_inventory(environment(this_object()));
+
     while(ob) {
         if (call_other(ob, "id", "H_door")) {
             tmp_num += 1;
@@ -489,31 +532,32 @@ void which_door()
             else
                 write( ", the " + str + " door");
         }
+
         if ( tmp_num == num_door ) return;
 
         ob = next_inventory(ob);
     }
 }
 
-mixed number_of_keys()
-{
+mixed number_of_keys() {
     object ob;
     int num_key;
 
     num_key = 0;
 
     ob = first_inventory(this_player());
+
     while(ob) {
         if (call_other(ob, "id", "H_key"))
             num_key += 1;
 
         ob = next_inventory(ob);
     }
+
     return num_key;
 }
 
-void which_key()
-{
+void which_key() {
     object ob;
     int num_key;
     int tmp_num;
@@ -525,6 +569,7 @@ void which_key()
     write("Which key do You mean");
 
     ob = first_inventory(this_player());
+
     while(ob) {
         if (call_other(ob, "id", "H_key")) {
             tmp_num += 1;
@@ -535,6 +580,7 @@ void which_key()
             else
                 write( ", the " + str + " key");
         }
+
         if ( tmp_num == num_key ) return;
 
         ob = next_inventory(ob);
@@ -542,8 +588,7 @@ void which_key()
 }
 
 
-mixed get_key(type)
-{
+mixed get_key(type) {
     object ob;
     int num_key;
     int tmp_num;
@@ -557,6 +602,7 @@ mixed get_key(type)
     num_key = number_of_keys();
 
     ob = first_inventory(this_player());
+
     while(ob) {
         if (call_other(ob, "id", "key")) {
             tmp_num += 1;
@@ -565,6 +611,7 @@ mixed get_key(type)
             if  ( ( str == k_type ) || ( ! k_type ) )
                 return ob;
         }
+
         if ( tmp_num == num_key ) return 0;
 
         ob = next_inventory(ob);

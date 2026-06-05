@@ -28,12 +28,15 @@ void init() {
 int enter(str) {
     if (!id(str))
         return 0;
+
     write("It is not an open castle.\n");
+
     return 1;
 }
 
 void reset(arg) {
     if (arg)
         return;
+
     move_object(this_object(), DEST);
 }

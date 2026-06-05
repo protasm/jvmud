@@ -4,6 +4,7 @@
 #define EXTRA_RESET\
 if (!present("bag"))\
     move_object(clone_object("obj/bag"), this_object());
+
 TWO_EXIT("room/vill_shore", "west",
     "room/sea", "east",
     "Jetty",

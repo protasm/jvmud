@@ -1,6 +1,6 @@
 #include "../std.h"
 
-string rope;
+int rope;
 
 #undef EXTRA_INIT
 #define EXTRA_INIT\
@@ -28,17 +28,21 @@ TWO_EXIT("room/mine/tunnel2", "south",
 int down() {
     if (!rope) {
         write("You would fall down the hole and probably hurt yourself.\n");
+
         return 1;
     }
+
     call_other(this_player(), "move_player", "down#room/mine/tunnel8");
+
     return 1;
 }
 
-int tie(str)
-{
+int tie(str) {
     if (str != "ring" && str != "rings")
         return 0;
+
     rope = 1;
+
     return 1;
 }
 
@@ -48,6 +52,7 @@ status id(str) {
 
 int untie(str) {
     rope = 0;
+
     return 1;
 }
 

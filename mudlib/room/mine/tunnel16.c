@@ -20,6 +20,7 @@ if (!dwarf || !living(dwarf)) {\
     call_other(dwarf, "set_ac", 1);\
     move_object(dwarf, this_object());\
 }
+
 TWO_EXIT("room/mine/tunnel17", "north",
     "room/mine/tunnel15", "west",
     "Tunnel",

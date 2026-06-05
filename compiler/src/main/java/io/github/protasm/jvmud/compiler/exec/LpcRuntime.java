@@ -10,11 +10,17 @@ import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -47,8 +53,9 @@ public final class LpcRuntime {
         Objects.requireNonNull(config, "config");
         this.baseIncludePath = config.baseIncludePath();
         this.runtimeContext = new RuntimeContext(config.resolveIncludeResolver());
+        this.runtimeContext.setObjectFactory(this::cloneObject);
         this.classLoader = new LpcRuntimeClassLoader(config.parentClassLoader());
-        this.pipeline = new CompilationPipeline(config.parentInternalName(), runtimeContext);
+        this.pipeline = new CompilationPipeline(config.parentInternalName(), runtimeContext, config.compilationObserver());
     }
 
     public LpcObjectHandle load(String sourcePath) {
@@ -94,7 +101,7 @@ public final class LpcRuntime {
         Class<?> compiledClass = classLoader.defineClass(internalName, bytecode);
         Object instance = instantiate(compiledClass);
 
-        runtimeContext.registerObject(internalName, instance);
+        registerObject(internalName, instance);
 
         return new LpcObjectHandle(this, internalName, compiledClass, instance);
     }
@@ -145,13 +152,80 @@ public final class LpcRuntime {
         Class<?> compiledClass = classLoader.defineClass(internalName, bytecode);
         Object instance = instantiate(compiledClass);
 
-        runtimeContext.registerObject(internalName, instance);
+        registerObject(internalName, instance);
 
         return new LpcObjectHandle(this, internalName, compiledClass, instance);
     }
 
+    public Object cloneObject(String sourcePath) {
+        Objects.requireNonNull(sourcePath, "sourcePath");
+        Path normalized = resolveSourcePathWithExtensions(sourcePath);
+        String internalName = deriveSourceName(normalized, baseIncludePath);
+        internalName = normalizeInternalName(internalName);
+
+        Class<?> objectClass = ensureClassDefined(normalized, internalName);
+        Object instance = instantiate(objectClass);
+        registerObject(nextCloneId(internalName), instance);
+        return instance;
+    }
+
+    public void moveObject(Object object, Object destination) {
+        runtimeContext.moveObject(object, destination);
+    }
+
+    public Object environment(Object object) {
+        return runtimeContext.environment(object);
+    }
+
+    public Object present(Object identifier, Object container) {
+        return runtimeContext.present(identifier, container);
+    }
+
+    public Object firstInventory(Object container) {
+        return runtimeContext.firstInventory(container);
+    }
+
+    public Object nextInventory(Object object) {
+        return runtimeContext.nextInventory(object);
+    }
+
+    public void destructObject(Object object) {
+        runtimeContext.destructObject(object);
+    }
+
+    public LpcObjectInspection inspectObject(Object object) {
+        Objects.requireNonNull(object, "object");
+        Object environment = runtimeContext.environment(object);
+        List<String> inventoryIds = new ArrayList<>();
+        Object child = runtimeContext.firstInventory(object);
+        while (child != null) {
+            inventoryIds.add(objectReference(child));
+            child = runtimeContext.nextInventory(child);
+        }
+
+        return new LpcObjectInspection(
+                runtimeContext.objectId(object),
+                object.getClass().getName(),
+                environment == null ? null : objectReference(environment),
+                inventoryIds,
+                inspectFields(object),
+                inspectMethods(object));
+    }
+
     public void registerEfun(Efun efun) {
         runtimeContext.registerEfun(efun);
+    }
+
+    public void setOutputSink(Consumer<String> outputSink) {
+        runtimeContext.setOutputSink(outputSink);
+    }
+
+    public String outputTranscript() {
+        return runtimeContext.outputTranscript();
+    }
+
+    public void clearOutputTranscript() {
+        runtimeContext.clearOutputTranscript();
     }
 
     public <T> T withRuntimeContext(Supplier<T> action) {
@@ -197,6 +271,162 @@ public final class LpcRuntime {
                 throw new LpcRuntimeException("Failed to instantiate LPC object: " + compiledClass.getName(), e);
             }
         });
+    }
+
+    private List<LpcObjectInspection.FieldValue> inspectFields(Object object) {
+        List<LpcObjectInspection.FieldValue> fields = new ArrayList<>();
+        Class<?> type = object.getClass();
+        while (type != null && type != Object.class) {
+            for (Field field : type.getDeclaredFields()) {
+                if (field.isSynthetic()) {
+                    continue;
+                }
+                try {
+                    field.setAccessible(true);
+                    fields.add(new LpcObjectInspection.FieldValue(
+                            type.getName(),
+                            mudName(type),
+                            friendlyTypeName(field.getType()),
+                            field.getName(),
+                            displayValue(field.get(object))));
+                } catch (IllegalAccessException e) {
+                    fields.add(new LpcObjectInspection.FieldValue(
+                            type.getName(),
+                            mudName(type),
+                            friendlyTypeName(field.getType()),
+                            field.getName(),
+                            "<inaccessible>"));
+                }
+            }
+            type = type.getSuperclass();
+        }
+        fields.sort(Comparator
+                .comparing(LpcObjectInspection.FieldValue::ownerClass)
+                .thenComparing(LpcObjectInspection.FieldValue::name));
+        return fields;
+    }
+
+    private List<LpcObjectInspection.MethodSignature> inspectMethods(Object object) {
+        List<LpcObjectInspection.MethodSignature> methods = new ArrayList<>();
+        for (Method method : object.getClass().getMethods()) {
+            if (method.isSynthetic() || method.isBridge() || method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+            if (!Modifier.isPublic(method.getModifiers())) {
+                continue;
+            }
+            List<String> parameterTypes = new ArrayList<>();
+            for (Class<?> parameterType : method.getParameterTypes()) {
+                parameterTypes.add(friendlyTypeName(parameterType));
+            }
+            methods.add(new LpcObjectInspection.MethodSignature(
+                    method.getDeclaringClass().getName(),
+                    mudName(method.getDeclaringClass()),
+                    friendlyTypeName(method.getReturnType()),
+                    method.getName(),
+                    parameterTypes));
+        }
+        methods.sort(Comparator
+                .comparing(LpcObjectInspection.MethodSignature::name)
+                .thenComparingInt(method -> method.parameterTypes().size())
+                .thenComparing(LpcObjectInspection.MethodSignature::ownerClass));
+        return methods;
+    }
+
+    private String mudName(Class<?> type) {
+        return type.getName().replace('.', '/');
+    }
+
+    private String displayValue(Object value) {
+        if (value == null) {
+            return "0";
+        }
+        if (value instanceof String text) {
+            return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
+        }
+        if (value instanceof Number || value instanceof Boolean) {
+            return value.toString();
+        }
+        return objectReference(value);
+    }
+
+    private String objectReference(Object object) {
+        String objectId = runtimeContext.objectId(object);
+        return objectId != null ? objectId : object.toString();
+    }
+
+    private String friendlyTypeName(Class<?> type) {
+        if (type == void.class) {
+            return "void";
+        }
+        if (type == int.class || type == Integer.class) {
+            return "int";
+        }
+        if (type == boolean.class || type == Boolean.class) {
+            return "status";
+        }
+        if (type == String.class) {
+            return "string";
+        }
+        if (type == Object.class) {
+            return "mixed";
+        }
+        return type.getSimpleName();
+    }
+
+    private Class<?> ensureClassDefined(Path sourcePath, String internalName) {
+        if (classLoader.isDefined(internalName)) {
+            try {
+                return classLoader.loadClass(internalName.replace('/', '.'));
+            } catch (ClassNotFoundException e) {
+                throw new LpcRuntimeException("Defined LPC class could not be loaded: " + internalName, e);
+            }
+        }
+
+        String source;
+        try {
+            source = Files.readString(sourcePath);
+        } catch (IOException e) {
+            throw new LpcRuntimeException("Failed to read source file: " + sourcePath, e);
+        }
+
+        CompilationResult result =
+                pipeline.run(sourcePath, source, internalName, "/" + internalName, ParserOptions.defaults());
+        if (!result.getProblems().isEmpty()) {
+            throw new LpcRuntimeException(formatProblems(result.getProblems()), result.getProblems());
+        }
+
+        CompilationUnit compilationUnit = result.getCompilationUnit();
+        if (compilationUnit != null) {
+            defineInheritedClasses(compilationUnit.parentUnit());
+        }
+
+        byte[] bytecode = result.getBytecode();
+        if (bytecode == null) {
+            throw new LpcRuntimeException("Compilation did not produce bytecode for " + internalName);
+        }
+
+        return classLoader.defineClass(internalName, bytecode);
+    }
+
+    private void registerObject(String baseName, Object object) {
+        String objectId = baseName;
+        int suffix = 1;
+        while (runtimeContext.getObject(objectId) != null) {
+            objectId = baseName + "#" + suffix;
+            suffix++;
+        }
+        runtimeContext.registerObject(objectId, object);
+    }
+
+    private String nextCloneId(String internalName) {
+        String objectId = internalName + "#clone";
+        int suffix = 1;
+        while (runtimeContext.getObject(objectId) != null) {
+            objectId = internalName + "#clone" + suffix;
+            suffix++;
+        }
+        return objectId;
     }
 
     private Path resolveSourcePath(String sourcePath) {

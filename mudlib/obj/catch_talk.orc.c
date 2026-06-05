@@ -41,6 +41,7 @@ mixed test_match(str) {
         if (str1 == match)
             return call_other(ob_str, fun, str);
     }
+
     if (next)
         return call_other(next, "test_match", str);
     else
@@ -50,17 +51,20 @@ mixed test_match(str) {
 mixed remove_match(str) {
     if (str == match) {
         destruct(this_object());
+
         return next;
     }
+
     if (next)
         next = call_other(next, "remove_match", str);
+
     return this_object();
 }
 
-void collaps()
-{
+void collaps() {
     if(next)
         call_other(next, "collaps");
+
     destruct(this_object());
 }
 

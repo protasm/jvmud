@@ -25,6 +25,7 @@ int e0() {
         call_other(this_player(), "move_player", "north#room/maze1/maze4");
     else
         call_other(this_player(), "move_player", "north#room/maze1/maze2");
+
     return 1;
 }
 
@@ -33,6 +34,7 @@ int e1() {
         call_other(this_player(), "move_player", "south#room/maze1/maze4");
     else
         call_other(this_player(), "move_player", "south#room/maze1/maze1");
+
     return 1;
 }
 
@@ -41,6 +43,7 @@ int e2() {
         call_other(this_player(), "move_player", "east#room/maze1/maze4");
     else
         call_other(this_player(), "move_player", "east#room/well");
+
     return 1;
 }
 
@@ -49,5 +52,6 @@ int e3() {
         call_other(this_player(), "move_player", "west#room/maze1/maze4");
     else
         call_other(this_player(), "move_player", "west#room/well");
+
     return 1;
 }

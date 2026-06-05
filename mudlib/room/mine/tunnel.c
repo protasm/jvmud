@@ -15,6 +15,7 @@ int read(str) {
         {
             write("WARNING !!\n\n"+
             "The mines are closed due to risk of falling rock.\n");
+
         return 1;
     }
     else    {

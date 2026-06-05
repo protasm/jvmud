@@ -8,8 +8,7 @@ int value, local_weight;
 string name, alias_name;
 string read_msg;
 
-status id(str)
-{
+status id(str) {
     return str == name || str == alias_name;
 }
 
@@ -64,12 +63,15 @@ int query_weight() {
 void init() {
     if (!read_msg)
         return;
+
     add_action("read"); add_verb("read");
 }
 
 int read(str) {
     if (str != name &&  str != alias_name)
         return 0;
+
     write(read_msg);
+
     return 1;
 }

@@ -18,8 +18,11 @@ status id(str) {
 int read(str) {
     if (!id(str))
         return 0;
+
     say(call_other(this_player(), "query_name") + " reads the top list.\n");
+
     long();
+
     return 1;
 }
 

@@ -3,7 +3,9 @@
 void reset(arg) {
     if (arg)
         return;
+
     set_heart_beat(1);
+
     name = "beggar";
     cap_name = "Beggar";
     msgin = "enters";
@@ -16,6 +18,7 @@ void reset(arg) {
     armor_class = 0;
     alignment = 200;
     is_npc = 1;
+
     enable_commands();
 }
 
@@ -33,8 +36,8 @@ void catch_tell(str) {
     string who, what;
 }
 
-void heart_beat()
-{
+void heart_beat() {
     age += 1;
+
     attack();
 }

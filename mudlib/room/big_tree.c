@@ -17,21 +17,25 @@ TWO_EXIT("room/plane7", "east",
 int id(str) {
     if (str == "tree" || str == "big tree")
         return 1;
+
     return 0;
 }
 
 int tie(str) {
     if (str == "tree" || str == "big tree") {
         write("The branches are very high up.\n");
+
         return 0;
     }
+
     return 0;
 }
 
-int climb(str)
-{
+int climb(str) {
     if (!id(str))
         return 0;
+
     write("There are no low branches.\n");
+
     return 1;
 }

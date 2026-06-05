@@ -11,7 +11,9 @@ string query_auto_load() {
 
 void start(ob) {
     move_object(this_object(), ob);
+
     start_time = time();
+
     tell_object(ob, "You get a sore throat suddenly, without any reason.\n");
 }
 
@@ -32,11 +34,14 @@ void init() {
 int do_shout() {
     if (time() < start_time + 1000) {
         write("You can't shout with a sore throat !\n");
+
         say(call_other(this_player(), "query_name") +
         " makes croaking sounds.\n");
+
         return 1;
     } else {
         destruct(this_object());
+
         return 0;
     }
 }

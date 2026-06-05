@@ -10,6 +10,7 @@ void long() {
 void reset(arg) {
     if (arg)
         return;
+
     set_light(1);
 }
 

@@ -16,12 +16,14 @@ void init() {
 
 int e1() {
     call_other(this_player(), "move_player", "south#room/maze1/maze4");
+
     return 1;
 }
 
 void reset() {
     if (!leather || !present(leather)) {
         leather = clone_object("obj/armor");
+
         call_other(leather, "set_ac", 2);
         call_other(leather, "set_name", "armor");
         call_other(leather, "set_alias", "leather armor");
@@ -29,6 +31,7 @@ void reset() {
         call_other(leather, "set_short", "A leather armor");
         call_other(leather, "set_weight", 3);
         call_other(leather, "set_type", "armor");
+
         move_object(leather, this_object());
     }
 }

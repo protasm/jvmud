@@ -19,6 +19,7 @@ THREE_EXIT("room/vill_road1","north",
 
 int go_down() {
     call_other(this_player(), "move_player", "down#room/well");
+
     return 1;
 }
 

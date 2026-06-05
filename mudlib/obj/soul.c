@@ -2,6 +2,7 @@ string cap_name;
 
 int get() {
     cap_name = call_other(this_player(), "query_name", 0);
+
     return 1;
 }
 
@@ -15,6 +16,7 @@ void long() {
 
 mixed ghost() {
     cap_name = call_other(this_player(), "query_name", 0);
+
     return call_other(this_player(), "query_ghost");
 }
 

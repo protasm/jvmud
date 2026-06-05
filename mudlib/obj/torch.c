@@ -1,4 +1,4 @@
-string amount_of_fuel;
+int amount_of_fuel;
 string name;
 string long_lit_desc;
 string long_unlit_desc;
@@ -13,6 +13,7 @@ void long() {
 void reset(arg) {
     if (arg)
         return;
+
     amount_of_fuel = 0; name = 0; is_lit = 0; weight = 0;
 }
 
@@ -23,8 +24,10 @@ int query_weight() { return weight; }
 string short() {
     if (is_lit)
         return name + " (lit)";
+
     if (amount_of_fuel == 0)
         return name + " (burnt out)";
+
     return name;
 }
 
@@ -33,6 +36,7 @@ void set_name(n) {
     long_lit_desc = "A " + name + " (lit)\n";
     long_unlit_desc = "A " + name + "\n";
 }
+
 void set_fuel(f) { amount_of_fuel = f; }
 
 void init() {
@@ -43,49 +47,73 @@ void init() {
 int light(str) {
     if (!str || str != name)
         return 0;
+
     if (amount_of_fuel == 0) {
         write("End of fuel.\n");
+
         return 1;
     }
+
     if (is_lit) {
         write("It is already lit.\n");
+
         return 1;
     }
+
     is_lit = 1;
+
     write("Ok.\n");
+
     set_light(1);
     set_heart_beat(1);
+
     return 1;
 }
 
 int extinguish(str) {
     if (!str || str != name)
         return 0;
+
     if(!is_lit) {
         write("It is not lit!\n");
+
         return 1;
     }
+
     is_lit = 0;
+
     write("Ok.\n");
+
     set_light(-1);
     set_heart_beat(0);
+
     return 1;
 }
 
 void heart_beat() {
     object ob;
+
     if (!is_lit)
         return;
+
     amount_of_fuel -= 1;
+
     if (amount_of_fuel > 0)
         return;
+
     say(name + " goes dark.\n");
+
     set_heart_beat(0);
+
     is_lit = 0;
+
     set_light(-1);
+
     ob = environment();
+
     if (call_other(ob, "query_level"))
         call_other(ob, "add_weight", -weight);
+
     destruct(this_object());
 }
 
@@ -100,4 +128,5 @@ int query_value() {
 int get() { return 1; }
 
 void set_long_lit(str) { long_lit_desc = str; }
+
 void set_long_unlit(str) { long_unlit_desc = str; }

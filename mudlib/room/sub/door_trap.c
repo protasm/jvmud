@@ -43,29 +43,39 @@ TWO_EXIT("room/well", "east",
 int open(str) {
     if (str != "door" && str != "west door" && str != "east door")
         return 0;
+
     write("There is no handle, and you can't push it up.\n");
+
     return 1;
 }
 
 int close(str) {
     if (str != "door" && str != "west door" && str != "east door")
         return 0;
+
     write("There is no handle, and you can't push it closed.\n");
+
     return 1;
 }
 
 void toggle_door() {
     write("You move the lever.\n");
+
     say(call_other(this_player(), "query_name") + " pulled the lever.\n");
+
     if (west_door_open) {
         tell_room(this_object(), "The west door closed.\n" +
         "The east door opened.\n");
+
         tell_room(environment(this_player()), "The west door opened.\n");
+
         west_door_open = 0;
     } else {
         tell_room(this_object(), "The west door opens.\n" +
         "The east door closed.\n");
+
         tell_room(environment(this_player()), "The west door closed.\n");
+
         west_door_open = 1;
     }
 }

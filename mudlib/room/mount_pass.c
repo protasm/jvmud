@@ -12,5 +12,6 @@ TWO_EXIT("room/plane11", "south",
 
 int up() {
     call_other(this_player(),"move_player", "up#room/ravine");
+
     return 1;
 }

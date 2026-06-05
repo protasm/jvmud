@@ -1,5 +1,5 @@
 status wielded;
-string wielded_by;
+object wielded_by;
 string name_of_weapon;
 string cap_name;
 string alt_name;
@@ -22,6 +22,7 @@ void long() {
 void reset(arg) {
     if (arg)
         return;
+
     wielded = 0; value = 0;
 }
 
@@ -29,32 +30,43 @@ void init() {
     if (read_msg) {
         add_action("read"); add_verb("read");
     }
+
     add_action("wield"); add_verb("wield");
 }
 
 int wield(str) {
     if (!id(str))
         return 0;
+
     if (environment() != this_player()) {
         write("You must get it first!\n");
+
         return 1;
     }
+
     if (wielded) {
         write("You're already wielding it!\n");
+
         return 1;
     }
+
     if(wield_func)
         if(!call_other(wield_func,"wield",this_object()))
             return 1;
+
     wielded_by = this_player();
+
     call_other(this_player(), "wield", this_object());
+
     wielded = 1;
+
     return 1;
 }
 
 string short() {
     if (wielded)
         return short_desc + " (wielded)";
+
     return short_desc;
 }
 
@@ -69,10 +81,13 @@ status id(str) {
 int drop(silently) {
     if (wielded) {
         call_other(wielded_by, "stop_wielding");
+
         wielded = 0;
+
         if (!silently)
             write("You drop your wielded weapon.\n");
     }
+
     return 0;
 }
 
@@ -81,11 +96,11 @@ void un_wield() {
         wielded = 0;
 }
 
-mixed hit(attacker)
-{
+mixed hit(attacker) {
     if (hit_func) {
         return call_other(hit_func,"weapon_hit",attacker);
     }
+
     return 0;
 }
 
@@ -99,7 +114,9 @@ void set_name(n) {
 int read(str) {
     if (!id(str))
         return 0;
+
     write(read_msg);
+
     return 1;
 }
 
@@ -130,4 +147,3 @@ void set_short(sh) { short_desc = sh; long_desc = short_desc + "\n";}
 void set_long(long) { long_desc = long; }
 
 void set_read(str) { read_msg = str; }
-

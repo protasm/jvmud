@@ -3,6 +3,7 @@ int local_weight;
 
 void long() {
     write("A bag. ");
+
     if (first_inventory(this_object()))
         write("There is something in it.\n");
     else
@@ -12,6 +13,7 @@ void long() {
 void reset(arg) {
     if (arg)
         return;
+
     local_weight = 0;
 }
 
@@ -22,7 +24,9 @@ int query_weight() {
 int add_weight(w) {
     if (local_weight + w > MAX_WEIGTH)
         return 0;
+
     local_weight += w;
+
     return 1;
 }
 
@@ -47,7 +51,9 @@ int get() {
 int prevent_insert() {
     if (local_weight > 0) {
         write("You can't when there are things in the bag.\n");
+
         return 1;
     }
+
     return 0;
 }

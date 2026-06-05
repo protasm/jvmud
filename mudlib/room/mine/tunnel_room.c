@@ -18,6 +18,7 @@ if (!hobgoblin || !living(hobgoblin)) {\
     call_other(money, "set_money", random(50));\
     move_object(money, hobgoblin);\
 }
+
 ONE_EXIT("room/mine/tunnel5", "south",
     "small room",
     "A small room with rough cut walls.\n", 0)

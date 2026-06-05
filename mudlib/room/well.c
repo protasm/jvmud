@@ -30,30 +30,39 @@ TWO_EXIT("room/narr_alley", "up",
 int west() {
     if (call_other("room/sub/door_trap", "query_west_door") == 0) {
         call_other(this_player(), "move_player", "west#room/sub/door_trap");
+
         return 1;
     }
+
     write("The door is closed.\n");
+
     return 1;
 }
 
 int close(str) {
     if (!str && str != "door")
         return 0;
+
     write("You can't.\n");
+
     return 1;
 }
 
 int open(str) {
     if (!str && str != "door")
         return 0;
+
     write("You can't.\n");
+
     return 1;
 }
 
 int pull(str) {
     if (!str || str != "lever")
         return 0;
+
     call_other("room/sub/door_trap", "toggle_door");
+
     return 1;
 }
 

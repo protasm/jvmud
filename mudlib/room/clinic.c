@@ -13,5 +13,6 @@ ONE_EXIT("room/church", "west",
 
 int register() {
     call_other(this_player(),"reset",1);
+
     return 1;
 }

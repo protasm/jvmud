@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+ASM_VERSION="9.7.1"
+ASM_JAR="${HOME}/.m2/repository/org/ow2/asm/asm/${ASM_VERSION}/asm-${ASM_VERSION}.jar"
+
+cd "$ROOT"
+mvn -q -pl cli -am compile
+
+if [ ! -f "$ASM_JAR" ]; then
+  echo "Missing ASM dependency at $ASM_JAR" >&2
+  echo "Run 'mvn test' once to resolve project dependencies." >&2
+  exit 1
+fi
+
+exec java \
+  -cp "cli/target/classes:compiler/target/classes:${ASM_JAR}" \
+  io.github.protasm.jvmud.cli.AdminCli "$@"

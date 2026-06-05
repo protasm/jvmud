@@ -29,14 +29,20 @@ import java.util.Set;
 public final class CompilationPipeline {
     private final String parentInternalName;
     private final RuntimeContext runtimeContext;
+    private final CompilationObserver observer;
 
     public CompilationPipeline(String parentInternalName) {
         this(parentInternalName, new RuntimeContext(null));
     }
 
     public CompilationPipeline(String parentInternalName, RuntimeContext runtimeContext) {
+        this(parentInternalName, runtimeContext, CompilationObserver.NONE);
+    }
+
+    public CompilationPipeline(String parentInternalName, RuntimeContext runtimeContext, CompilationObserver observer) {
         this.parentInternalName = parentInternalName;
         this.runtimeContext = (runtimeContext != null) ? runtimeContext : new RuntimeContext(null);
+        this.observer = (observer != null) ? observer : CompilationObserver.NONE;
     }
 
     public CompilationResult run(String source) {
@@ -71,26 +77,30 @@ public final class CompilationPipeline {
 
         Scanner scanner = new Scanner(runtimeContext.newPreprocessor());
         try {
+            observer.stageStarted(unit, CompilationStage.SCAN);
             tokens = scanner.scan(unit.sourcePath(), unit.source(), unit.displayPath());
             unit.setTokens(tokens);
+            observer.stageSucceeded(unit, CompilationStage.SCAN);
         } catch (ScanException e) {
-            problems.add(
-                    new CompilationProblem(
-                            CompilationStage.SCAN, "Error scanning source", e));
+            CompilationProblem problem = new CompilationProblem(CompilationStage.SCAN, "Error scanning source", e);
+            problems.add(problem);
+            observer.stageFailed(unit, CompilationStage.SCAN, problem);
             return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
         }
 
         Parser parser = new Parser(runtimeContext, parserOptions);
         try {
+            observer.stageStarted(unit, CompilationStage.PARSE);
             astObject = parser.parse(unit.parseName(), tokens);
             unit.setASTObject(astObject);
             String inheritedPath = normalizeInheritedPath(astObject.parentName());
             unit.setInheritedPath(inheritedPath);
             astObject.setParentName(inheritedPath);
+            observer.stageSucceeded(unit, CompilationStage.PARSE);
         } catch (ParseException | IllegalArgumentException e) {
-            problems.add(
-                    new CompilationProblem(
-                            CompilationStage.PARSE, "Error parsing tokens", e));
+            CompilationProblem problem = new CompilationProblem(CompilationStage.PARSE, "Error parsing tokens", e);
+            problems.add(problem);
+            observer.stageFailed(unit, CompilationStage.PARSE, problem);
             return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
         }
 
@@ -108,17 +118,23 @@ public final class CompilationPipeline {
 
         SemanticAnalyzer analyzer = new SemanticAnalyzer(runtimeContext);
         try {
+            observer.stageStarted(unit, CompilationStage.ANALYZE);
             SemanticAnalysisResult analysisResult = analyzer.analyze(unit);
             semanticModel = analysisResult.semanticModel();
             unit.setSemanticModel(semanticModel);
             problems.addAll(analysisResult.problems());
 
-            if (!analysisResult.succeeded())
+            if (!analysisResult.succeeded()) {
+                for (CompilationProblem problem : analysisResult.problems()) {
+                    observer.stageFailed(unit, CompilationStage.ANALYZE, problem);
+                }
                 return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
+            }
+            observer.stageSucceeded(unit, CompilationStage.ANALYZE);
         } catch (IllegalArgumentException e) {
-            problems.add(
-                    new CompilationProblem(
-                            CompilationStage.ANALYZE, "Error analyzing ASTObject", e));
+            CompilationProblem problem = new CompilationProblem(CompilationStage.ANALYZE, "Error analyzing ASTObject", e);
+            problems.add(problem);
+            observer.stageFailed(unit, CompilationStage.ANALYZE, problem);
             return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
         }
 
@@ -127,26 +143,34 @@ public final class CompilationPipeline {
 
         IRLowerer lowerer = new IRLowerer(parentInternalName);
         try {
+            observer.stageStarted(unit, CompilationStage.LOWER);
             IRLoweringResult loweringResult = lowerer.lower(semanticModel);
             typedIr = loweringResult.typedIr();
             problems.addAll(loweringResult.problems());
 
-            if (!loweringResult.succeeded())
+            if (!loweringResult.succeeded()) {
+                for (CompilationProblem problem : loweringResult.problems()) {
+                    observer.stageFailed(unit, CompilationStage.LOWER, problem);
+                }
                 return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
+            }
+            observer.stageSucceeded(unit, CompilationStage.LOWER);
         } catch (IllegalArgumentException e) {
-            problems.add(
-                    new CompilationProblem(
-                            CompilationStage.LOWER, "Error lowering semantic model", e));
+            CompilationProblem problem = new CompilationProblem(CompilationStage.LOWER, "Error lowering semantic model", e);
+            problems.add(problem);
+            observer.stageFailed(unit, CompilationStage.LOWER, problem);
             return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
         }
 
         BytecodeCompiler compiler = new BytecodeCompiler(parentInternalName);
         try {
+            observer.stageStarted(unit, CompilationStage.COMPILE);
             bytecode = compiler.compile(typedIr);
+            observer.stageSucceeded(unit, CompilationStage.COMPILE);
         } catch (BytecodeCompileException | IllegalArgumentException e) {
-            problems.add(
-                    new CompilationProblem(
-                            CompilationStage.COMPILE, "Error compiling typed IR", e));
+            CompilationProblem problem = new CompilationProblem(CompilationStage.COMPILE, "Error compiling typed IR", e);
+            problems.add(problem);
+            observer.stageFailed(unit, CompilationStage.COMPILE, problem);
         }
 
         return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);

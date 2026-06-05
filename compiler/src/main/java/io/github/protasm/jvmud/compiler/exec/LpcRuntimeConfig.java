@@ -2,6 +2,7 @@ package io.github.protasm.jvmud.compiler.exec;
 
 import io.github.protasm.jvmud.compiler.preproc.IncludeResolver;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
+import io.github.protasm.jvmud.compiler.pipeline.CompilationObserver;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -13,6 +14,7 @@ public final class LpcRuntimeConfig {
     private final String parentInternalName;
     private final ClassLoader parentClassLoader;
     private final IncludeResolver includeResolver;
+    private final CompilationObserver compilationObserver;
 
     private LpcRuntimeConfig(Builder builder) {
         this.baseIncludePath = (builder.baseIncludePath != null)
@@ -22,6 +24,7 @@ public final class LpcRuntimeConfig {
         this.parentInternalName = Objects.requireNonNull(builder.parentInternalName, "parentInternalName");
         this.parentClassLoader = Objects.requireNonNull(builder.parentClassLoader, "parentClassLoader");
         this.includeResolver = builder.includeResolver;
+        this.compilationObserver = Objects.requireNonNull(builder.compilationObserver, "compilationObserver");
     }
 
     public static Builder builder() {
@@ -48,6 +51,10 @@ public final class LpcRuntimeConfig {
         return includeResolver;
     }
 
+    public CompilationObserver compilationObserver() {
+        return compilationObserver;
+    }
+
     IncludeResolver resolveIncludeResolver() {
         if (includeResolver != null) {
             return includeResolver;
@@ -62,6 +69,7 @@ public final class LpcRuntimeConfig {
         private String parentInternalName = "java/lang/Object";
         private ClassLoader parentClassLoader = LpcRuntimeConfig.class.getClassLoader();
         private IncludeResolver includeResolver;
+        private CompilationObserver compilationObserver = CompilationObserver.NONE;
 
         public Builder baseIncludePath(Path baseIncludePath) {
             this.baseIncludePath = baseIncludePath;
@@ -89,6 +97,13 @@ public final class LpcRuntimeConfig {
 
         public Builder includeResolver(IncludeResolver includeResolver) {
             this.includeResolver = includeResolver;
+            return this;
+        }
+
+        public Builder compilationObserver(CompilationObserver compilationObserver) {
+            if (compilationObserver != null) {
+                this.compilationObserver = compilationObserver;
+            }
             return this;
         }
 

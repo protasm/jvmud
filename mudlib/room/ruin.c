@@ -1,7 +1,6 @@
 #include "std.h"
 
-int id(str)
-{
+int id(str) {
     if (str == "ruin")
         return 1;
     else
