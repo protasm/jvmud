@@ -2,6 +2,7 @@ package io.github.protasm.jvmud.compiler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.protasm.jvmud.compiler.driver.DriverEfuns;
@@ -155,6 +156,28 @@ final class CompilerSmokeTest {
         assertEquals(thing, runtime.firstInventory(room.instance()));
         assertEquals(thing, runtime.present("thing", room.instance()));
         assertEquals(null, runtime.nextInventory(thing));
+    }
+
+    @Test
+    void runtimeRejectsContainmentCycles() throws Exception {
+        Files.writeString(tempDir.resolve("thing.c"), """
+                string short() {
+                    return "thing";
+                }
+                """);
+
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        DriverEfuns.registerCore(runtime);
+
+        Object parent = runtime.cloneObject("thing");
+        Object child = runtime.cloneObject("thing");
+
+        runtime.moveObject(child, parent);
+
+        assertThrows(IllegalArgumentException.class, () -> runtime.moveObject(parent, child));
+        assertThrows(IllegalArgumentException.class, () -> runtime.moveObject(parent, parent));
+        assertEquals(parent, runtime.environment(child));
+        assertEquals(null, runtime.environment(parent));
     }
 
     @Test

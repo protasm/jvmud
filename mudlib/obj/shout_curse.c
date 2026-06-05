@@ -1,55 +1,50 @@
 /*
-* This is a curse that the player can't get rid of.
-* It prevents you from shouting.
-*/
+ * This is a curse that the player can't get rid of.
+ * It prevents you from shouting.
+ */
 
 int start_time;
 
-string query_auto_load() {
+query_auto_load() {
     return "obj/shout_curse:" + start_time;
 }
 
-void start(ob) {
+start(ob) {
     move_object(this_object(), ob);
-
     start_time = time();
-
     tell_object(ob, "You get a sore throat suddenly, without any reason.\n");
 }
 
-status id(str) {
+id(str) {
     return str == "shout_curse";
 }
 
-void long() {
+long() {
     write("How can you look at a curse ?\n");
 }
 
-int drop() { return 1; }
+drop() { return 1; }
 
-void init() {
-    add_action("do_shout"); add_verb("shout");
+init() {
+    add_action("do_shout", "shout");
 }
 
-int do_shout() {
-    if (time() < start_time + 1000) {
-        write("You can't shout with a sore throat !\n");
-
-        say(call_other(this_player(), "query_name") +
-        " makes croaking sounds.\n");
-
-        return 1;
+do_shout() {
+    if (time() < start_time + 3600) {
+	write("You can't shout with a sore throat !\n");
+	say(call_other(this_player(), "query_name") +
+	    " makes croaking sounds.\n");
+	return 1;
     } else {
-        destruct(this_object());
-
-        return 0;
+	destruct(this_object());
+	return 0;
     }
 }
 
-void init_arg(str) {
+init_arg(str) {
     sscanf(str, "%d", start_time);
 }
 
-string short() {
-    return "A sore throat";
+extra_look() {
+    return "the throat seems to be sore";
 }

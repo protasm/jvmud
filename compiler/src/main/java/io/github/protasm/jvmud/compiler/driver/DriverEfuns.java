@@ -49,6 +49,11 @@ public final class DriverEfuns {
                     runtime.writeOutput(args[1]);
                     return null;
                 }));
+        efuns.add(efun("tell_room", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
+                (runtime, args) -> {
+                    runtime.writeOutput(args[1]);
+                    return null;
+                }));
         efuns.add(efun("this_object", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.currentObject()));
         efuns.add(efun("this_player", LPCType.LPCOBJECT, List.of(),
@@ -77,7 +82,7 @@ public final class DriverEfuns {
         efuns.add(efun("next_inventory", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.nextInventory(args[0])));
         efuns.add(efun("set_light", LPCType.LPCINT, List.of(LPCType.LPCINT),
-                (runtime, args) -> args[0]));
+                (runtime, args) -> runtime.setLight(((Number) args[0]).intValue())));
         efuns.add(efun("set_heart_beat", LPCType.LPCVOID, List.of(LPCType.LPCINT),
                 (runtime, args) -> null));
         efuns.add(efun("enable_commands", LPCType.LPCVOID, List.of(),

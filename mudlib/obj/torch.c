@@ -1,132 +1,103 @@
-int amount_of_fuel;
+/*
+ * This is a generic torch.
+ * It will have some good initialisations by default.
+ * The torch can't be sold when it is lighted.
+ */
+
+string amount_of_fuel;
 string name;
-string long_lit_desc;
-string long_unlit_desc;
-status is_lit;
+status is_lighted;
 int weight;
 
-void long() {
-    if (is_lit) write(long_lit_desc);
-    else write(long_unlit_desc);
+long() {
+    write(short() + "\n");
 }
 
-void reset(arg) {
+reset(arg) {
     if (arg)
-        return;
-
-    amount_of_fuel = 0; name = 0; is_lit = 0; weight = 0;
+	return;
+    amount_of_fuel = 2000; name = "torch"; is_lighted = 0; weight = 1;
 }
 
-void set_weight(w) { weight = w; }
+set_weight(w) { weight = w; }
 
-int query_weight() { return weight; }
+query_weight() { return weight; }
 
-string short() {
-    if (is_lit)
-        return name + " (lit)";
-
-    if (amount_of_fuel == 0)
-        return name + " (burnt out)";
-
+short() {
+    if (is_lighted)
+	return name + " (lighted)";
     return name;
 }
 
-void set_name(n) {
-    name = n;
-    long_lit_desc = "A " + name + " (lit)\n";
-    long_unlit_desc = "A " + name + "\n";
+set_name(n) { name = n; }
+set_fuel(f) { amount_of_fuel = f; }
+
+init() {
+    add_action("light", "light");
+    add_action("extinguish", "extinguish");
 }
 
-void set_fuel(f) { amount_of_fuel = f; }
-
-void init() {
-    add_action("light"); add_verb("light");
-    add_action("extinguish"); add_verb("extinguish");
-}
-
-int light(str) {
+light(str) {
     if (!str || str != name)
-        return 0;
-
-    if (amount_of_fuel == 0) {
-        write("End of fuel.\n");
-
-        return 1;
+	return 0;
+    if (is_lighted) {
+	write("It is already lighted.\n");
+	return 1;
     }
-
-    if (is_lit) {
-        write("It is already lit.\n");
-
-        return 1;
-    }
-
-    is_lit = 1;
-
-    write("Ok.\n");
-
-    set_light(1);
-    set_heart_beat(1);
-
+    is_lighted = 1;
+    call_out("out_of_fuel", amount_of_fuel * 2);
+    if (set_light(1) == 1) {
+	write("You can see again.\n");
+	say(call_other(this_player(), "query_name") +
+	    "lights a " + name + "\n");
+    } else
+	write("Ok.\n");
+    amount_of_fuel = 0;
     return 1;
 }
 
-int extinguish(str) {
-    if (!str || str != name)
-        return 0;
-
-    if(!is_lit) {
-        write("It is not lit!\n");
-
-        return 1;
-    }
-
-    is_lit = 0;
-
-    write("Ok.\n");
-
-    set_light(-1);
-    set_heart_beat(0);
-
-    return 1;
-}
-
-void heart_beat() {
+out_of_fuel() {
     object ob;
-
-    if (!is_lit)
-        return;
-
-    amount_of_fuel -= 1;
-
-    if (amount_of_fuel > 0)
-        return;
-
-    say(name + " goes dark.\n");
-
-    set_heart_beat(0);
-
-    is_lit = 0;
-
-    set_light(-1);
-
-    ob = environment();
-
-    if (call_other(ob, "query_level"))
-        call_other(ob, "add_weight", -weight);
-
+    if (set_light(-1) == 0)
+	say("There is darkness as a " + name + " goes dark.\n");
+    else
+	say("The " + name + " goes dark.\n");
+    ob = environment(this_object());
+    if (living(ob))
+	call_other(ob, "add_weight", -weight);
     destruct(this_object());
 }
 
-status id(str) {
+id(str) {
     return str == name;
 }
 
-int query_value() {
-    return amount_of_fuel/100 + 1;
+query_value() {
+    return amount_of_fuel/100;
 }
 
-int get() { return 1; }
+get() { return 1; }
 
-void set_long_lit(str) { long_lit_desc = str; }
+extinguish(str) {
+    int i;
 
-void set_long_unlit(str) { long_unlit_desc = str; }
+    if (str && !id(str))
+	return 0;
+    if (!is_lighted)
+	return 0;
+    i = remove_call_out("out_of_fuel");
+    if (i == -1) {
+	write("Error.\n");
+	return 1;
+    }
+    amount_of_fuel = i/2;
+    is_lighted = 0;
+    if (set_light(-1) == 0) {
+	write("It turns dark.\n");
+	say(call_other(this_player(), "query_name") +
+	    " extinguishes the only light source.\n");
+    } else {
+	write("Ok.\n");
+    }
+    return 1;
+}

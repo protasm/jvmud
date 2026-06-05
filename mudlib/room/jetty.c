@@ -1,11 +1,10 @@
-#include "std.h"
+#include "room.h"
 
 #undef EXTRA_RESET
-#define EXTRA_RESET\
-if (!present("bag"))\
-    move_object(clone_object("obj/bag"), this_object());
-
-TWO_EXIT("room/vill_shore", "west",
-    "room/sea", "east",
-    "Jetty",
-    "You are at a jetty. The waves rolls in from east.\nA small path leads back to west.\n", 1)
+#define EXTRA_RESET no_castle_flag=1;
+TWO_EXIT("room/vill_shore","west",
+         "room/vill_shore2","east",
+         "Road",
+"You are on a road going out of the village. To the east the road widens out\n"+
+"as it leads down to the shore. To the west lies the city.\n",
+1)

@@ -2,52 +2,54 @@ string type;
 string code;
 
 
-string short() {
-    return "A " + type + " key";
+short()
+{
+ return "A " + type + " key";
 }
 
-int set_key_data( str) {
-    if ( sscanf(str, "%s %s", type, code) == 2)
-        return 1;
-
-    return 2;
-}
-
-void long() {
-    write("\nThis a " + type + " key, wonder where it fits?\n");
-}
-
-int id( strang) {
-    if ( ( strang == "key" )||( strang == type + " key")||( strang == "H_key") )
-        return 1;
-
-    return 0;
-}
-
-int get() {
+set_key_data( str)
+{
+  if ( sscanf(str, "%s %s", type, code) == 2) 
     return 1;
+  return 2;
+}
+long()
+{
+ write("\nThis a " + type + " key, wonder where it fits?\n");
 }
 
-int query_value() {
-    return 10;
+id( strang)
+{
+ if ( ( strang == "key" )||( strang == type + " key")||( strang == "H_key") )
+   return 1;
+ return 0;
 }
 
-string query_type() { return type; }
-
-string query_code() { return code; }
-
-void set_type( str) { type = str; }
-
-void set_code( str) { code = str; }
-
-void init() {
+get()
+{
+  return 1;
 }
 
-void reset( arg) {
-    if(arg)
-        return;
+query_value()
+{
+ return 10;
+}
 
-    type = 0;
-    code = 0;
+query_type() { return type; }
+query_code() { return code; }
+
+set_type( str) { type = str; }
+set_code( str) { code = str; }
+
+init()
+{
+}
+
+reset( arg)
+{
+ if(arg)
+   return;
+ type = 0;
+ code = 0;
 }
 

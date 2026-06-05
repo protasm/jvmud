@@ -16,6 +16,11 @@
   <dependencies>
     <dependency>
       <groupId>io.github.protasm.jvmud</groupId>
+      <artifactId>jvmud-runtime</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.protasm.jvmud</groupId>
       <artifactId>jvmud-compiler</artifactId>
       <version>${project.version}</version>
     </dependency>

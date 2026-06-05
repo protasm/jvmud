@@ -1,5 +1,4 @@
-#include "../std.h"
+#include "../room.h"
 ONE_EXIT("room/mine/tunnel12", "south",
-    "Tunnel",
-    "End of the tunnel.\n", 0)
-
+	 "Tunnel",
+	 "End of the tunnel.\n", 0)

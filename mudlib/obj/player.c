@@ -1,2428 +1,2749 @@
+#include "log.h"
 #include "living.h"
-#include "handshake.h"
-#define SAVE_INTERVAL 200 /* How many heartbeats between auto-saves? */
 
-object myself;        /* Ourselfs. */
-object soul;        /* Our soul */
-string title;       /* Our official title. Wiz's can change it. */
-string password;    /* This players crypted password. */
-string password2;   /* Temporary when setting password & used for Wizards*/
+#define WIZ 1
+#define ARCH 0
+
+static object myself;		/* Ourselfs. */
+string title;		/* Our official title. Wiz's can change it. */
+string password;	/* This players crypted password. */
+static string password2;	/* Temporary when setting new password */
 string al_title;
-int intoxicated;    /* How many ticks to stay intoxicated. */
+int intoxicated;	/* How many ticks to stay intoxicated. */
+int stuffed;		/* How many ticks to stay stuffed */
+int soaked;		/* How many ticks to stay soaked */
 int headache, max_headache;
-int save_counter;    /* How many heartbeats has it been since last save? */
-string msghome;         /* wizard home string */
-int power;              /* used in power get, power drop, etc.*/
-string description;      /* players definable description */
-int muffled;
-object talker;
-string pwd;
+string called_from_ip;	/* IP number was used last time */
+string quests;		/* A list of all quests */
+static int time_to_save;	/* Time to autosave. */
 
-string it;        /* Last thing referenced. */
+static string saved_where;     /* Temp... */
+string mailaddr;        /* Email address of player */
+static string it;		/* Last thing referenced. */
+int tot_value;		/* Saved values of this player. */
+static string current_path;	/* Current directory */
+string access_list;	/* What extra directories can be modified */
+int stats_is_updated;
 
-string query_msgin() { return msgin; }
+/* Some functions to set moving messages. */
 
-string query_msgout() { return msgout; }
+setmout(m) { msgout = m; return 1; }
+setmin(m) { msgin = m; return 1; }
+setmmout(m) { mmsgout = m; return 1; }
+setmmin(m) { mmsgin = m; return 1; }
 
-string query_mmsgin() { return mmsgin; }
-
-string query_mmsgout() { return mmsgout; }
-
-/* logon() is called when the players logs on. */
-
-int logon() {
-    enable_commands();
-
-    write("Welcome to the HMC LP-mud.\n");
-    write("Please use the guest name if you just want a look.\n\n");
-    write("What is your name: ");
-
-    input_to("logon2");
-
+review() {
+    write("mout:\t" + msgout +
+	  "\nmin:\t" + msgin +
+	  "\nmmout:\t" + mmsgout +
+	  "\nmmin:\t" + mmsgin + "\n");
     return 1;
+}
+
+query_msgin() { return msgin; }
+query_msgout() { return msgout; }
+query_mmsgin() { return mmsgin; }
+query_mmsgout() { return mmsgout; }
+
+/* logon() is called when the players logges on. */
+
+static logon() {
+    time_to_save = 500;
+    /* enable_commands(); */
+    cat("/WELCOME");
+    write("Version: " + version() + "\n");
+    write("What is your name: ");
+    input_to("logon2");
+    call_out("time_out", 120);
+    return 1;
+}
+
+/* Define this after it was used. */
+version() {
+    return "2.04.05";
 }
 
 object other_copy;
 
-void try_throw_out(str) {
+static try_throw_out(str)
+{
     object ob;
-
     if (str == "" || (str[0] != 'y' && str[0] != 'Y')) {
-        write("Welcome another time then !\n");
-
-        destruct(this_object());
-
-        return;
+	write("Welcome another time then !\n");
+	destruct(this_object());
+	return;
     }
-
-    soul = 0;
-
-    soul("on");
-
     ob = first_inventory(other_copy);
-
     while(ob) {
-        int weight;
-        object next_ob;
-
-        weight = call_other(ob, "query_weight");
-        next_ob = next_inventory(ob);
-
-        /*
-        * Don't move the soul.
-        */
-        if (!call_other(ob, "id", "soul") && add_weight(weight)) {
-            call_other(ob, "drop");
-
-            move_object(ob, this_player());
-        }
-
-        ob = next_ob;
+	int weight;
+	object next_ob;
+	weight = call_other(ob, "query_weight");
+	next_ob = next_inventory(ob);
+	/*
+	 * Don't move the soul.
+	 */
+	if (!call_other(ob, "id", "soul") && add_weight(weight)) {
+	    call_other(ob, "drop");
+	    if (ob)
+		move_object(ob, this_player());
+	}
+	ob = next_ob;
     }
-
     ob = environment(other_copy);
-
-    if (call_other(other_copy, "quit")) {
-        restore_object("players/" + name);
-
-        write("Points restored from the other object.\n");
-    }
+    call_other(other_copy, "quit");
+    if (restore_object("players/" + name))
+	write("Points restored from the other object.\n");
     else
-        destruct(other_copy);    /* Is this really needed ? */
+	destruct(other_copy);	/* Is this really needed ? */
     other_copy = 0;
-
     move_player_to_start(ob);
-
+#ifdef LOG_ENTER
     log_file("ENTER", " (throw)\n");
+#endif
 }
 
-void logon2(str) {
+static logon2(str) {
     if (!str || str == "") {
-        destruct(this_object());
-
-        return;
+	destruct(this_object());
+	return;
     }
-
+    if (name != "logon") {
+	illegal_patch("logon2 " + name);
+	destruct(this_object());
+	return;
+    }
     str = lower_case(str);
-
     if (!valid_name(str)) {
-        input_to("logon2");
-
-        write("Give name again: ");
-
-        return;
+	input_to("logon2");
+	write("Give name again: ");
+	return;
     }
-
     if (restore_object("banish/" + str)) {
-        write("That name is reserved.\n");
-
-        destruct(this_object());
-
-        return;
+	write("That name is reserved.\n");
+	destruct(this_object());
+	return;
     }
-
     if (!restore_object("players/" + str)) {
-        write("New character.\n");
+	write("New character.\n");
     }
-
+    time_to_save = age + 500;
     /*
-    * Don't do this before the restore !
-    */
-    name = str;            /* Must be here for a new player. */
+     * Don't do this before the restore !
+     */
+    name = str;			/* Must be here for a new player. */
+    dead = ghost;
     myself = this_player();
-
-    if (query_invis(0)>= SOMEONE)
-        cap_name = "Someone";
+    if (is_invis)
+	cap_name = "Someone";
     else
-        cap_name = capitalize(name);
-
-    add_action("give_object"); add_verb("give");
-    add_action("score"); add_verb("score");
-    add_action("save_character"); add_verb("save");
-    add_action("quit"); add_verb("quit");
-    add_action("kill"); add_verb("kill");
-    add_action("communicate"); add_verb("say");
-    add_action("shout_to_all"); add_verb("shout");
-    add_action("put"); add_verb("put");
-    add_action("pick_up"); add_verb("get");
-    add_action("pick_up"); add_verb("take");
-    add_action("drop_thing"); add_verb("drop");
-    add_action("inventory"); add_verb("i");
-    add_action("look"); add_verb("look");
-    add_action("examine"); add_verb("examine");
-    add_action("examine"); add_verb("exa");
-    add_action("help"); add_verb("help");
-    add_action("tell"); add_verb("tell");
-    add_action("whisper"); add_verb("whisper");
-    add_action("change_password"); add_verb("password");
-    add_action("idea"); add_verb("idea");
-    add_action("typo"); add_verb("typo");
-    add_action("bug"); add_verb("bug");
-    add_action("converse"); add_verb("converse");
-    add_action("toggle_brief"); add_verb("brief");
-    add_action("toggle_whimpy"); add_verb("wimpy");
-    add_action("stop_hunting_mode"); add_verb("stop");
-    add_action("spell_missile"); add_verb("missile");
-    add_action("spell_shock"); add_verb("shock");
-    add_action("spell_fire_ball"); add_verb("fireball");
-    add_action("pose"); add_verb("pose");
-    add_action("soul"); add_verb("soul");
-    add_action("describe"); add_verb("describe");
-    add_action("emergency"); add_verb("emergency");
+	cap_name = capitalize(name);
 
     local_weight = 0;
-    armor_class = 0;
+    armour_class = 0;
     name_of_weapon = 0;
-    weapon_class = WEAPON_CLASS_OF_HANDS;
-
+    weapon_class = 0;
     /* If this is a new character, we call the adventurers guild to get
-    * our first title !
-    */
-    if (level == -1)
-        write("Pick a password that has the first two characters unconnected with the rest of it.\n");
-    write("Password: ");
-
-    if (name == "guest")
-        write("(just CR) ");
-
+     * our first title !
+     */
     if (level != -1)
-        input_to("check_password");
+	input_to("check_password", 1);
     else
-        input_to("new_password");
-
+	input_to("new_password", 1);
+    write("Password: ");
+    if (name == "guest")
+	write("(just CR) ");
     attacker_ob = 0;
     alt_attacker_ob = 0;
-
     return;
 }
 
 /* Called by command 'save' */
-int save_character() {
-    save_me();
-
+save_character() {
+    save_me(1);
     write("Ok.\n");
-
     return 1;
 }
 
-/* This makes sure the amount we claim to be carrying is correct. */
-void recalc_carry() {
-    object ob, next_ob;
-
-    local_weight = 0;
-    ob = first_inventory(myself);
-
-    while(ob) {
-        next_ob = next_inventory(ob);
-        local_weight += call_other(ob, "query_weight", 0);
-        ob = next_ob;
+reset(arg) {
+    if (arg)
+	return;
+/*
+ *   With arg = 0 this function should only be entered once!
+ */
+    if(myself) return;
+    if (creator(this_object())) {
+	illegal_patch("Cloned player.c");
+	destruct(this_object());
+	return;
     }
-}
-
-void reset(arg) {
-    set_heart_beat(1);
-
-    if (arg) {
-        if (name == "logon") {
-            write("\nTimeout\n");
-
-            destruct(this_object());
-        }
-
-        if (level >= 20) return;
-
-        /* These occasionally get screwed up.  Don't ask me why. */
-        if (name == NAME_OF_GHOST) {
-            ghost = 1;
-            msgin = "drifts around";
-            msgout = "blows";
-        } else {
-            ghost = 0;
-            msgin = "arrives";
-            msgout = "leaves";
-        }
-
-        recalc_carry();        /* Make sure we're carrying the right amount. */
-        if (time_to_heal > INTERVAL_BETWEEN_HEALING)
-            time_to_heal = INTERVAL_BETWEEN_HEALING;
-
-        return;
-    }
-
     level = -1;
     name = "logon";
     cap_name = "Logon";
     msgin = "arrives"; msgout = "leaves";
     mmsgin = "arrives in a puff of smoke";
     mmsgout = "disappears in a puff of smoke";
-    msghome = "goes home";
-    title = "the title-less";
+    title = "the title less";
     al_title = "neutral";
-    save_counter = 0;
+    gender = -1; /* Illegal value, so it will be changed! */
 }
 
-int query_spell_point() {
-    return spell_points;
+/* Enable other objects to query our hit point. */
+query_hit_point() {
+    return hit_point;
 }
 
-string short() {
-    if (query_invis(call_other(this_player(),"query_level",0)) < level &&
-        query_invis() >= NO_SHORT)
-        return 0;
-
+short() {
+    if (is_invis)
+	return 0;
     if (ghost)
-        return "ghost of " + cap_name;
-
+	return "ghost of " + cap_name;
     if (frog)
-        return cap_name + " the frog" + " (" + al_title + ")";
-
+	return cap_name + " the frog";
     return cap_name + " " + title + " (" + al_title + ")";
 }
 
-void long() {
+long() {
+    string cap_pronoun;
+
+    cap_pronoun = capitalize(query_pronoun());
     write(short() + ".\n");
-
-    if (call_other(this_player(),"query_level",0) > 19) {
-        if (level >= GOD) { write("==> god\n");
-        } else { if (level >= ELDER) { write("==> senior wizard\n");
-            } else { if (level >= SENIOR) {write ("==> senior wizard\n");
-                } else { if (level > 19) write("==> wizard\n"); }
-            }
-        }
-    }
-
-    if (description) write(cap_name + description + ".\n");
-
     if (ghost || frog)
-        return;
-
+	return;
+    show_scar();
     if (hit_point < max_hp/10) {
-        write(cap_name + " is in very bad shape.\n");
-
-        return;
+	write(cap_pronoun + " is in very bad shape.\n");
+	return;
     }
-
     if (hit_point < max_hp/5) {
-        write(cap_name + " is in bad shape.\n");
-
-        return;
+	write(cap_pronoun + " is in bad shape.\n");
+	return;
     }
-
     if (hit_point < max_hp/2) {
-        write(cap_name + " is somewhat hurt.\n");
-
-        return;
+	write(cap_pronoun + " is not in a good shape.\n");
+	return;
     }
-
     if (hit_point < max_hp - 20) {
-        write(cap_name + " is slightly hurt.\n");
-
-        return;
+	write(cap_pronoun + " is slightly hurt.\n");
+	return;
     }
-
-    write(cap_name + " is in good shape.\n");
+    write(cap_pronoun + " is in good shape.\n");
 }
 
-int score() {
-    int intox_level;
+score(arg)
+{
+
+    string tmp;
 
     if (ghost) {
-        write("You are in an immaterial state with no scores.\n");
+	write("You are in an immaterial state with no scores.\n");
+	return 1;
+    }
 
-        return 1;
+    if (arg)
+    {
+	write("Str: " + Str + "\n");
+	write("Dex: " + Dex + "\n");
+	write("Int: " + Int + "\n");
+	write("Con: " + Con + "\n");
+	return 1;
     }
 
     write("You have " + experience + " experience points, " +
-        money + " gold coins,\n");
-
-    write(hit_point + " hit points (of " + max_hp + "), and ");
-    write(spell_points + " spell points.\nYou are " + short() + " (level " + level + ").\n");
-
-    if (hunter && call_other(hunter, "query_name", 0))
+	  money + " gold coins, ");
+    write(hit_point + " hit points(" + max_hp + ").\n");
+    write(spell_points + " spell points.\n");
+    if (hunter)
         write("You are hunted by " + call_other(hunter, "query_name", 0) + ".\n");
+    if (intoxicated || stuffed || soaked)
+    {
+	tmp = "You are ";
 
-    if (!intoxicated)
-        write("You are sober.\n");
-    else {
-        intox_level = (level + 4) / intoxicated;
+        if (intoxicated)
+	{
+	    tmp += "intoxicated";
+	    if (stuffed && soaked)
+		tmp += ", ";
+	    else
+	    {
+		if (stuffed || soaked)
+		    tmp += " and ";
+		else
+		    tmp += ".\n";
+	    }
+	}
 
-        if (intox_level == 0)
-            write("You are in a drunken stupor.\n");
-        else if (intox_level == 1)
-            write("You are roaring drunk.\n");
-        else if (intox_level == 2)
-            write("You are somewhat drunk.\n");
-        else if (intox_level == 3)
-            write("You are quite tipsy.\n");
-        else
-            write("You are slightly tipsy.\n");
+        if (stuffed)
+	{
+	    tmp += "satiated";
+
+	    if (soaked)
+		tmp += " and ";
+	    else
+		tmp += ".\n";
+	}
+
+	if (soaked)
+	    tmp += "not thirsty.\n";
+
+	write(tmp);
     }
 
     if (whimpy)
-        write("Wimpy mode.\n");
-
-    show_age(); write("\n");
-
+	write("Wimpy mode.\n");
+    show_age();
     return 1;
 }
 
 /* Identify ourself. */
-int id(str) {
-    if (this_player() && query_invis(call_other(this_player(),"query_level",0)) < level &&
-        query_invis() >= NO_ID)
-        return 0;
-
+id(str, lvl) {
+  /*
+   *  Some wizzies make invisibility items useable by
+   *  players , and this will prevent cheating.
+   */
+    if(level < 20)
+        if(str == name || str == "ghost of " + name)
+            return 1;
+  /* 
+   *  I think this looks stupid. When I am invisible it is
+   *  because I want to work in PEACE.
+   */
+    if (is_invis && lvl <= level)
+	return 0;
     if (ghost)
-        return str == "ghost of " + name;
-
+	return str == "ghost of " + name;
     if (str == name)
-        return 1;
-
+	return 1;
     return 0;
 }
 
-mixed who() {
-    if (query_invis(call_other(this_player(),"query_level",0)) < level &&
-        query_invis() >= NO_WHO)
-        return 0;
-
-    if (ghost)
-        return "ghost of " + cap_name;
-
-    if (frog)
-        return capitalize(name) + " the frog" + " (" + al_title + ")";
-
-    return capitalize(name) + " " + title + " (" + al_title + ")";
-}
-
-string query_title() {
+query_title() {
     return title;
 }
 
-mixed set_level(lev) {
+set_level(lev) {
+    object scroll;
     if (lev > 21 || lev < level && level >= 20)
-        return illegal_patch("set_level");      /* NOPE ! */
+	return illegal_patch("set_level");		/* NOPE ! */
     level = lev;
-    max_hp = 42 + level * 8;
-
-    if (level >= 20) {
-        tell_object(myself, "Adding wizard commands...\n");
-
-        if (soul) destruct(soul);
-
-        soul = clone_object("obj/wiz_soul");
-
-        move_object(soul,myself);
+    if (level == 20) {
+	scroll = clone_object("doc/examples/init_scroll");
+	move_object(scroll, myself);
+	tell_object(myself, "You have been given a scroll containing valuable information. Read it now!\n");
+	tell_object(myself, "Adding wizard commands...\n");
+	wiz_commands();
     }
-
-    if (level >= 20 && soul)
-        call_other(soul,"update",1);
-
-    log_file("ADVANCE",cap_name+" advanced to level "+level+"\n");
-
-    save_me();
-}
-
-void destruct_inventory() {
-    object next_ob,ob;
-
-    ob = first_inventory(this_object());
-
-    while(ob) {
-        next_ob = next_inventory(ob);
-
-        destruct(ob);
-
-        ob = next_ob;
+    if (level == 21) {
+	tell_object(myself, "Adding more wizard commands...\n");
+	wiz_commands2();
     }
 }
 
-int set_title(t) {
+set_title(t) {
     if (!t) {
-        write("Your title is " + title + ".\n");
-
-        return 1;
+	write("Your title is " + title + ".\n");
+	return 1;
     }
-
     title = t;
-
     return 1;
 }
 
-void set_wiz_level(key){
-    string lev;
-
-    lev = call_other(call_other(this_player(),"query_soul",0),
-        "get_handshake",key);
-
-    if (lev) sscanf(lev,"%d",level);
-
-    tell_object(myself,"You were promoted to level " + lev + " by " +
-        capitalize(call_other(this_player(),"query_real_name",0)) + ".\n");
-
-    tell_object(myself,"You will need to do a `soul on` to get your powers.\n");
-    tell_object(myself,"Remember to read the help files to determine yous new abilities.\n");
-
-    log_file("PROMOTIONS",capitalize(name) + "was promoted to level " + lev +
-        " by " + capitalize(call_other(this_player(),"query_real_name",0)) +
-    ".\n");
-
-    soul("off");
-
-    save_me();
+static wiz_commands2() {
+    if (this_object() != this_player())
+	return;
+    add_action("earmuffs", "earmuffs");
+    add_action("makedir", "mkdir");
+    add_action("removedir", "rmdir");
+    add_action("pwd", "pwd");
+    add_action("more", "more");
+    add_action("echo_to", "echoto");
+    add_action("echo", "echo");
+    add_action("echo_all", "echoall");
+    add_action("home", "home");
+    add_action("remove_file", "rm");
+    add_action("list_files", "ls");
+    add_action("cat_file", "cat");
+    add_action("edit", "ed");
+    add_action("clone", "clone");
+    add_action("destruct_local_object", "destruct");
+    add_action("load", "load");
+    add_action("tail_file", "tail");
+    add_action("cd", "cd");
 }
 
-int quit() {
-    power = 0;
-
-    drop_all(1);
-
-    save_me();
-
-    destruct_inventory();
-
-    write("Saving "); write(capitalize(name)); write(".\n");
-
-    checked_say(cap_name + " left the game.\n");
-
-    log_file("ENTER", cap_name + " (" + name + ") exited with " + experience +
-        " ep, " + money + " gold.\n");
-
-    destruct(this_object());
-
-    return 1;
-}
-
-
-int valid_attack(ob) {
-    int their_level, can_attack;
-
-    /* If we're already fighting them, then it must be OK. */
-    if (ob == attacker_ob || ob == alt_attacker_ob) return 1;
-
-    /* They can always attack NPCs */
-    if (call_other(ob, "query_npc", 0)) return 1;
-
-    /* Utter novices can't attack any other players */
-    if (level < 2 && call_other(ob, "is_player", 0))
-        return 0;
-
-    their_level = call_other(ob, "query_level", 0);
-
-    if (their_level <= 2)
-        { return 0; }
-        else
-            { return 1; }
-        }
-
-int kill(str) {
-    object ob;
-
-    if (ghost)
-        return 0;
-
-    if (!str) {
-        write("Kill what ?\n");
-
-        return 1;
-    }
-
-    ob = present(lower_case(str), environment(this_player()));
-
-    if (!ob) {
-        write("No " + str + " here !\n");
-
-        return 1;
-    }
-
-    if (!living(ob)) {
-        write(str + " is not a living thing !\n");
-
-        checked_say(cap_name + " tries foolishly to attack " + str + ".\n");
-
-        return 1;
-    }
-
-    if (ob == this_object()) {
-        write("What? Attack yourself?\n");
-
-        return 1;
-    }
-
-    if (attacker_ob == ob) {
-        write("Yes, yes.\n");
-
-        return 1;
-    }
-
-    it = str;
-
-    if (!attack_object(ob))
-        write("You can't attack " + call_other(ob, "query_name", 0) + "!\n");
-
-    return 1;
-}
-
-int communicate(str) {
-    if (!str) {
-        write("Say what ?\n");
-
-        return 1;
-    }
-
-    write("Ok.\n");
-
-    if (ghost) {
-        say(short() + " says: " + str + ".\n");
-
-        return 1;
-    }
-
-    say(cap_name + " says: " + str + "\n");
-
-    return 1;
-}
-
-void heart_beat() {
-    if (ghost)
-        return;
-
-    age += 1;
-    save_counter += 1;
-
-    if ((save_counter > SAVE_INTERVAL) && (level < 20)) {
-        write("\nAuto-saving character...");
-
-        save_character();
-    }
-
-    if (level > 20)
-        save_counter = 0;
-
-    if (intoxicated && random(20) == 0) {
-        int n;
-
-        n = random(7);
-
-        if (n == 0) {
-            checked_say(cap_name + " hiccups.\n");
-
-            write("You hiccup.\n");
-        }
-
-        if (n == 1) {
-            checked_say(cap_name + " seems to fall, but takes a step and recovers.\n");
-
-            write("You stumble.\n");
-        }
-
-        if (n == 3) {
-            write("You feel drunk.\n");
-
-            checked_say(cap_name + " looks drunk.\n");
-        }
-
-        if (n == 5) {
-            checked_say(cap_name + " burps.\n");
-
-            write("You burp.\n");
-        }
-    }
-
-    if (hit_point < max_hp || spell_points < max_hp || intoxicated || headache)
-        {
-            time_to_heal -= 1;
-
-        if (time_to_heal < 0) {
-            if (headache) {
-                headache -= 1;
-
-                if (headache == 0)
-                    tell_object(myself, "You no longer have a head ache.\n");
-            }
-
-            if (hit_point < max_hp) {
-                hit_point += 1;
-
-                if (intoxicated)
-                    hit_point += 3;
-
-                if (hit_point > max_hp)
-                    hit_point = max_hp;
-            }
-
-            if (spell_points < max_hp) {
-                spell_points += 1;
-
-                if (intoxicated)
-                    spell_points += 3;
-
-                if (spell_points > max_hp)
-                    spell_points = max_hp;
-            }
-
-            if (intoxicated) {
-                intoxicated -= 1;
-
-                if (intoxicated == 0) {
-                    headache = max_headache;
-                    max_headache = 0;
-
-                    tell_object(myself,
-                    "You suddenly without reason get a bad head ache.\n");
-
-                    hit_point -= 3;
-
-                    if (hit_point < 0)
-                        hit_point = 0;
-                }
-            }
-
-            time_to_heal = INTERVAL_BETWEEN_HEALING;
-        }
-    }
-
-    if (attacker_ob)
-        attack();
-
-    if (attacker_ob && whimpy && hit_point < max_hp/5)
-        run_away();
+static wiz_commands() {
+    if (this_object() != this_player())
+	return;
+    add_action("local_commands", "localcmd");
+    add_action("wiz_score_list", "wizlist");
+    add_action("force_player", "force");
+    add_action("spell_zap", "zap");
+    add_action("stat", "stat");
+    add_action("heal", "heal");
+    add_action("update_object", "update");
+    add_action("set_title", "title");
+    add_action("teleport", "goto");
+    add_action("in_room", "in");
+    add_action("emote", "emote");
+    add_action("list_peoples", "people");
+    add_action("setmmin", "setmmin");
+    add_action("setmmout", "setmmout");
+    add_action("setmin", "setmin");
+    add_action("setmout", "setmout");
+    add_action("review", "review");
+    add_action("shut_down_game", "shutdown");
+    add_action("trans", "trans");
+    add_action("snoop_on", "snoop");
+    add_action("invis", "invis");
+    add_action("vis", "vis");
 }
 
 /*
-* Update our aligment.
+  New shout routines to allow earmuffs via catch_shout()
+
+  Possible future extension:
+     filter_objects() returns an array holding the players that accepted
+     the shout(), that is those who heard it.
+     These could be listed to the shouter if one wishes.
 */
 
-void add_alignment(a) {
-    if (call_other(this_player(), "query_level") > 20)
-        return;
+#define SHOUT_OLD(x) shout(x)
+#define SHOUT(x) gTellstring=x; filter_objects(users(),"filter_tell",this_object())
 
-    alignment -= (alignment*2/(30-level));
-    alignment += a;
+static string gTellstring;
+static int listen_to_shouts_from_level;
 
-    if (alignment > KILL_NEUTRAL_ALIGNMENT * 64) {
-        al_title = "white lord";
-
-        return;
-    }
-
-    if (alignment > KILL_NEUTRAL_ALIGNMENT * 32) {
-        al_title = "paladin";
-
-        return;
-    }
-
-    if (alignment > KILL_NEUTRAL_ALIGNMENT * 16) {
-        al_title = "crusader";
-
-        return;
-    }
-
-    if (alignment > KILL_NEUTRAL_ALIGNMENT * 8) {
-        al_title = "good";
-
-        return;
-    }
-
-    if (alignment > KILL_NEUTRAL_ALIGNMENT * 4) {
-        al_title = "honorable";
-
-        return;
-    }
-
-    if (alignment > - KILL_NEUTRAL_ALIGNMENT * 4) {
-        al_title = "neutral";
-
-        return;
-    }
-
-    if (alignment > - KILL_NEUTRAL_ALIGNMENT * 8) {
-        al_title = "malicious";
-
-        return;
-    }
-
-    if (alignment > - KILL_NEUTRAL_ALIGNMENT * 16) {
-        al_title = "evil";
-
-        return;
-    }
-
-    if (alignment > - KILL_NEUTRAL_ALIGNMENT * 32) {
-        al_title = "infamous";
-
-        return;
-    }
-
-    if (alignment > - KILL_NEUTRAL_ALIGNMENT * 64) {
-        al_title = "black knight";
-
-        return;
-    }
-
-    al_title = "lord of evil";
+filter_tell(ob) {
+    if (ob == this_player())
+	return 0;
+    return ob->catch_shout(gTellstring);
 }
 
-int test_dark() {
-    if (set_light(0) <= 0) {
-        write("It is too dark.\n");
-
-        return 1;
+/* This is called for every shouted string to this player.
+*/
+catch_shout(str)
+{
+    if (this_player()->query_level() >= listen_to_shouts_from_level) {
+	tell_object(this_object(),str);
+	return 1;
     }
-
     return 0;
 }
 
-int put(str) {
+/* This is the earmuff hook. You can set the level of the players to which
+   you want to listen to, to one more than your own.
+   This means you can not stop higher level players from shouting to you,
+   but you can stop lower levels and your own level.
+ */
+listen_shout(lev)
+{
+    if (lev && lev <= level+1) listen_to_shouts_from_level=lev;
+    return listen_to_shouts_from_level;
+}
+
+earmuffs(str) {
+    int lev;
+    if (str && sscanf(str, "%d", lev) == 1)
+	listen_shout(lev);
+    write("Earmuffs at level " + listen_to_shouts_from_level + ".\n");
+    return 1;
+}
+
+static echo_all(str) {
+    if (!str) {
+       write("Echoall what?\n");
+       return 1;
+    }
+    SHOUT(str + "\n");
+    write("You echo: " + str + "\n");
+    return 1;
+}
+
+static echo(str) {
+    if (!str) {
+       write ("Echo what?\n");
+       return 1;
+    }
+    say (str + "\n");
+    write ("You echo: " + str + "\n");
+    return 1;
+}
+
+static echo_to(str)
+{
+    object ob;
+    string who;
+    string msg;
+    if (!str || sscanf(str, "%s %s", who, msg) != 2) {
+	write("Echoto what ?\n");
+	return 1;
+    }
+    ob = find_living(lower_case(who));
+    if (!ob) {
+	write("No player with that name.\n");
+	return 1;
+    }
+    tell_object(ob, msg + "\n");
+    write("You echo: " + msg + "\n");
+    return 1;
+}
+
+teleport(dest) {
+    object ob;
+    if (!dest) {
+	write("Goto where ?\n");
+	return 1;
+    }
+    ob = find_living(dest);
+    if (ob) {
+	ob = environment(ob);
+	if(!is_invis)
+	    say(cap_name + " " + mmsgout + ".\n");
+	move_object(myself, ob);
+	if(!is_invis)
+	    say(cap_name + " " + mmsgin + ".\n");
+	if (brief)
+	    write(call_other(ob, "short", 0) + ".\n");
+	else
+	    call_other(ob, "long", 0);
+	ob = first_inventory(ob);
+	while(ob) {
+	    if (ob != this_object()) {
+		string short_str;
+		short_str = call_other(ob, "short");
+		if (short_str)
+		    write(short_str + ".\n");
+	    }
+	    ob = next_inventory(ob);
+	}
+	return 1;
+    }
+    dest = valid_read(dest, WIZ);
+    if (!dest || file_size("/" + dest + ".c") <= 0) {
+	write("Invalid monster name or file name: " + dest + "\n");
+	return 1;
+    }
+    move_player("X#" + dest);
+    return 1;
+}
+
+quit() {
+    save_me(0);
+    drop_all(1);
+    write("Saving "); write(capitalize(name)); write(".\n");
+    if (!is_invis) {
+	say(cap_name + " left the game.\n");
+    }
+    destruct(this_object());
+    return 1;
+}
+
+kill(str) {
+    object ob;
+    if (ghost)
+	return 0;
+    if (!str) {
+        write("Kill what ?\n");
+	return 1;
+    }
+    ob = present(lower_case(str), environment(this_player()));
+    if (!ob) {
+	write("No " + str + " here !\n");
+	return 1;
+    }
+    if (!living(ob)) {
+	write(str + " is not a living thing !\n");
+	say(cap_name + " tries foolishly to attack " + str + ".\n");
+	return 1;
+    }
+    if (ob == this_object()) {
+	write("What ? Attack yourself ?\n");
+	return 1;
+    }
+    if (attacker_ob == ob) {
+	write("Yes, yes.\n");
+	return 1;
+    }
+    attack_object(ob);
+    return 1;
+}
+
+communicate(str) {
+    string verb;
+
+    verb = query_verb();
+    if (str == 0)
+	str = "";
+    if (verb[0] == "'"[0])
+	str = extract(verb, 1) + " " + str;
+    write("Ok.\n");
+    if (ghost) {
+	say(short() + " says: " + str + ".\n");
+	return 1;
+    }
+    say(cap_name + " says: " + str + "\n");
+    return 1;
+}
+
+static heart_beat() {
+    if (ghost)
+	return;
+    age += 1;
+    if (age > time_to_save) {
+	if (!brief)
+	    write("Autosave.\n");
+	save_me(1);
+	time_to_save = age + 500;
+    }
+    if (intoxicated && random(40) == 0) {
+	int n;
+	n = random(7);
+	if (n == 0) {
+	    say(cap_name + " hiccups.\n");
+	    write("You hiccup.\n");
+	}
+	if (n == 1) {
+	    say(cap_name + " seems to fall, but takes a step and recovers.\n");
+	    write("You stumble.\n");
+	}
+	if (n == 3) {
+	    write("You feel drunk.\n");
+	    say(cap_name + " looks drunk.\n");
+	}
+	if (n == 5) {
+	    say(cap_name + " burps.\n");
+	    write("You burp.\n");
+	}
+    }
+
+    /* No obvious effects of being stuffed or soaked */
+
+    if (hit_point < max_hp || spell_points < max_sp || intoxicated || headache)
+    {
+	time_to_heal -= 1;
+	if (time_to_heal < 0) {
+	    if (headache) {
+		headache -= 1;
+		if (headache == 0)
+		    tell_object(myself, "You no longer have a headache.\n");
+	    }
+	    if (hit_point < max_hp) {
+		hit_point += 1;
+		if (intoxicated)
+		    hit_point += 3;
+		if (hit_point > max_hp)
+		    hit_point = max_hp;
+	    }
+	    if (spell_points < max_sp) {
+		spell_points += 1;
+		if (intoxicated)
+		    spell_points += 3;
+		if (spell_points > max_sp)
+		    spell_points = max_sp;
+	    }
+	    if (intoxicated) {
+		intoxicated -= 1;
+		if (intoxicated == 0) {
+		    headache = max_headache;
+		    max_headache = 0;
+		    tell_object(myself,
+		       "You suddenly without reason get a bad headache.\n");
+		    hit_point -= 3;
+		    if (hit_point < 0)
+			hit_point = 0;
+		}
+	    }
+	    time_to_heal = INTERVAL_BETWEEN_HEALING;
+	}
+    }
+
+    if (stuffed)
+	stuffed--;
+
+    if (soaked)
+	soaked--;
+
+    if (attacker_ob)
+	attack();
+    if (attacker_ob && whimpy && hit_point < max_hp/5)
+	run_away();
+}
+
+/*
+ * Update our aligment.
+ */
+
+add_alignment(a) {
+    if (!intp(a)) {
+	write("Bad type argument to add_alignment.\n");
+	return;
+    }
+    alignment = alignment*9/10 + a;
+    if (level > 20)
+        return;
+    if (alignment > KILL_NEUTRAL_ALIGNMENT * 100) {
+	al_title = "saintly";
+	return;
+    }
+    if (alignment > KILL_NEUTRAL_ALIGNMENT * 20) {
+	al_title = "good";
+	return;
+    }
+    if (alignment > KILL_NEUTRAL_ALIGNMENT * 4) {
+	al_title = "nice";
+	return;
+    }
+    if (alignment > - KILL_NEUTRAL_ALIGNMENT * 4) {
+	al_title = "neutral";
+	return;
+    }
+    if (alignment > - KILL_NEUTRAL_ALIGNMENT * 20) {
+	al_title = "nasty";
+	return;
+    }
+    if (alignment > - KILL_NEUTRAL_ALIGNMENT * 100) {
+	al_title = "evil";
+	return;
+    }
+    al_title = "demonic";
+}
+
+set_al(a) {
+    if (!intp(a))
+	return;
+    alignment = a;
+}
+
+set_alignment(al) {
+    al_title = al;
+}
+
+static test_dark() {
+    if (set_light(0) <= 0) {
+	write("It is too dark.\n");
+	return 1;
+    }
+    return 0;
+}
+
+put(str) {
     int i;
     string item;
     string container;
     object item_o;
     object container_o;
-
-
-    power = 0;
-
-    if (level >= ITEM_OVER)
-        if (sscanf(str,"! %s",power) == 1) {
-            str = power;
-        power = "!";
-    }
 
     if (!str)
-        return 0;
-
+	return 0;
     if (test_dark())
-        return 1;
-
+	return 1;
     if (sscanf(str, "%s in %s", item, container) != 2) {
-        write("put what ?\n");
-
-        return 1;
+	write("put what ?\n");
+	return 1;
     }
-
     container = lower_case(container);
     container_o = present(container, this_player());
-
     if (!container_o)
-        container_o = present(container, environment(this_player()));
-
+	container_o = present(container, environment(this_player()));
     if (!container_o) {
-        write("There are no " + container + "s here!\n");
-
-        return 1;
+	write("There are no " + container + "s here!\n");
+	return 1;
     }
-
-    if (!call_other(container_o, "can_put_and_get", 0) && !power) {
-        write("You can't do that.\n");
-
-        return 1;
+    if (!call_other(container_o, "can_put_and_get", 0)) {
+	write("You can't do that.\n");
+	return 1;
     }
-
     item = lower_case(item);
     item_o = present(item, this_player());
-
     if (!item_o) {
-        write("You have no " + item + "!\n");
-
-        return 1;
+	write("You have no " + item + "!\n");
+	return 1;
     }
-
     if (item_o == container_o)
-        return 0;
-
-    if (call_other(item_o, "prevent_insert") && !power)
-        return 1;
-
-    if (call_other(item_o, "drop") && !power)
-        return 1;
-
+	return 0;
+    if (call_other(item_o, "prevent_insert"))
+	return 1;
+    if (call_other(item_o, "drop"))
+	return 1;
     i = call_other(item_o, "query_weight");
-
-    if (call_other(container_o, "add_weight", i) || power) {
-        /* Remove the weight from the previous container. */
-        call_other(environment(item_o), "add_weight", -i);
-
-        move_object(item_o, container_o);
-
-        checked_say(cap_name + " puts the " + item + " in the " + container + ".\n");
-
-        write("Ok.\n");
-
-        it = item;
-
-        return 1;
+    if (call_other(container_o, "add_weight", i)) {
+	/* Remove the weight from the previous container. */
+	call_other(environment(item_o), "add_weight", -i);
+	move_object(item_o, container_o);
+	say(cap_name + " puts the " + item + " in the " + container + ".\n");
+	write("Ok.\n");
+	it = item;
+	return 1;
     }
-
     write("There is not room for more.\n");
-
     return 1;
 }
 
-int pick_up(str) {
+pick_up(str) {
     string item;
     string container;
     object item_o;
     object container_o;
-
-    power = 0;
-
-    if (level >= ITEM_OVER)
-        if (sscanf(str,"! %s",power) == 1) {
-            str = power;
-        power = "!";
-    }
+    int weight;
 
     if (!str) {
-        write("Get what?\n");
-
-        return 1;
+	write("What ?\n");
+	return 1;
     }
-
-    if (ghost && !power) {
-        write("Your incorporeal hand passes right through it.\n");
-
-        return 1;
+    if (ghost) {
+	write("You fail.\n");
+	return 1;
     }
-
-    if (test_dark() && !power)
-        return 1;
-
+    if (test_dark())
+	return 1;
     if (str == "all") {
-        get_all(environment());
-
-        return 1;
+	get_all(environment());
+	return 1;
     }
-
     if (sscanf(str, "%s from %s", item, container) != 2) {
-        pick_item(str);
-
-        return 1;
+	pick_item(str);
+	return 1;
     }
-
     container_o = present(lower_case(container));
-
     if (!container_o) {
-        write("There is no " + container + " here.\n");
-
-        return 1;
+	write("There is no " + container + " here.\n");
+	return 1;
     }
-
-    if (!call_other(container_o, "can_put_and_get", 0) && !power) {
-        write("You can't do that!\n");
-
-        return 1;
+    if (!call_other(container_o, "can_put_and_get", 0)) {
+	write("You can't do that!\n");
+	return 1;
     }
-
     item_o = present(item, container_o);
-
-    if (item_o) {
-        if (call_other(item_o, "id", item)) {
-            int weight;
-
-            if (!call_other(item_o, "get", item) && !power) {
-                write("You can not take " + item + " from " +
-                    container + ".\n");
-
-                return 1;
-            }
-
-            weight = call_other(item_o, "query_weight", 0);
-
-            if (!add_weight(weight) && !power) {
-                write("You can not carry more.\n");
-
-                return 1;
-            }
-
-            call_other(container_o, "add_weight", -weight);
-
-            move_object(item_o, myself);
-
-            it = item;
-
-            write("Ok.\n");
-
-            checked_say(cap_name + " takes " + item + " from " + container + ".\n");
-
-            return 1;
-        }
+    if (!item_o){
+	write("There is no " + item + " in the " + container + ".\n");
+	return 1;
     }
-
-    write("There is no " + item + " in the " + container + ".\n");
-
+    if (!call_other(item_o, "get", item)) {
+	write("You can not take " + item + " from " +
+	      container + ".\n");
+	return 1;
+    }
+    weight = call_other(item_o, "query_weight", 0);
+    if (!add_weight(weight)) {
+	write("You can not carry more.\n");
+	return 1;
+    }
+    call_other(container_o, "add_weight", -weight);
+    move_object(item_o, myself);
+    write("Ok.\n");
+    say(cap_name + " takes " + item + " from " + container + ".\n");
     return 1;
 }
 
-int pick_item(obj) {
+static pick_item(obj) {
     object ob;
     int i;
-
     obj = lower_case(obj);
+    if (environment(this_player())->id(obj)) {
+	write("You can't take that.\n");
+	return 1;
+    }
     ob = present(obj, environment(this_player()));
-
     if (!ob) {
-        write("That is not here.\n");
-
-        return 1;
+	write("That is not here.\n");
+	return 1;
     }
-
-    if (ghost && !power) {
-        write("You fail.\n");
-
-        return 1;
+    if (ghost) {
+	write("You fail.\n");
+	return 1;
     }
-
     if (environment(ob) == myself) {
-        write("You already have it!\n");
-
-        return 1;
+	write("You already have it!\n");
+	return 1;
     }
-
-    if (!call_other(ob, "get", 0) && !power) {
-        write("You can not take that!\n");
-
-        return 1;
+    if (call_other(ob, "get", 0) == 0) {
+	write("You can not take that!\n");
+	return 1;
     }
-
     i = call_other(ob, "query_weight", 0);
-
-    if (add_weight(i) || power) {
-        move_object(ob, myself);
-
-        checked_say(cap_name + " takes " + obj + ".\n");
-
-        it = obj;
-
-        write("Ok.\n");
-
-        return 1;
+    if (add_weight(i)) {
+	move_object(ob, myself);
+	say(cap_name + " takes " + obj + ".\n");
+	it = obj;
+	write("Ok.\n");
+	return 1;
     }
-
     write("You can't carry that much.\n");
-
     return 1;
 }
 
-int drop_thing(obj) {
+drop_thing(obj) {
     string tmp;
     string tmp2;
     int i;
-
-    power = 0;
-
-    if (level >= ITEM_OVER)
-        if (sscanf(obj,"! %s",power) == 1) {
-            obj = power;
-        power = "!";
-    }
-
     if (!obj) {
-        write("What ?\n");
-
-        return 1;
+	write("What ?\n");
+	return 1;
     }
-
     if (obj == "all") {
-        drop_all(1);
-
-        return 1;
+	drop_all(1);
+	return 1;
     }
-
     if (sscanf(obj, "%s in %s", tmp, tmp2) == 2) {
-        put(obj);
-
-        return 1;
+	put(obj);
+	return 1;
     }
-
     if (obj == "money" || obj == "all money") {
-        drop_all_money(1);
-
-        return 1;
+	drop_all_money(1);
+	return 1;
     }
-
     tmp = obj;
     obj = present(lower_case(obj), this_player());
-
     if (!obj) {
-        write("That is not here.\n");
-
-        return 1;
+	write("That is not here.\n");
+	return 1;
     }
-
     if (drop_one_item(obj)) {
-        it = tmp;
-
-        write("Ok.\n");
-
-        checked_say(cap_name + " drops the " + tmp + ".\n");
+	it = tmp;
+	write("Ok.\n");
+	say(cap_name + " drops the " + tmp + ".\n");
     }
-
     return 1;
 }
 
-int query_weight() { return 80; }
-
-int add_weight(w) {
+add_weight(w) {
     int max;
 
     max = level + 10;
-
     if (frog)
-        max = max / 2;
-
+	max = max / 2;
     if (w + local_weight > max)
+	return 0;
+    if(w + local_weight < 0)
         return 0;
-
     local_weight += w;
-
     return 1;
 }
 
-int shout_to_all(str) {
+/*
+ * Temporary move the player to another destination and execute
+ * a command.
+ */
+
+static in_room(str)
+{
+    object room;
+    object old_room;
+    string cmd;
+    if (!str)
+	return 0;
+    if (sscanf(str, "%s %s", room, cmd) != 2) {
+	write("Usage: in ROOM CMD\n");
+	return 1;
+    }
+    room = valid_read(room, WIZ);
+    if (!room) {
+	write("Invalid file name.\n");
+	return 1;
+    }
+    old_room = environment();
+    move_object(myself, room);
+    command(cmd);
+    if (old_room)
+	move_object(myself, old_room);
+    else
+	write("Could not go back again.\n");
+    return 1;
+}
+
+shout_to_all(str) {
     if (spell_points < 0) {
-        write("You are low on power.\n");
-
-        return 1;
+	write("You are low on power.\n");
+	return 1;
     }
-
     if (level < 20)
-        spell_points -= 20;
-
+	spell_points -= 30;
     if (!str) {
-        write("Shout what ?\n");
-
-        return 1;
+	write("Shout what ?\n");
+	return 1;
     }
-
     if (ghost) {
-        write("You fail.\n");
-
-        return 1;
+	write("You fail.\n");
+	return 1;
     }
-
-    shout(cap_name + " shouts: " + str + "\n");
-
+    if (!frog) { SHOUT(cap_name + " shouts: " + str + "\n"); }
+    else {
+      SHOUT(cap_name + " the frog shouts: " + "Hriibit! Hrriiibit!" + "\n");
+    }
     write("Ok.\n");
-
     return 1;
 }
 
-int inventory() {
-    object ob;
-
-    if (test_dark())
-        return 1;
-
-    ob = first_inventory(myself);
-
-    while(ob) {
-        string str;
-
-        str = call_other(ob, "short", 0);
-
-        if (str) {
-            write(str + ".\n");
-
-            it = str;
-        }
-
-        ob = next_inventory(ob);
+static emote(str) {
+    if (!str) {
+	write("emote what ?\n");
+	return 1;
     }
-
+    say(cap_name + " " + str + "\n");
+    write("Ok.\n");
     return 1;
 }
 
+inventory() {
+    object ob;
+    if (test_dark())
+	return 1;
+    ob = first_inventory(myself);
+    while(ob) {
+	string str;
+	str = call_other(ob, "short", 0);
+	if (str) {
+	    write(capitalize(str) + ".\n");
+	    it = str;
+	}
+	ob = next_inventory(ob);
+    }
+    return 1;
+}
 
-mixed examine(str) {
+static examine(str) {
     return look("at " + str);
 }
 
-int look(str) {
-    object ob,ob2;
+look(str) {
+    object ob, ob_tmp;
     string item;
     int max;
-
     if (test_dark())
-        return 1;
-
+	return 1;
     if (!str) {
-        call_other(environment(), "long", 0);
-
-        ob = first_inventory(environment());
-        max = MAX_LIST;
-
-        while(ob && max > 0) {
-            if (ob != myself) {
-                string short_str;
-
-                short_str = call_other(ob, "short", 0);
-
-                if (short_str) {
-                    max -= 1;
-
-                    write(short_str + ".\n");
-
-                    it = short_str;
-                }
-            }
-
-            ob = next_inventory(ob);
-        }
-
-        return 1;
+	call_other(environment(), "long", 0);
+	ob = first_inventory(environment());
+	max = MAX_LIST;
+	while(ob && max > 0) {
+	    if (ob != myself) {
+		string short_str;
+		short_str = call_other(ob, "short", 0);
+		if (short_str) {
+		    max -= 1;
+		    write(short_str + ".\n");
+		    it = short_str;
+		}
+	    }
+	    ob = next_inventory(ob);
+	}
+	return 1;
     }
-
     if (sscanf(str, "at %s", item) == 1 || sscanf(str, "in %s", item) == 1) {
-        item = lower_case(item);
-        ob = present(item, this_player());
-
-        if (!ob && call_other(environment(this_player()), "id", item))
-            ob = environment(this_player());
-
-        if (!ob)
-            ob = present(item, environment(this_player()));
-
-        if (!ob) {
-            write("There is no " + item + " here.\n");
-
-            return 1;
-        }
-
-        it = item;
-
-        call_other(ob, "long", item);
-
-        if (!call_other(ob, "can_put_and_get", item))
-            return 1;
-
-        ob2 = first_inventory(ob);
-
-        while(ob2 && call_other(ob2, "short") == 0)
-            ob2 = next_inventory(ob2);
-
-        if (ob2) {
-            if (living(ob))
-                write("\t" + capitalize(item) + " is carrying:\n");
-            else
-                write("\t" + capitalize(item) + " contains:\n");
-        }
-
-        max = MAX_LIST;
-
-        while(ob2 && max > 0) {
-            string sh;
-
-            sh = call_other(ob2, "short", 0);
-
-            if (sh)
-                write(sh + ".\n");
-
-            ob2 = next_inventory(ob2);
-            max -= 1;
-        }
-
-        return 1;
+	int weight;
+	item = lower_case(item);
+	ob = present(item, this_player());
+	if (!ob && call_other(environment(this_player()), "id", item))
+	    ob = environment(this_player());
+	if (!ob)
+	    ob = present(item, environment(this_player()));
+	if (!ob) {
+	    write("There is no " + item + " here.\n");
+	    return 1;
+	}
+	it = item;
+	call_other(ob, "long", item);
+	weight = ob->query_weight();
+	if (!living(ob)) {
+	    if (weight >= 5)
+		write("It looks very heavy.\n");
+	    else if (weight >= 3)
+		write("It looks heavy.\n");
+	}
+	if (!call_other(ob, "can_put_and_get", item))
+	    return 1;
+	if (living(ob)) {
+	    object special;
+	    special = first_inventory(ob);
+	    while(special) {
+		string extra_str;
+		extra_str = call_other(special, "extra_look");
+		if (extra_str)
+		    write(extra_str + ".\n");
+		special = next_inventory(special);
+	    }
+	}
+	ob_tmp = first_inventory(ob);
+	while(ob_tmp && call_other(ob_tmp, "short") == 0)
+	    ob_tmp = next_inventory(ob_tmp);
+	if (ob_tmp) {
+	   if (living(ob)) {
+		write("\t" + capitalize(item) + " is carrying:\n");
+	    } else
+		write("\t" + capitalize(item) + " contains:\n");
+	}
+	max = MAX_LIST;
+	ob = first_inventory(ob);
+	while(ob && max > 0) {
+	    string sh;
+	    sh = call_other(ob, "short", 0);
+	    if (sh)
+		write(sh + ".\n");
+	    ob = next_inventory(ob);
+	    max -= 1;
+	}
+	return 1;
     }
-
     write("Look AT something, or what ?\n");
-
     return 1;
 }
 
-void check_password(p) {
+static check_password(p)
+{
+    write("\n");
+    remove_call_out("time_out");
     if (password == 0)
         write("You have no password ! Set it with the 'password' cmd.\n");
-    else if (name != "guest" && crypt(p) != password) {
-        write("Wrong password!\n");
-
-        destruct(myself);
-
-        return;
+    else if (name != "guest" && crypt(p, password) != password) {
+	write("Wrong password!\n");
+	destruct(myself);
+	return;
     }
-
-    soul = 0;
-
-    soul("on");
-
     move_player_to_start(0);
-
-    log_file("ENTER", cap_name + " (" + name + ") entered with " + experience +
-        " ep, " + money + " gold.\n");
+#ifdef LOG_ENTER
+    log_file("ENTER", cap_name + ", " + extract(ctime(time()), 4, 15)+ ".\n");
+#endif
 }
 
 /*
-* Give a new password to a player.
-*/
-void new_password(p) {
+ * Give a new password to a player.
+ */
+static new_password(p)
+{
+    write("\n");
     if (!p || p == "") {
-        write("Try again another time then.\n");
-
-        destruct(myself);
-
-        return;
+	write("Try again another time then.\n");
+	destruct(myself);
+	return;
     }
-
+    if (strlen(p) < 6) {
+	write("The password must have at least 6 characters.\n");
+	input_to("new_password", 1);
+	write("Password: ");
+	return;
+    }
     if (password == 0) {
-        password = p;
-
-        write("Password: (again) ");
-
-        input_to("new_password");
-
-        return;
+	password = p;
+	input_to("new_password", 1);
+	write("Password: (again) ");
+	return;
     }
-
+    remove_call_out("time_out");
     if (password != p) {
-        write("You changed !\n");
-
-        destruct(myself);
-
-        return;
+	write("You changed !\n");
+	destruct(myself);
+	return;
     }
-
-    password = crypt(password);
-
+    password = crypt(password, 0);	/* Generate new seed. */
     call_other("room/adv_guild", "advance", 0);
-
+    set_level(1); set_str(1); set_con(1); set_int(1); set_dex(1);
     hit_point = max_hp;
-
     move_player_to_start(0);
-
+#ifdef LOG_NEWPLAYER
     log_file("NEWPLAYER", cap_name + ".\n");
+#endif
 }
 
-void move_player_to_start(where) {
+
+static move_player_to_start(where) {
+  if (!mailaddr || mailaddr == "")
+  {
+    write("Please enter your email address (or 'none'): ");
+    saved_where = where;
+    input_to("getmailaddr");
+    return;
+  }
+  
+  move_player_to_start2(where);
+}
+
+set_mailaddr(addr) {
+  mailaddr = addr;
+}
+
+query_mailaddr() {
+  return mailaddr;
+}
+
+static getmailaddr(maddr) {
+  mailaddr = maddr;
+
+  move_player_to_start2(saved_where);
+}
+
+static move_player_to_start2(where) {
+  if (gender == -1) {
+    write("Are you, male, female or other: ");
+    input_to("getgender", 0);
+    return;
+  }
+  move_player_to_start3(where);
+}
+
+/*  This function is called using input_to, and sets the
+ *  gender of this player.
+ */
+static getgender(gender_string) {
+
+  gender_string = lower_case(gender_string);
+  if (gender_string[0] == 'm') {
+      write("Welcome, Sir!\n");
+      set_male();
+  }
+  else if (gender_string[0] == 'f') {
+      write("Welcome, Madam!\n");
+      set_female();
+  }
+  else if (gender_string[0] == 'o') {
+      write("Welcome, Creature!\n");
+      set_neuter();
+  }
+  else {
+      write("Sorry, but that is too weird for this game!\n");
+      write("Are you, male, female or other (type m, f or o): ");
+      input_to("getgender");
+      return;
+  }  
+
+  move_player_to_start3(saved_where);
+}
+
+static move_player_to_start3(where) {
     object ob;
     string tmp_name;
-
     /*
-    * See if we are already playing.
-    * We must blank our own name, or we could find ourselves !
-    */
+     * See if we are already playing.
+     * We must blank our own name, or we could find ourselves !
+     */
     tmp_name = name;
     name = 0;
     other_copy = find_player(tmp_name);
-
-    if (!other_copy)
-        other_copy = find_player("ghost of " + tmp_name);
     name = tmp_name;
-
+    enable_commands();
     if (other_copy) {
-        write("You are already playing !\n");
-        write("Throw the other copy out ? ");
-
-        input_to("try_throw_out");
-
-        return;
+	write("You are already playing !\n");
+	write("Throw the other copy out ? ");
+	input_to("try_throw_out");
+	return;
     }
-
+    /*
+     * Initilize the character stats, if not already done.
+     */
+    if (!stats_is_updated) {
+	int tmp;
+	tmp = level;
+	if (tmp > 20)
+	    tmp = 20;
+	set_str(tmp); set_int(tmp); set_con(tmp); set_dex(tmp);
+	stats_is_updated = 1;
+    }
+    /*
+     * Now we can enter the game. Check tot_value if the game
+     * crashed, and the values of the player was saved.
+     */
+    set_heart_beat(1);
+    add_standard_commands();
+    if (level >= 20)
+	wiz_commands();
+    if (level >= 21)
+	wiz_commands2();
+    move_object(clone_object("obj/soul"), myself);
+    if (tot_value) {
+	write("You find " + tot_value + " coins of your lost money!\n");
+	money += tot_value;
+	tot_value = 0;
+    }
     cat("/NEWS");
-
     if (where)
-        move_object(myself, where);
+	move_object(myself, where);
     else {
-        move_object(myself, "room/church");
-
-        load_auto_obj(auto_load);
+	move_object(myself, "room/church");
+	load_auto_obj(auto_load);
     }
-
-    checked_say(cap_name + " enters the game.\n");
-
-    if (query_invis(0))
-        write("YOU ARE INVISIBLE = "+query_invis(0)+" !\n\n");
-
-    if (muffled)
-        write("YOU HAVE ON EAR MUFFS.\n");
-
-    if (ghost)
-        write("YOU ARE A GHOST!\n\n");
-
+    if (is_invis && level < 20)
+	vis();
+    if (!is_invis)
+	say(cap_name + " enters the game.\n");
+    else
+	write("YOU ARE INVISIBLE !\n\n");
+    if (level >= 21)
+	cat("/WIZNEWS");
     call_other("room/post", "query_mail", 0);
-
+    if (query_ip_number() != called_from_ip && called_from_ip)
+	write("Your last login was from " + called_from_ip + "\n");
+    called_from_ip = query_ip_number();
     ob = first_inventory(environment());
-
     while(ob) {
-        if (ob != this_object()) {
-            string sh;
-
-            sh = call_other(ob, "short");
-
-            if (sh)
-                write(sh + ".\n");
-        }
-
-        ob = next_inventory(ob);
+	if (ob != this_object()) {
+	    string sh;
+	    sh = call_other(ob, "short");
+	    if (sh)
+		write(sh + ".\n");
+	}
+	ob = next_inventory(ob);
     }
+    current_path = "players/" + name;
+    set_living_name(name);
 }
 
-int help(what) {
+static list_files(path)
+{
+    if (!path)
+	path = "/" + current_path;
+    if (path != "/")
+	path = path + "/.";
+    ls(path);
+    return 1;
+}
+
+tail_file(path)
+{
+    if (!path)
+	return 0;
+    if (!tail(path))
+	return 0;
+    return 1;
+}
+
+cat_file(path)
+{
+    if (!path)
+	return 0;
+    if (!cat(path))
+	write("No such file.\n");
+    return 1;
+}
+
+static help(what) {
+    if (what == "wizard" && level >= 20) {
+	cat("/doc/wiz_help");
+	return 1;
+    }
     if (what) {
-        cat("/doc/helpdir/" + what);
-
-        return 1;
+	cat("/doc/helpdir/" + what);
+	return 1;
     }
-
     cat("/doc/help");
-
     return 1;
 }
 
-int tell(str) {
+static tell(str)
+{
     object ob;
     string who;
     string msg;
-
     if (ghost) {
-        write("You fail.\n");
-
-        return 1;
+	write("You fail.\n");
+	return 1;
     }
-
     if (spell_points < 0) {
-        write("You are low on power.\n");
-
-        return 1;
+	write("You are low on power.\n");
+	return 1;
     }
-
     if (level < 20)
-        spell_points -= 5;
-
+	spell_points -= 5;
     if (!str || sscanf(str, "%s %s", who, msg) != 2) {
-        write("Tell what ?\n");
-
-        return 1;
+	write("Tell what ?\n");
+	return 1;
     }
-
     it = lower_case(who);
     ob = find_living(it);
-
     if (!ob) {
-        write("No player with that name.\n");
-
-        return 1;
+	write("No player with that name.\n");
+	return 1;
     }
-
     tell_object(ob, cap_name + " tells you: " + msg + "\n");
-
     write("Ok.\n");
-
     return 1;
 }
 
-int whisper(str) {
+whisper(str)
+{
     object ob;
     string who;
     string msg;
-
     if (ghost) {
-        write("You fail.\n");
-
-        return 1;
+	write("You fail.\n");
+	return 1;
     }
-
     if (!str || sscanf(str, "%s %s", who, msg) != 2) {
-        write("Whisper what ?\n");
-
-        return 1;
+	write("Whisper what ?\n");
+	return 1;
     }
-
     it = lower_case(who);
     ob = find_living(it);
-
     if (!ob || !present(it, environment(this_player()))) {
-        write("No player with that name in this room.\n");
-
-        return 1;
+	write("No player with that name in this room.\n");
+	return 1;
     }
-
     tell_object(ob, cap_name + " whispers to you: " + msg + "\n");
-
     write("Ok.\n");
-
-    checked_say(cap_name + " whispers something to " + who + ".\n");
-
+    say(cap_name + " whispers something to " + who + ".\n", ob);
     return 1;
 }
 
-void add_hit_point(arg) {
-    hit_point += arg;
+list_peoples() {
+    object list;
+    int i, a;
 
-    if (hit_point > max_hp)
-        hit_point = max_hp;
-
-    if (hit_point < 0)
-        hit_point = 0;
+    list = users();
+    write("There are now " + sizeof(list) + " players");
+    for (i=0, a=0; i < sizeof(list); i++)
+	if (query_idle(list[i]) >= 5 * 60)
+	    a++;
+    if (a)
+	write(" (" + (sizeof(list) - a) + " active)");
+    write(". " + query_load_average() + "\n");
+    for(i=0; i<sizeof(list); i++) {
+	string name;
+	name = list[i]->query_real_name();
+	if (!name)
+	    name = list[i]->query_name();
+	if (!name)
+	    name = "logon";
+	name = capitalize(name);
+	if (list[i]->short() == 0)
+	    name = "(" + name + ")";
+	if (strlen(name) < 8)
+	    name = name + "\t";
+	write(query_ip_number(list[i]) + "\t" + name + "\t" +
+	      list[i]->query_level() + "\t");
+	a = list[i]->query_age();
+	if (a / 43200 > 9)
+	    write(a / 43200 + " D");
+	else if (a / 43200 > 0)
+	    write(a / 43200 + "  D");
+	else if (a / 1800 > 9)
+	    write(a / 1800 + " h");
+	else if (a / 1800 > 0)
+	    write(a / 1800 + "  h");
+	else if (a / 30 > 9)
+	    write(a / 30 + " m");
+	else
+	    write(a / 30 + "  m");
+	if (query_idle(list[i]) >= 5 * 60)
+	    write(" I\t");
+	else
+	    write("\t");
+	if (environment(list[i]))
+	    write(file_name(environment(list[i])));
+	write("\n");
+    }
+    return 1;
 }
 
-void add_spell_point(arg) {
-    spell_points += arg;
-
-    if (spell_points > max_hp)
-        spell_points = max_hp;
-
-    /* spell points can go negative */
+static update_object(str) {
+    object ob;
+    if (!str) {
+	write("Update what object ?\n");
+	return 1;
+    }
+    str = valid_read(str, WIZ);
+    if (!str) {
+	write("Invalid file name.\n");
+	return 1;
+    }
+    ob = find_object(str);
+    if (!ob) {
+	write("No such object.\n");
+	return 1;
+    }
+    destruct(ob);
+    write(str + " will be reloaded at next reference.\n");
+    return 1;
 }
 
+static edit(file)
+{
+    string tmp_file;
+    if (!file) {
+	ed();
+	return 1;
+    }
+    file = valid_write(file);
+    if (!file) {
+	write("You can only edit your own files.\n");
+	return 1;
+    }
+    ed(file);
+    return 1;
+}
+
+static heal(name)
+{
+    object ob;
+
+    if (!name)
+	return 0;
+    it = lower_case(name);
+    ob = find_living(it);
+    if (!ob) {
+	write("No such person is playing now.\n");
+	return 1;
+    }
+    call_other(ob, "heal_self", 100000);
+    tell_object(ob, "You are healed by " + cap_name + ".\n");
+    write("Ok.\n");
+    return 1;
+}
+
+static stat(name)
+{
+    object ob;
+
+    if (!name)
+	return 0;
+    it = lower_case(name);
+    ob = present(name, environment());
+    if (!ob || !living(ob))
+	ob = find_living(it);
+    if (!ob) {
+	write("No such person is playing now.\n");
+	return 1;
+    }
+    call_other(ob, "show_stats", 0);
+    return 1;
+}
 
 /*
-* This routine is called from other routines to drop one specified object.
-* We return true if success.
-*/
+ * This routine is called from other routines to drop one specified object.
+ * We return true if success.
+ */
 
-int drop_one_item(ob) {
+drop_one_item(ob)
+{
     int weight;
 
-    if ((call_other(ob, "drop", 0) && !power) ||
-        call_other(ob,"id","soul"))
-        return 0;
-
+    if (call_other(ob, "drop", 0))
+	return 0;
     weight = call_other(ob, "query_weight", 0);
-
     if (!weight)
-        weight = 0;
-
+	weight = 0;
     add_weight(-weight);
-
     move_object(ob, environment(myself));
-
     return 1;
 }
 
-void drop_all(verbose) {
+drop_all(verbose)
+{
     object ob;
     object next_ob;
-
     if (!myself || !living(myself))
         return;
-
     ob = first_inventory(myself);
-
     while(ob) {
-        string out;
-
-        next_ob = next_inventory(ob);
-        it = call_other(ob, "short", 0);
-
-        if (drop_one_item(ob) && verbose) {
-            out = it + ".\n";
-
-            checked_say(cap_name + " drops " + out);
-
-            tell_object(myself, "drop: " + out);
-        }
-
-        ob = next_ob;
+	string out;
+	next_ob = next_inventory(ob);
+	it = call_other(ob, "short", 0);
+	if (drop_one_item(ob) && verbose) {
+	    out = it + ".\n";
+	    say(cap_name + " drops " + out);
+	    tell_object(myself, "drop: " + out);
+	}
+	ob = next_ob;
     }
 }
 
-/*
-* Check that a player name is valid. Only allow
-* lowercase letters.
-*/
-int valid_name(str) {
-    int i, length;
-
-    length = strlen(str);
-
-    if (length > 11) {
-        write("Too long name.\n");
-
-        log_file("BAD_NAME", str + "\n");
-
-        return 0;
-    }
-
-    i=0;
-
-    while(i<length) {
-        if (str[i] < 'a' || str[i] > 'z') {
-            write("Invalid characters in name:" + str + "\n");
-            write("Character number was " + i + ".\n");
-
-            log_file("BAD_NAME", str + "\n");
-
-            return 0;
-        }
-
-        i += 1;
-    }
-
-    return 1;
-}
-
-/*
-* This one is called when the player wants to change his password.
-*/
-int change_password(str) {
-    if (password != 0 && !str) {
-        write("Give old password as an argument.\n");
-
-        return 1;
-    }
-
-    if (password != 0 && password != crypt(str)) {
-        write("Wrong old password.\n");
-
-        return 1;
-    }
-
-    write("New password: ");
-
-    password2 = 0;
-
-    input_to("change_password2");
-
-    return 1;
-}
-
-void change_password2(str) {
+static shut_down_game(str)
+{
     if (!str) {
-        write("Password not changed.\n");
-
-        return;
+	write("You must give a shutdown reason as argument.\n");
+	return 1;
     }
+    shout("Game is shut down by " + capitalize(name) + ".\n");
+#ifdef LOG_SHUTDOWN
+    log_file("GAME_LOG", ctime(time()) + " Game shutdown by " + name +
+	     "(" + str + ")\n");
+#endif
+    shutdown();
+    return 1;
+}
 
-    if (password2 == 0) {
-        password2 = str;
-
-        write("Again: ");
-
-        input_to("change_password2");
-
-        return;
+/*
+ * Check that a player name is valid. Only allow
+ * lowercase letters.
+ */
+valid_name(str)
+{
+    int i, length;
+    if (str == "logon") {
+	write("Invalid name");
+	return 0;
     }
-
-    if (password2 != str) {
-        write("Wrong! Password not changed.\n");
-
-        return;
+    length = strlen(str);
+    if (length > 11) {
+	write("Too long name.\n");
+	return 0;
     }
+    i=0;
+    while(i<length) {
+	if (str[i] < 'a' || str[i] > 'z') {
+	    write("Invalid characters in name:" + str + "\n");
+	    write("Character number was " + (i+1) + ".\n");
+	    return 0;
+	}
+	i += 1;
+    }
+    return 1;
+}
 
-    password = crypt(password2);
+/*
+ * This one is called when the player wants to change his password.
+ */
+static change_password(str)
+{
+    if (password != 0 && !str) {
+	write("Give old password as an argument.\n");
+	return 1;
+    }
+    if (password != 0 && password != crypt(str, password)) {
+	write("Wrong old password.\n");
+	return 1;
+    }
     password2 = 0;
+    input_to("change_password2", 1);
+    write("New password: ");
+    return 1;
+}
 
+static change_password2(str)
+{
+    if (!str) {
+	write("Password not changed.\n");
+	return;
+    }
+    if (password2 == 0) {
+	password2 = str;
+	input_to("change_password2", 1);
+	write("Again: ");
+	return;
+    }
+    if (password2 != str) {
+	write("Wrong! Password not changed.\n");
+	return;
+    }
+    password = crypt(password2, 0);	/* Generate new seed */
+    password2 = 0;
     write("Password changed.\n");
 }
 
-int bug(str) {
+static bug(str)
+{
     if (!str) {
-        write("Give an argument.\n");
-
-        return 1;
+	write("Give an argument.\n");
+	return 1;
     }
-
     log_file("BUGS", "\n");
-    log_file("BUGS", cap_name + ":\n");
+    log_file("BUGS", cap_name + " (" +
+	     file_name(environment(this_object())) + "):\n");
     log_file("BUGS", str + "\n");
-
     smart_report("Bug " + cap_name + "\n" + str);
-
     write("Ok.\n");
-
     return 1;
 }
 
-int typo(str) {
+static typo(str)
+{
     if (!str) {
-        write("Give an argument.\n");
-
-        return 1;
+	write("Give an argument.\n");
+	return 1;
     }
-
-    log_file("TYPO", cap_name + ":\n");
+    log_file("TYPO", cap_name + " (" +
+	     file_name(environment(this_object())) + "):\n");
     log_file("TYPO", str + "\n");
-
     smart_report("Typo " + cap_name + "\n" + str);
-
     write("Ok.\n");
-
     return 1;
 }
 
-int idea(str) {
+static idea(str)
+{
     if (!str) {
-        write("Give an argument.\n");
-
-        return 1;
+	write("Give an argument.\n");
+	return 1;
     }
-
     log_file("IDEA", cap_name + ":\n");
     log_file("IDEA", str + "\n");
-
     smart_report("Idea " + cap_name + "\n" + str);
-
     write("Ok.\n");
-
     return 1;
 }
 
-int converse() {
+static converse()
+{
     write("Give '**' to stop.\n");
-
+    write("]");
     input_to("converse_more");
-
     return 1;
 }
 
-void converse_more(str) {
-    if (!str) {
-        input_to("converse_more");
-
-        return;
-    }
-
+static converse_more(str)
+{
+    string cmd;
     if (str == "**") {
-        write("Ok.\n");
-
-        return;
+	write("Ok.\n");
+	return;
     }
-
-    say(cap_name + " says: " + str + "\n");
-
+    if (str[0] == '!') {
+	sscanf(str, "!%s", cmd);
+	command(cmd);
+    } else if (str != "") {
+	say(cap_name + " says: " + str + "\n");
+    }
+    write("]");
     input_to("converse_more");
 }
 
-int toggle_whimpy() {
+static toggle_whimpy()
+{
     whimpy = !whimpy;
-
     if (whimpy)
         write("Wimpy mode.\n");
     else
         write("Brave mode.\n");
-
     return 1;
 }
 
-int query_brief() { return brief; }
+query_brief() { return brief; }
 
-int toggle_brief() {
+toggle_brief()
+{
     brief = !brief;
-
     if (brief)
         write("Brief mode.\n");
     else
         write("Verbose mode.\n");
-
     return 1;
 }
 
-void add_exp(e) {
+add_exp(e) {
+#ifdef LOG_EXP
+    if (this_player() && this_player() != this_object() &&
+      query_ip_number(this_player()) && level < 20 && e >= ROOM_EXP_LIMIT)
+	log_file("EXPERIENCE", ctime(time()) + " " + name + "(" + level + 
+		") " + e + " exp by " + this_player()->query_real_name() + 
+		"(" + this_player()->query_level() + ")" +"\n");
+#endif
     experience += e;
-
     if (level <= 19)
-        add_worth(e);
+	add_worth(e);
 }
 
-void add_intoxination(i) {
+add_intoxination(i) {
+    if(i < 0)
+    {
+	if (-i > intoxicated / 10)
+		i = -intoxicated / 10;
+    }
     intoxicated += i;
-
     if(intoxicated < 0)
-        intoxicated = 0;
+	intoxicated = 0;
 }
 
-int query_intoxination() {
+add_stuffed(i)
+{
+    if(i < 0)
+    {
+	if (-i > stuffed / 10)
+		i = -stuffed / 10;
+    }
+    stuffed += i;
+    if (stuffed < 0)
+	stuffed = 0;
+}
+
+add_soaked(i)
+{
+    if(i < 0)
+    {
+	if (-i > soaked / 10)
+		i = -soaked / 10;
+    }
+    soaked += i;
+    if (soaked < 0)
+	soaked = 0;
+}
+
+query_intoxination() {
     return intoxicated;
 }
 
-mixed second_life() {
-    if (level >= 20)
-        return illegal_patch("set_level");
+query_stuffed()
+{
+    return stuffed;
+}
 
+query_soaked()
+{
+    return soaked;
+}
+
+second_life() {
+#if 1
+    object death_mark;
+#endif
+    if (level >= 20)
+	return illegal_patch("second_life");
+    make_scar();
     ghost = 1;
+    if (level > 1)
+	level = level - 1;
+    if (Str > 1)
+	set_str(Str-1);
+    if (Con > 1)
+	set_con(Con-1);
+    if (Dex > 1)
+	set_dex(Dex-1);
+    if (Int > 1)
+	set_int(Int-1);
     msgin = "drifts around";
     msgout = "blows";
     headache = 0;
     intoxicated = 0;
+    stuffed = 0;
+    soaked = 0;
     hunter = 0;
     hunted = 0;
+#ifdef LOG_KILLS
+    if (attacker_ob)
+	log_file("KILLS", name + "(" + level + ")" + " killed by " +
+		 attacker_ob->short() + "(" +
+		 attacker_ob->query_real_name() + "), creator: " +
+		 creator(attacker_ob) + "\n");
+#endif
     attacker_ob = 0;
     alt_attacker_ob = 0;
-
-    save_me();
-
     tell_object(myself, "\nYou die.\nYou have a strange feeling.\n" +
-    "You can see your own dead body from above.\n\n");
+		"You can see your own dead body from above.\n\n");
 
+#if 1
+    death_mark = clone_object("/room/death/death_mark");
+    move_object(death_mark, myself);
+#endif
     return 1;
 }
 
-int remove_ghost() {
+remove_ghost() {
     if (!ghost)
-        return 0;
-
+	return 0;
     write("You feel a very strong force.\n");
     write("You are sucked away...\n");
     write("You reappear in a more solid form.\n");
-
     say("Some mist disappears.\n");
     say(cap_name + " appears in a solid form.\n");
-
     ghost = 0;
+    dead = 0;
     msgin = "arrives";
     msgout = "leaves";
-
-    /* Get us to the appropriate level for our experience */
-    call_other("room/adv_guild", "correct_level", this_player());
-
-    save_me();
-
+    save_me(1);
     return 1;
 }
 
-int stop_hunting_mode() {
+static trans(str)
+{
+    object ob;
+    string out;
+
+    if (!str)
+	return 0;
+    ob = find_living(str);
+    if (!ob) {
+	write("No such living thing.\n");
+	return 1;
+    }
+    it = str;
+    tell_object(ob, "You are magically transfered somewhere.\n");
+    out = call_other(ob, "query_mmsgin", 0);
+    if (!out)
+	out = call_other(ob, "query_name", 0) +
+	    " arrives in a puff of smoke.\n";
+    else
+	out = call_other(ob, "query_name", 0) + " " + out + ".\n";
+    say(out);
+    write(out);
+    move_object(ob, environment(this_object()));
+    return 1;
+}
+
+stop_hunting_mode()
+{
     if (!hunted) {
         write("You are not hunting anyone.\n");
-
-        return 1;
+	return 1;
     }
-
     call_other(hunted, "stop_hunter");
-
     hunted = 0;
-
     write("Ok.\n");
-
     return 1;
 }
 
-int drink_alcohol(strength) {
-    if (intoxicated > level + 3 && strength > 0) {
-        return 0;   /* He's too drunk to drink any more! */
+drink_alcohol(strength)
+{
+    if (intoxicated > level + 3) {
+	write("You fail to reach the drink with your mouth.\n");
+	return 0;
     }
-
     intoxicated += strength;
-
     if (intoxicated < 0)
-        intoxicated = 0;
-
+	intoxicated = 0;
     if (intoxicated == 0)
-        write("You are completely sober.\n");
-
+	write("You are completely sober.\n");
     if (intoxicated > 0 && headache) {
-        headache = 0;
-
-        tell_object(myself, "Your head ache disappears.\n");
+	headache = 0;
+	tell_object(myself, "Your headache disappears.\n");
     }
-
     if (intoxicated > max_headache)
-        max_headache = intoxicated;
-
+	max_headache = intoxicated;
     if (max_headache > 8)
-        max_headache = 8;
-
+	max_headache = 8;
     return 1;
 }
 
-int spell_missile(str) {
+drink_alco(strength)
+{
+	if (intoxicated + strength > level * 3)
+	{
+		write("You fail to reach the drink with your mouth.\n");
+		return 0;
+	}
+
+	intoxicated += strength / 2;
+
+	if (intoxicated < 0)
+		intoxicated = 0;
+
+	if (intoxicated == 0)
+		write("You are completely sober.\n");
+
+	if (intoxicated > 0 && headache) 
+	{
+		headache = 0;
+		tell_object(myself, "Your headache disappears.\n");
+	}
+
+	if (intoxicated > max_headache)
+		max_headache = intoxicated;
+
+	if (max_headache > 8)
+		max_headache = 8;
+
+	return 1;
+}
+drink_soft(strength)
+{
+	if (soaked + strength > level * 8)
+	{
+		write("You can't possibly drink that much right now!\n" + 
+			"You feel crosslegged enough as it is.\n");
+		return 0;
+	}
+
+	soaked += strength * 2;
+
+	if (soaked < 0)
+		soaked = 0;
+
+	if (soaked == 0)
+		write("You feel a bit dry in the mouth.\n");
+
+	return 1;
+}
+
+eat_food(strength)
+{
+	if (stuffed + strength > level * 8)
+	{
+		write("This is much too rich for you right now! Perhaps something lighter?\n");
+		return 0;
+	}
+
+	stuffed += strength * 2;
+
+	if (stuffed < 0)
+		stuffed = 0;
+
+	if (stuffed == 0)
+		write("Your stomach makes a rumbling sound.\n");
+
+	return 1;
+}
+
+spell_missile(str)
+{
     object ob;
-
     if (test_dark())
-        return 1;
-
+	return 1;
     if (level < 5)
-        return 0;
-
+	return 0;
     if (!str)
-        ob = attacker_ob;
+	ob = attacker_ob;
     else
-        ob = present(lower_case(str), environment(this_player()));
-
+	ob = present(lower_case(str), environment(this_player()));
     if (!ob || !living(ob)) {
-        write("At whom?\n");
-
-        return 1;
+	write("At whom ?\n");
+	return 1;
     }
-
     if (ob == myself) {
-        write("You manage to duck and only singe your hair.\n");
-
-        return 1;
+	write("What ?");
+	return 1;
     }
-
     missile_object(ob);
-
     return 1;
 }
 
-int spell_shock(str) {
+spell_shock(str)
+{
     object ob;
-
     if (test_dark())
-        return 1;
-
+	return 1;
     if (level < 10)
-        return 0;
-
+	return 0;
     if (!str)
-        ob = attacker_ob;
+	ob = attacker_ob;
     else
-        ob = present(lower_case(str), environment(this_player()));
-
+	ob = present(lower_case(str), environment(this_player()));
     if (!ob || !living(ob)) {
-        write("At whom?\n");
-
-        return 1;
+	write("At whom ?\n");
+	return 1;
     }
-
     if (ob == myself) {
-        write("You put a few thousand volts through yourself.\n");
-
-        return 1;
+	write("What ?");
+	return 1;
     }
-
     shock_object(ob);
-
     return 1;
 }
 
-int spell_fire_ball(str) {
+spell_fire_ball(str)
+{
     object ob;
-
     if (test_dark())
-        return 1;
-
+	return 1;
     if (level < 15)
-        return 0;
-
+	return 0;
     if (!str)
-        ob = attacker_ob;
+	ob = attacker_ob;
     else
-        ob = present(lower_case(str), environment(this_player()));
-
+	ob = present(lower_case(str), environment(this_player()));
     if (!ob || !living(ob)) {
-        write("At whom?\n");
-
-        return 1;
+	write("At whom ?\n");
+	return 1;
     }
-
     if (ob == myself) {
-        write("Your fireball burns off half of your hair!\n");
-
-        return 1;
+	write("What ?");
+	return 1;
     }
-
     fire_ball_object(ob);
-
     return 1;
 }
 
-int give_object(str) {
+static spell_zap(str)
+{
+    object ob;
+    if (!str)
+	ob = attacker_ob;
+    else
+	ob = present(lower_case(str), environment(this_player()));
+    if (!ob || !living(ob)) {
+	write("At whom ?\n");
+	return 1;
+    }
+    zap_object(ob);
+    return 1;
+}
+
+give_object(str)
+{
     string item, dest;
     object item_ob, dest_ob;
     int weight;
     int coins;
 
-    power = 0;
-
-    if (level >= ITEM_OVER)
-        if (sscanf(str,"! %s",power) == 1) {
-            str = power;
-        power = "!";
-    }
-
     if (!str)
-        return 0;
-
+	return 0;
     if (test_dark())
-        return 1;
-
+	return 1;
     if (sscanf(str, "%d coins to %s", coins, dest) == 2)
-        item = 0;
+	item = 0;
     else if ( sscanf(str, "1 coin to %s", dest) == 1)
-        coins = 1;
+	coins = 1;
     else if ( sscanf(str, "coin to %s", dest) == 1)
-        coins = 1;
+	coins = 1;
     else if (sscanf(str, "one coin to %s", dest) == 1)
-        coins = 1;
+	coins = 1;
     else if (sscanf(str, "%s to %s", item, dest) != 2) {
-        write("Give what to whom?\n");
-
-        return 1;
+	write("Give what to whom ?\n");
+	return 1;
     }
-
     dest = lower_case(dest);
-
     if (item) {
-        item = lower_case(item);
-        item_ob = present(item, this_player());
-
-        if (!item_ob) {
-            write("There is no " + item + " here.\n");
-
-            return 1;
-        }
-
-        it = item;
-
-        if (environment(item_ob) == this_object() &&
-            call_other(item_ob, "drop", 0) == 1 && !power) {
-            return 1;
-        } else {
-            if (!call_other(item_ob, "get") && !power) {
-                write("You can't get that !\n");
-
-                return 1;
-            }
-        }
+	item = lower_case(item);
+	item_ob = present(item, this_player());
+	if (!item_ob) {
+	    write("There are no " + item + " here.\n");
+	    return 1;
+	}
+	it = item;
+	if (environment(item_ob) == this_object() &&
+	    call_other(item_ob, "drop", 0) == 1) {
+	    return 1;
+	} else {
+	    if (!call_other(item_ob, "get")) {
+		write("You can't get that !\n");
+		return 1;
+	    }
+	}
     }
-
     dest_ob = present(dest, environment(this_player()));
-
     if (!dest_ob) {
-        write("There is no " + capitalize(dest) + " here.\n");
-
-        return 1;
+	write("There is no " + capitalize(dest) + " here.\n");
+	return 1;
     }
-
-    if (!living(dest_ob) && !power) {
-        write("You can't do that.\n");
-
-        return 1;
+    if (!living(dest_ob)) {
+	write("You can't do that.\n");
+	return 1;
     }
-
     if (!item) {
-        if (coins <= 0 && !power)
-            return 0;
-
-        if (money < coins && !power) {
-            write("You don't have that much money.\n");
-
-            return 1;
-        }
-
-        if (!power) money -= coins;
-
-        /* Checkpoint the character, to prevent cheating */
-        if (coins > 1000 && !power)
-            save_me();
-
-        call_other(dest_ob, "add_money", coins);
-
-        if (coins != 1)
-            checked_say(cap_name + " gives " + coins + " coins to " + capitalize(dest) +
-            ".\n");
-        else
-            checked_say(cap_name + " gives 1 coin to " + capitalize(dest) + ".\n");
-
-        write("Ok.\n");
-
-        return 1;
+	if (coins <= 0 && level < 20)
+	    return 0;
+	if (money < coins) {
+	    write("You don't have that much money.\n");
+	    return 1;
+	}
+	money -= coins;
+	/* Checkpoint the character, to prevent cheating */
+	if (coins > 1000 && level < 20)
+	    save_me(1);
+	call_other(dest_ob, "add_money", coins);
+	tell_object(dest_ob, cap_name + " gives you " + coins +
+	    " gold coins.\n");
+	write("Ok.\n");
+	return 1;
     }
-
     weight = call_other(item_ob, "query_weight", 0);
-
-    if (!call_other(dest_ob, "add_weight", weight) && !power) {
-        write(capitalize(dest) + " can't carry any more.\n");
-
-        return 1;
+    if (!call_other(dest_ob, "add_weight", weight)) {
+	write(capitalize(dest) + " can't carry any more.\n");
+	return 1;
     }
-
     add_weight(-weight);
-
     move_object(item_ob, dest_ob);
-
-    checked_say(cap_name + " gives " + item + " to " + capitalize(dest) + ".\n");
-
+    say(cap_name + " gives " + item + " to " + capitalize(dest) + ".\n");
     write("Ok.\n");
-
     return 1;
 }
 
 /*
-* Get all items here.
-*/
-void get_all(from) {
+ * Get all items here.
+ */
+static get_all(from)
+{
     object ob, next_ob;
 
     ob = first_inventory(from);
-
     while(ob) {
-        string item;
-
-        next_ob = next_inventory(ob);
-        item = call_other(ob, "short", 0);
-
-        if ((item && call_other(ob, "get", 0)) || (power && ob!=myself)) {
-            int weight;
-
-            weight = call_other(ob, "query_weight", 0);
-
-            if (add_weight(weight) || power) {
-                write(item + ": Ok.\n");
-
-                move_object(ob, this_object());
-
-                checked_say(cap_name + " takes: " + item + ".\n");
-            } else {
-                write(item + ": Too heavy.\n");
-            }
-
-            it = item;
-        }
-
-        ob = next_ob;
+	string item;
+	next_ob = next_inventory(ob);
+	item = call_other(ob, "short", 0);
+	if (item && call_other(ob, "get", 0)) {
+	    int weight;
+	    weight = call_other(ob, "query_weight", 0);
+	    if (add_weight(weight)) {
+		write(item + ": Ok.\n");
+		move_object(ob, this_object());
+		say(cap_name + " takes: " + item + ".\n");
+	    } else {
+		write(item + ": Too heavy.\n");
+	    }
+	    it = item;
+	}
+	ob = next_ob;
     }
 }
 
-int pose() {
+static force_player(str)
+{
+    string who, what;
+    object ob;
+    if (!str)
+	return 0;
+    if (sscanf(str, "%s to %s", who, what) == 2 ||
+	sscanf(str, "%s %s", who, what) == 2) {
+	ob = find_living(who);
+	if (!ob) {
+	    write("No such player.\n");
+	    return 1;
+	}
+	tell_object(ob, cap_name + " force you to: " + what + "\n");
+	command(what, ob);
+	write("Ok.\n");
+	return 1;
+    }
+    return 0;
+}
+
+clone(str) {
+    object ob;
+    if (!str) {
+	write("Clone what object ?\n");
+	return 1;
+    }
+    str = valid_read(str, WIZ);
+    if (!str) {
+	write("Invalid file.\n");
+	return 1;
+    }
+    ob = clone_object(str);
+    say(cap_name + " fetches something from another dimension.\n");
+    move_object(ob, environment());
+    if (call_other(ob, "get"))
+	transfer(ob, myself);
+    write("Ok.\n");
+    return 1;
+}
+
+pose() {
     if (level >= 15) {
-        if (spell_points >= 15) {
-            write("You send a ball of fire into the sky.\n");
-
-            checked_say(cap_name + " makes a magical gesture.\n");
-
-            shout("A ball of fire explodes in the sky.\n");
-
-            spell_points -= 15;
-        } else {
-            write("You are too low on power.\n");
-        }
-
-        return 1;
+	write("You send a ball of fire into the sky.\n");
+	say(cap_name + " makes a magical gesture.\n");
+	say("A ball of fire explodes in the sky.\n");
+	return 1;
     }
-
     return 0;
 }
 
-void save_me() {
+static destruct_local_object(str)
+{
+    object ob;
+    if (!str) {
+	write("Destruct what ?\n");
+	return 1;
+    }
+    str = lower_case(str);
+    ob = present(str, this_player());
+    if (!ob)
+	ob = present(str, environment(this_player()));
+    if (!ob) {
+	write("No " + str + " here.\n");
+	return 1;
+    }
+    say(call_other(ob, "short") + " is disintegrated by " + cap_name + ".\n");
+    destruct(ob);
+    write("Ok.\n");
+    return 1;
+}
+
+static load(str)
+{
+    object env;
+    if (!str) {
+	write("Load what ?\n");
+	return 1;
+    }
+    str = valid_read(str, WIZ);
+    if (!str) {
+	write("Invalid file name.\n");
+	return 1;
+    }
+    env = environment();
+    /* We just call a non existing function in the object, and that way
+     * force it to be loaded.
+     */
+    call_other(str, "???");
+    write("Ok.\n");
+    return 1;
+}
+
+static snoop_on(str)
+{
+    object ob;
+    int ob_level;
+
+    if (!str) {
+	snoop();
+	return 1;
+    }
+    ob = find_player(str);
+    if (!ob) {
+	write("No such player.\n");
+	return 1;
+    }
+    ob_level = call_other(ob, "query_level");
+    if (ob_level >= level) {
+	write("You fail.\n");
+	return 1;
+    }
+    snoop(ob);
+    return 1;
+}
+
+invis()
+{
+    if (is_invis) {
+	tell_object(this_object(), "You are already invisible.\n");
+	return 1;
+    }
+    is_invis = 1;
+    tell_object(this_object(), "You are now invisible.\n");
+    say(cap_name + " " + mmsgout + ".\n", this_object());
+    cap_name = "Someone";
+    return 1;
+}
+
+vis()
+{
+    if (!is_invis) {
+	tell_object(this_object(), "You are not invisible.\n");
+	return 1;
+    }
+    is_invis = 0;
+    tell_object(this_object(), "You are now visible.\n");
+    cap_name = capitalize(name);
+    say(cap_name + " " + mmsgin + ".\n", this_object());
+    return 1;
+}
+
+static home() {
+    move_player("home#players/" + name + "/workroom");
+    return 1;
+}
+
+valid_write(str) {
+    string who, file, owner;
+
+    owner = name;
+    if (previous_object()) {
+	if (sscanf(file_name(previous_object()), "players/%s/", who) == 1)
+	    owner = who;
+    }
+    if (str[0] != '/') {
+	/* Prepend the name of the wizard that created the object (if any) */
+	if (previous_object()) {
+	    str = "players/" + owner + "/" + str;
+	    return str;
+	}
+	if (current_path != "")
+	    str = "/" + current_path + "/" + str;
+	else
+	    str = "/" + str;
+    }
+    if (sscanf(str, "/players/%s/%s", who, file) == 2) {
+	if (who == owner || level > 23)
+	    return "players/" + who + "/" + file;
+	return check_access_list("players/", who, file);
+    }
+    if (sscanf(str, "/log/%s", who) == 1) {
+	if (level < 24 && who[0] >= 'A' && who[0] <= 'Z')
+	    return 0;
+        return "log/" + who;
+    }
+    if (sscanf(str, "/open/%s", file) == 1)
+	return "open/" + file;
+    if (sscanf(str, "/ftp/%s", file) == 1)
+	return "ftp/" + file;
+    if (sscanf(str, "/room/%s/%s", who, file) == 2)
+	return check_access_list("room/", who, file);
+    return 0;
+}
+
+valid_read(str, lvl) {
+    string who, file;
+    int i;
+
+    i = strlen(str) - 1;
+    while(i>0) {
+	if (str[i] == '.' && str[i-1] == '.') {
+	    write("Illegal to have '..' in path.\n");
+	    return 0;
+	}
+	i -= 1;
+    }
+    file = valid_write(str);
+    if (file)
+	return file;
+    if (str[0] != '/'){
+	if (current_path == "")
+	    str = "/" + str;
+	else
+	    str = "/" + current_path + "/" + str;
+    }
+    if (lvl == ARCH)
+    {
+	    if (sscanf(str, "/players/%s", file) == 1 && level < 23)
+		return 0;
+    }
+    if (sscanf(str, "/%s", file) == 1)
+	return file;
+    write("Bad file name: " + str + "\n");
+    return 0;		/* Should not happen */
+}
+
+static wiz_score_list(arg) {
+    if (arg)
+	wizlist(arg);
+    else
+	wizlist();
+    return 1;
+}
+
+static remove_file(str) {
+    if (!str)
+        return 0;
+    rm(str);
+    return 1;
+}
+
+static local_commands() {
+    localcmd();
+    return 1;
+}
+
+/*
+ * Recursively compute the values of the inventory.
+ * Beware that object may selfdestruct when asked for query_value().
+ */
+compute_values(ob) {
+    int v;
+    while(ob) {
+	int tmp;
+	object next_ob;
+
+	next_ob = next_inventory(ob);
+	tmp = ob->query_value();
+	if (tmp > 1000)
+	    tmp = 1000;
+	v += tmp;
+	if (ob && first_inventory(ob))
+	    v += compute_values(first_inventory(ob));
+	ob = next_ob;
+    }
+    return v;
+}
+
+save_me(value_items)
+{
+    if (value_items)
+	tot_value = compute_values(first_inventory(this_object()));
+    else
+	tot_value = 0;
     compute_auto_str();
-
     save_object("players/" + name);
-
-    save_counter = 0;
 }
 
-int illegal_patch(what) {
+illegal_patch(what) {
     write("You are struck by a mental bolt from the interior of the game.\n");
-
+    log_file("ILLEGAL", ctime(time()) + ":\n");
     log_file("ILLEGAL",
-        call_other(this_player(), "query_name") + " " +
-        what + "\n");
-
+	     call_other(this_player(), "query_real_name") + " " +
+	     what + "\n");
     return 0;
 }
 
-void load_auto_obj(str) {
+load_auto_obj(str) {
     string file, argument, rest;
     object ob;
 
     while(str && str != "") {
-        if (sscanf(str, "%s:%s,%s", file, argument, rest) != 3) {
-            write("Auto load string corrupt.\n");
-
-            return;
-        }
-
-        str = rest;
-        ob = find_object(file);
-
-        if (!ob)
-            continue;
-
-        ob = clone_object(file);
-
-        if (argument)
-            call_other(ob, "init_arg", argument);
-
-        move_object(ob, this_object());
+	if (sscanf(str, "%s:%s^!%s", file, argument, rest) != 3) {
+	    write("Auto load string corrupt.\n");
+	    return;
+	}
+	str = rest;
+	ob = find_object(file);
+	if (!ob)
+	    continue;
+	ob = clone_object(file);
+	if (argument)
+	    call_other(ob, "init_arg", argument);
+	move_object(ob, this_object());
     }
 }
 
-void compute_auto_str() {
-    object next_ob,ob;
+compute_auto_str() {
+    object ob;
     string str;
 
     auto_load = "";
     ob = first_inventory(this_object());
-
     while(ob) {
-        str = call_other(ob, "query_auto_load");
-        next_ob = next_inventory(ob);
-        ob = next_ob;
-
-        if (!str)
-            continue;
-
-        auto_load = auto_load + str + ",";
+	str = call_other(ob, "query_auto_load");
+	ob = next_inventory(ob);
+	if (!str)
+	    continue;
+	auto_load = auto_load + str + "^!";
     }
 }
 
-void smart_report(str) {
+smart_report(str) {
     string who;
+    string current_room;
 
-    if (current_room == 0)
-        return;
-
+    current_room = file_name(environment(this_object()));
     if (sscanf(current_room, "players/%s/", who) != 1)
-        return;
-
+	return;
     log_file(who + ".rep", current_room + " " + str + "\n");
 }
 
-int valid_write(arg) {
-    string str, who, file, temp;
+query_quests(str) {
+    string tmp, rest, rest_tmp;
+    int i;
 
-    str = arg;
-
-    if (str == "~" || str == "~/")
-        str = "/players/" + name;
-    else if (sscanf(str,"~/%s",temp) == 1)
-        str = "/players/" + name + "/" + temp;
-    else if (sscanf(str,"~%s",temp) == 1)
-        str = "/players/" + temp;
-    else if (str[0] != '/')
-        str = pwd + str;
-
-    if (sscanf(str, "/players/%s/%s", who, file) == 2) {
-        if (who == name || level >= ED_OTHERS)
-            return "players/" + who + "/" + file;
-
-        return 0;
+    if (str == 0)
+	return quests;
+    rest = quests;
+    while(rest) {
+	if (str == rest)
+	    return 1;
+	i = sscanf(rest, "%s#%s", tmp, rest_tmp);
+	if (i == 0)
+	    return 0;
+	if (tmp == str)
+	    return 1;
+	if (i == 1)
+	    return 0;
+	rest = rest_tmp;
     }
-
-    if (sscanf(str, "/log/%s.%s", who,file) == 2)
-        if (who == name || (capitalize(who) != who && level >= ED_OTHERS)
-            || level >=ED_LOG)
-            return "log/" + who + "." + file;
-
-    if (sscanf(str, "/log/%s", who) == 1)
-        if (who == name || (capitalize(who) != who && level >= ED_OTHERS)
-            || level >=ED_LOG)
-            return "log/" + who;
-
-    if (sscanf(str, "/open/%s", file) == 1)
-        return "open/" + file;
-
-    if (level >= ALL_POWER) {
-        sscanf(str,"/%s",file);
-
-        return file;
-    }
+    return 0;
 }
 
-int valid_read(arg) {
-    string str, who, file, temp;
-
-    file = valid_write(arg);
-
-    if (file)
-        return file;
-
-    str = arg;
-
-    if (str == "~" || str == "~/")
-        str = "/players/" + name;
-    else if (sscanf(str,"~/%s",temp) == 1)
-        str = "/players/" + name + "/" + temp;
-    else if (sscanf(str,"~%s",temp) == 1)
-        str = "/players/" + temp;
-    else if (str[0] != '/')
-        str = pwd + str;
-
-    if (sscanf(str, "/players/%s/%s", who, file) == 2) {
-        if (who == name || level >= READ_OTHERS)
-            return "players/" + who + "/" + file;
-
-        return 0;
+set_quest(q) {
+    if (!q)
+	return;
+    if (query_quests(q))
+	return 0;
+#ifdef LOG_SET_QUEST
+    if (previous_object()) {
+	log_file("QUESTS", name + ": " + q + " from " +
+		 file_name(previous_object()) + "\n");
+	if (this_player() && this_player() != this_object() &&
+	  query_ip_number(this_player()))
+	    log_file("QUESTS", "Done by " +
+		     this_player()->query_real_name() + "\n");
     }
-
-    if (sscanf(str, "/players/%s.o", who) == 1) {
-        if (who == name || level >= ELDER)
-            return "players/" + who + ".o";
-
-        return 0;
-    }
-
-    if (sscanf(str, "/room/post_dir/%s.o", who) == 1) {
-        if (who == name || level >= ALL_POWER)
-            return "room/post_dir/" + who + ".o";
-
-        return 0;
-    }
-
-    if (sscanf(str, "/%s", file) == 1)
-        return file;
-
-    write("Bad file name.\n");
-
-    return 0;        /* Should not happen */
-}
-
-int soul(str) {
-    if (!str) return 0;
-
-    if (str == "on") {
-        if (soul) {
-            write("You already have one.\n");
-
-            return 1;
-        }
-
-        if (level > 19)
-            soul = clone_object("obj/wiz_soul");
-
-        if (level < 20)
-            soul = clone_object("obj/soul");
-
-        move_object(soul,myself);
-
-        return 1;
-    }
-
-    if (str == "off") {
-        if (!soul) {
-            write("You don't have one.\n");
-
-            return 1;
-        }
-
-        save_me();
-
-        destruct(soul);
-
-        return 1;
-    }
-}
-
-int describe(str) {
-    string junk1,junk2;
-
-    if (!str) {
-        description = 0;
-
-        write("Your description has been cleared.\n");
-
-        return 1;
-    }
-
-    if (str) description = " " + str;
-
-    write("Your description now says:\n");
-    write(cap_name + description + ".\n");
-
-    return 1;
-}
-
-int remote_ed(key) {
-    string file;
-
-    file = call_other(soul,"get_handshake",key);
-    file = valid_write(file);
-
-    if (!file) {
-        write("You can only edit your own files.\n");
-
-        return 1;
-    }
-
-    tell_object(myself,"editing: "+file +"\n");
-
-    ed(file);
-}
-
-void remote_cmd(key) {
-    string str;
-
-    str = call_other(soul,"get_handshake",key);
-
-    if (str)
-        command(str);
-}
-
-int remote_snoop(key) {
-    object ob;
-    int ob_level;
-    string str;
-
-    str = call_other(soul,"get_handshake",key);
-
-    if (!str) {
-        snoop();
-
-        return 1;
-    }
-
-    ob = find_living(str);
-
-    if (!ob) {
-        write("No such player.\n");
-
-        return 1;
-    }
-
-    ob_level = call_other(ob, "query_level");
-
-    if (ob_level >= level && level < ALL_POWER) {
-        write("You fail.\n");
-
-        return 1;
-    }
-
-    snoop(ob);
-}
-
-object query_soul() { return soul; }
-
-void remote_say(str) { say(str); }
-
-void set_wc(num) {
-    weapon_class = num;
-}
-
-void set_ac(num) {
-    armor_class = num;
-}
-
-int query_muffled() { return muffled; }
-
-int emergency(str) {
-    if (!str) {
-        write("Shout what ?\n");
-
-        return 1;
-    }
-
-    shout("!" + cap_name + " screams: " + str + "\n");
-
-    log_file("EMERGENCY",cap_name + ": " + str + "\n");
-
-    write("Ok. But it better be an emergency!\n");
-
-    return 1;
-}
-
-void set_pwd(str) {
-    if (!str) {
-        write("Null path!\n");
-
-        return;
-    }
-
-    if (str[0] == '/')
-        pwd = str;
+#endif /* LOG_SET_QUEST */
+    if (quests == 0)
+	quests = q;
     else
-        pwd = "/" + str;
-}
-
-void update (num) {
-    if (num == 1) msgin = call_other(soul,"query_msgin",0);
-    if (num == 2) mmsgin = call_other(soul,"query_mmsgin",0);
-    if (num == 3) msgout = call_other(soul,"query_msgout",0);
-    if (num == 4) mmsgout = call_other(soul,"query_mmsgout",0);
-
-    if (num == 5) {
-        is_invis = call_other(soul,"query_invis",0);
-        if (query_invis() > SOMEONE) { cap_name = "Someone";
-        } else { cap_name = capitalize(name); }
-    }
-
-    if (num == 6) muffled = call_other(soul,"query_muffled",0);
-    if (num == 7) alignment = call_other(soul,"query_alignment",0);
-    if (num == 8) al_title = call_other(soul,"query_al_title",0);
-    if (num == 9) msghome = call_other(soul,"query_msghome",0);
-}
-
-int is_player() {
+	quests = quests + "#" + q;
     return 1;
 }
+
+query_real_name() {
+    return name;
+}
+
+time_out() {
+    write("Time out\n");
+    destruct(this_object());
+}
+
+who()
+{
+    object list;
+    int i;
+
+    list = users();
+    while(i<sizeof(list)) {
+	string sh;
+	sh = list[i]->short();
+	if (sh == 0 && level >= 20)
+	    write("(" + list[i]->query_real_name() + ")\n");
+	else if (sh)
+	    write(sh + "\n");
+	i += 1;
+    }
+    return 1;
+}
+
+static cd(str) {
+    string old_path;
+
+    old_path = current_path;
+    if (str == "..") {
+	int i;
+	if (current_path == "")
+	    return 0;
+	i = strlen(current_path) - 1;
+	while(i > 0 && current_path[i] != '/')
+	    i -= 1;
+	if (i == 0)
+	    current_path = "";
+	else
+	    current_path = extract(current_path, 0, i-1);
+    } else if (!str)
+	current_path = "players/" + name;
+    else if (str == "/")
+	current_path = "";
+    else if (str[0] != '/') {
+	if (current_path == "")
+	    current_path = str;
+	else
+	    current_path += "/" + str;
+    } else {
+	current_path = extract(str, 1);
+    }
+    write("/" + current_path + "\n");
+    return 1;
+}
+
+#define CHUNK 16
+
+static string more_file;	/* Used by the more command */
+static int more_line;
+
+more(str) {
+    if (!str)
+	return 0;
+    more_file = str;
+    more_line = 1;
+    if (cat(more_file, more_line, CHUNK) == 0) {
+	write("No such file\n");
+	return 1;
+    }
+    input_to("even_more");
+    write("More: (line " + (CHUNK + 1) + ") ");
+    return 1;
+}
+
+static even_more(str) {
+    if (str == "" || str == "d")
+	more_line += CHUNK;
+    else if (str == "q") {
+	write("Ok.\n");
+	return;
+    } else if (str == "u") {
+	more_line -= CHUNK;
+	if (more_line < 1)
+	    more_line = 1;
+    }
+    if (cat(more_file, more_line, CHUNK) == 0) {
+	more_file = 0;
+	write("EOF\n");
+	return;
+    }
+    write("More: (line " + (more_line + CHUNK) + ") ");
+    input_to("even_more");
+}
+
+pwd() {
+    write("/" + current_path + "\n");
+    return 1;
+}
+
+makedir(str) {
+    if (!str)
+	return 0;
+    if (mkdir(str))
+	write("Ok.\n");
+    else
+	write("Fail.\n");
+    return 1;
+}
+
+removedir(str) {
+    if (!str)
+	return 0;
+    if (rmdir(str))
+	write("Ok.\n");
+    else
+	write("Fail.\n");
+    return 1;
+}
+
+query_path() {
+    return current_path;
+}
+
+check_access_list(top, dir, file) {
+    string tmp1, tmp2;
+
+    if (!access_list)
+	return 0;
+    if (sscanf(access_list, "%s" + dir + "#%s", tmp1, tmp2) == 2)
+	return top + dir + "/" + file;
+    return 0;
+}
+
+#define MAX_SCAR	10
+int scar;
+
+static make_scar() {
+    if (level < 10)
+	return;
+    scar |= 1 << random(MAX_SCAR);
+}
+
+show_scar() {
+    int i, j, first, old_value;
+    string scar_desc;
+
+    scar_desc = ({ "left leg", "right leg", "nose", "left arm", "right arm",
+		   "left hand", "right hand", "forhead", "left cheek",
+		   "right cheek" });
+    j = 1;
+    first = 1;
+    old_value = scar;
+    while(i < MAX_SCAR) {
+	if (scar & j) {
+	    old_value &= ~j;
+	    if (first) {
+		write(cap_name + " has a scar on " + query_possessive() +
+		      " " + scar_desc[i]);
+		first = 0;
+	    } else if (old_value) {
+		write(", " + query_possessive() + " " + scar_desc[i]);
+	    } else {
+		write(" and " + query_possessive() + " " + scar_desc[i]);
+	    }
+	}
+	j *= 2;
+	i += 1;
+    }
+    if (!first)
+	write(".\n");
+}
+
+static set_email(str) {
+    if (!str) {
+	write("Your official electric mail address is: " + mailaddr + "\n");
+	return 1;
+    }
+    mailaddr = str;
+    write("Changed your email address.\n");
+    return 1;
+}
+
+add_standard_commands() {
+    add_action("set_email", "email");
+    add_action("give_object", "give");
+    add_action("score", "score");
+    add_action("save_character", "save");
+    add_action("quit", "quit");
+    add_action("kill", "kill");
+    add_action("communicate", "say");
+    add_action("communicate", "'", 1);
+    add_action("shout_to_all", "shout");
+    add_action("put", "put");
+    add_action("pick_up", "get");
+    add_action("pick_up", "take");
+    add_action("drop_thing", "drop");
+    add_action("inventory", "i");
+    add_action("look", "look");
+    add_action("examine", "examine");
+    add_action("examine", "exa", 1);
+    add_action("help", "help");
+    add_action("tell", "tell");
+    add_action("whisper", "whisper");
+    add_action("change_password", "password");
+    add_action("idea", "idea");
+    add_action("typo", "typo");
+    add_action("bug", "bug");
+    add_action("converse", "converse");
+    add_action("toggle_brief", "brief");
+    add_action("toggle_whimpy", "wimpy");
+    add_action("stop_hunting_mode", "stop");
+    add_action("spell_missile", "missile");
+    add_action("spell_shock", "shock");
+    add_action("spell_fire_ball", "fireball");
+    add_action("pose", "pose");
+    add_action("who", "who");
+}
+

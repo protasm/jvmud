@@ -3,83 +3,86 @@
 int lamp_is_lit;
 object leo;
 
-void init() {
-    add_action("west"); add_verb("west");
-    add_action("open"); add_verb("open");
-    add_action("close"); add_verb("close");
-    add_action("push"); add_verb("push");
+init() {
+    add_action("west", "west");
+    add_action("open", "open");
+    add_action("close", "close");
+    add_action("push", "push");
+    add_action("north", "north");
+    add_action("south", "south");
 }
 
-string short() {
+short() {
     return "wizards hall";
 }
 
-void long() {
+long() {
     write("You are in the hall of the wizards.\n" +
-    "There is a door to the west.\n");
-
+"There is a door to the west and a shimmering field to the north.\n");
     if (lamp_is_lit)
-        write("There is a lit lamp beside the elevator.\n");
+	write("There is a lit lamp beside the elevator.\n");
 }
 
-int open(str) {
+open(str)
+{
     if (str != "door")
-        return 0;
-
+	return 0;
     if (call_other("room/elevator", "query_level", 0) != 1) {
-        write("You can't when the elevator isn't here.\n");
-
-        return 1;
+	write("You can't when the elevator isn't here.\n");
+	return 1;
     }
-
     call_other("room/elevator", "open_door", "door");
-
     return 1;
 }
 
-int close(str) {
+close(str)
+{
     if (str != "door")
-        return 0;
-
+	return 0;
     call_other("room/elevator", "close_door", "door");
-
     return 1;
 }
 
-int west() {
+west() {
     if (call_other("room/elevator", "query_door", 0) ||
-        call_other("room/elevator", "query_level", 0) != 1) {
-        write("The door is closed.\n");
-
-        return 1;
+	call_other("room/elevator", "query_level", 0) != 1) {
+	write("The door is closed.\n");
+	return 1;
     }
-
     call_other(this_player(), "move_player", "west#room/elevator");
-}
-
-void reset(arg) {
-    if (!arg)
-        set_light(1);
-
-    if (!leo || !living(leo)) {
-        leo = clone_object("obj/leo");
-
-        move_object(leo, this_object());
-    }
-}
-
-int push(str) {
-    if (str && str != "button")
-        return 0;
-
-    if (call_other("room/elevator", "call_elevator", 1))
-        lamp_is_lit = 1;
-
     return 1;
 }
 
-void elevator_arrives() {
-    say("The lamp on the button beside the elevator goes out.\n");
+reset(arg) {
+    if (!arg)
+	set_light(1);
+    if (!leo) {
+	leo = clone_object("obj/leo");
+	move_object(leo, this_object());
+    }
+}
 
+push(str)
+{
+    if (str && str != "button")
+	return 0;
+    if (call_other("room/elevator", "call_elevator", 1))
+	lamp_is_lit = 1;
+    return 1;
+}
+
+elevator_arrives()
+{
+    say("The lamp on the button beside the elevator goes out.\n");
     lamp_is_lit = 0;
+}
+
+north() {
+    if (call_other(this_player(),"query_level") < 21) {
+	write("A strong magic force stops you.\n");
+	return 1;
+    }
+    write("You wriggle through the force field...\n");
+    call_other(this_player(), "move_player", "north#room/quest_room");
+    return 1;
 }

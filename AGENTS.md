@@ -1,18 +1,22 @@
 # JVMud Agent Notes
 
 This repository is the JVMud monorepo. It currently contains the JVMud compiler
-source, a basic LPC mudlib, and a placeholder for the runtime/server.
+source, the JVMud runtime/server module, a vanilla LPMUD 2.4.5 mudlib, and
+static docs.
 
 ## Top-Level Areas
 
 - `compiler/`: JVMud compiler Java source. Work here for scanner,
   preprocessor, parser, semantic analysis, IR, bytecode generation, efun APIs,
   and the current host-facing runtime/classloading helpers.
-- `runtime/`: future JVMud runtime/server code. Do not assume this directory is
+- `runtime/`: JVMud runtime/server code. Do not assume this directory is
   the same thing as `compiler/src/main/java/io/github/protasm/jvmud/compiler/runtime/`,
   which contains compiler helper classes used by generated code.
 - `mudlib/`: LPC mudlib source. `obj/` contains reusable object definitions and
   `room/` contains world/room content, headers, and startup-oriented files.
+  Treat upstream vanilla mudlib files as read-only unless the user explicitly
+  requests style or formatting changes. Add JVMud compatibility through
+  dedicated independent mudlib-side shim objects.
 - `docs/`: static project site.
 
 ## Package Layout
@@ -23,10 +27,8 @@ module.
 
 ## Current Build State
 
-No root Maven or Gradle build files are present yet. Avoid documenting or
-assuming commands such as `mvn test` or `gradle build` until build wiring exists.
-The compiler source uses ASM APIs, so future compiler build metadata should add
-ASM as a dependency.
+Root Maven build wiring is present for the current modules. Use `mvn test` for
+the baseline test suite unless the task calls for a narrower command.
 
 ## Working Guidance
 
@@ -34,7 +36,9 @@ ASM as a dependency.
   after migration.
 - Keep compiler changes under `compiler/` unless the task is explicitly about
   runtime, mudlib, or docs.
-- Treat `mudlib/` as LPC source/content, not Java module source.
+- Treat `mudlib/` as LPC source/content, not Java module source. Preserve
+  upstream mudlib files by default; compatibility belongs in dedicated shim
+  objects and focused compiler/runtime support.
 - Keep runtime/server concepts separate from compiler execution helpers.
 - Prefer small documentation updates that reflect the current repo state over
   speculative roadmaps.

@@ -9,6 +9,7 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationObserver;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationStage;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationUnit;
+import io.github.protasm.jvmud.runtime.WorldRuntime;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -26,11 +27,13 @@ public final class AdminCli {
     private final Map<String, Object> handles = new java.util.LinkedHashMap<>();
     private final Map<Object, String> objectNames = new IdentityHashMap<>();
     private LpcRuntime runtime;
+    private WorldRuntime worldRuntime;
     private Path mudlibRoot;
     private Path virtualCwd = Path.of("");
     private Object commandActor;
     private String commandActorHandle;
     private Verbosity verbosity = Verbosity.NORMAL;
+    private boolean suppressCompilationFailures;
     private boolean running = true;
 
     public AdminCli(PrintWriter out) {
@@ -130,6 +133,33 @@ public final class AdminCli {
         commandActor = null;
         commandActorHandle = null;
         info("Booted runtime with mudlib root " + this.mudlibRoot);
+
+        suppressCompilationFailures = true;
+        MudlibBootResult bootResult;
+        try {
+            bootResult = new MudlibBoot(runtime, this.mudlibRoot).boot();
+        } finally {
+            suppressCompilationFailures = false;
+        }
+        worldRuntime = bootResult.worldRuntime();
+        for (String objectId : bootResult.preloadedObjects()) {
+            remember(objectId, runtime.loadOrGetObject(objectId));
+        }
+        if (bootResult.startingRoom() != null) {
+            remember(bootResult.startingRoom(), runtime.loadOrGetObject(bootResult.startingRoom()));
+        }
+        if (bootResult.actor() != null) {
+            remember(bootResult.actorHandle(), bootResult.actor());
+            commandActor = bootResult.actor();
+            commandActorHandle = bootResult.actorHandle();
+            info("Started local session in " + bootResult.startingRoom());
+        }
+        if (!bootResult.preloadedObjects().isEmpty()) {
+            info("Preloaded " + bootResult.preloadedObjects().size() + " startup object(s).");
+        }
+        if (!bootResult.skippedPreloads().isEmpty()) {
+            info("Skipped " + bootResult.skippedPreloads().size() + " startup object(s) not yet supported.");
+        }
     }
 
     private void help() {
@@ -323,6 +353,13 @@ public final class AdminCli {
     private Object dispatchCommand(String commandLine) {
         runtime.refreshCommandActions(commandActor);
         Object result = runtime.dispatchCommand(commandActor, commandLine);
+        if (Integer.valueOf(0).equals(result) && isLookCommand(commandLine)) {
+            Object environment = runtime.environment(commandActor);
+            if (environment != null) {
+                lookAt(environment);
+                result = 1;
+            }
+        }
         String output = consumeOutput();
         if (!output.isEmpty()) {
             out.print(output);
@@ -335,8 +372,14 @@ public final class AdminCli {
 
     private void look(String handle) {
         ensureBooted();
-        Object object = object(handle);
-        Object result = invokeFirstAvailable(object, "long", "short");
+        Object result = lookAt(object(handle));
+        if (result != null && !Integer.valueOf(0).equals(result)) {
+            out.println(result);
+        }
+    }
+
+    private Object lookAt(Object object) {
+        Object result = invokeFirstAvailable(object, "longWithArgument", "long", "short");
         String output = consumeOutput();
         if (!output.isEmpty()) {
             out.print(output);
@@ -344,9 +387,7 @@ public final class AdminCli {
                 out.println();
             }
         }
-        if (result != null && !Integer.valueOf(0).equals(result)) {
-            out.println(result);
-        }
+        return result;
     }
 
     private void objects() {
@@ -364,7 +405,7 @@ public final class AdminCli {
     private void where(String handle) {
         ensureBooted();
         Object environment = runtime.environment(object(handle));
-        out.println(handle + " is in " + (environment == null ? "(nowhere)" : objectNames.getOrDefault(environment, environment.toString())));
+        out.println(handle + " is in " + (environment == null ? "(nowhere)" : objectName(environment)));
     }
 
     private void inspect(String handle) {
@@ -415,6 +456,9 @@ public final class AdminCli {
         RuntimeException last = null;
         for (String method : methods) {
             try {
+                if ("longWithArgument".equals(method)) {
+                    return runtime.invokeObject(object, "long", "");
+                }
                 return invoke(object, method, new String[0]);
             } catch (RuntimeException e) {
                 last = e;
@@ -425,6 +469,11 @@ public final class AdminCli {
 
     private Object invoke(Object object, String method, String[] args) {
         return runtime.invokeObject(object, method, (Object[]) args);
+    }
+
+    private boolean isLookCommand(String commandLine) {
+        String trimmed = commandLine.trim();
+        return "look".equals(trimmed) || trimmed.startsWith("look ");
     }
 
     private String consumeOutput() {
@@ -439,6 +488,15 @@ public final class AdminCli {
             throw new IllegalArgumentException("Unknown object handle: " + handle);
         }
         return object;
+    }
+
+    private String objectName(Object object) {
+        String name = objectNames.get(object);
+        if (name != null) {
+            return name;
+        }
+        LpcObjectInspection inspection = runtime.inspectObject(object);
+        return inspection.objectId() == null ? object.toString() : inspection.objectId();
     }
 
     private void remember(String handle, Object object) {
@@ -592,7 +650,7 @@ public final class AdminCli {
 
         @Override
         public void stageFailed(CompilationUnit unit, CompilationStage stage, CompilationProblem problem) {
-            if (verbosity != Verbosity.QUIET) {
+            if (verbosity != Verbosity.QUIET && !suppressCompilationFailures) {
                 out.println("[compile] " + unit.parseName() + " " + stage.name().toLowerCase()
                         + " failed: " + problem.getMessage());
             }

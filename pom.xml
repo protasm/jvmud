@@ -12,6 +12,7 @@
   <description>Experimental Java-based LPMud platform.</description>
 
   <modules>
+    <module>runtime</module>
     <module>compiler</module>
     <module>cli</module>
   </modules>

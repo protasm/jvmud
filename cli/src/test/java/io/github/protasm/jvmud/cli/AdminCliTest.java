@@ -397,4 +397,60 @@ final class AdminCliTest {
         assertTrue(output.contains("Mudlib help."));
         assertTrue(output.contains("Slash commands:"));
     }
+
+    @Test
+    void bootPreloadsInitFileAndStartsLocalActorInStartingRoom() throws Exception {
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/init_file"), """
+                # preload one simple object
+                obj/preload.c
+                """);
+        Files.writeString(tempDir.resolve("obj/preload.c"), """
+                string short() {
+                    return "preloaded object";
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/vill_green.c"), """
+                void init() {
+                    add_action("north");
+                    add_verb("north");
+                }
+
+                void long(str) {
+                    write("You are on the green.\\n");
+                }
+
+                int north(str) {
+                    call_other(this_player(), "move_player", "north#room/church");
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/church.c"), """
+                void long(str) {
+                    write("You are in the church.\\n");
+                }
+                """);
+
+        StringWriter transcript = new StringWriter();
+        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
+
+        cli.execute("/boot " + tempDir);
+        cli.execute("/where local/player");
+        cli.execute("look");
+        cli.execute("north");
+        cli.execute("/where local/player");
+        cli.execute("/objects");
+
+        String output = transcript.toString();
+        assertTrue(output.contains("Preloaded 1 startup object(s)."));
+        assertTrue(output.contains("Started local session in room/vill_green"));
+        assertTrue(output.contains("local/player is in room/vill_green"));
+        assertTrue(output.contains("You are on the green."));
+        assertTrue(output.contains("You are in the church."));
+        assertTrue(output.contains("local/player is in room/church"));
+        assertTrue(output.contains("obj/preload : obj/preload"));
+        assertTrue(output.contains("room/vill_green : room/vill_green"));
+        assertTrue(output.contains("local/player : local/player"));
+    }
 }

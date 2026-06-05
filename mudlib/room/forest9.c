@@ -1,6 +1,7 @@
-#include "std.h"
+#include "room.h"
 
-TWO_EXIT("room/forest8", "north",
-    "room/forest10", "east",
-    "Deep forest",
-    "You are in the deep forest.  The main path leads north and east.\n",1)
+THREE_EXIT("room/forest8", "north",
+	 "room/forest10", "east",
+	 "room/forest11", "west",
+	 "Deep forest",
+	 "You are in the deep forest.\n", 1)

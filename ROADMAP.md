@@ -4,7 +4,46 @@ JVMud is being built as a readable, inspectable Java LPMud stack. The project
 should advance through small vertical slices that leave behind working code,
 clear tests, and plain-language notes about what is supported next.
 
+## Development Posture
+
+`PRINCIPLES.md` is now the controlling design document for the engine. The
+engine should be developed to support JVMud's core concepts: game, text,
+interactivity, multiplayer world, persistence, temporality, and presence.
+
+The mudlib is no longer the authority that the engine must blindly emulate. LPC
+compatibility remains useful, but it is a content and compatibility concern, not
+the engine's identity. When old mudlib code conflicts with the engine model, the
+preferred move is to add dedicated mudlib-side compatibility shims and focused
+engine/compiler support rather than rewriting upstream mudlib files or adding
+accidental LPC-driver behavior to the engine.
+
+The engine-mudlib boundary is documented in `docs/ENGINE_MUDLIB_CONTRACT.md`.
+Engine-facing concepts should use JVMud-native terms; legacy LPC names belong in
+compatibility shims and adapters.
+
+In practice:
+
+- engine concepts should be named and designed from `PRINCIPLES.md`, not from
+  legacy LPC mudlib quirks;
+- upstream mudlib files should be treated as read-only unless an explicit style
+  or formatting change is requested;
+- compatibility shims should live in dedicated independent mudlib-side objects,
+  such as simul_efun, shadow, or adapter objects;
+- engine-side APIs should describe JVMud operations rather than preserving
+  legacy LP driver method names for their own sake;
+- compatibility scans should identify useful evidence, not dictate engine
+  architecture;
+- runtime/server work should preserve the distinction between JVMud world
+  reality and generated-code helper APIs.
+
 ## Current Baseline
+
+The top-level `runtime` module now contains the first engine-owned JVMud world
+model. It defines `World`, `Place`, `Link`, `Entity`, `Location`, `Capability`,
+and `WorldRuntime`. `WorldRuntime` owns single containment, requires every
+created entity to have an immediate location, rejects containment cycles, and
+models navigable links between places. Links are place-to-place topology only;
+entities participate through containment, not as link endpoints.
 
 The first baseline is a buildable compiler module. `mvn test` now compiles the
 compiler with ASM and runs smoke tests for the current LPC-to-bytecode path.
@@ -18,10 +57,12 @@ The baseline proves:
 - early driver efuns provide testable output and shared object invocation;
 - a mudlib compatibility scan can report current gaps without failing the build.
 
-The current driver efun slice includes output capture (`write`, `say`,
-`tell_object`), current object/player lookup, shared `call_other` invocation,
-and minimal signatures for early object lifecycle efuns such as `clone_object`,
-`move_object`, inventory traversal, `set_light`, and `set_heart_beat`.
+The current compatibility function slice includes output delivery, current
+execution context lookup, shared object invocation, object creation/destruction,
+movement, inventory traversal, local perception, and early time scheduling.
+Several of those are still exposed through legacy LPC names in the current
+compiler helper layer; the next boundary work should translate them toward
+JVMud-native engine operations.
 
 The first object runtime slice adds real clone/load bridging, environment
 tracking, inventories, `present`, inventory traversal, and destruct cleanup. It
@@ -45,6 +86,14 @@ current command actor, supports minimal `enable_commands`, `add_action`, and
 is now player-facing by default: ordinary input is routed directly through that
 command-dispatch path, while slash-prefixed input reaches shell/admin tooling.
 
+The first mudlib boot slice interprets `room/init_file` as a startup preload
+list, tolerates currently unsupported preload entries, loads a default starting
+room when present, and creates a host-owned local session actor situated in that
+room through `WorldRuntime`. This actor is not an LPC player object; it is a
+small JVMud session entity that lets LPC-defined room exits move the local
+participant through the existing command path while the compiler runtime acts as
+an adapter.
+
 ## Waypoints
 
 1. **Buildable Compiler Baseline**
@@ -52,19 +101,24 @@ command-dispatch path, while slash-prefixed input reaches shell/admin tooling.
    supported by the scanner, parser, semantic model, IR, and bytecode compiler.
 
 2. **Compiler Compatibility Harness**
-   Expand the compatibility scan from a small curated set toward representative
-   imported mudlib files. Track failures by stage so parser, semantic, efun, and
-   runtime work can be prioritized from evidence.
+   Keep the compatibility scan as evidence for useful language and content
+   support, not as a mandate to emulate every legacy LPC driver behavior. Track
+   failures by stage so parser, semantic, efun, runtime, or shim-object work can
+   be chosen deliberately.
 
 3. **Minimal Object Runtime**
-   Create the real runtime layer for canonical LPC paths, loaded-object identity,
-   clones, destructed objects, environments, and reflective method calls. Keep
-   generated-code helper classes separate from server/runtime concepts.
+   Build on the top-level runtime module as the engine-owned world model.
+   Compiler-side loaded-object identity, clones, destructed objects,
+   environments, and reflective method calls should increasingly act as adapters
+   into `WorldRuntime`. Keep generated-code helper classes separate from
+   server/runtime concepts.
 
 4. **Essential Driver Efuns**
-   Implement the first mudlib-blocking efuns: `write`, `say`, `tell_object`,
-   `this_object`, `this_player`, `environment`, `move_object`, `clone_object`,
-   `destruct`, `present`, inventory traversal, and `call_other`.
+   Implement the first engine-compatible operations needed by current content:
+   text delivery, current actor/object lookup, location queries, movement,
+   object materialization, destruction, presence lookup, inventory traversal,
+   and object calls. Keep legacy efun names as compatibility entry points rather
+   than as the engine's ontology.
 
 5. **Single-Admin CLI**
    Add a local command-line shell backed by the real runtime. Initial commands
@@ -80,11 +134,14 @@ command-dispatch path, while slash-prefixed input reaches shell/admin tooling.
 
 7. **Mudlib Boot Slice**
    Interpret `mudlib/room/init_file`, load startup objects, boot a starting room,
-   and place the local session into that room.
+   and place the local session into that room. The first slice is in place; the
+   next work is richer boot configuration and broader real-mudlib compatibility
+   through dedicated shim objects and focused runtime/compiler support.
 
 8. **Scheduler And Interactive Input**
-   Implement deterministic heartbeats, callouts, and `input_to` so old-school
-   interactive mudlib objects can be tested and driven from the CLI.
+   Implement deterministic recurring ticks, delayed callbacks, and interactive
+   input capture so old-school interactive mudlib objects can be tested and
+   driven from the CLI through compatibility shims.
 
 9. **Persistence And Filesystem Policy**
    Add save/restore, logs, path normalization, mudlib root isolation, writable
@@ -100,7 +157,7 @@ command-dispatch path, while slash-prefixed input reaches shell/admin tooling.
 
 12. **Production Hardening**
     Add config, structured diagnostics, packaging, CI, backups, deployment, and
-    enough mudlib compatibility for a long-lived playable server.
+    enough engine-aligned compatibility support for a long-lived playable server.
 
 ## Readability Standard
 

@@ -15,7 +15,7 @@ short() {\
 }\
 \
 init() {\
-    add_action("move"); add_verb(DIR);\
+    add_action("move", DIR);\
     EXTRA_INIT\
 }\
 \
@@ -44,8 +44,8 @@ short() {\
 }\
 \
 init() {\
-    add_action("move1"); add_verb(DIR1);\
-    add_action("move2"); add_verb(DIR2);\
+    add_action("move1", DIR1);\
+    add_action("move2", DIR2);\
     EXTRA_INIT\
 }\
 \
@@ -80,9 +80,9 @@ short() {\
 }\
 \
 init() {\
-    add_action("move1"); add_verb(DIR1);\
-    add_action("move2"); add_verb(DIR2);\
-    add_action("move3"); add_verb(DIR3);\
+    add_action("move1", DIR1);\
+    add_action("move2", DIR2);\
+    add_action("move3", DIR3);\
     EXTRA_INIT\
 }\
 \
@@ -124,10 +124,10 @@ short() {\
 }\
 \
 init() {\
-    add_action("move1"); add_verb(DIR1);\
-    add_action("move2"); add_verb(DIR2);\
-    add_action("move3"); add_verb(DIR3);\
-    add_action("move4"); add_verb(DIR4);\
+    add_action("move1", DIR1);\
+    add_action("move2", DIR2);\
+    add_action("move3", DIR3);\
+    add_action("move4", DIR4);\
     EXTRA_INIT\
 }\
 \

@@ -31,6 +31,7 @@ public final class RuntimeContext {
     private final Map<Object, String> objectIds = new IdentityHashMap<>();
     private final Map<Object, Object> environments = new IdentityHashMap<>();
     private final Map<Object, List<Object>> inventories = new IdentityHashMap<>();
+    private final Map<Object, Integer> lightLevels = new IdentityHashMap<>();
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
     private final StringBuilder outputTranscript = new StringBuilder();
     private final ThreadLocal<Deque<Object>> currentObjectStack =
@@ -76,7 +77,7 @@ public final class RuntimeContext {
     }
 
     public void writeOutput(Object value) {
-        String text = String.valueOf(value);
+        String text = String.valueOf(value).replace("\\n", "\n");
         outputTranscript.append(text);
         outputSink.accept(text);
     }
@@ -153,6 +154,12 @@ public final class RuntimeContext {
 
     public void moveObject(Object object, Object destination) {
         Objects.requireNonNull(object, "object");
+        if (destination != null && wouldCreateContainmentCycle(object, destination)) {
+            throw new IllegalArgumentException(
+                    "Cannot move " + objectIdOrDescription(object) + " into "
+                            + objectIdOrDescription(destination) + " because it would create a containment cycle.");
+        }
+
         Object oldEnvironment = environments.remove(object);
         if (oldEnvironment != null) {
             inventoryFor(oldEnvironment).remove(object);
@@ -214,6 +221,7 @@ public final class RuntimeContext {
 
         moveObject(object, null);
         inventories.remove(object);
+        lightLevels.remove(object);
         commandActions.remove(object);
         removeCommandHandler(object);
         String id = objectIds.remove(object);
@@ -327,7 +335,7 @@ public final class RuntimeContext {
                 .getOrDefault(actor, Map.of())
                 .getOrDefault(verb, List.of());
         for (CommandAction action : actions) {
-            Object result = invokeObject(action.handler(), action.methodName(), argument);
+            Object result = invokeCommandAction(action, argument);
             if (Truth.isTruthy(result)) {
                 return result;
             }
@@ -335,8 +343,39 @@ public final class RuntimeContext {
         return 0;
     }
 
+    public int setLight(int delta) {
+        Object object = currentObject();
+        if (object == null) {
+            return delta;
+        }
+        int light = lightLevels.getOrDefault(object, 0);
+        if (delta != 0) {
+            light += delta;
+            lightLevels.put(object, light);
+        }
+        return light;
+    }
+
     private List<Object> inventoryFor(Object object) {
         return inventories.computeIfAbsent(object, ignored -> new ArrayList<>());
+    }
+
+    private boolean wouldCreateContainmentCycle(Object object, Object destination) {
+        Object current = destination;
+        while (current != null) {
+            if (current == object) {
+                return true;
+            }
+            current = environments.get(current);
+        }
+        return false;
+    }
+
+    private Object invokeCommandAction(CommandAction action, String argument) {
+        if (argument != null || hasMethod(action.handler().getClass(), action.methodName(), 1)) {
+            return invokeObject(action.handler(), action.methodName(), argument);
+        }
+        return invokeObject(action.handler(), action.methodName());
     }
 
     private Method findMethod(Class<?> targetClass, String methodName, int arity) throws NoSuchMethodException {
@@ -346,6 +385,15 @@ public final class RuntimeContext {
             }
         }
         throw new NoSuchMethodException(targetClass.getName() + "." + methodName + "/" + arity);
+    }
+
+    private boolean hasMethod(Class<?> targetClass, String methodName, int arity) {
+        for (Method method : targetClass.getMethods()) {
+            if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String objectIdOrDescription(Object object) {

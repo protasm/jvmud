@@ -1,45 +1,52 @@
 int money;
 
-void reset(arg) {
+reset(arg) {
     if (arg)
-        return;
-
+	return;
     money = 1;
 }
 
-int query_weight() { return 0; }
+query_weight() { return 0; }
 
-string short() {
+short() {
     if (money == 0)
-        return 0;
-
+	return 0;
     return money + " gold coins";
 }
 
-int get() {
+/*
+ * If we are picked up by a player, then move the money to his "purse",
+ * and destruct this object.
+
+ 901128: Changed by JnA to not destruct object until surely picked by the
+ player, i.e. object moved to the players inventory with move_object()
+*/
+init()
+{
+  if (environment(this_object())==this_player()) {
     call_other(this_player(), "add_money", money);
-
     money = 0;
-
     set_heart_beat(1);
-
-    return 1;
+  }
 }
 
-void set_money(m) {
+get()
+{
+  return money>0;
+}
+
+set_money(m) {
     money = m;
 }
 
-int id(str) {
+id(str) {
     if (str == "coins")
-        return 1;
-
+	return 1;
     if (str == "money")
-        return 1;
+	return 1;
 }
 
-void heart_beat() {
+heart_beat() {
     if (money == 0)
-        destruct(this_object());
+	destruct(this_object());
 }
-

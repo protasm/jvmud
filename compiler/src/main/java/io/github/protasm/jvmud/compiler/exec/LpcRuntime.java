@@ -63,6 +63,17 @@ public final class LpcRuntime {
         return load(resolveSourcePathWithExtensions(sourcePath));
     }
 
+    public Object loadOrGetObject(String sourcePath) {
+        Objects.requireNonNull(sourcePath, "sourcePath");
+        Path normalized = resolveSourcePathWithExtensions(sourcePath);
+        String internalName = normalizeInternalName(deriveSourceName(normalized, baseIncludePath));
+        Object existing = runtimeContext.getObject(internalName);
+        if (existing != null) {
+            return existing;
+        }
+        return load(normalized).instance();
+    }
+
     public LpcObjectHandle reload(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         return reload(resolveSourcePathWithExtensions(sourcePath));
@@ -122,6 +133,7 @@ public final class LpcRuntime {
         Object instance = instantiate(compiledClass);
 
         registerObject(internalName, instance);
+        resetIfPresent(instance);
 
         return new LpcObjectHandle(this, internalName, compiledClass, instance);
     }
@@ -173,6 +185,7 @@ public final class LpcRuntime {
         Object instance = instantiate(compiledClass);
 
         registerObject(internalName, instance);
+        resetIfPresent(instance);
 
         return new LpcObjectHandle(this, internalName, compiledClass, instance);
     }
@@ -186,6 +199,7 @@ public final class LpcRuntime {
         Class<?> objectClass = ensureClassDefined(normalized, internalName);
         Object instance = instantiate(objectClass);
         registerObject(nextCloneId(internalName), instance);
+        resetIfPresent(instance);
         return instance;
     }
 
@@ -211,6 +225,10 @@ public final class LpcRuntime {
 
     public void destructObject(Object object) {
         runtimeContext.destructObject(object);
+    }
+
+    public void registerHostObject(String objectId, Object object) {
+        runtimeContext.registerObject(normalizeInternalName(objectId), object);
     }
 
     public Object invokeObject(Object object, String methodName, Object... args) {
@@ -342,6 +360,16 @@ public final class LpcRuntime {
         }
 
         runtimeContext.invokeObject(object, "init");
+    }
+
+    private void resetIfPresent(Object object) {
+        try {
+            object.getClass().getMethod("reset", Object.class);
+        } catch (NoSuchMethodException ignored) {
+            return;
+        }
+
+        withRuntimeContext(() -> runtimeContext.invokeObject(object, "reset", 0));
     }
 
     private List<LpcObjectInspection.FieldValue> inspectFields(Object object) {

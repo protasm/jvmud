@@ -1,100 +1,83 @@
 object listen_ob, player_ob;
 
-void long() {
+long() {
     write("A stethoscope.\n");
 }
 
-string short() {
+short() {
     return "A stethoscope";
 }
 
-int query_weight() {
+query_weight() {
     return 1;
 }
 
-int query_value() {
+query_value() {
     return 15;
 }
 
-void init() {
-    add_action("apply"); add_verb("apply");
-    add_action("apply"); add_verb("use");
-    add_action("listen"); add_verb("listen");
+init() {
+    add_action("apply", "apply");
+    add_action("apply", "use");
+    add_action("listen", "listen");
 }
 
-int listen(str) {
+listen(str) {
     write("You must apply stethoscope to something.\n");
-
     return 1;
 }
 
-int apply(str) {
+apply(str) {
     string what;
     object ob;
 
-    if (!str)
-        return 0;
-
+    if (!str) 
+	return 0;
     if (environment() != this_player()) {
-        write("You must have the stethoscope on you to use it.\n");
-
-        return 1;
+	write("You must have the stethoscope on you to use it.\n");
+	return 1;
     }
-
-    if (id(str) || (sscanf(str, "stethoscope to %s", what) != 1
-        && sscanf(str, "stethoscope on %s", what) != 1)) {
-        write("On what ?\n");
-
-        return 1;
+    if (id(str) || sscanf(str, "stethoscope to %s", what) != 1) {
+	write("On what ?\n");
+	return 1;
     }
-
     ob = present(what, this_player());
-
     if (!ob)
-        ob = present(what, environment(this_player()));
-
+	ob = present(what, environment(this_player()));
     if (!ob)
-        return 0;
-
+	return 0;
     if (living(ob) || call_other(ob, "use_stethoscope", this_object())) {
-        write("You listen to the " + what + ".\n");
-
-        listen_ob = ob;
-        player_ob = this_player();
-
-        set_heart_beat(1);
-
-        return 1;
+	write("You listen to the " + what + ".\n");
+	listen_ob = ob;
+	player_ob = this_player();
+	set_heart_beat(1);
+	return 1;
     }
-
     return 0;
 }
 
 /*
-* Detect if the playe leaves the object.
-*/
-void heart_beat() {
+ * Detect if the playe leaves the object.
+ */
+heart_beat() {
     if (!present(listen_ob,environment(player_ob)) ||
-        environment() != player_ob) {
-        listen_ob = 0;
-
-        set_heart_beat(0);
-
-        return;
+	environment() != player_ob) {
+	listen_ob = 0;
+	set_heart_beat(0);
+	return;
     }
-
     if (living(listen_ob))
-        tell_object(player_ob, "Dunk dunk\n");
+	tell_object(player_ob, "Dunk dunk\n");
 }
 
-int query_listening() {
+query_listening() {
     return listen_ob;
 }
 
-int get() {
+get() {
     return 1;
 }
 
-status id(str) {
+id(str) {
     return str == "stethoscope";
 }

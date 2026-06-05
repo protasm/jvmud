@@ -1,42 +1,39 @@
 /*
-* This is just the facade to a castle. If you want to enable the
-* "enter" command, move the player to a hall or something (which
-    * you have to design yourself).
-* The predefined string DEST is where a player should come when he
-* leaves the castle.
-*
-* This file is loaded automatically from "init_file". We have to move
-* ourself to where we are supposed to be.
-*/
+ * This is just the facade to a castle. If you want to enable the
+ * "enter" command, move the player to a hall or something (which
+ * you have to design yourself).
+ * The predefined string DEST is where a player should come when he
+ * leaves the castle.
+ *
+ * This file is loaded automatically from "init_file". We have to move
+ * ourself to where we are supposed to be.
+ */
 
-status id(str) { return str == "castle"; }
+id(str) { return str == "castle"; }
 
-string short() {
+short() {
     return "Castle of " + NAME;
 }
 
-void long() {
+long() {
     write("This is the " + short() + ".\n");
     write(NAME + " is a rather new wizard, but it is an amazing castle\n");
     write("just the same. However, the gates are closed.\n");
 }
 
-void init() {
-    add_action("enter"); add_verb("enter");
+init() {
+    add_action("enter", "enter");
 }
 
-int enter(str) {
+enter(str) {
     if (!id(str))
-        return 0;
-
+	return 0;
     write("It is not an open castle.\n");
-
     return 1;
 }
 
-void reset(arg) {
+reset(arg) {
     if (arg)
-        return;
-
+	return;
     move_object(this_object(), DEST);
 }
