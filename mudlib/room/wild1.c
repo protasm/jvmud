@@ -1,10 +1,17 @@
-#include "room.h"
+inherit "room/room";
 
-#undef EXTRA_RESET
-#define EXTRA_RESET no_castle_flag = 1;
+void reset(mixed arg) {
+    if (!arg) {
+        set_light(1);
+        short_desc = "Wilderness";
+        long_desc =
+            "You are in the wilderness outside the village.\n" +
+            "There is a big forest to the west.\n";
+        dest_dir = ({
+            "room/hump", "east",
+            "room/forest1", "west"
+        });
+    }
 
-TWO_EXIT("room/hump", "east",
-	 "room/forest1", "west",
-	 "Wilderness",
-	 "You are in the wilderness outside the village.\n" +
-	 "There is a big forest to the west.\n", 1)
+    no_castle_flag = 1;
+}

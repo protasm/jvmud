@@ -459,13 +459,6 @@ public final class SemanticAnalyzer {
             resolveSymbolType(field.symbol(), field.line(), problems);
 
         for (ASTMethod method : astObject.methods()) {
-            if (method.symbol().declaredTypeName() == null && method.symbol().lpcType() == null) {
-                problems.add(
-                        new CompilationProblem(
-                                CompilationStage.ANALYZE,
-                                "Untyped object method '" + method.symbol().name() + "' is not supported.",
-                                method.line()));
-            }
             resolveSymbolType(method.symbol(), method.line(), problems);
             if (method.parameters() != null) {
                 for (ASTParameter parameter : method.parameters())

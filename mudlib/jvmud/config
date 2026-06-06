@@ -1,0 +1,22 @@
+# JVMud mudlib configuration.
+#
+# This manifest declares how this mudlib accepts JVMud's core commitments at
+# startup. JVMud owns the engine concepts; this file maps mudlib vocabulary
+# and compatibility policy onto them.
+
+game_id = vanilla-lpmud-245
+game_name = Vanilla LPMUD 2.4.5
+
+mfun_object = jvmud/mfuns
+
+initial_place = room/vill_green
+initial_presence_id = local/player
+
+preload_file = room/init_file
+preload_objects =
+
+lifecycle.object_loaded = reset
+lifecycle.interaction_scope_started = init
+
+temporal_tick_method =
+temporal_tick_interval = 0

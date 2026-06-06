@@ -30,8 +30,11 @@ final class AdminCliTest {
     void adminCanLoadCallCloneMoveInspectAndQuit() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("room.c"), """
-                void long() {
-                    write("A readable room.\\n");
+                void long(mixed str) {
+                    if (str)
+                        write("A specific thing.\\n");
+                    else
+                        write("A readable room.\\n");
                 }
                 """);
         Files.writeString(tempDir.resolve("thing.c"), """
@@ -144,6 +147,10 @@ final class AdminCliTest {
         Link south = worldRuntime.linkFrom(church, "south");
         assertEquals(green, south.destination());
         assertEquals(church, south.origin());
+        assertEquals(green, worldRuntime.locationOf(actorEntity));
+
+        Files.writeString(tempDir.resolve("room/bad.c"), "int broken() { return ; }\n");
+        assertEquals(0, actor.move_player("east#room/bad"));
         assertEquals(green, worldRuntime.locationOf(actorEntity));
     }
 
@@ -390,6 +397,56 @@ final class AdminCliTest {
     }
 
     @Test
+    void commandActionLifecycleUsesConfiguredMudlibMethodName() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/config"), """
+                mfun_object = jvmud/mfuns
+                lifecycle.interaction_scope_started = on_scope
+                """);
+        Files.writeString(tempDir.resolve("actor.c"), """
+                string short() {
+                    return "actor";
+                }
+                """);
+        Files.writeString(tempDir.resolve("tool.c"), """
+                void init() {
+                    add_action("wrong");
+                    add_verb("wrong");
+                }
+
+                void on_scope() {
+                    add_action("wave");
+                    add_verb("wave");
+                }
+
+                int wave(str) {
+                    write("waved by mapped lifecycle method\\n");
+                    return 1;
+                }
+
+                int wrong(str) {
+                    write("wrong lifecycle method\\n");
+                    return 1;
+                }
+                """);
+
+        StringWriter transcript = new StringWriter();
+        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
+
+        cli.execute("/boot " + tempDir);
+        cli.execute("/load actor");
+        cli.execute("/clone tool");
+        cli.execute("/move tool actor");
+        cli.execute("/actor actor");
+        cli.execute("wave");
+        cli.execute("wrong");
+
+        String output = transcript.toString();
+        assertTrue(output.contains("waved by mapped lifecycle method"));
+        assertFalse(output.contains("wrong lifecycle method"));
+    }
+
+    @Test
     void plainInputRequiresSelectedActor() {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
@@ -469,8 +526,18 @@ final class AdminCliTest {
                 }
                 """);
         Files.writeString(tempDir.resolve("room/church.c"), """
+                void init() {
+                    add_action("south");
+                    add_verb("south");
+                }
+
                 void long(str) {
                     write("You are in the church.\\n");
+                }
+
+                int south(str) {
+                    call_other(this_player(), "move_player", "south#room/vill_green");
+                    return 1;
                 }
                 """);
 
@@ -482,15 +549,20 @@ final class AdminCliTest {
         cli.execute("look");
         cli.execute("north");
         cli.execute("/where local/player");
+        cli.execute("s");
+        cli.execute("/where local/player");
+        cli.execute("go north");
+        cli.execute("/where local/player");
         cli.execute("/objects");
 
         String output = transcript.toString();
-        assertTrue(output.contains("Preloaded 2 startup object(s)."));
+        assertTrue(output.contains("Preloaded 1 startup object(s)."));
         assertTrue(output.contains("Started local session in room/vill_green"));
         assertTrue(output.contains("local/player is in room/vill_green"));
         assertTrue(output.contains("You are on the green."));
         assertTrue(output.contains("You are in the church."));
         assertTrue(output.contains("local/player is in room/church"));
+        assertTrue(output.contains("local/player is in room/vill_green"));
         assertTrue(output.contains("obj/preload : obj/preload"));
         assertTrue(output.contains("room/vill_green : room/vill_green"));
         assertTrue(output.contains("local/player : local/player"));
@@ -519,10 +591,61 @@ final class AdminCliTest {
 
         assertEquals("jvmud/boundary", boundary.boundaryObjectPath().orElseThrow());
         assertEquals("jvmud/functions", boundary.mfunObjectPath().orElseThrow());
-        assertTrue(boundary.handles(MudlibLifecycleEvent.OBJECT_INITIALIZED));
+        assertTrue(boundary.handles(MudlibLifecycleEvent.OBJECT_LOADED));
         assertTrue(boundary.handles(MudlibLifecycleEvent.SCHEDULED_TICK));
         assertEquals(boundary, runtime.mudlibBoundary());
         assertTrue(result.preloadedObjects().contains("jvmud/boundary"));
+    }
+
+    @Test
+    void bootReadsMudlibConfigObjectFromExplicitPath() throws Exception {
+        Files.createDirectories(tempDir.resolve("config"));
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.createDirectories(tempDir.resolve("place"));
+        Files.writeString(tempDir.resolve("config/startup"), """
+                game_id = strange-new-mudlib
+                game_name = Strange New Mudlib
+                mfun_object = config/mfuns
+                initial_place = place/start
+                initial_presence_id = presence/local
+                preload_objects = obj/preload
+                lifecycle.object_loaded = on_loaded
+                lifecycle.interaction_scope_started = on_scope
+                temporal_tick_method = heartbeat
+                temporal_tick_interval = 5
+                """);
+        Files.writeString(tempDir.resolve("obj/preload.c"), """
+                string short() {
+                    return "preload";
+                }
+                """);
+        Files.writeString(tempDir.resolve("place/start.c"), """
+                string short() {
+                    return "start";
+                }
+                """);
+
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder()
+                .baseIncludePath(tempDir)
+                .build());
+        EngineEfuns.registerCore(runtime);
+
+        MudlibBootResult result = new MudlibBoot(runtime, tempDir, "config/startup").boot();
+        MudlibBoundary boundary = result.worldRuntime().mudlibBoundary();
+
+        assertEquals("strange-new-mudlib", boundary.gameId().orElseThrow());
+        assertEquals("Strange New Mudlib", boundary.gameName().orElseThrow());
+        assertEquals("config/startup", boundary.boundaryObjectPath().orElseThrow());
+        assertEquals("config/mfuns", boundary.mfunObjectPath().orElseThrow());
+        assertEquals("place/start", boundary.initialPlacePath().orElseThrow());
+        assertEquals("presence/local", boundary.initialPresenceId().orElseThrow());
+        assertEquals("heartbeat", boundary.temporalTickMethod().orElseThrow());
+        assertEquals(5, boundary.temporalTickIntervalSeconds());
+        assertEquals("on_loaded", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED).orElseThrow());
+        assertEquals("on_scope", boundary.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElseThrow());
+        assertTrue(result.preloadedObjects().contains("obj/preload"));
+        assertEquals("place/start", result.startingRoom());
+        assertEquals("presence/local", result.actorHandle());
     }
 
     @Test
@@ -567,16 +690,32 @@ final class AdminCliTest {
         cli.execute("north");
         cli.execute("/where local/player");
         cli.execute("look");
+        cli.execute("south");
+        cli.execute("east");
+        cli.execute("east");
+        cli.execute("west");
+        cli.execute("west");
+        cli.execute("west");
+        cli.execute("east");
+        cli.execute("/where local/player");
 
         String output = transcript.toString();
         assertTrue(output.contains("Started local session in room/vill_green"));
         assertTrue(output.contains("local/player is in room/vill_green"));
         assertTrue(output.contains("You are in the local village church."));
         assertTrue(output.contains("local/player is in room/church"));
+        assertTrue(output.contains("A track going into the village."));
+        assertTrue(output.contains("A long road going east through the village."));
+        assertTrue(output.contains("An old humpbacked bridge."));
     }
 
     private void installMfunShim() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/config"), """
+                mfun_object = jvmud/mfuns
+                lifecycle.object_loaded = reset
+                lifecycle.interaction_scope_started = init
+                """);
         Files.writeString(tempDir.resolve("jvmud/boundary.c"), """
                 string mfun_object() {
                     return "jvmud/mfuns";

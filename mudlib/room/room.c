@@ -115,8 +115,7 @@ status move(mixed str) {
     i = 1;
     while(i < sizeof(dest_dir)) {
 	if (query_verb() == dest_dir[i]) {
-	    this_player()->move_player(dest_dir[i] + "#" + dest_dir[i-1]);
-	    return 1;
+	    return this_player()->move_player(dest_dir[i] + "#" + dest_dir[i-1]);
 	}
 	i += 2;
     }

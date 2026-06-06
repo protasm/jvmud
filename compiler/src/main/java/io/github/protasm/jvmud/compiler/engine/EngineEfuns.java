@@ -170,7 +170,7 @@ public final class EngineEfuns {
 
     private static Object resolveTarget(RuntimeContext runtime, Object target) {
         if (target instanceof String path) {
-            return runtime.getObject(stripLeadingSlash(path));
+            return runtime.loadOrGetObject(stripLeadingSlash(path));
         }
         return target;
     }

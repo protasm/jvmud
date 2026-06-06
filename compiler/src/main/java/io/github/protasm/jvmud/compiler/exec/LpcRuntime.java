@@ -10,6 +10,7 @@ import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
+import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -253,13 +254,15 @@ public final class LpcRuntime {
             runtimeContext.clearCommandActions(actor);
             runtimeContext.clearPendingActionMethods();
             try {
-                initializeIfPresent(actor);
+                invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, actor);
                 Object environment = runtimeContext.environment(actor);
                 if (environment != null) {
-                    initializeIfPresent(environment);
-                    forEachInventory(environment, this::initializeIfPresent);
+                    invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, environment);
+                    forEachInventory(environment, object ->
+                            invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, object));
                 }
-                forEachInventory(actor, this::initializeIfPresent);
+                forEachInventory(actor, object ->
+                        invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, object));
             } finally {
                 runtimeContext.clearPendingActionMethods();
             }
@@ -363,25 +366,31 @@ public final class LpcRuntime {
         }
     }
 
-    private void initializeIfPresent(Object object) {
-        try {
-            object.getClass().getMethod("init");
-        } catch (NoSuchMethodException ignored) {
-            // Objects are not required to define init().
-            return;
-        }
-
-        runtimeContext.invokeObject(object, "init");
+    private void resetIfPresent(Object object) {
+        invokeLifecycleIfPresent(MudlibLifecycleEvent.OBJECT_LOADED, object, 0);
     }
 
-    private void resetIfPresent(Object object) {
+    private void invokeLifecycleIfPresent(MudlibLifecycleEvent event, Object object, Object... args) {
+        String methodName = mudlibBoundary.lifecycleMethod(event).orElse(null);
+        if (methodName == null) {
+            return;
+        }
+
         try {
-            object.getClass().getMethod("reset", Object.class);
+            object.getClass().getMethod(methodName, parameterTypes(args));
         } catch (NoSuchMethodException ignored) {
             return;
         }
 
-        withRuntimeContext(() -> runtimeContext.invokeObject(object, "reset", 0));
+        withRuntimeContext(() -> runtimeContext.invokeObject(object, methodName, args));
+    }
+
+    private Class<?>[] parameterTypes(Object[] args) {
+        Class<?>[] types = new Class<?>[args.length];
+        for (int i = 0; i < args.length; i++) {
+            types[i] = Object.class;
+        }
+        return types;
     }
 
     private List<LpcObjectInspection.FieldValue> inspectFields(Object object) {

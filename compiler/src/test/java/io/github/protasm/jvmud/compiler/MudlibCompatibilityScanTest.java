@@ -9,6 +9,8 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
+import io.github.protasm.jvmud.runtime.MudlibBoundary;
+import io.github.protasm.jvmud.runtime.MudlibBoundaryConfigReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,13 +22,25 @@ import org.junit.jupiter.api.Test;
 final class MudlibCompatibilityScanTest {
     private static final Path REPO_ROOT = Path.of("..").toAbsolutePath().normalize();
     private static final Path MUDLIB_ROOT = REPO_ROOT.resolve("mudlib");
+    private static final String CONFIG_PATH = "jvmud/config";
     private static final List<String> COMPATIBILITY_SET =
-            List.of("obj/beer.c", "obj/torch.c", "room/vill_green.c", "room/test.c");
+            List.of(
+                    "obj/beer.c",
+                    "obj/money.c",
+                    "obj/torch.c",
+                    "room/hump.c",
+                    "room/test.c",
+                    "room/vill_green.c",
+                    "room/vill_road1.c",
+                    "room/vill_track.c",
+                    "room/wild1.c");
 
     @Test
     void selectedMudlibFilesProduceCompatibilityReport() throws IOException {
         RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(MUDLIB_ROOT, List.of()));
         EngineEfuns.registerCore(context);
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        context.setMfunObjectPath(boundary.mfunObjectPath().orElse(null));
         CompilationPipeline pipeline = new CompilationPipeline("java/lang/Object", context);
         Map<String, CompilationResult> results = new LinkedHashMap<>();
 
@@ -40,18 +54,21 @@ final class MudlibCompatibilityScanTest {
             results.put(sourceName, result);
         }
 
-        writeReport(results);
+        writeReport(boundary, results);
 
         assertTrue(Files.exists(Path.of("target", "jvmud-mudlib-compatibility.md")));
     }
 
-    private static void writeReport(Map<String, CompilationResult> results) throws IOException {
+    private static void writeReport(MudlibBoundary boundary, Map<String, CompilationResult> results) throws IOException {
         Path reportPath = Path.of("target", "jvmud-mudlib-compatibility.md");
         Files.createDirectories(reportPath.getParent());
 
         StringBuilder report = new StringBuilder();
         report.append("# JVMud Mudlib Compatibility Scan\n\n");
         report.append("This report is informational. It captures the current compiler/runtime gaps without failing the build.\n\n");
+        report.append("Configured mfun object: `")
+                .append(boundary.mfunObjectPath().orElse(""))
+                .append("`\n\n");
         report.append("| Source | Status | First Problem Stage | First Problem |\n");
         report.append("| --- | --- | --- | --- |\n");
 

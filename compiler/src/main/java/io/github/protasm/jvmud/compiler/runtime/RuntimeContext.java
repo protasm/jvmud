@@ -182,6 +182,18 @@ public final class RuntimeContext {
         return objects.get(name);
     }
 
+    public Object loadOrGetObject(String name) {
+        String normalized = normalizeMudlibPath(name);
+        if (normalized == null) {
+            return null;
+        }
+        Object existing = getObject(normalized);
+        if (existing != null) {
+            return existing;
+        }
+        return objectLoader.apply(normalized);
+    }
+
     public Map<String, Object> objectsView() {
         return Collections.unmodifiableMap(objects);
     }

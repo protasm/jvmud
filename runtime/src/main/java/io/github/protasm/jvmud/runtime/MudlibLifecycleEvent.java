@@ -1,14 +1,17 @@
 package io.github.protasm.jvmud.runtime;
 
-/** Native JVMud lifecycle moments that a mudlib compatibility boundary may handle. */
+/** Native JVMud lifecycle moments that a mudlib may map to its own methods. */
 public enum MudlibLifecycleEvent {
-    OBJECT_INITIALIZED,
-    OBJECT_REACTIVATED,
-    INTERACTION_SCOPE_ENTERED,
+    OBJECT_LOADED,
+    OBJECT_ACTIVATED,
+    OBJECT_DESTROYED,
+    ENTITY_ARRIVED_AT_PLACE,
+    ENTITY_DEPARTED_FROM_PLACE,
+    ENTITY_ADDED_TO_ENTITY,
+    ENTITY_REMOVED_FROM_ENTITY,
+    INTERACTION_SCOPE_STARTED,
+    COMMAND_DISPATCH_STARTED,
+    COMMAND_DISPATCH_FINISHED,
     SCHEDULED_TICK,
-    DEFERRED_CALLBACK,
-    IDLE_OBJECT_REVIEW,
-    SESSION_CONNECTED,
-    POLICY_CHECK,
-    ERROR_REPORTED
+    DEFERRED_CALLBACK
 }

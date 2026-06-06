@@ -96,17 +96,59 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void untypedMethodsDefaultToMixedForLegacyMudlibCompatibility() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LpcObjectHandle object = runtime.loadSource("smoke/untyped.c", """
+                reset(arg) {
+                    return arg + 1;
+                }
+
+                value() {
+                    return reset(41);
+                }
+                """);
+
+        assertEquals(42, object.invoke("value"));
+    }
+
+    @Test
     void runtimeStoresNativeMudlibBoundaryDeclaration() {
         LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
         MudlibBoundary boundary = MudlibBoundary.builder()
                 .boundaryObjectPath("jvmud/boundary")
                 .mfunObjectPath("jvmud/functions")
-                .handle(MudlibLifecycleEvent.OBJECT_INITIALIZED)
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "on_loaded")
                 .build();
 
         runtime.registerMudlibBoundary(boundary);
 
         assertEquals(boundary, runtime.mudlibBoundary());
+    }
+
+    @Test
+    void runtimeUsesConfiguredObjectLoadedLifecycleMethod() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "on_loaded")
+                .build());
+
+        LpcObjectHandle object = runtime.loadSource("smoke/lifecycle.c", """
+                int counter = 0;
+
+                void reset(mixed arg) {
+                    counter = 100;
+                }
+
+                void on_loaded(mixed arg) {
+                    counter = 42;
+                }
+
+                int value() {
+                    return counter;
+                }
+                """);
+
+        assertEquals(42, object.invoke("value"));
     }
 
     @Test
@@ -293,15 +335,15 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void untypedObjectMethodsAreRejected() {
+    void pipelineAcceptsUntypedObjectMethodsAsMixed() {
         CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
                 value() {
                     return 42;
                 }
                 """);
 
-        assertTrue(result.getProblems().stream()
-                .anyMatch(problem -> problem.getMessage().contains("Untyped object method 'value'")));
+        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
+        assertNotNull(result.getBytecode());
     }
 
     @Test

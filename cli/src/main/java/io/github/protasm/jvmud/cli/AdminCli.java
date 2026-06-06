@@ -44,7 +44,8 @@ public final class AdminCli {
         PrintWriter out = new PrintWriter(System.out, true);
         AdminCli cli = new AdminCli(out);
         Path mudlib = (args.length > 0) ? Path.of(args[0]) : Path.of("mudlib");
-        cli.boot(mudlib);
+        String configObjectPath = (args.length > 1) ? args[1] : MudlibBoot.DEFAULT_CONFIG_PATH;
+        cli.boot(mudlib, configObjectPath);
         cli.run(new BufferedReader(new InputStreamReader(System.in)));
     }
 
@@ -87,7 +88,9 @@ public final class AdminCli {
         try {
             switch (canonicalName) {
             case "help" -> help();
-            case "boot" -> boot(command.pathArgument(0, Path.of("mudlib")));
+            case "boot" -> boot(
+                    command.pathArgument(0, Path.of("mudlib")),
+                    command.optional(1, MudlibBoot.DEFAULT_CONFIG_PATH));
             case "pwd" -> pwd();
             case "cd" -> cd(command.optional(0, "/"));
             case "ls" -> ls(command.optional(0, "."));
@@ -121,6 +124,10 @@ public final class AdminCli {
     }
 
     private void boot(Path mudlibRoot) {
+        boot(mudlibRoot, MudlibBoot.DEFAULT_CONFIG_PATH);
+    }
+
+    private void boot(Path mudlibRoot, String configObjectPath) {
         this.mudlibRoot = mudlibRoot.toAbsolutePath().normalize();
         this.virtualCwd = Path.of("");
         runtime = new LpcRuntime(LpcRuntimeConfig.builder()
@@ -137,7 +144,7 @@ public final class AdminCli {
         suppressCompilationFailures = true;
         MudlibBootResult bootResult;
         try {
-            bootResult = new MudlibBoot(runtime, this.mudlibRoot).boot();
+            bootResult = new MudlibBoot(runtime, this.mudlibRoot, configObjectPath).boot();
         } finally {
             suppressCompilationFailures = false;
         }
@@ -166,7 +173,7 @@ public final class AdminCli {
         out.println("Slash commands:");
         helpLine("h", "help", "Show this command reference.");
         helpLine("", "actor <handle>", "Select the local command actor for dispatch.");
-        helpLine("b", "boot [mudlib]", "Start a fresh runtime rooted at a mudlib directory.");
+        helpLine("b", "boot [mudlib] [config]", "Start a fresh runtime with an optional mudlib config object.");
         helpLine("", "call <handle> <method> [args...]", "Invoke a method on a loaded object handle.");
         helpLine("", "cat <path>", "Print a file from the virtual mudlib filesystem.");
         helpLine("", "cd [path]", "Change the current virtual mudlib directory.");
@@ -341,7 +348,7 @@ public final class AdminCli {
         }
 
         try {
-            Object result = dispatchCommand(commandLine);
+            Object result = dispatchCommand(normalizePlayerCommand(commandLine));
             if (Integer.valueOf(0).equals(result)) {
                 out.println("You can't do that.");
             }
@@ -457,7 +464,7 @@ public final class AdminCli {
         for (String method : methods) {
             try {
                 if ("longWithArgument".equals(method)) {
-                    return runtime.invokeObject(object, "long", "");
+                    return runtime.invokeObject(object, "long", new Object[] {null});
                 }
                 return invoke(object, method, new String[0]);
             } catch (RuntimeException e) {
@@ -473,7 +480,24 @@ public final class AdminCli {
 
     private boolean isLookCommand(String commandLine) {
         String trimmed = commandLine.trim();
-        return "look".equals(trimmed) || trimmed.startsWith("look ");
+        return "look".equals(trimmed) || "l".equals(trimmed) || trimmed.startsWith("look ");
+    }
+
+    private String normalizePlayerCommand(String commandLine) {
+        String trimmed = commandLine.trim();
+        if (trimmed.startsWith("go ")) {
+            trimmed = trimmed.substring(3).trim();
+        }
+        return switch (trimmed) {
+        case "n" -> "north";
+        case "s" -> "south";
+        case "e" -> "east";
+        case "w" -> "west";
+        case "u" -> "up";
+        case "d" -> "down";
+        case "l" -> "look";
+        default -> trimmed;
+        };
     }
 
     private String consumeOutput() {
@@ -549,7 +573,7 @@ public final class AdminCli {
         return switch (command) {
         case "actor" -> "actor <handle>";
         case "help" -> "help";
-        case "boot" -> "boot [mudlib]";
+        case "boot" -> "boot [mudlib] [config]";
         case "call" -> "call <handle> <method> [args...]";
         case "cat" -> "cat <path>";
         case "cd" -> "cd [path]";

@@ -6,7 +6,7 @@ import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
 import io.github.protasm.jvmud.runtime.Capability;
 import io.github.protasm.jvmud.runtime.Entity;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
-import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.MudlibBoundaryConfigReader;
 import io.github.protasm.jvmud.runtime.Place;
 import io.github.protasm.jvmud.runtime.World;
 import io.github.protasm.jvmud.runtime.WorldRuntime;
@@ -20,16 +20,23 @@ import java.util.List;
 import java.util.Objects;
 
 final class MudlibBoot {
+    static final String DEFAULT_CONFIG_PATH = "jvmud/config";
     static final String DEFAULT_BOUNDARY_OBJECT = "jvmud/boundary";
     static final String DEFAULT_STARTING_ROOM = "room/vill_green";
     static final String LOCAL_ACTOR_HANDLE = "local/player";
 
     private final LpcRuntime runtime;
     private final Path mudlibRoot;
+    private final String configPath;
 
     MudlibBoot(LpcRuntime runtime, Path mudlibRoot) {
+        this(runtime, mudlibRoot, DEFAULT_CONFIG_PATH);
+    }
+
+    MudlibBoot(LpcRuntime runtime, Path mudlibRoot, String configPath) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
+        this.configPath = Objects.requireNonNullElse(configPath, DEFAULT_CONFIG_PATH);
     }
 
     MudlibBootResult boot() {
@@ -37,29 +44,32 @@ final class MudlibBoot {
         List<String> preloadedObjects = new ArrayList<>();
         List<String> skippedPreloads = new ArrayList<>();
 
-        discoverMudlibBoundary(worldRuntime, preloadedObjects, skippedPreloads);
-        preloadInitFile(preloadedObjects, skippedPreloads);
+        MudlibBoundary boundary = discoverMudlibBoundary(worldRuntime, preloadedObjects, skippedPreloads);
+        preloadConfiguredObjects(boundary, preloadedObjects, skippedPreloads);
+        preloadInitFile(boundary, preloadedObjects, skippedPreloads);
 
         Object actor = null;
-        String startingRoom = null;
-        if (mudlibFileExists(DEFAULT_STARTING_ROOM)) {
+        String initialPlace = null;
+        String initialPlacePath = boundary.initialPlacePath().orElse(DEFAULT_STARTING_ROOM);
+        String initialPresenceId = boundary.initialPresenceId().orElse(LOCAL_ACTOR_HANDLE);
+        if (mudlibFileExists(initialPlacePath)) {
             try {
-                Object room = runtime.loadOrGetObject(DEFAULT_STARTING_ROOM);
-                Place startingPlace = worldRuntime.createPlace(DEFAULT_STARTING_ROOM, DEFAULT_STARTING_ROOM);
+                Object placeObject = runtime.loadOrGetObject(initialPlacePath);
+                Place startingPlace = worldRuntime.createPlace(initialPlacePath, initialPlacePath);
                 Entity actorEntity = worldRuntime.createEntity(
-                        LOCAL_ACTOR_HANDLE,
+                        initialPresenceId,
                         "local player",
                         startingPlace,
                         Capability.ACTOR,
                         Capability.PERCEPTIVE);
                 LocalSessionActor localActor =
                         new LocalSessionActor(runtime, worldRuntime, actorEntity, "local player");
-                runtime.registerHostObject(LOCAL_ACTOR_HANDLE, localActor);
-                runtime.moveObject(localActor, room);
+                runtime.registerHostObject(initialPresenceId, localActor);
+                runtime.moveObject(localActor, placeObject);
                 actor = localActor;
-                startingRoom = DEFAULT_STARTING_ROOM;
+                initialPlace = initialPlacePath;
             } catch (RuntimeException e) {
-                skippedPreloads.add(DEFAULT_STARTING_ROOM);
+                skippedPreloads.add(initialPlacePath);
             }
         }
 
@@ -67,18 +77,30 @@ final class MudlibBoot {
                 worldRuntime,
                 preloadedObjects,
                 skippedPreloads,
-                startingRoom,
-                actor == null ? null : LOCAL_ACTOR_HANDLE,
+                initialPlace,
+                actor == null ? null : initialPresenceId,
                 actor);
     }
 
-    private void discoverMudlibBoundary(
+    private MudlibBoundary discoverMudlibBoundary(
             WorldRuntime worldRuntime,
             List<String> preloadedObjects,
             List<String> skippedPreloads) {
+        if (mudlibConfigFileExists(configPath)) {
+            try {
+                MudlibBoundary boundary = MudlibBoundaryConfigReader.read(mudlibRoot, configPath);
+                registerBoundary(worldRuntime, boundary);
+                return boundary;
+            } catch (IOException | RuntimeException e) {
+                registerBoundary(worldRuntime, MudlibBoundary.empty());
+                skippedPreloads.add(configPath);
+                return MudlibBoundary.empty();
+            }
+        }
+
         if (!mudlibFileExists(DEFAULT_BOUNDARY_OBJECT)) {
             registerBoundary(worldRuntime, MudlibBoundary.empty());
-            return;
+            return MudlibBoundary.empty();
         }
 
         try {
@@ -86,9 +108,11 @@ final class MudlibBoot {
             MudlibBoundary boundary = readBoundaryDeclaration(handle.instance());
             registerBoundary(worldRuntime, boundary);
             preloadedObjects.add(handle.internalName());
+            return boundary;
         } catch (RuntimeException e) {
             registerBoundary(worldRuntime, MudlibBoundary.empty());
             skippedPreloads.add(DEFAULT_BOUNDARY_OBJECT);
+            return MudlibBoundary.empty();
         }
     }
 
@@ -137,14 +161,7 @@ final class MudlibBoot {
         if (!(declaredEvent instanceof String name) || name.isBlank()) {
             return;
         }
-        builder.handle(MudlibLifecycleEvent.valueOf(normalizeLifecycleEventName(name)));
-    }
-
-    private String normalizeLifecycleEventName(String name) {
-        return name.trim()
-                .replace('-', '_')
-                .replace(' ', '_')
-                .toUpperCase();
+        builder.handle(MudlibBoundaryConfigReader.lifecycleEvent(name));
     }
 
     private void registerBoundary(WorldRuntime worldRuntime, MudlibBoundary boundary) {
@@ -152,8 +169,17 @@ final class MudlibBoot {
         runtime.registerMudlibBoundary(boundary);
     }
 
-    private void preloadInitFile(List<String> preloadedObjects, List<String> skippedPreloads) {
-        Path initFile = mudlibRoot.resolve("room/init_file");
+    private void preloadConfiguredObjects(
+            MudlibBoundary boundary, List<String> preloadedObjects, List<String> skippedPreloads) {
+        for (String sourcePath : boundary.preloadObjectPaths()) {
+            preloadObject(sourcePath, preloadedObjects, skippedPreloads);
+        }
+    }
+
+    private void preloadInitFile(
+            MudlibBoundary boundary, List<String> preloadedObjects, List<String> skippedPreloads) {
+        String preloadFilePath = boundary.preloadFilePath().orElse("room/init_file");
+        Path initFile = mudlibRoot.resolve(preloadFilePath);
         if (!Files.isRegularFile(initFile)) {
             return;
         }
@@ -165,16 +191,20 @@ final class MudlibBoot {
                     continue;
                 }
 
-                LpcLoadResult result = runtime.tryLoad(sourcePath);
-                if (result.succeeded()) {
-                    LpcObjectHandle handle = result.handle().orElseThrow();
-                    preloadedObjects.add(handle.internalName());
-                } else {
-                    skippedPreloads.add(sourcePath);
-                }
+                preloadObject(sourcePath, preloadedObjects, skippedPreloads);
             }
         } catch (IOException e) {
-            skippedPreloads.add("room/init_file");
+            skippedPreloads.add(preloadFilePath);
+        }
+    }
+
+    private void preloadObject(String sourcePath, List<String> preloadedObjects, List<String> skippedPreloads) {
+        LpcLoadResult result = runtime.tryLoad(sourcePath);
+        if (result.succeeded()) {
+            LpcObjectHandle handle = result.handle().orElseThrow();
+            preloadedObjects.add(handle.internalName());
+        } else {
+            skippedPreloads.add(sourcePath);
         }
     }
 
@@ -189,6 +219,10 @@ final class MudlibBoot {
     private boolean mudlibFileExists(String sourcePath) {
         return Files.isRegularFile(mudlibRoot.resolve(sourcePath + ".c"))
                 || Files.isRegularFile(mudlibRoot.resolve(sourcePath));
+    }
+
+    private boolean mudlibConfigFileExists(String sourcePath) {
+        return Files.isRegularFile(mudlibRoot.resolve(sourcePath));
     }
 
     private String stripExtension(String value) {

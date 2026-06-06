@@ -70,7 +70,12 @@ public final class LocalSessionActor {
 
         String action = movement.substring(0, separator).trim();
         String destinationPath = movement.substring(separator + 1);
-        Object destination = runtime.loadOrGetObject(destinationPath);
+        Object destination;
+        try {
+            destination = runtime.loadOrGetObject(destinationPath);
+        } catch (RuntimeException e) {
+            return 0;
+        }
         Place destinationPlace = placeFor(destinationPath);
         Place origin = worldRuntime.placeOf(entity);
         if (origin != null && !action.isEmpty()) {
@@ -78,7 +83,7 @@ public final class LocalSessionActor {
         }
         worldRuntime.move(entity, destinationPlace);
         runtime.moveObject(this, destination);
-        runtime.invokeObject(destination, "long", "");
+        runtime.invokeObject(destination, "long", new Object[] {null});
         return 1;
     }
 
