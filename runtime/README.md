@@ -27,7 +27,7 @@ adapt to it rather than replacing it with LPC-specific semantics. Upstream
 mudlib files should remain intact unless an explicit style or formatting change
 is requested. The engine-mudlib boundary is described in
 `../docs/ENGINE_MUDLIB_CONTRACT.md`; engine-side concepts should use JVMud
-terms, with legacy LP driver names translated by compatibility shims.
+terms, with legacy LP engine names translated by compatibility shims.
 
 The compiler source currently includes a compiler-adjacent runtime helper package
 at `compiler/src/main/java/io/github/protasm/jvmud/compiler/runtime/`, plus

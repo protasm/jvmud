@@ -27,6 +27,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_QUESTION;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_ARROW;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_SLASH;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_SUPER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_STAR;
@@ -38,6 +39,7 @@ import java.util.Map;
 
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixBinaryOp;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixIndex;
+import io.github.protasm.jvmud.compiler.parser.parselet.InfixInvoke;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixTernary;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixIdentifier;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixLParen;
@@ -78,6 +80,7 @@ public class PrattParser {
         tokenTypeToRule.put(T_LEFT_PAREN, new ParseRule(new PrefixLParen(), null, PREC_NONE));
         tokenTypeToRule.put(T_LEFT_BRACE, new ParseRule(new PrefixArrayLiteral(), null, PREC_NONE));
         tokenTypeToRule.put(T_LEFT_BRACKET, new ParseRule(null, new InfixIndex(), Precedence.PREC_CALL));
+        tokenTypeToRule.put(T_RIGHT_ARROW, new ParseRule(null, new InfixInvoke(), Precedence.PREC_CALL));
 
         tokenTypeToRule.put(T_BANG, new ParseRule(new PrefixUnaryOp(), null, PREC_NONE));
 

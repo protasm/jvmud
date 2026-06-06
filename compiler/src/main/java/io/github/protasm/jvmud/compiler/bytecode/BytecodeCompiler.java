@@ -51,7 +51,7 @@ public final class BytecodeCompiler {
         // class into the generated superclass slot.
         cw.visit(V21, ACC_SUPER | ACC_PUBLIC, internalName, null, parentName, null);
 
-        emitDriverManagedFields(cw);
+        emitEngineManagedFields(cw);
         emitFields(cw, object);
         emitPrivateInitializer(cw, internalName, parentName, object.fields());
         emitDefaultConstructor(cw, internalName, parentName);
@@ -70,8 +70,8 @@ public final class BytecodeCompiler {
         }
     }
 
-    private void emitDriverManagedFields(ClassWriter cw) {
-        // Driver-managed lifecycle state never surfaces in LPC; it is synthetic and private to keep
+    private void emitEngineManagedFields(ClassWriter cw) {
+        // Engine-managed lifecycle state never surfaces in LPC; it is synthetic and private to keep
         // mudlib policy separate from the compiler's lifecycle wiring.
         cw.visitField(ACC_PRIVATE | ACC_SYNTHETIC, INIT_GUARD_FIELD, "Z", null, null).visitEnd();
     }
@@ -107,9 +107,9 @@ public final class BytecodeCompiler {
         mv.visitFieldInsn(PUTFIELD, internalName, INIT_GUARD_FIELD, "Z");
 
         if (!OBJECT_INTERNAL_NAME.equals(parentName)) {
-            // Driver lifecycle: chain to the parent initializer before touching child state so that
+            // Engine lifecycle: chain to the parent initializer before touching child state so that
             // inheritance order remains deterministic. The mudlib retains full control of *what*
-            // initialization policy executes; the driver merely ensures *when* the chain runs.
+            // initialization policy executes; the engine merely ensures *when* the chain runs.
             mv.visitVarInsn(ALOAD, 0);
             mv.visitMethodInsn(INVOKESPECIAL, parentName, INIT_METHOD_NAME, INIT_METHOD_DESCRIPTOR, false);
         }
@@ -128,7 +128,7 @@ public final class BytecodeCompiler {
                 continue;
 
             // Field initializers are part of the object definition and run exactly once per
-            // instance under the driver-managed lifecycle gate. The driver deliberately avoids
+            // instance under the engine-managed lifecycle gate. The engine deliberately avoids
             // invoking any mudlib-defined hooks here; mudlib policy remains explicit and
             // user-controlled.
             mv.visitVarInsn(ALOAD, 0);
@@ -144,6 +144,7 @@ public final class BytecodeCompiler {
         String descriptor = methodDescriptor(method);
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, method.name(), descriptor, null, null);
         mv.visitCode();
+        emitDefaultLocalInitializers(mv, method);
 
         Map<String, Label> labels = new HashMap<>();
         for (IRBlock block : method.blocks())
@@ -159,6 +160,30 @@ public final class BytecodeCompiler {
 
         mv.visitMaxs(0, 0);
         mv.visitEnd();
+    }
+
+    private void emitDefaultLocalInitializers(MethodVisitor mv, IRMethod method) {
+        for (IRLocal local : method.locals()) {
+            if (local.parameter() || local.slot() < 0) {
+                continue;
+            }
+
+            switch (local.type().kind()) {
+            case INT, STATUS -> {
+                pushInt(mv, 0);
+                mv.visitVarInsn(ISTORE, local.slot());
+            }
+            case FLOAT -> {
+                mv.visitInsn(FCONST_0);
+                mv.visitVarInsn(FSTORE, local.slot());
+            }
+            case VOID -> {}
+            default -> {
+                mv.visitInsn(ACONST_NULL);
+                mv.visitVarInsn(ASTORE, local.slot());
+            }
+            }
+        }
     }
 
     private void emitStatement(MethodVisitor mv, String internalName, IRMethod method, IRStatement statement) {
@@ -333,6 +358,11 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRDynamicInvokeExpression dynamicInvokeExpression) {
+            emitDynamicInvokeExpression(mv, internalName, method, dynamicInvokeExpression);
+            return;
+        }
+
         if (expression instanceof IRDynamicInvokeField dynamicInvokeField) {
             emitDynamicInvokeField(mv, internalName, method, dynamicInvokeField);
             return;
@@ -393,7 +423,7 @@ public final class BytecodeCompiler {
         emitExpression(mv, internalName, method, fieldStore.value());
         mv.visitInsn(DUP_X1);
         // Writes route to the declared owner to keep parent storage distinct from any child
-        // shadows without reintroducing initialization here (managed by the driver).
+        // shadows without reintroducing initialization here (managed by the engine).
         mv.visitFieldInsn(
                 PUTFIELD,
                 fieldStore.field().ownerInternalName(),
@@ -547,18 +577,31 @@ public final class BytecodeCompiler {
             // Explicit LPC parent calls lower to direct super calls so dispatch stays anchored on
             // the inherited implementation rather than re-entering overrides on this class.
             mv.visitVarInsn(ALOAD, 0);
-            for (IRExpression arg : call.arguments())
-                emitExpression(mv, internalName, method, arg);
+            emitCallArguments(mv, internalName, method, call.arguments(), call.parameterTypes());
 
             mv.visitMethodInsn(INVOKESPECIAL, call.ownerInternalName(), call.methodName(), descriptor, false);
             return;
         }
 
         mv.visitVarInsn(ALOAD, 0);
-        for (IRExpression arg : call.arguments())
-            emitExpression(mv, internalName, method, arg);
+        emitCallArguments(mv, internalName, method, call.arguments(), call.parameterTypes());
 
         mv.visitMethodInsn(INVOKEVIRTUAL, call.ownerInternalName(), call.methodName(), descriptor, false);
+    }
+
+    private void emitCallArguments(
+            MethodVisitor mv,
+            String internalName,
+            IRMethod method,
+            List<IRExpression> arguments,
+            List<RuntimeType> parameterTypes) {
+        for (int i = 0; i < arguments.size(); i++) {
+            IRExpression argument = arguments.get(i);
+            emitExpression(mv, internalName, method, argument);
+            if (parameterTypes != null && i < parameterTypes.size()) {
+                coerceValue(mv, argument.type(), parameterTypes.get(i));
+            }
+        }
     }
 
     private void emitDynamicInvoke(
@@ -581,6 +624,31 @@ public final class BytecodeCompiler {
                 "java/lang/reflect/Method",
                 "invoke",
                 "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+                false);
+        if (dynamicInvoke.type() != null && dynamicInvoke.type().kind() == RuntimeValueKind.VOID) {
+            mv.visitInsn(POP);
+            return;
+        }
+        emitCoerceToRuntimeTypeIfNeeded(mv, RuntimeTypes.MIXED, dynamicInvoke.type());
+    }
+
+    private void emitDynamicInvokeExpression(
+            MethodVisitor mv, String internalName, IRMethod method, IRDynamicInvokeExpression dynamicInvoke) {
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                "io/github/protasm/jvmud/compiler/runtime/RuntimeContextHolder",
+                "requireCurrent",
+                "()Lio/github/protasm/jvmud/compiler/runtime/RuntimeContext;",
+                false);
+        emitExpression(mv, internalName, method, dynamicInvoke.target());
+        boxIfNeeded(mv, dynamicInvoke.target().type());
+        mv.visitLdcInsn(dynamicInvoke.methodName());
+        emitArgumentsArray(mv, internalName, method, dynamicInvoke.arguments());
+        mv.visitMethodInsn(
+                INVOKEVIRTUAL,
+                "io/github/protasm/jvmud/compiler/runtime/RuntimeContext",
+                "invokeObject",
+                "(Ljava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;",
                 false);
         if (dynamicInvoke.type() != null && dynamicInvoke.type().kind() == RuntimeValueKind.VOID) {
             mv.visitInsn(POP);

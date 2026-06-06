@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.compiler.driver;
+package io.github.protasm.jvmud.compiler.engine;
 
 import io.github.protasm.jvmud.compiler.efun.Efun;
 import io.github.protasm.jvmud.compiler.efun.EfunSignature;
@@ -7,12 +7,14 @@ import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-/** Registers the first JVMud driver efuns needed by compiled mudlib objects. */
-public final class DriverEfuns {
-    private DriverEfuns() {}
+/** Registers the first JVMud engine functions needed by compiled mudlib objects. */
+public final class EngineEfuns {
+    private EngineEfuns() {}
 
     public static void registerCore(RuntimeContext context) {
         Objects.requireNonNull(context, "context");
@@ -32,79 +34,124 @@ public final class DriverEfuns {
 
     private static List<Efun> coreEfuns() {
         List<Efun> efuns = new ArrayList<>();
-        efuns.add(efun("write", LPCType.LPCVOID, List.of(LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_write", LPCType.LPCVOID, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> {
                     runtime.writeOutput(args[0]);
                     return null;
                 }));
-        efuns.add(efun("say", LPCType.LPCVOID, List.of(LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_say", LPCType.LPCVOID, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> {
                     // Until room/session routing exists, broadcasts are captured in the same sink
                     // as direct writes so tests and the admin CLI can still observe output.
                     runtime.writeOutput(args[0]);
                     return null;
                 }));
-        efuns.add(efun("tell_object", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT, LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_tell_object", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT, LPCType.LPCMIXED),
                 (runtime, args) -> {
                     runtime.writeOutput(args[1]);
                     return null;
                 }));
-        efuns.add(efun("tell_room", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_tell_room", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> {
                     runtime.writeOutput(args[1]);
                     return null;
                 }));
-        efuns.add(efun("this_object", LPCType.LPCOBJECT, List.of(),
+        efuns.add(efun("jvmud_current_object", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.currentObject()));
-        efuns.add(efun("this_player", LPCType.LPCOBJECT, List.of(),
+        efuns.add(efun("jvmud_current_actor", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.currentCommandActor() != null
                         ? runtime.currentCommandActor()
                         : runtime.currentObject()));
-        efuns.add(efun("call_other", LPCType.LPCMIXED,
+        efuns.add(efun("jvmud_current_verb", LPCType.LPCSTRING, List.of(),
+                (runtime, args) -> runtime.currentCommandVerb()));
+        efuns.add(efun("jvmud_time", LPCType.LPCINT, List.of(),
+                (runtime, args) -> (int) (System.currentTimeMillis() / 1000L)));
+        efuns.add(efun("jvmud_object_name", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.objectId(args[0])));
+        efuns.add(efun("jvmud_size", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> sizeOf(args[0])));
+        efuns.add(efun("jvmud_is_string", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> args[0] instanceof String ? 1 : 0));
+        efuns.add(efun("jvmud_is_array", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> args[0] instanceof List<?> ? 1 : 0));
+        efuns.add(efun("jvmud_invoke_object", LPCType.LPCMIXED,
                 List.of(LPCType.LPCMIXED, LPCType.LPCSTRING),
                 (runtime, args) -> callOther(runtime, args[0], String.valueOf(args[1]))));
-        efuns.add(efun("call_other", LPCType.LPCMIXED,
+        efuns.add(efun("jvmud_invoke_object", LPCType.LPCMIXED,
                 List.of(LPCType.LPCMIXED, LPCType.LPCSTRING, LPCType.LPCMIXED),
                 (runtime, args) -> callOther(runtime, args[0], String.valueOf(args[1]), args[2])));
-        efuns.add(efun("clone_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
+        efuns.add(efun("jvmud_clone_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.cloneObject(String.valueOf(args[0]))));
-        efuns.add(efun("move_object", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_move_object", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> {
                     runtime.moveObject(args[0], args[1]);
                     return null;
                 }));
-        efuns.add(efun("present", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
+        efuns.add(efun("jvmud_present", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.present(args[0], null)));
-        efuns.add(efun("present", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_present", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> runtime.present(args[0], args[1])));
-        efuns.add(efun("first_inventory", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_first_inventory", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.firstInventory(args[0])));
-        efuns.add(efun("next_inventory", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_next_inventory", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.nextInventory(args[0])));
-        efuns.add(efun("set_light", LPCType.LPCINT, List.of(LPCType.LPCINT),
+        efuns.add(efun("jvmud_set_light", LPCType.LPCINT, List.of(LPCType.LPCINT),
                 (runtime, args) -> runtime.setLight(((Number) args[0]).intValue())));
-        efuns.add(efun("set_heart_beat", LPCType.LPCVOID, List.of(LPCType.LPCINT),
+        efuns.add(efun("jvmud_set_heart_beat", LPCType.LPCVOID, List.of(LPCType.LPCINT),
                 (runtime, args) -> null));
-        efuns.add(efun("enable_commands", LPCType.LPCVOID, List.of(),
+        efuns.add(efun("jvmud_call_out", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> null));
-        efuns.add(efun("add_action", LPCType.LPCVOID, List.of(LPCType.LPCSTRING),
+        efuns.add(efun("jvmud_call_out", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED),
+                (runtime, args) -> null));
+        efuns.add(efun("jvmud_remove_call_out", LPCType.LPCINT, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> -1));
+        efuns.add(efun("jvmud_enable_commands", LPCType.LPCVOID, List.of(),
+                (runtime, args) -> null));
+        efuns.add(efun("jvmud_add_action", LPCType.LPCVOID, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> {
                     runtime.rememberActionMethod(String.valueOf(args[0]));
                     return null;
                 }));
-        efuns.add(efun("add_verb", LPCType.LPCVOID, List.of(LPCType.LPCSTRING),
+        efuns.add(efun("jvmud_add_action", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCSTRING),
+                (runtime, args) -> {
+                    runtime.rememberActionMethod(String.valueOf(args[0]));
+                    runtime.registerVerb(String.valueOf(args[1]));
+                    return null;
+                }));
+        efuns.add(efun("jvmud_add_verb", LPCType.LPCVOID, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> {
                     runtime.registerVerb(String.valueOf(args[0]));
                     return null;
                 }));
-        efuns.add(efun("environment", LPCType.LPCOBJECT, List.of(),
+        efuns.add(efun("jvmud_environment", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.environment(null)));
-        efuns.add(efun("destruct", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT),
+        efuns.add(efun("jvmud_environment", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.environment(args[0])));
+        efuns.add(efun("jvmud_destruct", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT),
                 (runtime, args) -> {
                     runtime.destructObject(args[0]);
                     return null;
                 }));
         return efuns;
+    }
+
+    private static int sizeOf(Object value) {
+        if (value == null) {
+            return 0;
+        }
+        if (value instanceof CharSequence text) {
+            return text.length();
+        }
+        if (value instanceof Collection<?> collection) {
+            return collection.size();
+        }
+        if (value instanceof Map<?, ?> map) {
+            return map.size();
+        }
+        if (value.getClass().isArray()) {
+            return java.lang.reflect.Array.getLength(value);
+        }
+        return 0;
     }
 
     private static Object callOther(RuntimeContext runtime, Object target, String methodName) {

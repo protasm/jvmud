@@ -1,8 +1,20 @@
 package io.github.protasm.jvmud.cli;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
+import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
+import io.github.protasm.jvmud.compiler.exec.LpcRuntimeConfig;
+import io.github.protasm.jvmud.runtime.Capability;
+import io.github.protasm.jvmud.runtime.Entity;
+import io.github.protasm.jvmud.runtime.Link;
+import io.github.protasm.jvmud.runtime.MudlibBoundary;
+import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.Place;
+import io.github.protasm.jvmud.runtime.World;
+import io.github.protasm.jvmud.runtime.WorldRuntime;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
@@ -16,6 +28,7 @@ final class AdminCliTest {
 
     @Test
     void adminCanLoadCallCloneMoveInspectAndQuit() throws Exception {
+        installMfunShim();
         Files.writeString(tempDir.resolve("room.c"), """
                 void long() {
                     write("A readable room.\\n");
@@ -107,6 +120,31 @@ final class AdminCliTest {
         String output = transcript.toString();
         assertTrue(output.contains("Error: Path escapes mudlib root: .."));
         assertTrue(output.contains("Error: Path escapes mudlib root: ../outside.txt"));
+    }
+
+    @Test
+    void localSessionMovementRegistersNativeWorldLinks() throws Exception {
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/vill_green.c"), """
+                void long(str) {
+                }
+                """);
+
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        WorldRuntime worldRuntime = new WorldRuntime(new World("test", "Test World"));
+        Place church = worldRuntime.createPlace("room/church", "Village church");
+        Entity actorEntity = worldRuntime.createEntity(
+                "session/local", "local session", church, Capability.ACTOR, Capability.PERCEPTIVE);
+        LocalSessionActor actor = new LocalSessionActor(runtime, worldRuntime, actorEntity, "tester");
+
+        assertEquals(1, actor.move_player("south#room/vill_green"));
+
+        Place green = worldRuntime.place("room/vill_green");
+        Link south = worldRuntime.linkFrom(church, "south");
+        assertEquals(green, south.destination());
+        assertEquals(church, south.origin());
+        assertEquals(green, worldRuntime.locationOf(actorEntity));
     }
 
     @Test
@@ -272,6 +310,7 @@ final class AdminCliTest {
 
     @Test
     void dispatchRunsObjectDefinedVerbForSelectedActor() throws Exception {
+        installMfunShim();
         Files.writeString(tempDir.resolve("actor.c"), """
                 string short() {
                     return "actor";
@@ -309,6 +348,7 @@ final class AdminCliTest {
 
     @Test
     void plainInputDispatchesAsPlayerCommandsAndSlashInputRunsAdminCommands() throws Exception {
+        installMfunShim();
         Files.writeString(tempDir.resolve("actor.c"), """
                 string short() {
                     return "actor";
@@ -363,6 +403,7 @@ final class AdminCliTest {
 
     @Test
     void plainHelpIsAMudlibCommandNotAShellFallback() throws Exception {
+        installMfunShim();
         Files.writeString(tempDir.resolve("actor.c"), """
                 string short() {
                     return "actor";
@@ -400,6 +441,7 @@ final class AdminCliTest {
 
     @Test
     void bootPreloadsInitFileAndStartsLocalActorInStartingRoom() throws Exception {
+        installMfunShim();
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room"));
         Files.writeString(tempDir.resolve("room/init_file"), """
@@ -443,7 +485,7 @@ final class AdminCliTest {
         cli.execute("/objects");
 
         String output = transcript.toString();
-        assertTrue(output.contains("Preloaded 1 startup object(s)."));
+        assertTrue(output.contains("Preloaded 2 startup object(s)."));
         assertTrue(output.contains("Started local session in room/vill_green"));
         assertTrue(output.contains("local/player is in room/vill_green"));
         assertTrue(output.contains("You are on the green."));
@@ -452,5 +494,122 @@ final class AdminCliTest {
         assertTrue(output.contains("obj/preload : obj/preload"));
         assertTrue(output.contains("room/vill_green : room/vill_green"));
         assertTrue(output.contains("local/player : local/player"));
+    }
+
+    @Test
+    void bootDiscoversDedicatedMudlibBoundaryDeclarationObject() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/boundary.c"), """
+                string mfun_object() {
+                    return "/jvmud/functions.c";
+                }
+
+                mixed handled_lifecycle_events() {
+                    return ({ "object-initialized", "scheduled tick" });
+                }
+                """);
+
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder()
+                .baseIncludePath(tempDir)
+                .build());
+        EngineEfuns.registerCore(runtime);
+
+        MudlibBootResult result = new MudlibBoot(runtime, tempDir).boot();
+        MudlibBoundary boundary = result.worldRuntime().mudlibBoundary();
+
+        assertEquals("jvmud/boundary", boundary.boundaryObjectPath().orElseThrow());
+        assertEquals("jvmud/functions", boundary.mfunObjectPath().orElseThrow());
+        assertTrue(boundary.handles(MudlibLifecycleEvent.OBJECT_INITIALIZED));
+        assertTrue(boundary.handles(MudlibLifecycleEvent.SCHEDULED_TICK));
+        assertEquals(boundary, runtime.mudlibBoundary());
+        assertTrue(result.preloadedObjects().contains("jvmud/boundary"));
+    }
+
+    @Test
+    void bootDeclaredMfunObjectHandlesUnresolvedCalls() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/boundary.c"), """
+                string mfun_object() {
+                    return "jvmud/functions";
+                }
+                """);
+        Files.writeString(tempDir.resolve("jvmud/functions.c"), """
+                mixed legacy_phrase() {
+                    return "handled by mfun object";
+                }
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                mixed phrase() {
+                    return legacy_phrase();
+                }
+                """);
+
+        StringWriter transcript = new StringWriter();
+        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
+
+        cli.execute("/boot " + tempDir);
+        cli.execute("/load caller");
+        cli.execute("/call caller phrase");
+
+        String output = transcript.toString();
+        assertTrue(output.contains("Loaded caller"));
+        assertTrue(output.contains("=> handled by mfun object"));
+    }
+
+    @Test
+    void vanillaMudlibBootStartsInVillageGreenAndMovesNorthToChurch() {
+        Path mudlibRoot = Path.of("..", "mudlib").toAbsolutePath().normalize();
+        StringWriter transcript = new StringWriter();
+        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
+
+        cli.execute("/boot " + mudlibRoot);
+        cli.execute("/where local/player");
+        cli.execute("north");
+        cli.execute("/where local/player");
+        cli.execute("look");
+
+        String output = transcript.toString();
+        assertTrue(output.contains("Started local session in room/vill_green"));
+        assertTrue(output.contains("local/player is in room/vill_green"));
+        assertTrue(output.contains("You are in the local village church."));
+        assertTrue(output.contains("local/player is in room/church"));
+    }
+
+    private void installMfunShim() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/boundary.c"), """
+                string mfun_object() {
+                    return "jvmud/mfuns";
+                }
+                """);
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void write(mixed value) {
+                    jvmud_write(value);
+                }
+
+                void add_action(string method) {
+                    jvmud_add_action(method);
+                }
+
+                void add_action(string method, string verb) {
+                    jvmud_add_action(method, verb);
+                }
+
+                void add_verb(string verb) {
+                    jvmud_add_verb(verb);
+                }
+
+                object this_player() {
+                    return jvmud_current_actor();
+                }
+
+                mixed call_other(mixed target, string method) {
+                    return jvmud_invoke_object(target, method);
+                }
+
+                mixed call_other(mixed target, string method, mixed arg) {
+                    return jvmud_invoke_object(target, method, arg);
+                }
+                """);
     }
 }

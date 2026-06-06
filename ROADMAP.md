@@ -15,7 +15,7 @@ compatibility remains useful, but it is a content and compatibility concern, not
 the engine's identity. When old mudlib code conflicts with the engine model, the
 preferred move is to add dedicated mudlib-side compatibility shims and focused
 engine/compiler support rather than rewriting upstream mudlib files or adding
-accidental LPC-driver behavior to the engine.
+accidental legacy LPC engine behavior to the engine.
 
 The engine-mudlib boundary is documented in `docs/ENGINE_MUDLIB_CONTRACT.md`.
 Engine-facing concepts should use JVMud-native terms; legacy LPC names belong in
@@ -28,9 +28,9 @@ In practice:
 - upstream mudlib files should be treated as read-only unless an explicit style
   or formatting change is requested;
 - compatibility shims should live in dedicated independent mudlib-side objects,
-  such as simul_efun, shadow, or adapter objects;
+  such as mfun objects, shadow, or adapter objects;
 - engine-side APIs should describe JVMud operations rather than preserving
-  legacy LP driver method names for their own sake;
+  legacy LP engine method names for their own sake;
 - compatibility scans should identify useful evidence, not dictate engine
   architecture;
 - runtime/server work should preserve the distinction between JVMud world
@@ -53,11 +53,11 @@ The baseline proves:
 - simple LPC source can compile to bytecode;
 - generated classes can be loaded, instantiated, and invoked from Java;
 - inherited source files can be resolved and compiled;
-- registered efuns can be called from generated LPC bytecode;
-- early driver efuns provide testable output and shared object invocation;
+- registered engine functions can be called from generated LPC bytecode;
+- early engine functions provide testable output and shared object invocation;
 - a mudlib compatibility scan can report current gaps without failing the build.
 
-The current compatibility function slice includes output delivery, current
+The current mudlib function slice includes output delivery, current
 execution context lookup, shared object invocation, object creation/destruction,
 movement, inventory traversal, local perception, and early time scheduling.
 Several of those are still exposed through legacy LPC names in the current
@@ -81,7 +81,7 @@ coarse compiler stage progress for compilation-backed commands.
 
 The first command-system slice now exists behind the CLI. The runtime tracks a
 current command actor, supports minimal `enable_commands`, `add_action`, and
-`add_verb` efuns, refreshes nearby `init` registrations, and dispatches explicit
+`add_verb` engine functions, refreshes nearby `init` registrations, and dispatches explicit
 `/dispatch <command...>` input through object-defined verb handlers. The same CLI
 is now player-facing by default: ordinary input is routed directly through that
 command-dispatch path, while slash-prefixed input reaches shell/admin tooling.
@@ -102,8 +102,8 @@ an adapter.
 
 2. **Compiler Compatibility Harness**
    Keep the compatibility scan as evidence for useful language and content
-   support, not as a mandate to emulate every legacy LPC driver behavior. Track
-   failures by stage so parser, semantic, efun, runtime, or shim-object work can
+   support, not as a mandate to emulate every legacy LPC engine behavior. Track
+   failures by stage so parser, semantic, engine function, runtime, or shim-object work can
    be chosen deliberately.
 
 3. **Minimal Object Runtime**
@@ -113,11 +113,11 @@ an adapter.
    into `WorldRuntime`. Keep generated-code helper classes separate from
    server/runtime concepts.
 
-4. **Essential Driver Efuns**
+4. **Essential Engine Functions**
    Implement the first engine-compatible operations needed by current content:
    text delivery, current actor/object lookup, location queries, movement,
    object materialization, destruction, presence lookup, inventory traversal,
-   and object calls. Keep legacy efun names as compatibility entry points rather
+   and object calls. Keep legacy engine function names as compatibility entry points rather
    than as the engine's ontology.
 
 5. **Single-Admin CLI**
@@ -162,6 +162,6 @@ an adapter.
 ## Readability Standard
 
 JVMud should be approachable to a human reader. Prefer names and structure that
-explain intent. Add comments where LPC driver semantics, bytecode behavior, or
+explain intent. Add comments where legacy LPC engine semantics, bytecode behavior, or
 runtime lifecycle rules are non-obvious. Tests should read like executable
 documentation for the supported LPC subset.

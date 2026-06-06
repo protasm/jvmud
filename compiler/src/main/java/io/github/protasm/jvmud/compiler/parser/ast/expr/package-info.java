@@ -8,7 +8,7 @@
  * <p>Assumes surrounding statement or object nodes manage scope and symbol resolution; expression
  * classes themselves are largely immutable apart from inferred type fields.</p>
  *
- * <p>No evaluation happens here—runtime behavior is handled by emitted bytecode and efun
+ * <p>No evaluation happens here—runtime behavior is handled by emitted bytecode and engine function
  * implementations.</p>
  */
 package io.github.protasm.jvmud.compiler.parser.ast.expr;

@@ -19,6 +19,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_BRACKET;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_PAREN;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_SEMICOLON;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_STRING_LITERAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_WHILE;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,6 +45,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixParselet;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixParselet;
 import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
@@ -386,6 +388,8 @@ public class Parser {
                         return ifStatement();
                 else if (tokens.match(T_FOR))
                         return forStatement();
+                else if (tokens.match(T_WHILE))
+                        return whileStatement();
                 else if (tokens.match(T_BREAK))
                         return breakStatement();
                 else if (tokens.match(T_RETURN))
@@ -451,6 +455,17 @@ public class Parser {
     private ASTStatement breakStatement() {
         tokens.consume(T_SEMICOLON, "Expect ';' after break.");
         return new ASTStmtBreak(currLine());
+    }
+
+    private ASTStmtWhile whileStatement() {
+        int line = tokens.previous().line();
+        tokens.consume(T_LEFT_PAREN, "Expect '(' after while.");
+
+        ASTExpression condition = expression();
+
+        tokens.consume(T_RIGHT_PAREN, "Expect ')' after while condition.");
+
+        return new ASTStmtWhile(line, condition, statement());
     }
 
     private ASTStmtFor forStatement() {

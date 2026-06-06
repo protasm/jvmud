@@ -20,6 +20,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallEfun;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
@@ -44,6 +45,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 import io.github.protasm.jvmud.compiler.parser.type.AssignOpType;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
@@ -112,7 +114,7 @@ public final class SemanticAnalyzer {
         resolveObjectSignatures(astObject, problems);
         validateDefinitionsHaveDeclarations(astObject, problems);
         validateDuplicates(astObject.fields(), "field", problems);
-        validateDuplicates(astObject.methods(), "method", problems);
+        validateDuplicateMethods(astObject.methods(), problems);
         mergeParentSymbols(objectScope, parentUnit);
 
         for (ASTField field : astObject.fields()) {
@@ -213,7 +215,7 @@ public final class SemanticAnalyzer {
             declareUnique(parameter.symbol(), methodScope, problems, "parameter");
     }
 
-    private int parameterCount(ASTMethod method) {
+    private static int parameterCount(ASTMethod method) {
         return (method.parameters() != null) ? method.parameters().size() : 0;
     }
 
@@ -321,6 +323,11 @@ public final class SemanticAnalyzer {
             return;
         }
 
+        if (statement instanceof ASTStmtWhile stmtWhile) {
+            validateInitializers(stmtWhile.body(), problems);
+            return;
+        }
+
         if (statement instanceof ASTStmtExpression stmtExpression)
             inspectInitializerExpression(stmtExpression.expression(), problems);
     }
@@ -350,6 +357,9 @@ public final class SemanticAnalyzer {
 
         if (expression instanceof ASTExprInvokeLocal invoke)
             return invoke.local() == local || referencesArguments(invoke.arguments(), local);
+
+        if (expression instanceof ASTExprDynamicInvoke invoke)
+            return referencesLocal(invoke.target(), local) || referencesArguments(invoke.arguments(), local);
 
         if (expression instanceof ASTExprInvokeField invoke)
             return referencesArguments(invoke.arguments(), local);
@@ -449,6 +459,13 @@ public final class SemanticAnalyzer {
             resolveSymbolType(field.symbol(), field.line(), problems);
 
         for (ASTMethod method : astObject.methods()) {
+            if (method.symbol().declaredTypeName() == null && method.symbol().lpcType() == null) {
+                problems.add(
+                        new CompilationProblem(
+                                CompilationStage.ANALYZE,
+                                "Untyped object method '" + method.symbol().name() + "' is not supported.",
+                                method.line()));
+            }
             resolveSymbolType(method.symbol(), method.line(), problems);
             if (method.parameters() != null) {
                 for (ASTParameter parameter : method.parameters())
@@ -490,6 +507,26 @@ public final class SemanticAnalyzer {
                                 CompilationStage.ANALYZE,
                                 "Duplicate " + kind + " '" + entry.getKey() + "' in object",
                                 nodes.line()));
+            }
+        }
+    }
+
+    private void validateDuplicateMethods(ASTMapNode<ASTMethod> nodes, List<CompilationProblem> problems) {
+        for (Map.Entry<String, List<ASTMethod>> entry : nodes.nodes().entrySet()) {
+            List<ASTMethod> occurrences = entry.getValue();
+            if (occurrences.size() <= 1)
+                continue;
+
+            Set<Integer> arities = new HashSet<>();
+            for (ASTMethod method : occurrences) {
+                int arity = parameterCount(method);
+                if (!arities.add(arity)) {
+                    problems.add(
+                            new CompilationProblem(
+                                    CompilationStage.ANALYZE,
+                                    "Duplicate method '" + entry.getKey() + "' with arity " + arity + " in object",
+                                    method.line()));
+                }
             }
         }
     }
@@ -660,6 +697,18 @@ public final class SemanticAnalyzer {
             if (expression instanceof ASTExprUnresolvedInvoke unresolvedInvoke)
                 return resolveInvoke(unresolvedInvoke, context);
 
+            if (expression instanceof ASTExprDynamicInvoke dynamicInvoke) {
+                ASTExpression resolvedTarget = resolveExpression(dynamicInvoke.target(), context);
+                ASTArguments resolvedArgs = resolveArguments(dynamicInvoke.arguments(), context);
+                if (resolvedTarget == dynamicInvoke.target() && resolvedArgs == dynamicInvoke.arguments())
+                    return dynamicInvoke;
+                return new ASTExprDynamicInvoke(
+                        dynamicInvoke.line(),
+                        resolvedTarget,
+                        dynamicInvoke.methodName(),
+                        resolvedArgs);
+            }
+
             if (expression instanceof ASTExprLocalStore store) {
                 ASTExpression resolvedValue = resolveExpression(store.value(), context);
                 if (resolvedValue == store.value())
@@ -812,7 +861,7 @@ public final class SemanticAnalyzer {
 
         private ASTExpression resolveCall(ASTExprUnresolvedCall unresolvedCall, LocalResolutionContext context) {
             ASTArguments resolvedArgs = resolveArguments(unresolvedCall.arguments(), context);
-            ASTMethod method = resolveMethod(unresolvedCall.name());
+            ASTMethod method = resolveMethod(unresolvedCall.name(), resolvedArgs.size());
 
             if (method != null)
                 return new ASTExprCallMethod(unresolvedCall.line(), method, resolvedArgs);
@@ -921,12 +970,16 @@ public final class SemanticAnalyzer {
             return new ASTExprLocalStore(assignment.line(), local, value);
         }
 
-        private ASTMethod resolveMethod(String name) {
-            ScopedSymbol scopedSymbol = resolveScopedSymbol(name);
-            if (scopedSymbol == null)
+        private ASTMethod resolveMethod(String name, int arity) {
+            if (objectScope == null)
                 return null;
 
-            return scopedSymbol.method();
+            return objectScope.resolveAll(name).stream()
+                    .map(ScopedSymbol::method)
+                    .filter(Objects::nonNull)
+                    .filter(method -> parameterCount(method) == arity)
+                    .reduce((first, second) -> second)
+                    .orElse(null);
         }
 
         private ScopedSymbol resolveScopedSymbol(String name) {
@@ -1020,6 +1073,14 @@ public final class SemanticAnalyzer {
                         && resolvedBody == stmtFor.body())
                     return stmtFor;
                 return new ASTStmtFor(stmtFor.line(), resolvedInit, resolvedCondition, resolvedUpdate, resolvedBody);
+            }
+
+            if (statement instanceof ASTStmtWhile stmtWhile) {
+                ASTExpression resolvedCondition = resolveExpression(stmtWhile.condition(), context);
+                ASTStatement resolvedBody = resolveStatement(stmtWhile.body(), context);
+                if (resolvedCondition == stmtWhile.condition() && resolvedBody == stmtWhile.body())
+                    return stmtWhile;
+                return new ASTStmtWhile(stmtWhile.line(), resolvedCondition, resolvedBody);
             }
 
             if (statement instanceof ASTStmtBreak stmtBreak)

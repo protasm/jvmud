@@ -2,6 +2,9 @@ package io.github.protasm.jvmud.compiler.runtime;
 
 import io.github.protasm.jvmud.compiler.efun.Efun;
 import io.github.protasm.jvmud.compiler.efun.EfunRegistry;
+import io.github.protasm.jvmud.compiler.efun.EfunSignature;
+import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
+import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.preproc.IncludeResolver;
 import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
 import java.lang.reflect.Method;
@@ -21,7 +24,7 @@ import java.util.function.Supplier;
 /**
  * Encapsulates runtime state required by compiled LPC code.
  *
- * <p>This context owns efun registration, object lifecycle tracking, and include resolution
+ * <p>This context owns engine function registration, object lifecycle tracking, and include resolution
  * configuration so the compiler and runtime no longer depend on global singletons.</p>
  */
 public final class RuntimeContext {
@@ -38,10 +41,14 @@ public final class RuntimeContext {
             ThreadLocal.withInitial(ArrayDeque::new);
     private final ThreadLocal<Deque<Object>> commandActorStack =
             ThreadLocal.withInitial(ArrayDeque::new);
+    private final ThreadLocal<Deque<String>> commandVerbStack =
+            ThreadLocal.withInitial(ArrayDeque::new);
     private final ThreadLocal<Deque<String>> pendingActionStack =
             ThreadLocal.withInitial(ArrayDeque::new);
     private Consumer<String> outputSink = ignored -> {};
     private Function<String, Object> objectFactory = path -> null;
+    private Function<String, Object> objectLoader = path -> null;
+    private String mfunObjectPath;
 
     public RuntimeContext(IncludeResolver includeResolver) {
         this(includeResolver, new EfunRegistry());
@@ -72,6 +79,14 @@ public final class RuntimeContext {
         this.objectFactory = (objectFactory != null) ? objectFactory : path -> null;
     }
 
+    public void setObjectLoader(Function<String, Object> objectLoader) {
+        this.objectLoader = (objectLoader != null) ? objectLoader : path -> null;
+    }
+
+    public void setMfunObjectPath(String mfunObjectPath) {
+        this.mfunObjectPath = normalizeMudlibPath(mfunObjectPath);
+    }
+
     public void setOutputSink(Consumer<String> outputSink) {
         this.outputSink = (outputSink != null) ? outputSink : ignored -> {};
     }
@@ -91,16 +106,69 @@ public final class RuntimeContext {
     }
 
     public Efun resolveEfun(String name, int arity) {
-        return efunRegistry.lookup(name, arity);
+        Efun mfun = resolveMfun(name, arity);
+        return mfun != null ? mfun : efunRegistry.lookup(name, arity);
     }
 
     public Object invokeEfun(String name, int arity, Object[] args) {
-        Efun efun = efunRegistry.lookup(name, arity);
+        Efun efun = resolveMfun(name, arity);
 
         if (efun == null)
-            throw new IllegalArgumentException("Unknown efun '" + name + "' with arity " + arity);
+            efun = efunRegistry.lookup(name, arity);
+
+        if (efun == null)
+            throw new IllegalArgumentException("Unknown function '" + name + "' with arity " + arity);
 
         return efun.invoke(this, args);
+    }
+
+    private Efun resolveMfun(String name, int arity) {
+        if (mfunObjectPath == null) {
+            return null;
+        }
+        return new Efun() {
+            @Override
+            public EfunSignature signature() {
+                return new EfunSignature(
+                        new Symbol(LPCType.LPCMIXED, name),
+                        Collections.nCopies(arity, LPCType.LPCMIXED));
+            }
+
+            @Override
+            public Object call(RuntimeContext context, Object[] args) {
+                Object mfunObject = loadMfunObject();
+                if (!hasMethod(mfunObject, name, args.length)) {
+                    Efun efun = efunRegistry.lookup(name, arity);
+                    if (efun != null) {
+                        return efun.invoke(context, args);
+                    }
+                    throw new IllegalArgumentException("Unknown function '" + name + "' with arity " + arity);
+                }
+                return invokeObjectPreservingCurrentObject(mfunObject, name, args);
+            }
+        };
+    }
+
+    private Object loadMfunObject() {
+        Object existing = getObject(mfunObjectPath);
+        if (existing != null) {
+            return existing;
+        }
+        Object loaded = objectLoader.apply(mfunObjectPath);
+        if (loaded == null) {
+            throw new IllegalArgumentException(
+                    "Mudlib function object is not available: " + mfunObjectPath);
+        }
+        return loaded;
+    }
+
+    private boolean hasMethod(Object target, String methodName, int arity) {
+        for (Method method : target.getClass().getMethods()) {
+            if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void registerObject(String name, Object object) {
@@ -130,6 +198,20 @@ public final class RuntimeContext {
         return objectFactory.apply(sourcePath);
     }
 
+    private String normalizeMudlibPath(String path) {
+        if (path == null || path.isBlank()) {
+            return null;
+        }
+        String normalized = path.trim();
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        if (normalized.endsWith(".c")) {
+            normalized = normalized.substring(0, normalized.length() - 2);
+        }
+        return normalized.isBlank() ? null : normalized;
+    }
+
     public Object invokeObject(Object target, String methodName, Object... args) {
         if (target == null) {
             return 0;
@@ -143,12 +225,40 @@ public final class RuntimeContext {
                     return method.invoke(target, actualArgs);
                 } catch (ReflectiveOperationException e) {
                     throw new IllegalArgumentException(
-                            "Failed to call " + methodName + " on " + objectIdOrDescription(target), e);
+                            "Failed to call " + methodName + " on " + objectIdOrDescription(target)
+                                    + causeSummary(e),
+                            e);
                 }
             });
         } catch (NoSuchMethodException e) {
             throw new IllegalArgumentException(
-                    "Failed to call " + methodName + " on " + objectIdOrDescription(target), e);
+                    "Failed to call " + methodName + " on " + objectIdOrDescription(target)
+                            + causeSummary(e),
+                    e);
+        }
+    }
+
+    private Object invokeObjectPreservingCurrentObject(Object target, String methodName, Object... args) {
+        if (target == null) {
+            return 0;
+        }
+
+        Object[] actualArgs = args == null ? new Object[0] : args;
+        try {
+            Method method = findMethod(target.getClass(), methodName, actualArgs.length);
+            try {
+                return method.invoke(target, actualArgs);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalArgumentException(
+                        "Failed to call " + methodName + " on " + objectIdOrDescription(target)
+                                + causeSummary(e),
+                        e);
+            }
+        } catch (NoSuchMethodException e) {
+            throw new IllegalArgumentException(
+                    "Failed to call " + methodName + " on " + objectIdOrDescription(target)
+                            + causeSummary(e),
+                    e);
         }
     }
 
@@ -236,6 +346,10 @@ public final class RuntimeContext {
 
     public Object currentCommandActor() {
         return commandActorStack.get().peek();
+    }
+
+    public String currentCommandVerb() {
+        return commandVerbStack.get().peek();
     }
 
     public void pushCurrentObject(Object object) {
@@ -334,11 +448,16 @@ public final class RuntimeContext {
         List<CommandAction> actions = commandActions
                 .getOrDefault(actor, Map.of())
                 .getOrDefault(verb, List.of());
-        for (CommandAction action : actions) {
-            Object result = invokeCommandAction(action, argument);
-            if (Truth.isTruthy(result)) {
-                return result;
+        commandVerbStack.get().push(verb);
+        try {
+            for (CommandAction action : actions) {
+                Object result = invokeCommandAction(action, argument);
+                if (Truth.isTruthy(result)) {
+                    return result;
+                }
             }
+        } finally {
+            commandVerbStack.get().pop();
         }
         return 0;
     }
@@ -399,6 +518,18 @@ public final class RuntimeContext {
     private String objectIdOrDescription(Object object) {
         String id = objectId(object);
         return id != null ? id : String.valueOf(object);
+    }
+
+    private String causeSummary(Throwable throwable) {
+        Throwable cause = throwable;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        String message = cause.getMessage();
+        if (message == null || message.isBlank()) {
+            message = cause.getClass().getSimpleName();
+        }
+        return ": " + message;
     }
 
     private void removeCommandHandler(Object handler) {

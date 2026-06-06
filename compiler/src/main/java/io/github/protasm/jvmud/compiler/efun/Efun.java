@@ -21,7 +21,7 @@ public interface Efun {
 
         if (a.length != arity())
             throw new IllegalArgumentException(
-                    "efun '" + symbol().name() + "' expects " + arity() + " arg(s); got " + a.length);
+                    "engine function '" + symbol().name() + "' expects " + arity() + " arg(s); got " + a.length);
 
         return call(context, a);
     }

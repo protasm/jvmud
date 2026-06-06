@@ -1,6 +1,6 @@
 inherit "room/room";
 
-reset(arg) {
+void reset(mixed arg) {
     if (arg) return;
 
     set_light(1);
@@ -13,4 +13,3 @@ reset(arg) {
 		 "room/hump", "west",
 		 "room/vill_track", "east"});
 }
-

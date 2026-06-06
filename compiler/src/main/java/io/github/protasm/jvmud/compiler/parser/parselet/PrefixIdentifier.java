@@ -8,7 +8,6 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_MINUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS_PLUS;
-import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_ARROW;
 
 import io.github.protasm.jvmud.compiler.parser.Parser;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
@@ -17,7 +16,6 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignment;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedCall;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedIdentifier;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedInvoke;
 import io.github.protasm.jvmud.compiler.parser.type.AssignOpType;
 import io.github.protasm.jvmud.compiler.token.Token;
 
@@ -30,11 +28,6 @@ public class PrefixIdentifier implements PrefixParselet {
         if (parser.tokens().check(T_LEFT_PAREN)) {
             ASTArguments args = parser.arguments();
             return new ASTExprUnresolvedCall(line, identifier, args);
-        }
-
-        if (parser.tokens().match(T_RIGHT_ARROW)) {
-            Token<String> nameToken = parser.tokens().consume(T_IDENTIFIER, "Expect method name.");
-            return new ASTExprUnresolvedInvoke(line, identifier, nameToken.lexeme(), parser.arguments());
         }
 
         if (canAssign && parser.tokens().match(T_EQUAL))

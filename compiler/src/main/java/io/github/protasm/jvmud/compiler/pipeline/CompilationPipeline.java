@@ -97,7 +97,13 @@ public final class CompilationPipeline {
             unit.setInheritedPath(inheritedPath);
             astObject.setParentName(inheritedPath);
             observer.stageSucceeded(unit, CompilationStage.PARSE);
-        } catch (ParseException | IllegalArgumentException e) {
+        } catch (ParseException e) {
+            Integer line = e.line() >= 0 ? e.line() : null;
+            CompilationProblem problem = new CompilationProblem(CompilationStage.PARSE, "Error parsing tokens", line, e);
+            problems.add(problem);
+            observer.stageFailed(unit, CompilationStage.PARSE, problem);
+            return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
+        } catch (IllegalArgumentException e) {
             CompilationProblem problem = new CompilationProblem(CompilationStage.PARSE, "Error parsing tokens", e);
             problems.add(problem);
             observer.stageFailed(unit, CompilationStage.PARSE, problem);
@@ -255,14 +261,33 @@ public final class CompilationPipeline {
             throw new IllegalArgumentException("relative inherits require a parent directory");
         }
 
-        Path candidate = parentDir.resolve(normalized).normalize();
-        if (!Files.isRegularFile(candidate)) {
-            throw new IllegalArgumentException(
-                    "relative inherit not found at " + candidate.toAbsolutePath());
+        for (String candidatePath : inheritedSourceCandidates(normalized)) {
+            Path candidate = parentDir.resolve(candidatePath).normalize();
+            if (Files.isRegularFile(candidate)) {
+                String displayPath = localInheritedDisplayPath(childUnit, candidatePath);
+                return new IncludeResolution(Files.readString(candidate), candidate, displayPath);
+            }
         }
 
-        String displayPath = localInheritedDisplayPath(childUnit, normalized);
-        return new IncludeResolution(Files.readString(candidate), candidate, displayPath);
+        IncludeResolver resolver = runtimeContext.includeResolver();
+        Exception resolverFailure = null;
+        for (String candidatePath : inheritedSourceCandidates(normalized)) {
+            try {
+                return resolver.resolve(childUnit.sourcePath(), candidatePath, false);
+            } catch (Exception e) {
+                resolverFailure = e;
+            }
+        }
+        Path localCandidate = parentDir.resolve(normalized).normalize();
+        throw new IllegalArgumentException(
+                "relative inherit not found at " + localCandidate.toAbsolutePath(), resolverFailure);
+    }
+
+    private List<String> inheritedSourceCandidates(String inheritedPath) {
+        if (inheritedPath.endsWith(".c")) {
+            return List.of(inheritedPath);
+        }
+        return List.of(inheritedPath, inheritedPath + ".c");
     }
 
     private String localInheritedDisplayPath(CompilationUnit childUnit, String inheritedPath) {

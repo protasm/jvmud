@@ -19,6 +19,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
@@ -40,6 +41,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
@@ -100,6 +102,12 @@ public final class SemanticTypeChecker {
             inferExpressionType(stmtFor.condition(), context);
             inferExpressionType(stmtFor.update(), context);
             checkStatement(stmtFor.body(), context);
+            return;
+        }
+
+        if (statement instanceof ASTStmtWhile stmtWhile) {
+            inferExpressionType(stmtWhile.condition(), context);
+            checkStatement(stmtWhile.body(), context);
             return;
         }
 
@@ -185,6 +193,12 @@ public final class SemanticTypeChecker {
 
         if (expression instanceof ASTExprCallMethod callMethod)
             return inferMethodCall(callMethod, context);
+
+        if (expression instanceof ASTExprDynamicInvoke dynamicInvoke) {
+            inferExpressionType(dynamicInvoke.target(), context);
+            inferArguments(dynamicInvoke.arguments(), null, context);
+            return LPCType.LPCMIXED;
+        }
 
         if (expression instanceof ASTExprInvokeLocal invokeLocal) {
             inferArguments(invokeLocal.arguments(), null, context);
@@ -304,7 +318,7 @@ public final class SemanticTypeChecker {
             problems.add(
                     new CompilationProblem(
                             CompilationStage.ANALYZE,
-                            "Missing efun signature for call on line " + expr.line(),
+                            "Missing engine function signature for call on line " + expr.line(),
                             expr.line()));
             inferArguments(expr.arguments(), null, context);
             return LPCType.LPCMIXED;

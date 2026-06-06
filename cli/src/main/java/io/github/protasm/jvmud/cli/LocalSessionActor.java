@@ -68,9 +68,15 @@ public final class LocalSessionActor {
             return 0;
         }
 
+        String action = movement.substring(0, separator).trim();
         String destinationPath = movement.substring(separator + 1);
         Object destination = runtime.loadOrGetObject(destinationPath);
-        worldRuntime.move(entity, placeFor(destinationPath));
+        Place destinationPlace = placeFor(destinationPath);
+        Place origin = worldRuntime.placeOf(entity);
+        if (origin != null && !action.isEmpty()) {
+            worldRuntime.connect(origin, action, destinationPlace);
+        }
+        worldRuntime.move(entity, destinationPlace);
         runtime.moveObject(this, destination);
         runtime.invokeObject(destination, "long", "");
         return 1;

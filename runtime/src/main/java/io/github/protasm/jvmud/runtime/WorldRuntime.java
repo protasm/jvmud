@@ -19,6 +19,7 @@ public final class WorldRuntime {
     private final Map<Location, List<Entity>> contents = new IdentityHashMap<>();
     private final Map<Place, Map<String, Link>> links = new IdentityHashMap<>();
     private final WorldScheduler scheduler = new WorldScheduler();
+    private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
 
     public WorldRuntime(World world) {
         this.world = Objects.requireNonNull(world, "world");
@@ -30,6 +31,14 @@ public final class WorldRuntime {
 
     public WorldScheduler scheduler() {
         return scheduler;
+    }
+
+    public MudlibBoundary mudlibBoundary() {
+        return mudlibBoundary;
+    }
+
+    public void registerMudlibBoundary(MudlibBoundary mudlibBoundary) {
+        this.mudlibBoundary = Objects.requireNonNull(mudlibBoundary, "mudlibBoundary");
     }
 
     public Place createPlace(String id, String displayName) {

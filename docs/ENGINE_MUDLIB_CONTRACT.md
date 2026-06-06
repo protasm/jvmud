@@ -1,7 +1,7 @@
 # Engine-Mudlib Boundary Contract
 
 JVMud's engine-mudlib boundary is a native JVMud contract. It is not a promise
-to preserve legacy LP driver vocabulary on the engine side.
+to preserve legacy LP engine vocabulary on the engine side.
 
 The engine owns the concepts described in `../PRINCIPLES.md`: game, text,
 interactivity, multiplayer world, persistence, temporality, presence, places,
@@ -49,7 +49,7 @@ For LPMUD 2.4.5, the compatibility layer may map these events to names such as
 ## Mudlib-To-Engine Requests
 
 Mudlib code may request engine operations. The engine should expose these
-operations in JVMud-native terms internally. Legacy efun names are compatibility
+operations in JVMud-native terms internally. Legacy engine function names are compatibility
 entry points, not the conceptual boundary.
 
 | Engine operation | Meaning | Legacy compatibility examples |
@@ -63,9 +63,9 @@ entry points, not the conceptual boundary.
 | Register interaction commands | Make an object respond to participant text in its interaction scope. | `enable_commands`, `add_action`, `add_verb` |
 | Send text | Deliver text to one participant, nearby participants, or a place. | `write`, `say`, `tell_object`, `tell_room` |
 | Schedule time | Request recurring or delayed work. | `set_heart_beat`, `call_out`, `remove_call_out` |
-| Access mudlib storage | Read, write, list, or query files within policy. | `read_file`, `write_file`, `file_size`, directory efuns |
+| Access mudlib storage | Read, write, list, or query files within policy. | `read_file`, `write_file`, `file_size`, directory engine functions |
 | Ask mudlib policy | Delegate permissions or compatibility choices to mudlib policy objects. | master object hooks |
-| Resolve compatibility function | Let a mudlib-side shim answer a legacy function call unknown to the compiler/runtime. | simul_efun lookup |
+| Resolve mudlib function | Let a mudlib-side object answer a globally callable mudlib function. | mfun lookup |
 
 ## Compatibility Shim Rules
 
@@ -76,8 +76,8 @@ mudlib content so vanilla files remain intact.
 Recommended shim roles:
 
 - a boundary/master adapter that declares compatibility objects and policy hooks;
-- a simul_efun adapter for legacy function names that are better expressed in
-  mudlib code than engine code;
+- an mfun object for mudlib-global functions, including legacy function names
+  that are better expressed in mudlib code than engine code;
 - optional shadow or wrapper adapters for legacy object behavior that cannot be
   expressed as simple function fallback;
 - small fixture shims for tests, kept separate from upstream mudlib files.
@@ -101,13 +101,13 @@ legacy method names as engine ontology.
 
 ## First Implementation Slice
 
-The first useful implementation slice is simul_efun registration:
+The first useful implementation slice is mfun registration:
 
 1. boot the mudlib compatibility boundary object;
-2. ask it which simul_efun object should be active;
+2. ask it which mfun object should be active;
 3. load that object as a dedicated mudlib-side shim;
-4. when a legacy function call is not a native engine operation, try the active
-   simul_efun object before reporting it unsupported;
+4. when a function call is not a local method, try the active mfun object before
+   engine functions so mudlib functions can shadow efuns;
 5. keep the test fixture independent from upstream mudlib files.
 
 This creates the pattern for future compatibility without making legacy LPC

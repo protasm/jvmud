@@ -16,6 +16,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTStatement;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallEfun;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
@@ -40,6 +41,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 
 /**
  * Unified visitor entry point for walking AST nodes. Implementors override the granular {@code
@@ -65,6 +67,7 @@ public interface ASTVisitor {
         case ASTParameters parameters -> visitParameters(parameters);
         case ASTExprCallEfun exprCallEfun -> visitExprCallEfun(exprCallEfun);
         case ASTExprCallMethod exprCallMethod -> visitExprCallMethod(exprCallMethod);
+        case ASTExprDynamicInvoke exprDynamicInvoke -> visitExprDynamicInvoke(exprDynamicInvoke);
         case ASTExprFieldAccess exprFieldAccess -> visitExprFieldAccess(exprFieldAccess);
         case ASTExprFieldStore exprFieldStore -> visitExprFieldStore(exprFieldStore);
         case ASTExprInvokeField exprInvokeField -> visitExprInvokeField(exprInvokeField);
@@ -90,6 +93,7 @@ public interface ASTVisitor {
         case ASTStmtFor stmtFor -> visitStmtFor(stmtFor);
         case ASTStmtIfThenElse stmtIfThenElse -> visitStmtIfThenElse(stmtIfThenElse);
         case ASTStmtReturn stmtReturn -> visitStmtReturn(stmtReturn);
+        case ASTStmtWhile stmtWhile -> visitStmtWhile(stmtWhile);
         case ASTStatement statement -> visitStatement(statement);
         default -> throw new IllegalStateException("Unhandled AST node: " + node.getClass().getName());
         }
@@ -132,6 +136,8 @@ public interface ASTVisitor {
     default void visitExprCallEfun(ASTExprCallEfun expr) {}
 
     default void visitExprCallMethod(ASTExprCallMethod expr) {}
+
+    default void visitExprDynamicInvoke(ASTExprDynamicInvoke expr) {}
 
     default void visitExprFieldAccess(ASTExprFieldAccess expr) {}
 
@@ -180,4 +186,6 @@ public interface ASTVisitor {
     default void visitStmtIfThenElse(ASTStmtIfThenElse stmt) {}
 
     default void visitStmtReturn(ASTStmtReturn stmt) {}
+
+    default void visitStmtWhile(ASTStmtWhile stmt) {}
 }

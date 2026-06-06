@@ -13,6 +13,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTParameter;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTParameters;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallEfun;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
@@ -37,6 +38,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 
 public final class PrintVisitor implements ASTVisitor {
     private int indentLvl;
@@ -129,6 +131,15 @@ public final class PrintVisitor implements ASTVisitor {
     public void visitExprUnresolvedInvoke(ASTExprUnresolvedInvoke expr) {
         doOutput(String.format("%s[target=%s, method=%s]", expr.className(), expr.targetName(), expr.methodName()));
         indentLvl++;
+        expr.arguments().accept(this);
+        indentLvl--;
+    }
+
+    @Override
+    public void visitExprDynamicInvoke(ASTExprDynamicInvoke expr) {
+        doOutput(String.format("%s[method=%s]", expr.className(), expr.methodName()));
+        indentLvl++;
+        expr.target().accept(this);
         expr.arguments().accept(this);
         indentLvl--;
     }
@@ -380,6 +391,18 @@ public final class PrintVisitor implements ASTVisitor {
             stmt.elseBranch().accept(this);
         } else
             doOutput("[No Else Condition]");
+        indentLvl--;
+    }
+
+    @Override
+    public void visitStmtWhile(ASTStmtWhile stmt) {
+        doOutput(stmt.className());
+        indentLvl++;
+        doOutput("[CONDITION]");
+        stmt.condition().accept(this);
+        System.out.println();
+        doOutput("[BODY]");
+        stmt.body().accept(this);
         indentLvl--;
     }
 

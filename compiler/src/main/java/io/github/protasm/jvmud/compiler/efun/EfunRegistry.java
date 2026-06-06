@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Instance-scoped efun registry supporting signature-aware lookups. */
+/** Instance-scoped engine function registry supporting signature-aware lookups. */
 public final class EfunRegistry {
     private final Map<String, List<Efun>> registry = new HashMap<>();
 
@@ -27,7 +27,8 @@ public final class EfunRegistry {
                 continue;
 
             if (match != null)
-                throw new IllegalStateException("Ambiguous efun overload for '" + name + "' with arity " + arity);
+                throw new IllegalStateException(
+                        "Ambiguous engine function overload for '" + name + "' with arity " + arity);
 
             match = efun;
         }

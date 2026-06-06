@@ -1,6 +1,6 @@
 package io.github.protasm.jvmud.cli;
 
-import io.github.protasm.jvmud.compiler.driver.DriverEfuns;
+import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
 import io.github.protasm.jvmud.compiler.exec.LpcObjectInspection;
 import io.github.protasm.jvmud.compiler.exec.LpcObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
@@ -127,7 +127,7 @@ public final class AdminCli {
                 .baseIncludePath(this.mudlibRoot)
                 .compilationObserver(new CliCompilationObserver())
                 .build());
-        DriverEfuns.registerCore(runtime);
+        EngineEfuns.registerCore(runtime);
         handles.clear();
         objectNames.clear();
         commandActor = null;

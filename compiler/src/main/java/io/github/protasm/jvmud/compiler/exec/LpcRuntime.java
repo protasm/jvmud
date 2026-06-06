@@ -9,6 +9,7 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationUnit;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
+import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -48,12 +49,14 @@ public final class LpcRuntime {
     private final RuntimeContext runtimeContext;
     private final CompilationPipeline pipeline;
     private final Path baseIncludePath;
+    private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
 
     public LpcRuntime(LpcRuntimeConfig config) {
         Objects.requireNonNull(config, "config");
         this.baseIncludePath = config.baseIncludePath();
         this.runtimeContext = new RuntimeContext(config.resolveIncludeResolver());
         this.runtimeContext.setObjectFactory(this::cloneObject);
+        this.runtimeContext.setObjectLoader(this::loadOrGetObject);
         this.classLoader = new LpcRuntimeClassLoader(config.parentClassLoader());
         this.pipeline = new CompilationPipeline(config.parentInternalName(), runtimeContext, config.compilationObserver());
     }
@@ -229,6 +232,15 @@ public final class LpcRuntime {
 
     public void registerHostObject(String objectId, Object object) {
         runtimeContext.registerObject(normalizeInternalName(objectId), object);
+    }
+
+    public MudlibBoundary mudlibBoundary() {
+        return mudlibBoundary;
+    }
+
+    public void registerMudlibBoundary(MudlibBoundary mudlibBoundary) {
+        this.mudlibBoundary = Objects.requireNonNull(mudlibBoundary, "mudlibBoundary");
+        runtimeContext.setMfunObjectPath(mudlibBoundary.mfunObjectPath().orElse(null));
     }
 
     public Object invokeObject(Object object, String methodName, Object... args) {

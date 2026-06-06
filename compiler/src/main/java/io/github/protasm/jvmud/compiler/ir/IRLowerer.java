@@ -20,6 +20,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFalse;
@@ -40,6 +41,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
@@ -271,6 +273,10 @@ public final class IRLowerer {
             return lowerForStatement(forStmt, current, context, problems);
         }
 
+        if (statement instanceof ASTStmtWhile whileStmt) {
+            return lowerWhileStatement(whileStmt, current, context, problems);
+        }
+
         if (statement instanceof ASTStmtBreak) {
             String breakTarget = context.currentBreakTarget();
             if (breakTarget == null) {
@@ -344,6 +350,31 @@ public final class IRLowerer {
             updateBlock.addStatement(new IRExpressionStatement(forStmt.line(), updateExpression));
             updateBlock.terminate(new IRJump(forStmt.line(), conditionBlock.label()));
         }
+
+        return mergeBlock;
+    }
+
+    private BlockBuilder lowerWhileStatement(
+            ASTStmtWhile whileStmt,
+            BlockBuilder current,
+            MethodContext context,
+            List<CompilationProblem> problems) {
+        BlockBuilder conditionBlock = context.newBlock("while_cond");
+        BlockBuilder bodyBlock = context.newBlock("while_body");
+        BlockBuilder mergeBlock = context.newBlock("while_end");
+
+        current.terminate(new IRJump(whileStmt.line(), conditionBlock.label()));
+
+        IRExpression condition = coerceIfNeeded(
+                lowerExpression(whileStmt.condition(), context, problems), RuntimeTypes.STATUS);
+        conditionBlock.terminate(
+                new IRConditionalJump(whileStmt.line(), condition, bodyBlock.label(), mergeBlock.label()));
+
+        context.pushLoop(mergeBlock.label());
+        BlockBuilder bodyTail = lowerStatement(whileStmt.body(), bodyBlock, context, problems);
+        context.popLoop();
+        if (bodyTail != null && !bodyTail.isTerminated())
+            bodyTail.terminate(new IRJump(whileStmt.line(), conditionBlock.label()));
 
         return mergeBlock;
     }
@@ -539,6 +570,17 @@ public final class IRLowerer {
             List<IRExpression> args = lowerArguments(invokeField.args(), context, problems);
             RuntimeType returnType = runtimeType(invokeField.lpcType());
             return new IRDynamicInvokeField(invokeField.line(), target, invokeField.methodName(), args, returnType);
+        }
+
+        if (expression instanceof ASTExprDynamicInvoke dynamicInvoke) {
+            IRExpression target = lowerExpression(dynamicInvoke.target(), context, problems);
+            List<IRExpression> args = lowerArguments(dynamicInvoke.arguments(), context, problems);
+            return new IRDynamicInvokeExpression(
+                    dynamicInvoke.line(),
+                    target,
+                    dynamicInvoke.methodName(),
+                    args,
+                    RuntimeTypes.MIXED);
         }
 
         problems.add(

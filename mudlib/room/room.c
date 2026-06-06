@@ -6,7 +6,7 @@
  */
 
 /* An array with destinations and directions: "room/church", "north" ... */
-string dest_dir;
+mixed *dest_dir;
 
 /* Short description of the room */
 string short_desc;
@@ -15,16 +15,16 @@ string short_desc;
 string long_desc;
 
 /* Special items in the room. "table", "A nice table", "window", "A window" */
-string items;
+mixed *items;
 
 /* Fact about this room. ex: "no_fight", "no_steal" */
-string property;
+mixed property;
 
 /* No castles are allowed to be dropped here */
 int no_castle_flag;
 
 
-init() {
+void init() {
     int i;
     if (!dest_dir)
 	return;
@@ -35,10 +35,10 @@ init() {
     }
 }
 
-id(str) {
+status id(mixed str) {
     int i;
     if (!items)
-	return;
+	return 0;
     while(i < sizeof(items)) {
 	if (items[i] == str)
 	    return 1;
@@ -47,7 +47,7 @@ id(str) {
     return 0;
 }
 
-long(str) {
+void long(mixed str) {
     int i;
     if (set_light(0) == 0){
        write("It is dark.\n");
@@ -93,7 +93,7 @@ long(str) {
  * The 'property' variable can be both a string and array of strings.
  * If no argument is given, return the 'property' variable.
  */
-query_property(str) {
+mixed query_property(mixed str) {
     int i;
     if (str == 0)
 	return property;
@@ -109,7 +109,7 @@ query_property(str) {
     return 0;
 }
 
-move(str) {
+status move(mixed str) {
     int i;
 
     i = 1;
@@ -120,19 +120,20 @@ move(str) {
 	}
 	i += 2;
     }
+    return 0;
 }
 
-short() {
+string short() {
     if (set_light(0))
 	return short_desc;
     return "Dark room";
 }
 
-query_dest_dir() {
+mixed *query_dest_dir() {
     return dest_dir;
 }
 
-query_long() {
+string query_long() {
     return long_desc;
 }
 
@@ -140,9 +141,9 @@ query_long() {
  * Convert a number to a word. The array is being created by the
  * standard room/room, and shared by all rooms.
  */
-string numbers;
+string *numbers;
 
-convert_number(n) {
+string convert_number(int n) {
     if (!pointerp(numbers))
 	numbers = query_numbers();
     if (n > 9)
@@ -150,7 +151,7 @@ convert_number(n) {
     return numbers[n];
 }
 
-query_numbers() {
+string *query_numbers() {
     if (!numbers) {
 	if (file_name(this_object()) == "room/room")
 	    numbers = ({"no", "one", "two", "three", "four", "five",
@@ -161,6 +162,6 @@ query_numbers() {
     return numbers;
 }
 
-query_drop_castle() {
+int query_drop_castle() {
     return no_castle_flag;
 }

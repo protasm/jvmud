@@ -5,7 +5,7 @@ import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import java.util.List;
 import java.util.Objects;
 
-/** Describes the contract for an efun: its name, return type, and parameter types. */
+/** Describes an engine function: its name, return type, and parameter types. */
 public record EfunSignature(Symbol symbol, List<LPCType> parameterTypes) {
     public EfunSignature {
         Objects.requireNonNull(symbol, "symbol");

@@ -2,7 +2,7 @@ package io.github.protasm.jvmud.compiler;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.protasm.jvmud.compiler.driver.DriverEfuns;
+import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
@@ -26,11 +26,11 @@ final class MudlibCompatibilityScanTest {
     @Test
     void selectedMudlibFilesProduceCompatibilityReport() throws IOException {
         RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(MUDLIB_ROOT, List.of()));
-        DriverEfuns.registerCore(context);
+        EngineEfuns.registerCore(context);
         CompilationPipeline pipeline = new CompilationPipeline("java/lang/Object", context);
         Map<String, CompilationResult> results = new LinkedHashMap<>();
 
-        // This is a radar test, not a gate. The report should make missing LPC/driver
+        // This is a radar test, not a gate. The report should make missing LPC/engine
         // features visible while the green build remains anchored to supported behavior.
         for (String sourceName : COMPATIBILITY_SET) {
             Path sourcePath = MUDLIB_ROOT.resolve(sourceName);
