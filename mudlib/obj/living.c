@@ -116,7 +116,7 @@ static int spell_cost, spell_dam;
 * as the movement message only.
 */
 /* This is used by the shop etc. */
-add_money(m) {
+mixed add_money(mixed m) {
   #ifdef LOG_EXP
   if (this_player() && this_player() != this_object() &&
     query_ip_number(this_player()) && query_ip_number(this_object()) &&
@@ -132,7 +132,7 @@ add_money(m) {
     add_worth(m);
 }
 
-add_weight(w) {
+int add_weight(mixed w) {
   if (w + local_weight > Str + 10 && level < 20)
     return 0;
 
@@ -141,15 +141,15 @@ add_weight(w) {
 }
 
 /* This object is not worth anything in the shop ! */
-query_value() { return 0; }
+mixed query_value() { return 0; }
 
 /* It is never possible to pick up a player ! */
-get() { return 0; }
+mixed get() { return 0; }
 
 /*
 * Return true if there still is a fight.
 */
-attack() {
+mixed attack() {
   int tmp;
   int whit;
   string name_of_attacker;
@@ -327,7 +327,7 @@ attack() {
     return 1;
 }
 
-attack_object(ob) {
+mixed attack_object(mixed ob) {
   if (call_other(ob, "query_ghost", 0))
     return;
 
@@ -360,7 +360,7 @@ attack_object(ob) {
 /*
 * This routine is called when we are attacked by a player.
 */
-attacked_by(ob) {
+mixed attacked_by(mixed ob) {
   if (!attacker_ob) {
     attacker_ob = ob;
 
@@ -375,11 +375,11 @@ attacked_by(ob) {
   }
 }
 
-can_put_and_get(str) {
+mixed can_put_and_get(mixed str) {
   return str != 0;
 }
 
-clear_flag(n) {
+mixed clear_flag(mixed n) {
   if (flags == 0)
     flags = "";
 
@@ -402,7 +402,7 @@ clear_flag(n) {
   return 1;
 }
 
-drop_all_money(verbose) {
+mixed drop_all_money(mixed verbose) {
   object mon;
 
   if (money == 0)
@@ -421,7 +421,7 @@ drop_all_money(verbose) {
   money = 0;
 }
 
-fire_ball_object(ob) {
+mixed fire_ball_object(mixed ob) {
   if (spell_points < 20) {
     write("Too low on power.\n");
 
@@ -438,7 +438,7 @@ fire_ball_object(ob) {
 * This function remains only because of compatibility, as command() now
 * can be called with an object as argument.
 */
-force_us(cmd) {
+mixed force_us(mixed cmd) {
   if (!this_player() || this_player()->query_level() <= level ||
     query_ip_number(this_player()) == 0) {
 
@@ -450,7 +450,7 @@ force_us(cmd) {
   command(cmd);
 }
 
-frog_curse(arg) {
+mixed frog_curse(mixed arg) {
   if (arg) {
     if (frog)
       return 1;
@@ -467,7 +467,7 @@ frog_curse(arg) {
   return 0;
 }
 
-heal_self(h) {
+mixed heal_self(mixed h) {
   if (h <= 0)
     return;
 
@@ -489,7 +489,7 @@ heal_self(h) {
 * heart_beat() from another player.
 * Compare this function to reduce_hit_point(dam).
 */
-hit_player(dam) {
+mixed hit_player(mixed dam) {
   if (!attacker_ob)
     set_heart_beat(1);
 
@@ -576,7 +576,7 @@ hit_player(dam) {
   return dam;
 }
 
-missile_object(ob) {
+mixed missile_object(mixed ob) {
   if (spell_points < 10) {
     write("Too low on power.\n");
 
@@ -589,7 +589,7 @@ missile_object(ob) {
   attacker_ob = ob;
 }
 
-move_player(dir_dest, optional_dest_ob) {
+mixed move_player(mixed dir_dest, mixed optional_dest_ob) {
   string dir, dest;
   object ob;
   int is_light, i;
@@ -711,19 +711,19 @@ move_player(dir_dest, optional_dest_ob) {
   }
 }
 
-query_ac() {
+mixed query_ac() {
   return armour_class;
 }
 
-query_age() {
+mixed query_age() {
   return age;
 }
 
-query_alignment() {
+mixed query_alignment() {
   return alignment;
 }
 
-query_attack() {
+mixed query_attack() {
   /* Changed by Herder */
 
   return attacker_ob;
@@ -735,22 +735,22 @@ query_attack() {
   */
 }
 
-query_current_room() {
+mixed query_current_room() {
   return file_name(environment(this_object()));
 }
 
-query_exp() {
+mixed query_exp() {
   return experience;
 }
 
-query_frog() {
+mixed query_frog() {
   return frog;
 }
-set_neuter() { gender = 0; }
-set_male() { gender = 1; }
-set_female() { gender = 2; }
+mixed set_neuter() { gender = 0; }
+mixed set_male() { gender = 1; }
+mixed set_female() { gender = 2; }
 
-query_gender_string() {
+mixed query_gender_string() {
   if (!gender)
     return "neuter";
 
@@ -761,30 +761,30 @@ query_gender_string() {
     return "female";
 }
 
-query_hp() {
+mixed query_hp() {
   return hit_point;
 }
 
-query_level() {
+mixed query_level() {
   return level;
 }
 
-query_money() {
+mixed query_money() {
   return money;
 }
 
-query_name() {
+mixed query_name() {
   if (ghost)
     return NAME_OF_GHOST;
 
   return cap_name;
 }
 
-query_npc() {
+mixed query_npc() {
   return is_npc;
 }
 
-query_objective() {
+mixed query_objective() {
   if (!gender)
     return "it";
 
@@ -795,7 +795,7 @@ query_objective() {
     return "her";
 }
 
-query_possessive() {
+mixed query_possessive() {
   if (!gender)
     return "its";
 
@@ -806,7 +806,7 @@ query_possessive() {
     return "her";
 }
 
-query_pronoun() {
+mixed query_pronoun() {
   if (!gender)
     return "it";
 
@@ -817,11 +817,11 @@ query_pronoun() {
     return "she";
 }
 
-query_spell_points() {
+mixed query_spell_points() {
   return spell_points;
 }
 
-query_stats() {
+mixed query_stats() {
   return "str:\t" + Str +
 
   "\nint:\t" + Int +
@@ -829,15 +829,15 @@ query_stats() {
   "\ndex:\t" + Dex + "\n";
 }
 
-query_wc() {
+mixed query_wc() {
   return weapon_class;
 }
 
-query_wimpy() {
+mixed query_wimpy() {
   return whimpy;
 }
 
-reduce_hit_point(dam) {
+mixed reduce_hit_point(mixed dam) {
   object o;
 
   if(this_player()!=this_object()) {
@@ -867,14 +867,14 @@ reduce_hit_point(dam) {
   return hit_point;
 }
 
-restore_spell_points(h) {
+mixed restore_spell_points(mixed h) {
   spell_points += h;
 
   if (spell_points > max_sp)
     spell_points = max_sp;
 }
 
-run_away() {
+mixed run_away() {
   object here;
   int i, j;
 
@@ -907,7 +907,7 @@ run_away() {
   }
 }
 
-set_con(i) {
+mixed set_con(mixed i) {
   if (i<1 || i > 20)
     return;
 
@@ -915,7 +915,7 @@ set_con(i) {
   max_hp = 42 + Con * 8;
 }
 
-set_dex(i) {
+mixed set_dex(mixed i) {
   if (i<1 || i > 20)
     return;
 
@@ -928,7 +928,7 @@ set_dex(i) {
 * he then may use. If you mainpulate bits that you don't know what they
 * are used for, unexpected things can happen.
 */
-set_flag(n) {
+mixed set_flag(mixed n) {
   if (flags == 0)
     flags = "";
 
@@ -951,37 +951,37 @@ set_flag(n) {
 
 /*----------- Most of the gender handling here: ------------*/
 
-query_gender() { return gender; }
-query_neuter() { return !gender; }
-query_male() { return gender == 1; }
-query_female() { return gender == 2; }
+mixed query_gender() { return gender; }
+mixed query_neuter() { return !gender; }
+mixed query_male() { return gender == 1; }
+mixed query_female() { return gender == 2; }
 
-set_gender(g) {
+mixed set_gender(mixed g) {
   if (g == 0 || g == 1 || g == 2)
     gender = g;
 }
 
-set_int(i) {
+mixed set_int(mixed i) {
   if (i<1 || i > 20)
     return;
 
   Int = i;
   max_sp = 42 + Int * 8;
 }
-query_str() { return Str; }
-query_int() { return Int; }
-query_con() { return Con; }
-query_dex() { return Dex; }
+mixed query_str() { return Str; }
+mixed query_int() { return Int; }
+mixed query_con() { return Con; }
+mixed query_dex() { return Dex; }
 
 /* Note that previous object is 0 if called from ourselves. */
-set_str(i) {
+mixed set_str(mixed i) {
   if (i<1 || i > 20)
     return;
 
   Str = i;
 }
 
-shock_object(ob) {
+mixed shock_object(mixed ob) {
   if (spell_points < 15) {
     write("Too low on power.\n");
 
@@ -994,7 +994,7 @@ shock_object(ob) {
   attacker_ob = ob;
 }
 
-show_age() {
+mixed show_age() {
   int i;
 
   write("age:\t");
@@ -1022,7 +1022,7 @@ show_age() {
   write(i*2 + " seconds.\n");
 }
 
-show_stats() {
+mixed show_stats() {
   int i;
 
   write(short() + "\nlevel:\t" + level +
@@ -1061,18 +1061,18 @@ show_stats() {
   show_age();
 }
 
-stop_fight() {
+mixed stop_fight() {
   attacker_ob = alt_attacker_ob;
   alt_attacker_ob = 0;
 }
 
-stop_hunter() {
+mixed stop_hunter() {
   hunter = 0;
 
   tell_object(this_object(), "You are no longer hunted.\n");
 }
 
-stop_wearing(name) {
+mixed stop_wearing(mixed name) {
   if(!head_armour) {
     /* This should not happen ! */
     log_file("wearing_bug", "armour not worn!\n");
@@ -1098,7 +1098,7 @@ stop_wearing(name) {
   write("Ok.\n");
 }
 
-stop_wielding() {
+mixed stop_wielding() {
   if (!name_of_weapon) {
     /* This should not happen ! */
     log_file("wield_bug", "Weapon not wielded !\n");
@@ -1113,7 +1113,7 @@ stop_wielding() {
   weapon_class = 0;
 }
 
-test_flag(n) {
+mixed test_flag(mixed n) {
   if (flags == 0)
     flags = "";
 
@@ -1124,7 +1124,7 @@ test_flag(n) {
 * If no one is here (except ourself), then turn off the heart beat.
 */
 
-test_if_any_here() {
+mixed test_if_any_here() {
   object ob;
 
   ob = environment();
@@ -1144,7 +1144,7 @@ test_if_any_here() {
   return 0;
 }
 
-transfer_all_to(dest) {
+mixed transfer_all_to(mixed dest) {
   object ob;
   object next_ob;
 
@@ -1173,7 +1173,7 @@ transfer_all_to(dest) {
 }
 
 /* Wear some armour. */
-wear(a) {
+mixed wear(mixed a) {
   object old;
 
   if(head_armour) {
@@ -1198,7 +1198,7 @@ wear(a) {
 }
 
 /* Wield a weapon. */
-wield(w) {
+mixed wield(mixed w) {
   if (name_of_weapon)
     stop_wielding();
 
@@ -1233,9 +1233,9 @@ attack();
 
 */
 
-query_ghost() { return ghost; }
+mixed query_ghost() { return ghost; }
 
-zap_object(ob) {
+mixed zap_object(mixed ob) {
   call_other(ob, "attacked_by", this_object());
   say(cap_name + " summons a flash from the sky.\n");
   write("You summon a flash from the sky.\n");
