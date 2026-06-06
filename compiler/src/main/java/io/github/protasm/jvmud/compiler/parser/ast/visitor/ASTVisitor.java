@@ -37,6 +37,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedParentCall;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
@@ -89,6 +90,7 @@ public interface ASTVisitor {
         case ASTExpression expression -> visitExpression(expression);
         case ASTStmtBlock stmtBlock -> visitStmtBlock(stmtBlock);
         case ASTStmtBreak stmtBreak -> visitStmtBreak(stmtBreak);
+        case ASTStmtContinue stmtContinue -> visitStmtContinue(stmtContinue);
         case ASTStmtExpression stmtExpression -> visitStmtExpression(stmtExpression);
         case ASTStmtFor stmtFor -> visitStmtFor(stmtFor);
         case ASTStmtIfThenElse stmtIfThenElse -> visitStmtIfThenElse(stmtIfThenElse);
@@ -178,6 +180,8 @@ public interface ASTVisitor {
     default void visitStmtBlock(ASTStmtBlock stmt) {}
 
     default void visitStmtBreak(ASTStmtBreak stmt) {}
+
+    default void visitStmtContinue(ASTStmtContinue stmt) {}
 
     default void visitStmtExpression(ASTStmtExpression stmt) {}
 

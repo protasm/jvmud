@@ -1,5 +1,6 @@
 package io.github.protasm.jvmud.compiler.parser.parselet;
 
+import static io.github.protasm.jvmud.compiler.parser.type.UnaryOpType.UOP_BIT_NOT;
 import static io.github.protasm.jvmud.compiler.parser.type.UnaryOpType.UOP_NEGATE;
 import static io.github.protasm.jvmud.compiler.parser.type.UnaryOpType.UOP_NOT;
 
@@ -21,6 +22,8 @@ public class PrefixUnaryOp implements PrefixParselet {
             return new ASTExprOpUnary(line, expr, UOP_NOT);
         case T_MINUS:
             return new ASTExprOpUnary(line, expr, UOP_NEGATE);
+        case T_TILDE:
+            return new ASTExprOpUnary(line, expr, UOP_BIT_NOT);
         default:
             return null; // TODO throw exception
         }

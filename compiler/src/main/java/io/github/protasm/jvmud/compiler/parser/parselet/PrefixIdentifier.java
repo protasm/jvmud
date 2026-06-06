@@ -1,13 +1,20 @@
 package io.github.protasm.jvmud.compiler.parser.parselet;
 
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_IDENTIFIER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_INT_LITERAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_PAREN;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_LESS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_MINUS;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_PIPE_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS_PLUS;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_GREATER_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_SLASH_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_STAR_EQUAL;
 
 import io.github.protasm.jvmud.compiler.parser.Parser;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
@@ -36,6 +43,20 @@ public class PrefixIdentifier implements PrefixParselet {
             return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.ADD, parser.expression());
         else if (canAssign && parser.tokens().match(T_MINUS_EQUAL))
             return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.SUB, parser.expression());
+        else if (canAssign && parser.tokens().match(T_STAR_EQUAL))
+            return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.MULT, parser.expression());
+        else if (canAssign && parser.tokens().match(T_SLASH_EQUAL))
+            return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.DIV, parser.expression());
+        else if (canAssign && parser.tokens().match(T_PIPE_EQUAL))
+            return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.BIT_OR, parser.expression());
+        else if (canAssign && parser.tokens().match(T_AMP_EQUAL))
+            return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.BIT_AND, parser.expression());
+        else if (canAssign && parser.tokens().match(T_CARET_EQUAL))
+            return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.BIT_XOR, parser.expression());
+        else if (canAssign && parser.tokens().match(T_LESS_LESS_EQUAL))
+            return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.SHL, parser.expression());
+        else if (canAssign && parser.tokens().match(T_GREATER_GREATER_EQUAL))
+            return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.SHR, parser.expression());
         else if (canAssign && parser.tokens().match(T_PLUS_PLUS))
             return new ASTExprUnresolvedAssignment(
                     line,

@@ -7,9 +7,9 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
+import java.util.Objects;
 
-/** One line-oriented telnet connection backed by an AdminCli session. */
+/** One line-oriented telnet connection backed by an interactive JVMud session. */
 final class TelnetSession implements Runnable {
     private static final int IAC = 255;
     private static final int WILL = 251;
@@ -18,13 +18,11 @@ final class TelnetSession implements Runnable {
     private static final int DONT = 254;
 
     private final Socket socket;
-    private final Path mudlibRoot;
-    private final String configObjectPath;
+    private final TelnetMud mud;
 
-    TelnetSession(Socket socket, Path mudlibRoot, String configObjectPath) {
+    TelnetSession(Socket socket, TelnetMud mud) {
         this.socket = socket;
-        this.mudlibRoot = mudlibRoot;
-        this.configObjectPath = configObjectPath;
+        this.mud = Objects.requireNonNull(mud, "mud");
     }
 
     @Override
@@ -33,14 +31,13 @@ final class TelnetSession implements Runnable {
                 BufferedInputStream in = new BufferedInputStream(socket.getInputStream());
                 OutputStream rawOut = socket.getOutputStream();
                 PrintWriter out = new PrintWriter(new OutputStreamWriter(rawOut, StandardCharsets.UTF_8), true)) {
-            AdminCli cli = new AdminCli(out);
-            cli.execute("/boot " + mudlibRoot + " " + configObjectPath);
-            out.println("JVMud telnet. Type /help for slash commands or /quit to disconnect.");
+            SessionState session = new SessionState(mud.attachPersona(out));
+            out.println("JVMud telnet. Type /help for commands or /quit to disconnect.");
             prompt(out);
 
             StringBuilder line = new StringBuilder();
             int value;
-            while (cli.isRunning() && (value = in.read()) != -1) {
+            while (session.running && (value = in.read()) != -1) {
                 if (handleTelnetCommand(value, in, rawOut, out)) {
                     continue;
                 }
@@ -48,7 +45,7 @@ final class TelnetSession implements Runnable {
                     continue;
                 }
                 if (value == '\n') {
-                    executeLine(cli, out, line);
+                    executeLine(session, out, line);
                     continue;
                 }
                 if (value == 8 || value == 127) {
@@ -66,13 +63,62 @@ final class TelnetSession implements Runnable {
         }
     }
 
-    private void executeLine(AdminCli cli, PrintWriter out, StringBuilder line) {
-        String commandLine = line.toString();
+    private void executeLine(SessionState session, PrintWriter out, StringBuilder line) {
+        String commandLine = line.toString().trim();
         line.setLength(0);
-        cli.execute(commandLine);
-        if (cli.isRunning()) {
+        if (commandLine.isBlank()) {
+            prompt(out);
+            return;
+        }
+
+        if (commandLine.startsWith("/")) {
+            executeSlashCommand(session, out, commandLine.substring(1).trim());
+        } else {
+            executePlayerCommand(session, out, commandLine);
+        }
+        if (session.running) {
             prompt(out);
         }
+    }
+
+    private void executeSlashCommand(SessionState session, PrintWriter out, String commandLine) {
+        switch (commandLine) {
+        case "help", "h" -> {
+            out.println("Telnet commands:");
+            out.println("  /help  Show this command reference.");
+            out.println("  /quit  Disconnect this session.");
+        }
+        case "quit", "exit", "q" -> session.running = false;
+        default -> out.println("Unknown telnet command: /" + commandLine);
+        }
+    }
+
+    private void executePlayerCommand(SessionState session, PrintWriter out, String commandLine) {
+        try {
+            Object result = mud.dispatch(session.persona, out, normalizePlayerCommand(commandLine));
+            if (Integer.valueOf(0).equals(result)) {
+                out.println("You can't do that.");
+            }
+        } catch (RuntimeException e) {
+            out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private String normalizePlayerCommand(String commandLine) {
+        String trimmed = commandLine.trim();
+        if (trimmed.startsWith("go ")) {
+            trimmed = trimmed.substring(3).trim();
+        }
+        return switch (trimmed) {
+        case "n" -> "north";
+        case "s" -> "south";
+        case "e" -> "east";
+        case "w" -> "west";
+        case "u" -> "up";
+        case "d" -> "down";
+        case "l" -> "look";
+        default -> trimmed;
+        };
     }
 
     private boolean handleTelnetCommand(
@@ -109,5 +155,14 @@ final class TelnetSession implements Runnable {
     private void prompt(PrintWriter out) {
         out.print("> ");
         out.flush();
+    }
+
+    private static final class SessionState {
+        private final TelnetMud.Persona persona;
+        private boolean running = true;
+
+        private SessionState(TelnetMud.Persona persona) {
+            this.persona = persona;
+        }
     }
 }

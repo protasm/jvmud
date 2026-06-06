@@ -2,6 +2,10 @@ package io.github.protasm.jvmud.compiler.scanner;
 
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_BANG;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_BANG_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COLON;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP;
@@ -13,6 +17,8 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_ERROR;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_FLOAT_LITERAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_GREATER;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_GREATER_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_IDENTIFIER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_INT_LITERAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_BRACE;
@@ -20,12 +26,16 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_BRACKET;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_PAREN;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_LESS;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_LESS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_MINUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS_PLUS;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_PIPE;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_PIPE_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_QUESTION;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_ARROW;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_BRACE;
@@ -38,6 +48,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_STAR;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_STAR_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_STRING_LITERAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_SUPER;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_TILDE;
 
 import java.nio.file.Path;
 import java.util.Map;
@@ -169,16 +180,24 @@ public class Scanner {
             return null;
         case '"':
             return stringLiteral();
+        case '\'':
+            return characterLiteral();
         case '&':
             if (ss.match('&'))
                 return token(T_DBL_AMP);
+            else if (ss.match('='))
+                return token(T_AMP_EQUAL);
             else
-                return unexpectedChar(c);
+                return token(T_AMP);
         case '|':
             if (ss.match('|'))
                 return token(T_DBL_PIPE);
+            else if (ss.match('='))
+                return token(T_PIPE_EQUAL);
             else
-                return unexpectedChar(c);
+                return token(T_PIPE);
+        case '^':
+            return token(ss.match('=') ? T_CARET_EQUAL : T_CARET);
         case ':':
             if (ss.match(':'))
                 return token(T_SUPER);
@@ -205,8 +224,12 @@ public class Scanner {
         case '=':
             return token(ss.match('=') ? T_EQUAL_EQUAL : T_EQUAL);
         case '<':
+            if (ss.match('<'))
+                return token(ss.match('=') ? T_LESS_LESS_EQUAL : T_LESS_LESS);
             return token(ss.match('=') ? T_LESS_EQUAL : T_LESS);
         case '>':
+            if (ss.match('>'))
+                return token(ss.match('=') ? T_GREATER_GREATER_EQUAL : T_GREATER_GREATER);
             return token(ss.match('=') ? T_GREATER_EQUAL : T_GREATER);
         case '/':
             if (ss.match('/'))
@@ -219,6 +242,8 @@ public class Scanner {
                 return token(T_SLASH);
         case '*':
             return token(ss.match('=') ? T_STAR_EQUAL : T_STAR);
+        case '~':
+            return token(T_TILDE);
         case ' ':
         case '\r':
         case '\t':
@@ -294,6 +319,39 @@ public class Scanner {
         ss.advance();
 
         return stringToken(T_STRING_LITERAL, ss.readTrimmed());
+    }
+
+    private Token<?> characterLiteral() {
+        if (ss.atEnd())
+            return errorToken("Unterminated character literal.");
+
+        int value;
+        char c = ss.consumeOneChar();
+        if (c == '\\') {
+            if (ss.atEnd())
+                return errorToken("Unterminated character literal.");
+
+            value = escapedCharacterValue(ss.consumeOneChar());
+        } else {
+            value = c;
+        }
+
+        if (!ss.match('\''))
+            return errorToken("Unterminated character literal.");
+
+        return intToken(T_INT_LITERAL, ss.read(), value);
+    }
+
+    private int escapedCharacterValue(char c) {
+        return switch (c) {
+        case 'n' -> '\n';
+        case 'r' -> '\r';
+        case 't' -> '\t';
+        case '\\' -> '\\';
+        case '\'' -> '\'';
+        case '"' -> '"';
+        default -> c;
+        };
     }
 
     private boolean isWhitespace(char c) {

@@ -36,6 +36,16 @@ public final class SearchPathIncludeResolver implements IncludeResolver {
       if (dedup.add(includeDir)) {
         roots.add(includeDir);
       }
+
+      Path objectDir = this.baseIncludePath.resolve("obj").normalize();
+      if (dedup.add(objectDir)) {
+        roots.add(objectDir);
+      }
+
+      Path roomDir = this.baseIncludePath.resolve("room").normalize();
+      if (dedup.add(roomDir)) {
+        roots.add(roomDir);
+      }
     }
 
     // Always search the base include path last to preserve the previous fallback behavior.
@@ -86,7 +96,15 @@ public final class SearchPathIncludeResolver implements IncludeResolver {
 
         if (maybe != null) return buildResolution(maybe);
       }
-    } else if (baseIncludePath != null) {
+    } else {
+      for (Path root : systemIncludeRoots) {
+        Path maybe = tryRead(root, lookupPath);
+
+        if (maybe != null) return buildResolution(maybe);
+      }
+    }
+
+    if (!system && baseIncludePath != null) {
       Path maybe = tryRead(baseIncludePath, lookupPath);
 
       if (maybe != null) return buildResolution(maybe);

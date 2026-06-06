@@ -2,6 +2,7 @@ package io.github.protasm.jvmud.compiler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,6 +10,7 @@ import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
 import io.github.protasm.jvmud.compiler.exec.LpcObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
 import io.github.protasm.jvmud.compiler.exec.LpcRuntimeConfig;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
@@ -77,6 +79,102 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsLpcStringIndexingAndCharacterLiterals() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LpcObjectHandle object = runtime.loadSource("smoke/string_index.c", """
+                int slash_code() {
+                    return '/';
+                }
+
+                int second_char() {
+                    string path;
+                    path = "/ab";
+                    return path[1];
+                }
+
+                int has_slash_at_start() {
+                    string path;
+                    path = "/ab";
+                    return path[0] == '/';
+                }
+                """);
+
+        assertEquals(47, object.invoke("slash_code"));
+        assertEquals(97, object.invoke("second_char"));
+        assertEquals(1, object.invoke("has_slash_at_start"));
+    }
+
+    @Test
+    void runtimeSupportsCommaSeparatedForInitializerAndUpdateExpressions() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LpcObjectHandle object = runtime.loadSource("smoke/for_comma.c", """
+                int value() {
+                    int i;
+                    int a;
+
+                    for (i = 0, a = 1; i < 3; i += 1, a += 2) {
+                    }
+
+                    return a;
+                }
+                """);
+
+        assertEquals(7, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsContinueInForAndWhileLoops() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LpcObjectHandle object = runtime.loadSource("smoke/continue.c", """
+                int value() {
+                    int i;
+                    int sum;
+
+                    for (i = 0; i < 5; i += 1) {
+                        if (i == 2)
+                            continue;
+                        sum += i;
+                    }
+
+                    while (i < 8) {
+                        i += 1;
+                        if (i == 7)
+                            continue;
+                        sum += i;
+                    }
+
+                    return sum;
+                }
+                """);
+
+        assertEquals(22, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsIntegerBitwiseOperatorsAndCompoundAssignments() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LpcObjectHandle object = runtime.loadSource("smoke/bitwise.c", """
+                int value() {
+                    int scar;
+
+                    scar = 1;
+                    scar *= 3;
+                    scar /= 3;
+                    scar |= 1 << 3;
+                    scar ^= 2;
+                    scar &= 15;
+                    scar <<= 1;
+                    scar >>= 2;
+                    scar &= ~2;
+
+                    return scar;
+                }
+                """);
+
+        assertEquals(5, object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsAllocateAndLegacyStringDeclaredArrays() {
         LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
@@ -91,6 +189,27 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals("middle", object.invoke("value"));
+    }
+
+    @Test
+    void quotedIncludesSearchLegacyMudlibHeaderDirectoriesAfterSourceDirectory() throws Exception {
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("obj/living.h"), "#define LIVING_VALUE 7\n");
+        Files.writeString(tempDir.resolve("room/log.h"), "#define LOG_VALUE    (35)\n");
+        Files.writeString(tempDir.resolve("obj/playerish.c"), """
+                #include "log.h"
+                #include "living.h"
+
+                int value() {
+                    return LOG_VALUE + LIVING_VALUE;
+                }
+                """);
+
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LpcObjectHandle object = runtime.load("obj/playerish");
+
+        assertEquals(42, object.invoke("value"));
     }
 
     @Test
@@ -113,19 +232,60 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void untypedMethodsDefaultToMixedForLegacyMudlibCompatibility() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.loadSource("smoke/untyped.c", """
-                reset(arg) {
-                    return arg + 1;
-                }
+    void parserRecordsStaticDeclarationModifiersWithoutChangingRuntimeBehavior() {
+        String source = """
+                static int hidden = 40;
 
-                value() {
-                    return reset(41);
+                static int value() {
+                    return hidden + 2;
+                }
+                """;
+
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LpcObjectHandle object = runtime.loadSource("smoke/static.c", source);
+
+        assertEquals(42, object.invoke("value"));
+
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run(source);
+        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
+
+        ASTObject ast = result.getAstObject();
+        assertTrue(ast.fields().get("hidden").isStatic());
+        assertTrue(ast.methods().get("value").isStatic());
+    }
+
+    @Test
+    void preprocessorRecognizesIndentedConditionalsInsideFunctionBodies() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LpcObjectHandle object = runtime.loadSource("smoke/indented_conditional.c", """
+                #define ENABLED
+
+                int value() {
+                  #ifdef ENABLED
+                  return 42;
+                  #endif
+                  return 0;
                 }
                 """);
 
         assertEquals(42, object.invoke("value"));
+    }
+
+    @Test
+    void untypedMethodsProduceHardSemanticErrors() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+
+        RuntimeException error = assertThrows(RuntimeException.class, () -> runtime.loadSource("smoke/untyped.c", """
+                reset(arg) {
+                    return arg + 1;
+                }
+
+                mixed value() {
+                    return reset(41);
+                }
+                """));
+
+        assertTrue(error.getMessage().contains("Method 'reset' must declare a return type"));
     }
 
     @Test
@@ -172,7 +332,7 @@ final class CompilerSmokeTest {
     void unresolvedFunctionCallsCanDispatchToRegisteredMfunObject() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/functions.c"), """
-                mixed mudlib_sum(a, b) {
+                mixed mudlib_sum(mixed a, mixed b) {
                     return a + b;
                 }
                 """);
@@ -234,7 +394,7 @@ final class CompilerSmokeTest {
     void mfunShadowsEngineFunctionWithSameNameAndArity() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/functions.c"), """
-                mixed write(value) {
+                mixed write(mixed value) {
                     return "mfun:" + value;
                 }
                 """);
@@ -309,7 +469,7 @@ final class CompilerSmokeTest {
                     return 42;
                 }
 
-                mixed reflected_value(target) {
+                mixed reflected_value(mixed target) {
                     return target->value();
                 }
                 """);
@@ -322,7 +482,7 @@ final class CompilerSmokeTest {
         LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
         LpcObjectHandle object = runtime.loadSource("smoke/default_local.c", """
-                int value(flag) {
+                int value(mixed flag) {
                     int i;
                     if (flag)
                         return 7;
@@ -336,11 +496,11 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void primitiveArgumentsAreBoxedForUntypedMethodParameters() {
+    void primitiveArgumentsAreBoxedForExplicitMixedMethodParameters() {
         LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
         LpcObjectHandle object = runtime.loadSource("smoke/untyped_arg.c", """
-                mixed identity(value) {
+                mixed identity(mixed value) {
                     return value;
                 }
 
@@ -353,15 +513,30 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void pipelineAcceptsUntypedObjectMethodsAsMixed() {
+    void pipelineRejectsUntypedObjectMethods() {
         CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
                 value() {
                     return 42;
                 }
                 """);
 
-        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
-        assertNotNull(result.getBytecode());
+        assertTrue(result.getProblems().stream()
+                .anyMatch(problem -> problem.getMessage().contains("Method 'value' must declare a return type")));
+        assertNull(result.getBytecode());
+    }
+
+    @Test
+    void pipelineRejectsUntypedMethodParameters() {
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
+                mixed value(arg) {
+                    return arg;
+                }
+                """);
+
+        assertTrue(result.getProblems().stream()
+                .anyMatch(problem -> problem.getMessage()
+                        .contains("Parameter 'arg' in method 'value' must declare a type")));
+        assertNull(result.getBytecode());
     }
 
     @Test
@@ -402,7 +577,7 @@ final class CompilerSmokeTest {
     @Test
     void runtimeMovesObjectsThroughEnvironmentAndInventory() throws Exception {
         Files.writeString(tempDir.resolve("thing.c"), """
-                int id(str) {
+                int id(mixed str) {
                     if (str == "thing")
                         return 1;
                     return 0;
@@ -457,7 +632,7 @@ final class CompilerSmokeTest {
     @Test
     void lpcCodeCanCloneMoveInspectAndCallObjectsThroughEngineFunctions() throws Exception {
         Files.writeString(tempDir.resolve("thing.c"), """
-                status id(str) {
+                status id(mixed str) {
                     return str == "thing";
                 }
 

@@ -30,7 +30,7 @@ public final class LPCFormatter {
         if (source == null)
             throw new IllegalArgumentException("Source text cannot be null.");
 
-        List<FormattedLine> lines = sortTopLevelMethods(sortTopLevelFields(indentLines(source)));
+        List<FormattedLine> lines = sortTopLevelMethods(sortTopLevelFieldsWithinOrderingBarriers(indentLines(source)));
         return spaceLines(lines);
     }
 
@@ -154,9 +154,35 @@ public final class LPCFormatter {
         return sorted;
     }
 
+    private List<FormattedLine> sortTopLevelFieldsWithinOrderingBarriers(List<FormattedLine> lines) {
+        List<FormattedLine> sorted = new ArrayList<>();
+        List<FormattedLine> segment = new ArrayList<>();
+
+        for (FormattedLine line : lines) {
+            if (isTopLevelOrderingBarrier(line)) {
+                sorted.addAll(sortTopLevelFields(segment));
+                segment.clear();
+                sorted.add(line);
+                continue;
+            }
+
+            segment.add(line);
+        }
+
+        sorted.addAll(sortTopLevelFields(segment));
+        return sorted;
+    }
+
     private boolean isTopLevelPreamble(FormattedLine line) {
         return line.indent() == 0
                 && (line.kind() == LineKind.PREPROCESSOR || line.content().strip().startsWith("inherit "));
+    }
+
+    private boolean isTopLevelOrderingBarrier(FormattedLine line) {
+        if (line.indent() != 0)
+            return false;
+
+        return line.kind() == LineKind.PREPROCESSOR || line.content().strip().startsWith("inherit ");
     }
 
     private boolean isTopLevelFieldDeclaration(FormattedLine line) {
@@ -172,6 +198,25 @@ public final class LPCFormatter {
     }
 
     private List<FormattedLine> sortTopLevelMethods(List<FormattedLine> lines) {
+        List<FormattedLine> sorted = new ArrayList<>();
+        List<FormattedLine> segment = new ArrayList<>();
+
+        for (FormattedLine line : lines) {
+            if (isTopLevelOrderingBarrier(line)) {
+                sorted.addAll(sortTopLevelMethodsInSegment(segment));
+                segment.clear();
+                sorted.add(line);
+                continue;
+            }
+
+            segment.add(line);
+        }
+
+        sorted.addAll(sortTopLevelMethodsInSegment(segment));
+        return sorted;
+    }
+
+    private List<FormattedLine> sortTopLevelMethodsInSegment(List<FormattedLine> lines) {
         List<FormattedLine> prefix = new ArrayList<>();
         List<FormattedLine> pending = new ArrayList<>();
         List<MethodBlock> methods = new ArrayList<>();
@@ -326,7 +371,6 @@ public final class LPCFormatter {
 
         if (current.kind() == LineKind.RETURN)
             return previous.kind() != LineKind.RETURN
-                    && previous.kind() != LineKind.ASSIGNMENT
                     && previous.kind() != LineKind.METHOD_HEADER
                     && previous.kind() != LineKind.CONTROL_HEADER;
 

@@ -33,7 +33,7 @@ final class AdminCliTest {
         installMfunShim();
         Files.createDirectories(tempDir.resolve("room/village"));
         Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
-                void long(str) {
+                void long(mixed str) {
                     write("A test green.\\n");
                 }
                 """);
@@ -59,6 +59,84 @@ final class AdminCliTest {
     }
 
     @Test
+    void telnetSessionBootsMudlibRootWithSpaces() throws Exception {
+        Path mudlibRoot = tempDir.resolve("mud lib");
+        installMfunShim(mudlibRoot);
+        Files.createDirectories(mudlibRoot.resolve("room/village"));
+        Files.writeString(mudlibRoot.resolve("room/village/vill_green.c"), """
+                void long(mixed str) {
+                    write("A spaced-path green.\\n");
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, mudlibRoot, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                readUntilPrompt(socket);
+
+                socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String look = readUntilPrompt(socket);
+                assertTrue(look.contains("A spaced-path green."));
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
+    void telnetConnectionsShareOneBootedMudRuntime() throws Exception {
+        installMfunShim();
+        Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
+                int touches = 0;
+
+                void init() {
+                    add_action("touch");
+                    add_verb("touch");
+                }
+
+                int touch(mixed str) {
+                    touches = touches + 1;
+                    write("touch " + touches + "\\n");
+                    return 1;
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket first = new Socket("127.0.0.1", server.port())) {
+                first.setSoTimeout(5000);
+                assertTrue(readUntilPrompt(first).contains("Attached player 1"));
+
+                try (Socket second = new Socket("127.0.0.1", server.port())) {
+                    second.setSoTimeout(5000);
+                    assertTrue(readUntilPrompt(second).contains("Attached player 2"));
+
+                    first.getOutputStream().write("touch\n".getBytes(StandardCharsets.UTF_8));
+                    first.getOutputStream().flush();
+                    assertTrue(readUntilPrompt(first).contains("touch 1"));
+
+                    second.getOutputStream().write("touch\n".getBytes(StandardCharsets.UTF_8));
+                    second.getOutputStream().flush();
+                    assertTrue(readUntilPrompt(second).contains("touch 2"));
+
+                    first.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                    second.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                    first.getOutputStream().flush();
+                    second.getOutputStream().flush();
+                }
+            }
+        }
+    }
+
+    @Test
     void adminCanLoadCallCloneMoveInspectAndQuit() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("room.c"), """
@@ -73,7 +151,7 @@ final class AdminCliTest {
                 string name = "a small thing";
                 int value = 7;
 
-                status id(str) {
+                status id(mixed str) {
                     return str == "thing";
                 }
 
@@ -85,17 +163,17 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/boot " + tempDir);
-        cli.execute("/load room");
-        cli.execute("/clone thing");
-        cli.execute("/move thing room");
-        cli.execute("/where thing");
-        cli.execute("/inspect thing");
-        cli.execute("/look room");
-        cli.execute("/call thing short");
-        cli.execute("/objects");
-        cli.execute("/destruct thing");
-        cli.execute("/quit");
+        cli.execute("boot " + tempDir);
+        cli.execute("load room");
+        cli.execute("clone thing");
+        cli.execute("move thing room");
+        cli.execute("where thing");
+        cli.execute("inspect thing");
+        cli.execute("look room");
+        cli.execute("call thing short");
+        cli.execute("objects");
+        cli.execute("destruct thing");
+        cli.execute("quit");
 
         String output = transcript.toString();
         assertTrue(output.contains("Booted runtime"));
@@ -124,14 +202,14 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/boot " + tempDir);
-        cli.execute("/pwd");
-        cli.execute("/ls");
-        cli.execute("/cd room");
-        cli.execute("/pwd");
-        cli.execute("/ls");
-        cli.execute("/cat /README.txt");
-        cli.execute("/load start");
+        cli.execute("boot " + tempDir);
+        cli.execute("pwd");
+        cli.execute("ls");
+        cli.execute("cd room");
+        cli.execute("pwd");
+        cli.execute("ls");
+        cli.execute("cat /README.txt");
+        cli.execute("load start");
 
         String output = transcript.toString();
         assertTrue(output.contains("/\n"));
@@ -148,9 +226,9 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/boot " + tempDir);
-        cli.execute("/cd ..");
-        cli.execute("/cat ../outside.txt");
+        cli.execute("boot " + tempDir);
+        cli.execute("cd ..");
+        cli.execute("cat ../outside.txt");
 
         String output = transcript.toString();
         assertTrue(output.contains("Error: Path escapes mudlib root: .."));
@@ -162,7 +240,7 @@ final class AdminCliTest {
         Files.createDirectories(tempDir.resolve("room"));
         Files.createDirectories(tempDir.resolve("room/village"));
         Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
-                void long(str) {
+                void long(mixed str) {
                 }
                 """);
 
@@ -192,27 +270,25 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/help");
+        cli.execute("help");
 
         String output = transcript.toString();
-        assertTrue(output.contains("Slash commands:"));
-        assertTrue(output.contains("l  /load <path>"));
+        assertTrue(output.contains("Admin commands:"));
+        assertTrue(output.contains("l  load <path>"));
         assertTrue(output.contains("Compile, load, and register an LPC object."));
-        assertTrue(output.contains("v  /verbosity [quiet|normal|watch]"));
+        assertTrue(output.contains("v  verbosity [quiet|normal|watch]"));
         assertTrue(output.contains("Show or change compiler/shell output detail."));
-        assertTrue(output.indexOf("h  /help") < output.indexOf("b  /boot"));
-        assertTrue(output.indexOf("/actor") < output.indexOf("b  /boot"));
-        assertTrue(output.indexOf("b  /boot") < output.indexOf("/call"));
-        assertTrue(output.indexOf("/call") < output.indexOf("/cat"));
-        assertTrue(output.indexOf("/cat") < output.indexOf("/cd"));
-        assertTrue(output.indexOf("/cd") < output.indexOf("n  /clone"));
-        assertTrue(output.indexOf("n  /clone") < output.indexOf("x  /destruct"));
-        assertTrue(output.indexOf("x  /destruct") < output.indexOf("/dispatch <command"));
-        assertTrue(output.indexOf("x  /destruct") < output.indexOf("i  /inspect"));
-        assertTrue(output.indexOf("i  /inspect") < output.indexOf("l  /load"));
-        assertTrue(output.indexOf("/ls") < output.indexOf("m  /move"));
-        assertTrue(output.indexOf("/pwd") < output.indexOf("r  /reload"));
-        assertTrue(output.indexOf("w  /where") < output.indexOf("q  /quit"));
+        assertTrue(output.indexOf("h  help") < output.indexOf("b  boot"));
+        assertTrue(output.indexOf("b  boot") < output.indexOf("call"));
+        assertTrue(output.indexOf("call") < output.indexOf("cat"));
+        assertTrue(output.indexOf("cat") < output.indexOf("cd"));
+        assertTrue(output.indexOf("cd") < output.indexOf("n  clone"));
+        assertTrue(output.indexOf("n  clone") < output.indexOf("x  destruct"));
+        assertTrue(output.indexOf("x  destruct") < output.indexOf("i  inspect"));
+        assertTrue(output.indexOf("i  inspect") < output.indexOf("l  load"));
+        assertTrue(output.indexOf("ls") < output.indexOf("m  move"));
+        assertTrue(output.indexOf("pwd") < output.indexOf("r  reload"));
+        assertTrue(output.indexOf("w  where") < output.indexOf("q  quit"));
     }
 
     @Test
@@ -231,11 +307,11 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/boot " + tempDir);
-        cli.execute("/verbosity quiet");
-        cli.execute("/load quiet");
-        cli.execute("/verbosity watch");
-        cli.execute("/load watch");
+        cli.execute("boot " + tempDir);
+        cli.execute("verbosity quiet");
+        cli.execute("load quiet");
+        cli.execute("verbosity watch");
+        cli.execute("load watch");
 
         String output = transcript.toString();
         assertTrue(output.contains("verbosity set to quiet"));
@@ -258,17 +334,17 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/b " + tempDir);
-        cli.execute("/cd room");
-        cli.execute("/pwd");
-        cli.execute("/ls");
-        cli.execute("/l item");
-        cli.execute("/r item");
-        cli.execute("/i room/item");
-        cli.execute("/call room/item short");
-        cli.execute("/o");
-        cli.execute("/v quiet");
-        cli.execute("/q");
+        cli.execute("b " + tempDir);
+        cli.execute("cd room");
+        cli.execute("pwd");
+        cli.execute("ls");
+        cli.execute("l item");
+        cli.execute("r item");
+        cli.execute("i room/item");
+        cli.execute("call room/item short");
+        cli.execute("o");
+        cli.execute("v quiet");
+        cli.execute("q");
 
         String output = transcript.toString();
         assertTrue(output.contains("Booted runtime"));
@@ -289,19 +365,19 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/a room/item short");
-        cli.execute("/t README.txt");
-        cli.execute("/d room");
-        cli.execute("/s");
-        cli.execute("/p");
+        cli.execute("a room/item short");
+        cli.execute("t README.txt");
+        cli.execute("d room");
+        cli.execute("s");
+        cli.execute("p");
 
         String output = transcript.toString();
-        assertTrue(output.contains("Unknown slash command: /a"));
-        assertTrue(output.contains("Unknown slash command: /t"));
-        assertTrue(output.contains("Unknown slash command: /d"));
-        assertTrue(output.contains("Unknown slash command: /s"));
-        assertTrue(output.contains("Unknown slash command: /p"));
-        assertTrue(output.contains("Usage: /help"));
+        assertTrue(output.contains("Unknown command: a"));
+        assertTrue(output.contains("Unknown command: t"));
+        assertTrue(output.contains("Unknown command: d"));
+        assertTrue(output.contains("Unknown command: s"));
+        assertTrue(output.contains("Unknown command: p"));
+        assertTrue(output.contains("Usage: help"));
     }
 
     @Test
@@ -309,14 +385,14 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/call missingOnlyMethod");
-        cli.execute("/inspect");
+        cli.execute("call missingOnlyMethod");
+        cli.execute("inspect");
 
         String output = transcript.toString();
         assertTrue(output.contains("Error: Missing argument 1 for call"));
-        assertTrue(output.contains("Usage: /call <handle> <method> [args...]"));
+        assertTrue(output.contains("Usage: call <handle> <method> [args...]"));
         assertTrue(output.contains("Error: Missing argument 0 for inspect"));
-        assertTrue(output.contains("Usage: /inspect <handle>"));
+        assertTrue(output.contains("Usage: inspect <handle>"));
     }
 
     @Test
@@ -330,17 +406,17 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/boot " + tempDir);
-        cli.execute("/load thing");
-        cli.execute("/call thing short");
+        cli.execute("boot " + tempDir);
+        cli.execute("load thing");
+        cli.execute("call thing short");
 
         Files.writeString(tempDir.resolve("thing.c"), """
                 string short() {
                     return "new";
                 }
                 """);
-        cli.execute("/reload thing");
-        cli.execute("/call thing short");
+        cli.execute("reload thing");
+        cli.execute("call thing short");
 
         String output = transcript.toString();
         assertTrue(output.contains("=> old"));
@@ -349,188 +425,7 @@ final class AdminCliTest {
     }
 
     @Test
-    void dispatchRunsObjectDefinedVerbForSelectedActor() throws Exception {
-        installMfunShim();
-        Files.writeString(tempDir.resolve("actor.c"), """
-                string short() {
-                    return "actor";
-                }
-                """);
-        Files.writeString(tempDir.resolve("tool.c"), """
-                void init() {
-                    add_action("wave");
-                    add_verb("wave");
-                }
-
-                int wave(str) {
-                    write("waved " + str + "\\n");
-                    return 1;
-                }
-                """);
-
-        StringWriter transcript = new StringWriter();
-        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
-
-        cli.execute("/boot " + tempDir);
-        cli.execute("/load actor");
-        cli.execute("/clone tool");
-        cli.execute("/move tool actor");
-        cli.execute("/actor actor");
-        cli.execute("/dispatch wave hello");
-        cli.execute("/dispatch dance");
-
-        String output = transcript.toString();
-        assertTrue(output.contains("Command actor is actor"));
-        assertTrue(output.contains("waved hello"));
-        assertTrue(output.contains("=> 1"));
-        assertTrue(output.contains("actor does not understand: dance"));
-    }
-
-    @Test
-    void plainInputDispatchesAsPlayerCommandsAndSlashInputRunsAdminCommands() throws Exception {
-        installMfunShim();
-        Files.writeString(tempDir.resolve("actor.c"), """
-                string short() {
-                    return "actor";
-                }
-                """);
-        Files.writeString(tempDir.resolve("tool.c"), """
-                void init() {
-                    add_action("wave");
-                    add_verb("wave");
-                }
-
-                int wave(str) {
-                    write("waved " + str + "\\n");
-                    return 1;
-                }
-                """);
-
-        StringWriter transcript = new StringWriter();
-        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
-
-        cli.execute("/boot " + tempDir);
-        cli.execute("/load actor");
-        cli.execute("/clone tool");
-        cli.execute("/move tool actor");
-        cli.execute("/actor actor");
-        cli.execute("wave hello");
-        cli.execute("dance");
-        cli.execute("/objects");
-        cli.execute("dance");
-        cli.execute("/help");
-        cli.execute("/objects");
-
-        String output = transcript.toString();
-        assertTrue(output.contains("waved hello"));
-        assertFalse(output.contains("=> 1"));
-        assertTrue(output.contains("You can't do that."));
-        assertTrue(output.contains("actor : actor"));
-        assertTrue(output.contains("Slash commands:"));
-    }
-
-    @Test
-    void commandActionLifecycleUsesConfiguredMudlibMethodName() throws Exception {
-        installMfunShim();
-        Files.writeString(tempDir.resolve("jvmud/config"), """
-                mfun_object = jvmud/mfuns
-                lifecycle.interaction_scope_started = on_scope
-                """);
-        Files.writeString(tempDir.resolve("actor.c"), """
-                string short() {
-                    return "actor";
-                }
-                """);
-        Files.writeString(tempDir.resolve("tool.c"), """
-                void init() {
-                    add_action("wrong");
-                    add_verb("wrong");
-                }
-
-                void on_scope() {
-                    add_action("wave");
-                    add_verb("wave");
-                }
-
-                int wave(str) {
-                    write("waved by mapped lifecycle method\\n");
-                    return 1;
-                }
-
-                int wrong(str) {
-                    write("wrong lifecycle method\\n");
-                    return 1;
-                }
-                """);
-
-        StringWriter transcript = new StringWriter();
-        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
-
-        cli.execute("/boot " + tempDir);
-        cli.execute("/load actor");
-        cli.execute("/clone tool");
-        cli.execute("/move tool actor");
-        cli.execute("/actor actor");
-        cli.execute("wave");
-        cli.execute("wrong");
-
-        String output = transcript.toString();
-        assertTrue(output.contains("waved by mapped lifecycle method"));
-        assertFalse(output.contains("wrong lifecycle method"));
-    }
-
-    @Test
-    void plainInputRequiresSelectedActor() {
-        StringWriter transcript = new StringWriter();
-        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
-
-        cli.execute("/boot " + tempDir);
-        cli.execute("look");
-
-        String output = transcript.toString();
-        assertTrue(output.contains("No player is active. Use /actor <handle> or /help."));
-    }
-
-    @Test
-    void plainHelpIsAMudlibCommandNotAShellFallback() throws Exception {
-        installMfunShim();
-        Files.writeString(tempDir.resolve("actor.c"), """
-                string short() {
-                    return "actor";
-                }
-                """);
-        Files.writeString(tempDir.resolve("guide.c"), """
-                void init() {
-                    add_action("help");
-                    add_verb("help");
-                }
-
-                int help(str) {
-                    write("Mudlib help.\\n");
-                    return 1;
-                }
-                """);
-
-        StringWriter transcript = new StringWriter();
-        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
-
-        cli.execute("/boot " + tempDir);
-        cli.execute("/load actor");
-        cli.execute("/actor actor");
-        cli.execute("help");
-        cli.execute("/clone guide");
-        cli.execute("/move guide actor");
-        cli.execute("help");
-        cli.execute("/help");
-
-        String output = transcript.toString();
-        assertTrue(output.contains("You can't do that."));
-        assertTrue(output.contains("Mudlib help."));
-        assertTrue(output.contains("Slash commands:"));
-    }
-
-    @Test
-    void bootPreloadsInitFileAndStartsLocalActorInStartingRoom() throws Exception {
+    void bootPreloadsInitFileAndRegistersStartingRoomWithoutPlayerHandle() throws Exception {
         installMfunShim();
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room"));
@@ -550,11 +445,11 @@ final class AdminCliTest {
                     add_verb("north");
                 }
 
-                void long(str) {
+                void long(mixed str) {
                     write("You are on the green.\\n");
                 }
 
-                int north(str) {
+                int north(mixed str) {
                     call_other(this_player(), "move_player", "north#room/village/church");
                     return 1;
                 }
@@ -565,11 +460,11 @@ final class AdminCliTest {
                     add_verb("south");
                 }
 
-                void long(str) {
+                void long(mixed str) {
                     write("You are in the church.\\n");
                 }
 
-                int south(str) {
+                int south(mixed str) {
                     call_other(this_player(), "move_player", "south#room/village/vill_green");
                     return 1;
                 }
@@ -578,28 +473,17 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/boot " + tempDir);
-        cli.execute("/where local/player");
-        cli.execute("look");
-        cli.execute("north");
-        cli.execute("/where local/player");
-        cli.execute("s");
-        cli.execute("/where local/player");
-        cli.execute("go north");
-        cli.execute("/where local/player");
-        cli.execute("/objects");
+        cli.execute("boot " + tempDir);
+        cli.execute("objects");
+        cli.execute("where local/player");
 
         String output = transcript.toString();
         assertTrue(output.contains("Preloaded 1 startup object(s)."));
-        assertTrue(output.contains("Started local session in room/village/vill_green"));
-        assertTrue(output.contains("local/player is in room/village/vill_green"));
-        assertTrue(output.contains("You are on the green."));
-        assertTrue(output.contains("You are in the church."));
-        assertTrue(output.contains("local/player is in room/village/church"));
-        assertTrue(output.contains("local/player is in room/village/vill_green"));
+        assertFalse(output.contains("Started local session"));
         assertTrue(output.contains("obj/preload : obj/preload"));
         assertTrue(output.contains("room/village/vill_green : room/village/vill_green"));
-        assertTrue(output.contains("local/player : local/player"));
+        assertFalse(output.contains("local/player : local/player"));
+        assertTrue(output.contains("Error: Unknown object handle: local/player"));
     }
 
     @Test
@@ -704,43 +588,13 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("/boot " + tempDir);
-        cli.execute("/load caller");
-        cli.execute("/call caller phrase");
+        cli.execute("boot " + tempDir);
+        cli.execute("load caller");
+        cli.execute("call caller phrase");
 
         String output = transcript.toString();
         assertTrue(output.contains("Loaded caller"));
         assertTrue(output.contains("=> handled by mfun object"));
-    }
-
-    @Test
-    void vanillaMudlibBootStartsInVillageGreenAndMovesNorthToChurch() {
-        Path mudlibRoot = Path.of("..", "mudlib").toAbsolutePath().normalize();
-        StringWriter transcript = new StringWriter();
-        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
-
-        cli.execute("/boot " + mudlibRoot);
-        cli.execute("/where local/player");
-        cli.execute("north");
-        cli.execute("/where local/player");
-        cli.execute("look");
-        cli.execute("south");
-        cli.execute("east");
-        cli.execute("east");
-        cli.execute("west");
-        cli.execute("west");
-        cli.execute("west");
-        cli.execute("east");
-        cli.execute("/where local/player");
-
-        String output = transcript.toString();
-        assertTrue(output.contains("Started local session in room/village/vill_green"));
-        assertTrue(output.contains("local/player is in room/village/vill_green"));
-        assertTrue(output.contains("You are in the local village church."));
-        assertTrue(output.contains("local/player is in room/village/church"));
-        assertTrue(output.contains("A track going into the village."));
-        assertTrue(output.contains("A long road going east through the village."));
-        assertTrue(output.contains("An old humpbacked bridge."));
     }
 
     private String readUntilPrompt(Socket socket) throws Exception {
@@ -756,18 +610,22 @@ final class AdminCliTest {
     }
 
     private void installMfunShim() throws Exception {
-        Files.createDirectories(tempDir.resolve("jvmud"));
-        Files.writeString(tempDir.resolve("jvmud/config"), """
+        installMfunShim(tempDir);
+    }
+
+    private void installMfunShim(Path mudlibRoot) throws Exception {
+        Files.createDirectories(mudlibRoot.resolve("jvmud"));
+        Files.writeString(mudlibRoot.resolve("jvmud/config"), """
                 mfun_object = jvmud/mfuns
                 lifecycle.object_loaded = reset
                 lifecycle.interaction_scope_started = init
                 """);
-        Files.writeString(tempDir.resolve("jvmud/boundary.c"), """
+        Files.writeString(mudlibRoot.resolve("jvmud/boundary.c"), """
                 string mfun_object() {
                     return "jvmud/mfuns";
                 }
                 """);
-        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+        Files.writeString(mudlibRoot.resolve("jvmud/mfuns.c"), """
                 void write(mixed value) {
                     jvmud_write(value);
                 }

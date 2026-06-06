@@ -25,6 +25,10 @@ public final class ASTExprOpUnary extends ASTExpression {
 
     @Override
     public LPCType lpcType() {
-        return operator == UnaryOpType.UOP_NOT ? LPCType.LPCSTATUS : right.lpcType();
+        return switch (operator) {
+        case UOP_NOT -> LPCType.LPCSTATUS;
+        case UOP_BIT_NOT -> LPCType.LPCINT;
+        case UOP_NEGATE -> right.lpcType();
+        };
     }
 }

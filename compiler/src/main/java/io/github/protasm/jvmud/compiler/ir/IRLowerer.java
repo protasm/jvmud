@@ -34,9 +34,11 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
@@ -292,6 +294,21 @@ public final class IRLowerer {
             return null;
         }
 
+        if (statement instanceof ASTStmtContinue) {
+            String continueTarget = context.currentContinueTarget();
+            if (continueTarget == null) {
+                problems.add(
+                        new CompilationProblem(
+                                CompilationStage.LOWER,
+                                "Encountered continue statement outside of a loop.",
+                                statement.line()));
+                return current;
+            }
+
+            current.terminate(new IRJump(statement.line(), continueTarget));
+            return null;
+        }
+
         if (statement instanceof ASTStmtReturn stmtReturn) {
             IRExpression returnValue =
                     (stmtReturn.returnValue() != null)
@@ -337,7 +354,8 @@ public final class IRLowerer {
             conditionBlock.terminate(new IRJump(forStmt.line(), bodyBlock.label()));
         }
 
-        context.pushLoop(mergeBlock.label());
+        String continueTarget = (updateBlock != null) ? updateBlock.label() : conditionBlock.label();
+        context.pushLoop(mergeBlock.label(), continueTarget);
         BlockBuilder bodyTail = lowerStatement(forStmt.body(), bodyBlock, context, problems);
         context.popLoop();
         if (bodyTail != null && !bodyTail.isTerminated()) {
@@ -370,7 +388,7 @@ public final class IRLowerer {
         conditionBlock.terminate(
                 new IRConditionalJump(whileStmt.line(), condition, bodyBlock.label(), mergeBlock.label()));
 
-        context.pushLoop(mergeBlock.label());
+        context.pushLoop(mergeBlock.label(), conditionBlock.label());
         BlockBuilder bodyTail = lowerStatement(whileStmt.body(), bodyBlock, context, problems);
         context.popLoop();
         if (bodyTail != null && !bodyTail.isTerminated())
@@ -476,6 +494,9 @@ public final class IRLowerer {
 
             IRExpression index = coerceIfNeeded(
                     lowerExpression(arrayAccess.index(), context, problems), RuntimeTypes.INT);
+            if (targetType != null && targetType.kind() == RuntimeValueKind.STRING)
+                return new IRStringGet(arrayAccess.line(), target, index, RuntimeTypes.INT);
+
             return new IRArrayGet(arrayAccess.line(), target, index, RuntimeTypes.MIXED);
         }
 
@@ -522,6 +543,13 @@ public final class IRLowerer {
             IRExpression left = lowerExpression(binary.left(), context, problems);
             IRExpression right = lowerExpression(binary.right(), context, problems);
             return new IRBinaryOperation(binary.line(), binary.operator(), left, right, type);
+        }
+
+        if (expression instanceof ASTExprSequence sequence) {
+            List<IRExpression> expressions = new ArrayList<>();
+            for (ASTExpression nested : sequence.expressions())
+                expressions.add(lowerExpression(nested, context, problems));
+            return new IRSequence(sequence.line(), expressions, runtimeType(sequence.lpcType()));
         }
 
         if (expression instanceof ASTExprTernary ternary) {
@@ -695,6 +723,7 @@ public final class IRLowerer {
         private final List<IRLocal> locals = new ArrayList<>();
         private final List<BlockBuilder> blocks = new ArrayList<>();
         private final Deque<String> breakTargets = new ArrayDeque<>();
+        private final Deque<String> continueTargets = new ArrayDeque<>();
 
         private int blockCounter = 0;
 
@@ -715,17 +744,24 @@ public final class IRLowerer {
             localsBySlot.put(local.slot(), local);
         }
 
-        public void pushLoop(String breakTarget) {
+        public void pushLoop(String breakTarget, String continueTarget) {
             breakTargets.push(breakTarget);
+            continueTargets.push(continueTarget);
         }
 
         public void popLoop() {
             if (!breakTargets.isEmpty())
                 breakTargets.pop();
+            if (!continueTargets.isEmpty())
+                continueTargets.pop();
         }
 
         public String currentBreakTarget() {
             return breakTargets.peek();
+        }
+
+        public String currentContinueTarget() {
+            return continueTargets.peek();
         }
 
         public IRLocal requireLocal(ASTLocal astLocal, List<CompilationProblem> problems) {

@@ -2,6 +2,9 @@ package io.github.protasm.jvmud.compiler.parser.parselet;
 
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_ADD;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_AND;
+import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_BIT_AND;
+import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_BIT_OR;
+import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_BIT_XOR;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_DIV;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_EQ;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_NE;
@@ -11,6 +14,8 @@ import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_LE;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_LT;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_MULT;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_OR;
+import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_SHL;
+import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_SHR;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_SUB;
 
 import io.github.protasm.jvmud.compiler.parser.ParseException;
@@ -44,6 +49,16 @@ public class InfixBinaryOp implements InfixParselet {
             return new ASTExprOpBinary(line, left, right, BOP_OR);
         case T_DBL_AMP:
             return new ASTExprOpBinary(line, left, right, BOP_AND);
+        case T_PIPE:
+            return new ASTExprOpBinary(line, left, right, BOP_BIT_OR);
+        case T_AMP:
+            return new ASTExprOpBinary(line, left, right, BOP_BIT_AND);
+        case T_CARET:
+            return new ASTExprOpBinary(line, left, right, BOP_BIT_XOR);
+        case T_LESS_LESS:
+            return new ASTExprOpBinary(line, left, right, BOP_SHL);
+        case T_GREATER_GREATER:
+            return new ASTExprOpBinary(line, left, right, BOP_SHR);
         case T_GREATER:
             return new ASTExprOpBinary(line, left, right, BOP_GT);
         case T_GREATER_EQUAL:

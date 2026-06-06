@@ -343,6 +343,16 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRSequence sequence) {
+            emitSequence(mv, internalName, method, sequence);
+            return;
+        }
+
+        if (expression instanceof IRStringGet stringGet) {
+            emitStringGet(mv, internalName, method, stringGet);
+            return;
+        }
+
         if (expression instanceof IREfunCall efunCall) {
             emitEfunCall(mv, internalName, method, efunCall);
             return;
@@ -440,6 +450,11 @@ public final class BytecodeCompiler {
         }
 
         switch (unary.operator()) {
+        case UOP_BIT_NOT:
+            coerceValue(mv, unary.operand().type(), RuntimeTypes.INT);
+            mv.visitInsn(ICONST_M1);
+            mv.visitInsn(IXOR);
+            break;
         case UOP_NEGATE:
             switch (unary.type().kind()) {
             case FLOAT -> mv.visitInsn(FNEG);
@@ -479,6 +494,7 @@ public final class BytecodeCompiler {
         case BOP_SUB -> mv.visitInsn(ISUB);
         case BOP_MULT -> mv.visitInsn(IMUL);
         case BOP_DIV -> mv.visitInsn(IDIV);
+        case BOP_BIT_OR, BOP_BIT_AND, BOP_BIT_XOR, BOP_SHL, BOP_SHR -> mv.visitInsn(op.opcode());
         case BOP_GT, BOP_GE, BOP_LT, BOP_LE, BOP_EQ, BOP_NE -> emitComparison(mv, op);
         default -> throw new UnsupportedOperationException("Unsupported operator: " + op);
         }
@@ -850,6 +866,14 @@ public final class BytecodeCompiler {
         mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "get", "(I)Ljava/lang/Object;", true);
     }
 
+    private void emitStringGet(MethodVisitor mv, String internalName, IRMethod method, IRStringGet stringGet) {
+        emitExpression(mv, internalName, method, stringGet.string());
+        coerceValue(mv, stringGet.string().type(), RuntimeTypes.STRING);
+        emitExpression(mv, internalName, method, stringGet.index());
+        coerceValue(mv, stringGet.index().type(), RuntimeTypes.INT);
+        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "charAt", "(I)C", false);
+    }
+
     private void emitArraySet(MethodVisitor mv, String internalName, IRMethod method, IRArraySet arraySet) {
         emitExpression(mv, internalName, method, arraySet.array());
         mv.visitTypeInsn(CHECKCAST, "java/util/List");
@@ -858,6 +882,16 @@ public final class BytecodeCompiler {
         emitExpression(mv, internalName, method, arraySet.value());
         boxIfNeeded(mv, arraySet.value().type());
         mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "set", "(ILjava/lang/Object;)Ljava/lang/Object;", true);
+    }
+
+    private void emitSequence(MethodVisitor mv, String internalName, IRMethod method, IRSequence sequence) {
+        List<IRExpression> expressions = sequence.expressions();
+        for (int i = 0; i < expressions.size(); i++) {
+            IRExpression expression = expressions.get(i);
+            emitExpression(mv, internalName, method, expression);
+            if (i < expressions.size() - 1)
+                mv.visitInsn(POP);
+        }
     }
 
     private void emitMappingLiteral(MethodVisitor mv, String internalName, IRMethod method, IRMappingLiteral literal) {

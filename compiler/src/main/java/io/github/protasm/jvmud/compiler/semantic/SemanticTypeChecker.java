@@ -33,10 +33,12 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
@@ -114,6 +116,9 @@ public final class SemanticTypeChecker {
         if (statement instanceof ASTStmtBreak)
             return;
 
+        if (statement instanceof ASTStmtContinue)
+            return;
+
         if (statement instanceof ASTStmtReturn stmtReturn) {
             LPCType valueType = (stmtReturn.returnValue() != null)
                     ? inferExpressionType(stmtReturn.returnValue(), context)
@@ -189,6 +194,9 @@ public final class SemanticTypeChecker {
         if (expression instanceof ASTExprOpBinary binary)
             return inferBinaryType(binary, context);
 
+        if (expression instanceof ASTExprSequence sequence)
+            return inferSequenceType(sequence, context);
+
         if (expression instanceof ASTExprTernary ternary)
             return inferTernaryType(ternary, context);
 
@@ -222,6 +230,13 @@ public final class SemanticTypeChecker {
                         "Unsupported expression kind: " + expression.getClass().getSimpleName(),
                         expression.line()));
         return LPCType.LPCMIXED;
+    }
+
+    private LPCType inferSequenceType(ASTExprSequence sequence, MethodContext context) {
+        LPCType type = LPCType.LPCNULL;
+        for (ASTExpression expression : sequence.expressions())
+            type = inferExpressionType(expression, context);
+        return type;
     }
 
     private LPCType inferTernaryType(ASTExprTernary expr, MethodContext context) {
@@ -258,6 +273,11 @@ public final class SemanticTypeChecker {
 
         if (expr.operator() == UnaryOpType.UOP_NOT)
             return LPCType.LPCSTATUS;
+
+        if (expr.operator() == UnaryOpType.UOP_BIT_NOT) {
+            ensureAssignable(LPCType.LPCINT, operandType, expr.line(), "Bitwise complement expects integer operand");
+            return LPCType.LPCINT;
+        }
 
         ensureAssignable(LPCType.LPCINT, operandType, expr.line(), "Unary operator expects numeric operand");
         return operandType != null ? operandType : LPCType.LPCINT;
@@ -298,6 +318,10 @@ public final class SemanticTypeChecker {
         }
         case BOP_SUB, BOP_MULT, BOP_DIV -> {
             ensureNumericOperands(leftType, rightType, expr.line(), op + " expects numeric operands");
+            return LPCType.LPCINT;
+        }
+        case BOP_BIT_OR, BOP_BIT_AND, BOP_BIT_XOR, BOP_SHL, BOP_SHR -> {
+            ensureNumericOperands(leftType, rightType, expr.line(), op + " expects integer operands");
             return LPCType.LPCINT;
         }
         case BOP_AND, BOP_OR -> {
@@ -381,12 +405,17 @@ public final class SemanticTypeChecker {
             return LPCType.LPCMIXED;
         }
 
+        if (targetType == LPCType.LPCSTRING) {
+            ensureAssignable(LPCType.LPCINT, indexType, access.line(), "String index expects integer");
+            return LPCType.LPCINT;
+        }
+
         if (targetType == LPCType.LPCMIXED || targetType == null)
             return LPCType.LPCMIXED;
 
         problems.add(
                 new CompilationProblem(
-                        CompilationStage.ANALYZE, "Indexing expects array or mapping target", access.line()));
+                        CompilationStage.ANALYZE, "Indexing expects array, mapping, or string target", access.line()));
         return LPCType.LPCMIXED;
     }
 

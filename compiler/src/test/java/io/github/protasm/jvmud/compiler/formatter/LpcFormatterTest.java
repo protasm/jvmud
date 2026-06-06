@@ -96,7 +96,7 @@ final class LPCFormatterTest {
     }
 
     @Test
-    void sortsTopLevelMethodsAlphabeticallyAfterPreamble() {
+    void sortsTopLevelMethodsAlphabeticallyWithoutCrossingPreprocessorBarriers() {
         String source = """
                 int counter;
                 #define LIMIT 3
@@ -116,8 +116,8 @@ final class LPCFormatterTest {
                 """;
 
         String expected = """
-                #define LIMIT 3
                 int counter;
+                #define LIMIT 3
 
                 // comment for alpha
                 alpha() {
@@ -130,6 +130,33 @@ final class LPCFormatterTest {
 
                 zed() {
                   return 3;
+                }
+                """;
+
+        assertEquals(expected, formatter.format(source));
+    }
+
+    @Test
+    void doesNotMoveMethodsAcrossTopLevelDefineBarriers() {
+        String source = """
+                zed() {
+                \treturn CHUNK;
+                }
+
+                #define CHUNK 20
+
+                alpha() {
+                \treturn CHUNK;
+                }
+                """;
+
+        String expected = """
+                zed() {
+                  return CHUNK;
+                }
+                #define CHUNK 20
+                alpha() {
+                  return CHUNK;
                 }
                 """;
 
@@ -202,6 +229,7 @@ final class LPCFormatterTest {
                   object local;
 
                   local = this_object();
+
                   return local;
                 }
                 """;
@@ -365,6 +393,38 @@ final class LPCFormatterTest {
 
                   say(call_other(this_player(), "query_name", 0) +
                   " drinks a bottle of beer.\\n");
+
+                  return 1;
+                }
+                """;
+
+        assertEquals(expected, formatter.format(source));
+    }
+
+    @Test
+    void insertsBlankBeforeStandaloneReturnAfterAssignmentButKeepsAttachedGuardReturns() {
+        String source = """
+                title() {
+                \tif (alignment > 200) {
+                \t\tal_title = "good";
+                \t\treturn;
+                \t}
+                \tif (!ready)
+                \t\treturn 0;
+                \treturn 1;
+                }
+                """;
+
+        String expected = """
+                title() {
+                  if (alignment > 200) {
+                    al_title = "good";
+
+                    return;
+                  }
+
+                  if (!ready)
+                    return 0;
 
                   return 1;
                 }

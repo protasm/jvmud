@@ -34,6 +34,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTStatement;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
@@ -338,6 +339,11 @@ public final class PrintVisitor implements ASTVisitor {
 
     @Override
     public void visitStmtBreak(ASTStmtBreak stmt) {
+        doOutput(stmt.className());
+    }
+
+    @Override
+    public void visitStmtContinue(ASTStmtContinue stmt) {
         doOutput(stmt.className());
     }
 

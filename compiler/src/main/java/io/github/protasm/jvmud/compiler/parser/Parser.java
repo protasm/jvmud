@@ -1,7 +1,10 @@
 package io.github.protasm.jvmud.compiler.parser;
 
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_BREAK;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_CONTINUE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_ELSE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_IDENTIFIER;
@@ -11,13 +14,18 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_FOR;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_BRACE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_BRACKET;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_PAREN;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_LESS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_PIPE_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_GREATER_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_RETURN;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_BRACE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_BRACKET;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_PAREN;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_SEMICOLON;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_SLASH_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_STAR_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_STRING_LITERAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_WHILE;
 
@@ -37,10 +45,12 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTParameter;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTParameters;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTStatement;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
@@ -64,6 +74,7 @@ public class Parser {
         private final RuntimeContext runtimeContext;
         private final Map<String, Integer> fieldDefinitionIndex = new HashMap<>();
         private final Map<String, Integer> methodDefinitionIndex = new HashMap<>();
+        private int sourceOrder;
 
         public Parser() {
                 this(new RuntimeContext(Preprocessor.rejectingResolver()), ParserOptions.defaults());
@@ -112,11 +123,14 @@ public class Parser {
                         currObj = new ASTObject(0, objName);
                         fieldDefinitionIndex.clear();
                         methodDefinitionIndex.clear();
+                        sourceOrder = 0;
 
                         while (!this.tokens.isAtEnd()) {
                                 if (this.tokens.match(T_INHERIT)) {
                                         Token<String> parentToken = consumeInheritPath();
-                                        currObj.addInherit(new ASTInherit(parentToken.line(), parentToken.lexeme()));
+                                        ASTInherit inherit = new ASTInherit(parentToken.line(), parentToken.lexeme());
+                                        inherit.setSourceOrder(nextSourceOrder());
+                                        currObj.addInherit(inherit);
                                         continue;
                                 }
 
@@ -145,16 +159,28 @@ public class Parser {
     }
 
     private void property() {
+        DeclarationModifiers modifiers = declarationModifiers();
         Symbol symbol = declarationSymbol();
         int declarationLine = tokens.previous().line();
         boolean hasType = symbol.declaredTypeName() != null;
 
         if (tokens.match(T_LEFT_PAREN))
-            method(symbol, declarationLine);
+            method(symbol, declarationLine, modifiers);
         else if (hasType)
-            field(symbol, declarationLine);
+            field(symbol, declarationLine, modifiers);
         else
             throw new ParseException("Untyped declarations must be functions.", tokens.current());
+    }
+
+    private DeclarationModifiers declarationModifiers() {
+        boolean isStatic = false;
+
+        while (tokens.check(T_IDENTIFIER) && "static".equals(tokens.current().lexeme())) {
+            tokens.advance();
+            isStatic = true;
+        }
+
+        return new DeclarationModifiers(isStatic);
     }
 
     private Symbol declarationSymbol() {
@@ -173,7 +199,7 @@ public class Parser {
         return new Symbol((String) null, firstToken.lexeme());
     }
 
-    private void field(Symbol symbol, int declarationLine) {
+    private void field(Symbol symbol, int declarationLine, DeclarationModifiers modifiers) {
         if (locals == null)
             locals = new Locals();
 
@@ -182,7 +208,13 @@ public class Parser {
         for (FieldDeclarator declarator : declarators) {
             boolean hasInitializer = declarator.initializer() != null;
             if (!hasInitializer) {
-                ASTField field = new ASTField(declarationLine, currObj.name(), declarator.symbol());
+                ASTField field = new ASTField(
+                        declarationLine,
+                        currObj.name(),
+                        declarator.symbol(),
+                        true,
+                        modifiers.isStatic());
+                field.setSourceOrder(nextSourceOrder());
                 currObj.fields().put(field.symbol().name(), field);
                 continue;
             }
@@ -191,7 +223,13 @@ public class Parser {
             ASTField field = currObj.fields().get(declarator.symbol().name(), definitionIndex);
 
             if (field == null) {
-                field = new ASTField(declarationLine, currObj.name(), declarator.symbol());
+                field = new ASTField(
+                        declarationLine,
+                        currObj.name(),
+                        declarator.symbol(),
+                        true,
+                        modifiers.isStatic());
+                field.setSourceOrder(nextSourceOrder());
                 currObj.fields().put(field.symbol().name(), field);
             }
 
@@ -230,13 +268,19 @@ public class Parser {
         return new FieldDeclarator(symbol, initializer);
     }
 
-        private void method(Symbol symbol, int declarationLine) {
+        private void method(Symbol symbol, int declarationLine, DeclarationModifiers modifiers) {
                 locals = new Locals();
                 ParsedParameters parsedParams = parameters();
                 ASTParameters params = parsedParams.parameters();
 
                 if (tokens.match(T_SEMICOLON)) {
-                        ASTMethod declaration = new ASTMethod(declarationLine, currObj.name(), symbol);
+                        ASTMethod declaration = new ASTMethod(
+                                declarationLine,
+                                currObj.name(),
+                                symbol,
+                                true,
+                                modifiers.isStatic());
+                        declaration.setSourceOrder(nextSourceOrder());
                         declaration.setParameters(params);
                         parsedParams.locals().forEach(declaration::addLocal);
                         currObj.methods().put(declaration.symbol().name(), declaration);
@@ -248,7 +292,13 @@ public class Parser {
                 ASTMethod method = currObj.methods().get(symbol.name(), definitionIndex);
 
                 if (method == null) {
-                        method = new ASTMethod(declarationLine, currObj.name(), symbol);
+                        method = new ASTMethod(
+                                declarationLine,
+                                currObj.name(),
+                                symbol,
+                                true,
+                                modifiers.isStatic());
+                        method.setSourceOrder(nextSourceOrder());
                         currObj.methods().put(method.symbol().name(), method);
                 }
 
@@ -269,6 +319,10 @@ public class Parser {
 
     private int nextMethodDefinitionIndex(String name) {
         return methodDefinitionIndex.merge(name, 1, Integer::sum) - 1;
+    }
+
+    private int nextSourceOrder() {
+        return sourceOrder++;
     }
 
     private ParsedParameters parameters() {
@@ -392,6 +446,8 @@ public class Parser {
                         return whileStatement();
                 else if (tokens.match(T_BREAK))
                         return breakStatement();
+                else if (tokens.match(T_CONTINUE))
+                        return continueStatement();
                 else if (tokens.match(T_RETURN))
                         return returnStatement();
                 else if (tokens.match(T_LEFT_BRACE))
@@ -457,6 +513,11 @@ public class Parser {
         return new ASTStmtBreak(currLine());
     }
 
+    private ASTStatement continueStatement() {
+        tokens.consume(T_SEMICOLON, "Expect ';' after continue.");
+        return new ASTStmtContinue(currLine());
+    }
+
     private ASTStmtWhile whileStatement() {
         int line = tokens.previous().line();
         tokens.consume(T_LEFT_PAREN, "Expect '(' after while.");
@@ -474,7 +535,7 @@ public class Parser {
 
         ASTExpression initializer = null;
         if (!tokens.check(T_SEMICOLON))
-            initializer = expression();
+            initializer = commaExpression();
         tokens.consume(T_SEMICOLON, "Expect ';' after for initializer.");
 
         ASTExpression condition = null;
@@ -484,7 +545,7 @@ public class Parser {
 
         ASTExpression update = null;
         if (!tokens.check(T_RIGHT_PAREN))
-            update = expression();
+            update = commaExpression();
         tokens.consume(T_RIGHT_PAREN, "Expect ')' after for clauses.");
 
         ASTStatement body = statement();
@@ -502,6 +563,21 @@ public class Parser {
 
     public ASTExpression expression() {
         return parsePrecedence(PrattParser.Precedence.PREC_ASSIGNMENT);
+    }
+
+    private ASTExpression commaExpression() {
+        ASTExpression first = expression();
+        if (!tokens.match(T_COMMA))
+            return first;
+
+        List<ASTExpression> expressions = new ArrayList<>();
+        expressions.add(first);
+
+        do {
+            expressions.add(expression());
+        } while (tokens.match(T_COMMA));
+
+        return new ASTExprSequence(first.line(), expressions);
     }
 
     public ASTExpression parsePrecedence(int precedence) {
@@ -528,7 +604,16 @@ public class Parser {
         }
 
         if (canAssign)
-            if (tokens.match(T_EQUAL) || tokens.match(T_PLUS_EQUAL) || tokens.match(T_MINUS_EQUAL))
+            if (tokens.match(T_EQUAL)
+                    || tokens.match(T_PLUS_EQUAL)
+                    || tokens.match(T_MINUS_EQUAL)
+                    || tokens.match(T_STAR_EQUAL)
+                    || tokens.match(T_SLASH_EQUAL)
+                    || tokens.match(T_PIPE_EQUAL)
+                    || tokens.match(T_AMP_EQUAL)
+                    || tokens.match(T_CARET_EQUAL)
+                    || tokens.match(T_LESS_LESS_EQUAL)
+                    || tokens.match(T_GREATER_GREATER_EQUAL))
                 throw new ParseException("Invalid assignment target.", tokens.current());
 
         return expr;
@@ -549,5 +634,8 @@ public class Parser {
         }
 
         return false;
+    }
+
+    private record DeclarationModifiers(boolean isStatic) {
     }
 }

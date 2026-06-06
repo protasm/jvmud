@@ -33,6 +33,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignment;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedCall;
@@ -41,6 +42,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedParentCall;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
@@ -391,6 +393,9 @@ public final class SemanticAnalyzer {
         if (expression instanceof ASTExprOpBinary binary)
             return referencesLocal(binary.left(), local) || referencesLocal(binary.right(), local);
 
+        if (expression instanceof ASTExprSequence sequence)
+            return sequence.expressions().stream().anyMatch(expr -> referencesLocal(expr, local));
+
         if (expression instanceof ASTExprTernary ternary) {
             return referencesLocal(ternary.condition(), local)
                     || referencesLocal(ternary.thenBranch(), local)
@@ -427,12 +432,12 @@ public final class SemanticAnalyzer {
             }
         }
 
-        int firstPropertyLine = firstPropertyLine(astObject);
-        if (firstPropertyLine == Integer.MAX_VALUE)
+        int firstPropertyOrder = firstPropertyOrder(astObject);
+        if (firstPropertyOrder == Integer.MAX_VALUE)
             return;
 
         for (ASTInherit inherit : inherits) {
-            if (inherit.line() > firstPropertyLine) {
+            if (orderOf(inherit) > firstPropertyOrder) {
                 problems.add(
                         new CompilationProblem(
                                 CompilationStage.ANALYZE,
@@ -442,16 +447,20 @@ public final class SemanticAnalyzer {
         }
     }
 
-    private int firstPropertyLine(ASTObject astObject) {
-        int firstLine = Integer.MAX_VALUE;
+    private int firstPropertyOrder(ASTObject astObject) {
+        int firstOrder = Integer.MAX_VALUE;
 
         for (ASTField field : astObject.fields())
-            firstLine = Math.min(firstLine, field.line());
+            firstOrder = Math.min(firstOrder, orderOf(field));
 
         for (ASTMethod method : astObject.methods())
-            firstLine = Math.min(firstLine, method.line());
+            firstOrder = Math.min(firstOrder, orderOf(method));
 
-        return firstLine;
+        return firstOrder;
+    }
+
+    private int orderOf(io.github.protasm.jvmud.compiler.parser.ast.ASTNode node) {
+        return node.sourceOrder() >= 0 ? node.sourceOrder() : node.line();
     }
 
     private void resolveObjectSignatures(ASTObject astObject, List<CompilationProblem> problems) {
@@ -459,10 +468,28 @@ public final class SemanticAnalyzer {
             resolveSymbolType(field.symbol(), field.line(), problems);
 
         for (ASTMethod method : astObject.methods()) {
+            if (method.symbol().declaredTypeName() == null) {
+                problems.add(
+                        new CompilationProblem(
+                                CompilationStage.ANALYZE,
+                                "Method '" + method.symbol().name() + "' must declare a return type",
+                                method.line()));
+                method.symbol().resolveDeclaredType(LPCType.LPCMIXED);
+            }
             resolveSymbolType(method.symbol(), method.line(), problems);
             if (method.parameters() != null) {
-                for (ASTParameter parameter : method.parameters())
+                for (ASTParameter parameter : method.parameters()) {
+                    if (parameter.symbol().declaredTypeName() == null) {
+                        problems.add(
+                                new CompilationProblem(
+                                        CompilationStage.ANALYZE,
+                                        "Parameter '" + parameter.symbol().name() + "' in method '"
+                                                + method.symbol().name() + "' must declare a type",
+                                        parameter.line()));
+                        parameter.symbol().resolveDeclaredType(LPCType.LPCMIXED);
+                    }
                     resolveSymbolType(parameter.symbol(), parameter.line(), problems);
+                }
             }
         }
     }
@@ -760,6 +787,19 @@ public final class SemanticAnalyzer {
                 return new ASTExprOpBinary(binary.line(), resolvedLeft, resolvedRight, binary.operator());
             }
 
+            if (expression instanceof ASTExprSequence sequence) {
+                List<ASTExpression> resolvedExpressions = new ArrayList<>();
+                boolean changed = false;
+                for (ASTExpression nested : sequence.expressions()) {
+                    ASTExpression resolved = resolveExpression(nested, context);
+                    changed |= resolved != nested;
+                    resolvedExpressions.add(resolved);
+                }
+                if (!changed)
+                    return sequence;
+                return new ASTExprSequence(sequence.line(), resolvedExpressions);
+            }
+
             if (expression instanceof ASTExprTernary ternary) {
                 ASTExpression resolvedCondition = resolveExpression(ternary.condition(), context);
                 ASTExpression resolvedThen = resolveExpression(ternary.thenBranch(), context);
@@ -940,12 +980,10 @@ public final class SemanticAnalyzer {
         private ASTExprFieldStore buildFieldStore(
                 ASTExprUnresolvedAssignment assignment, ASTField field, ASTExpression resolvedValue) {
             ASTExpression value = resolvedValue;
-            if (assignment.operator() == AssignOpType.ADD)
-                value = new ASTExprOpBinary(assignment.line(), new ASTExprFieldAccess(assignment.line(), field),
-                        resolvedValue, BinaryOpType.BOP_ADD);
-            else if (assignment.operator() == AssignOpType.SUB)
-                value = new ASTExprOpBinary(assignment.line(), new ASTExprFieldAccess(assignment.line(), field),
-                        resolvedValue, BinaryOpType.BOP_SUB);
+            BinaryOpType compoundOp = compoundAssignmentOperator(assignment.operator());
+            if (compoundOp != null)
+                value = new ASTExprOpBinary(
+                        assignment.line(), new ASTExprFieldAccess(assignment.line(), field), resolvedValue, compoundOp);
 
             return new ASTExprFieldStore(assignment.line(), field, value);
         }
@@ -953,14 +991,27 @@ public final class SemanticAnalyzer {
         private ASTExprLocalStore buildLocalStore(
                 ASTExprUnresolvedAssignment assignment, ASTLocal local, ASTExpression resolvedValue) {
             ASTExpression value = resolvedValue;
-            if (assignment.operator() == AssignOpType.ADD)
-                value = new ASTExprOpBinary(assignment.line(), new ASTExprLocalAccess(assignment.line(), local),
-                        resolvedValue, BinaryOpType.BOP_ADD);
-            else if (assignment.operator() == AssignOpType.SUB)
-                value = new ASTExprOpBinary(assignment.line(), new ASTExprLocalAccess(assignment.line(), local),
-                        resolvedValue, BinaryOpType.BOP_SUB);
+            BinaryOpType compoundOp = compoundAssignmentOperator(assignment.operator());
+            if (compoundOp != null)
+                value = new ASTExprOpBinary(
+                        assignment.line(), new ASTExprLocalAccess(assignment.line(), local), resolvedValue, compoundOp);
 
             return new ASTExprLocalStore(assignment.line(), local, value);
+        }
+
+        private BinaryOpType compoundAssignmentOperator(AssignOpType op) {
+            return switch (op) {
+            case SET -> null;
+            case ADD -> BinaryOpType.BOP_ADD;
+            case SUB -> BinaryOpType.BOP_SUB;
+            case MULT -> BinaryOpType.BOP_MULT;
+            case DIV -> BinaryOpType.BOP_DIV;
+            case BIT_OR -> BinaryOpType.BOP_BIT_OR;
+            case BIT_AND -> BinaryOpType.BOP_BIT_AND;
+            case BIT_XOR -> BinaryOpType.BOP_BIT_XOR;
+            case SHL -> BinaryOpType.BOP_SHL;
+            case SHR -> BinaryOpType.BOP_SHR;
+            };
         }
 
         private ASTMethod resolveMethod(String name, int arity) {
@@ -1076,10 +1127,13 @@ public final class SemanticAnalyzer {
                 return new ASTStmtWhile(stmtWhile.line(), resolvedCondition, resolvedBody);
             }
 
-            if (statement instanceof ASTStmtBreak stmtBreak)
-                return stmtBreak;
+        if (statement instanceof ASTStmtBreak stmtBreak)
+            return stmtBreak;
 
-            if (statement instanceof ASTStmtReturn stmtReturn) {
+        if (statement instanceof ASTStmtContinue stmtContinue)
+            return stmtContinue;
+
+        if (statement instanceof ASTStmtReturn stmtReturn) {
                 ASTExpression resolved = resolveExpression(stmtReturn.returnValue(), context);
                 if (resolved == stmtReturn.returnValue())
                     return stmtReturn;

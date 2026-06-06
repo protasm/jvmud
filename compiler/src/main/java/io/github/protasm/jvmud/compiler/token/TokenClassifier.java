@@ -11,17 +11,18 @@ import java.util.Map;
  */
 public final class TokenClassifier {
     private static final Map<String, TokenType> RESERVED_KEYWORDS =
-            Map.of(
-                    "break", TokenType.T_BREAK,
-                    "else", TokenType.T_ELSE,
-                    "false", TokenType.T_FALSE,
-                    "for", TokenType.T_FOR,
-                    "if", TokenType.T_IF,
-                    "inherit", TokenType.T_INHERIT,
-                    "nil", TokenType.T_NIL,
-                    "return", TokenType.T_RETURN,
-                    "true", TokenType.T_TRUE,
-                    "while", TokenType.T_WHILE);
+            Map.ofEntries(
+                    Map.entry("break", TokenType.T_BREAK),
+                    Map.entry("continue", TokenType.T_CONTINUE),
+                    Map.entry("else", TokenType.T_ELSE),
+                    Map.entry("false", TokenType.T_FALSE),
+                    Map.entry("for", TokenType.T_FOR),
+                    Map.entry("if", TokenType.T_IF),
+                    Map.entry("inherit", TokenType.T_INHERIT),
+                    Map.entry("nil", TokenType.T_NIL),
+                    Map.entry("return", TokenType.T_RETURN),
+                    Map.entry("true", TokenType.T_TRUE),
+                    Map.entry("while", TokenType.T_WHILE));
 
     private TokenClassifier() {}
 

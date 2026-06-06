@@ -28,15 +28,21 @@ final class MudlibBoot {
     private final LpcRuntime runtime;
     private final Path mudlibRoot;
     private final String configPath;
+    private final boolean createInitialActor;
 
     MudlibBoot(LpcRuntime runtime, Path mudlibRoot) {
         this(runtime, mudlibRoot, DEFAULT_CONFIG_PATH);
     }
 
     MudlibBoot(LpcRuntime runtime, Path mudlibRoot, String configPath) {
+        this(runtime, mudlibRoot, configPath, true);
+    }
+
+    MudlibBoot(LpcRuntime runtime, Path mudlibRoot, String configPath, boolean createInitialActor) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         this.configPath = Objects.requireNonNullElse(configPath, DEFAULT_CONFIG_PATH);
+        this.createInitialActor = createInitialActor;
     }
 
     MudlibBootResult boot() {
@@ -56,18 +62,20 @@ final class MudlibBoot {
             try {
                 Object placeObject = runtime.loadOrGetObject(initialPlacePath);
                 Place startingPlace = worldRuntime.createPlace(initialPlacePath, initialPlacePath);
-                Entity actorEntity = worldRuntime.createEntity(
-                        initialPresenceId,
-                        "local player",
-                        startingPlace,
-                        Capability.ACTOR,
-                        Capability.PERCEPTIVE);
-                LocalSessionActor localActor =
-                        new LocalSessionActor(runtime, worldRuntime, actorEntity, "local player");
-                runtime.registerHostObject(initialPresenceId, localActor);
-                runtime.moveObject(localActor, placeObject);
-                actor = localActor;
                 initialPlace = initialPlacePath;
+                if (createInitialActor) {
+                    Entity actorEntity = worldRuntime.createEntity(
+                            initialPresenceId,
+                            "local player",
+                            startingPlace,
+                            Capability.ACTOR,
+                            Capability.PERCEPTIVE);
+                    LocalSessionActor localActor =
+                            new LocalSessionActor(runtime, worldRuntime, actorEntity, "local player");
+                    runtime.registerHostObject(initialPresenceId, localActor);
+                    runtime.moveObject(localActor, placeObject);
+                    actor = localActor;
+                }
             } catch (RuntimeException e) {
                 skippedPreloads.add(initialPlacePath);
             }

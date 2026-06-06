@@ -10,6 +10,7 @@ public final class ASTMethod extends ASTNode {
     private final java.util.List<ASTLocal> locals;
     private ASTMethod overrides;
     private final boolean declared;
+    private final boolean staticModifier;
     private boolean defined;
 
     public ASTMethod(int line, String ownerName, Symbol symbol) {
@@ -17,11 +18,16 @@ public final class ASTMethod extends ASTNode {
     }
 
     public ASTMethod(int line, String ownerName, Symbol symbol, boolean declared) {
+        this(line, ownerName, symbol, declared, false);
+    }
+
+    public ASTMethod(int line, String ownerName, Symbol symbol, boolean declared, boolean staticModifier) {
         super(line);
 
         this.ownerName = ownerName;
         this.symbol = symbol;
         this.declared = declared;
+        this.staticModifier = staticModifier;
 
         parameters = null;
         body = null;
@@ -75,6 +81,10 @@ public final class ASTMethod extends ASTNode {
 
     public boolean isDeclared() {
         return declared;
+    }
+
+    public boolean isStatic() {
+        return staticModifier;
     }
 
     public boolean isDefined() {

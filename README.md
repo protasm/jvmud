@@ -1,16 +1,23 @@
 # JVMud
 
-JVMud is an experimental text-world engine for the JVM, in the LP MUD
-tradition. This repository is a monorepo: the core runtime lives under
-`runtime/`, the LPC compiler lives under `compiler/`, and vanilla LPMUD 2.4.5
-mudlib source lives under `mudlib/`.
+JVMud is an experimental LPC/LPMud text-world engine for the JVM. This
+repository is a monorepo: the core runtime lives under `runtime/`, the LPC
+compiler lives under `compiler/`, and vanilla LPMUD 2.4.5 mudlib source lives
+under `mudlib/`.
 
 `PRINCIPLES.md` is the controlling design document for the engine. The engine
-is being built around JVMud's core concepts: game, text, interactivity,
-multiplayer world, persistence, temporality, and presence. LPC compatibility is
-useful, but it is not the engine's identity. The upstream mudlib should remain
-unchanged by default; compatibility belongs in dedicated mudlib-side shim
-objects plus the engine/compiler support needed to host them.
+is being built around JVMud's core concepts: Game, Text, Multiplayer,
+Interactive, World (Linked Places, Entities, Movement), Persistence,
+Temporality, and Presence. JVMud has a sole LPC/LPMud target: compatibility
+choices should deepen that target, not broaden the engine into a generic MUD
+framework. The upstream mudlib should remain unchanged by default;
+compatibility belongs in dedicated mudlib-side shim objects plus the
+engine/compiler support needed to host them.
+
+Here "LPMud" means LPC-authored game worlds compiled into live objects that can
+be rewritten, recompiled, and reloaded without rebooting the whole game. It does
+not mean JVMud adopts legacy driver concepts such as rooms, heartbeats, applies,
+call_outs, or master objects as engine ontology.
 
 ## Repository Layout
 
@@ -106,6 +113,10 @@ When a conflict appears, prefer:
 
 - engine semantics that clearly model world, place, entity, location,
   containment, presence, perception, persistence, and time;
+- compiler and runtime support for the sole LPC/LPMud target rather than
+  alternate mudlib languages or generic MUD abstractions;
+- live object reload semantics for LPC-authored game code without turning
+  legacy LPMud driver vocabulary into JVMud engine concepts;
 - compiler/runtime support that can host legacy LPC content without distorting
   the JVMud ontology;
 - dedicated mudlib-side compatibility shims, such as mfun objects, shadow, or
@@ -114,9 +125,10 @@ When a conflict appears, prefer:
   translated by compatibility shims;
 - small bridge APIs only where they keep current LPC content usable.
 
-## Local CLI
+## Admin CLI And Telnet
 
-The `cli` module provides a local shell backed by the real runtime.
+The `cli` module provides a local shell and early Telnet listener backed by the
+real runtime.
 After building, run it with:
 
 ```text
@@ -126,12 +138,11 @@ After building, run it with:
 The launcher compiles the CLI and compiler modules, then starts the shell with
 the local build output. Optionally pass a mudlib root as the first argument.
 
-The shell treats plain input as player/world input and slash-prefixed input as
-shell/admin input. Slash commands include `/actor`, `/boot`, `/call`, `/cat`,
-`/cd`, `/clone`, `/destruct`, `/dispatch`, `/inspect`, `/load`, `/look`, `/ls`,
-`/move`, `/objects`, `/pwd`, `/reload`, `/verbosity`, `/where`, and `/quit`.
-Some commands have single-character shortcuts; run `/help` in the shell to see
-the current alias list and per-command usage notes.
+The shell is admin-only: every input line is parsed as an admin command. Commands
+include `boot`, `call`, `cat`, `cd`, `clone`, `destruct`, `inspect`, `load`,
+`look`, `ls`, `move`, `objects`, `pwd`, `reload`, `verbosity`, `where`, and
+`quit`. Some commands have single-character shortcuts; run `help` in the shell
+to see the current alias list and per-command usage notes.
 
 The CLI includes a mudlib-rooted virtual filesystem. If the mudlib root is
 `/Users/jonathan/Projects/jvmud/mudlib`, then CLI path `/` maps to that real
@@ -142,15 +153,22 @@ output. `watch` prints compiler stage progress for commands such as `load` and
 `clone`, which is useful when inspecting parser, analyzer, lowering, or bytecode
 failures.
 
-The first command-dispatch slice is also available locally. Use `/actor <handle>`
-to choose the current command actor. After that, ordinary input is routed through
-LPC `init`, `add_action`, and `add_verb` registrations on nearby or carried
-objects. Use slash commands such as `/objects` or `/inspect <handle>` whenever
-you want shell/admin tooling instead of in-world input. This is intentionally
-small: it proves the player-like command path before Telnet, login, movement,
-and full mudlib boot are introduced. Plain `help` is treated like any other
-player command: it only works when the mudlib registers a `help` verb. Use
-`/help` for the shell command reference.
+The same command/session path is available through the first Telnet listener:
+
+```text
+./jvmud-telnet [mudlib-root] [port] [bind-address] [config-object]
+```
+
+By default it serves `mudlib` on `127.0.0.1:4000` using the standard JVMud
+mudlib config object. Starting this process boots one shared runtime and world;
+each Telnet connection attaches a fresh host-owned persona in the configured
+starting room. Player/world input is routed through LPC `init`, `add_action`,
+and `add_verb` registrations on nearby or carried objects. Telnet slash commands
+are limited to session controls such as `/help` and `/quit`; admin inspection
+and object mutation stay in the admin CLI. This is still an early development
+listener: mudlib-defined player login, session-to-session messaging, output
+isolation between participants, and production networking policy belong to the
+later server slices.
 
 ## Development Notes
 

@@ -24,6 +24,17 @@ chat server, collaboration platform, or generic game engine.
 JVMud is specifically an engine for creating and operating persistent,
 multiplayer, text-based game worlds in the tradition of LP MUDs.
 
+JVMud has one mudlib and language target: LPC for LPMud-style worlds. It is not
+a multi-language MUD framework. Compatibility, tooling, compiler work, runtime
+APIs, documentation, and tests should all assume this sole LPC/LPMud target.
+
+In JVMud, "LPMud engine" means that the game world is authored in LPC, compiled
+into game objects, and can be rewritten, recompiled, and reloaded while the game
+continues running. It does not mean adopting legacy LPMud driver concepts such
+as rooms, heartbeats, applies, call_outs, or master objects as JVMud engine
+ontology. Those names may exist as LPC compatibility vocabulary, but JVMud's
+engine concepts remain the concepts named here.
+
 The Eight Core Concepts
 -----------------------
 
@@ -62,7 +73,13 @@ The Eight Core Concepts
    Participants and entities occupy places and exist somewhere
    within the world.
 
-   The World concept implies Spatiality.
+   The World concept includes Linked Places, Entities, and Movement.
+
+   Linked Places give the world traversable structure.
+
+   Entities are the things that exist in that structure.
+
+   Movement changes where an Entity is present.
 
 6. Persistence
 

@@ -3,10 +3,20 @@
 JVMud's engine-mudlib boundary is a native JVMud contract. It is not a promise
 to preserve legacy LP engine vocabulary on the engine side.
 
-The engine owns the concepts described in `../PRINCIPLES.md`: game, text,
-interactivity, multiplayer world, persistence, temporality, presence, places,
-links, entities, locations, containment, and situated perception. Mudlibs provide
-world fiction, object behavior, commands, rules, and presentation.
+The engine owns the concepts described in `../PRINCIPLES.md`: Game, Text,
+Multiplayer, Interactive, World (Linked Places, Entities, Movement),
+Persistence, Temporality, Presence, places, links, locations, containment, and
+situated perception. Mudlibs provide world fiction, object behavior, commands,
+rules, and presentation.
+
+JVMud has a sole mudlib and language target: LPC for LPMud-style worlds. This
+contract defines how that LPC/LPMud target crosses into the JVMud engine; it is
+not a generic plugin boundary for alternate mudlib languages.
+
+In this contract, "LPMud-style" means LPC source compiled into live game objects
+with support for rewriting, recompiling, and reloading those objects without a
+whole-game reboot. It does not mean adopting legacy driver concepts such as
+rooms, heartbeats, applies, call_outs, or master objects as engine concepts.
 
 Legacy mudlibs may expect older LPC names such as `reset`, `set_heart_beat`, or
 `move_object`. JVMud should support those through dedicated mudlib-side
@@ -25,26 +35,55 @@ The boundary has two directions:
 Both directions should use JVMud-native terms in engine design. Compatibility
 objects translate legacy mudlib terms into those native operations.
 
-## Engine-To-Mudlib Hooks
+## Engine-To-Mudlib Lifecycle Hooks
 
-JVMud may call these mudlib hooks when present. The exact LPC-facing method names
-are adapter details; the engine contract is named by event and intent.
+JVMud lifecycle events are engine concepts. LPC method names are mudlib boundary
+configuration. A mudlib may map an event to whatever method name it wants; for a
+legacy LPMUD 2.4.5 compatibility layer, that mapping may happen to use names
+such as `reset`, `init`, `heart_beat`, `call_out` callbacks, `valid_read`,
+`valid_write`, or `log_error`.
 
-| Engine event | Meaning | Timing |
-| --- | --- | --- |
-| Object initialized | A newly loaded or cloned mudlib object should initialize its state. | Once after object construction and dependency setup. |
-| Object reactivated | An existing mudlib object should refresh recurring or resettable state. | On scheduled world reset or explicit reload policy. |
-| Entity enters interaction scope | An object may register commands or update local interaction affordances for an actor. | When an interactive entity enters, carries, or otherwise comes into scope of the object. |
-| Scheduled object tick | An object that asked for recurring time should receive a time pulse. | On the engine scheduler's deterministic cadence. |
-| Deferred object callback | A previously scheduled one-shot callback should run. | At or after the requested world time. |
-| Idle object review | An object may approve, refuse, or prepare for cleanup. | When the engine is considering unloading or compacting idle state. |
-| Session connected | The mudlib may create or choose an entity for a new participant. | During session establishment, before the participant enters the world. |
-| Policy check | The mudlib may participate in content policy, filesystem, or privilege decisions. | Before sensitive engine operations that delegate policy to the mudlib. |
-| Error reported | The mudlib may observe or record a compilation/runtime error. | When JVMud catches an error attributable to mudlib content. |
+The rule is:
 
-For LPMUD 2.4.5, the compatibility layer may map these events to names such as
-`reset`, `init`, `heart_beat`, `call_out` callbacks, `clean_up`, `connect`,
-`valid_read`, `valid_write`, and `log_error`.
+- if a lifecycle event has no mudlib mapping, JVMud does not call into the
+  mudlib for that event;
+- if a lifecycle event has a mudlib mapping and the event occurs, JVMud must call
+  the mapped method on the specified target object;
+- if the target object does not define the mapped method, the call is skipped
+  unless that event is later marked required by the boundary contract;
+- a hook method's return value is advisory unless the event definition below
+  says otherwise.
+
+Lifecycle mappings are declared in the mudlib boundary configuration, for
+example:
+
+```text
+lifecycle.object_loaded = reset
+lifecycle.interaction_scope_started = init
+```
+
+The currently defined JVMud lifecycle events are:
+
+| Event key | Current status | Target | Arguments | Meaning |
+| --- | --- | --- | --- | --- |
+| `object_loaded` | Implemented, optional mapping | Loaded or cloned object | `mixed first_load` | A mudlib object has been materialized and may initialize object state. Current compatibility passes `0` for `first_load`. |
+| `object_activated` | Reserved | Activated object | none yet | An existing object has been reactivated by an explicit reload, reset, or world maintenance policy. |
+| `object_destroyed` | Reserved | Destroyed object or boundary object | none yet | An object is being removed and may release mudlib-owned state before references are discarded. |
+| `entity_arrived_at_place` | Reserved | Arriving entity or destination place | source place, destination place, movement action | An entity has completed movement into a place. |
+| `entity_departed_from_place` | Reserved | Departing entity or source place | source place, destination place, movement action | An entity is leaving a place. |
+| `entity_added_to_entity` | Reserved | Added entity or containing entity | container entity | An entity has entered another entity's containment. |
+| `entity_removed_from_entity` | Reserved | Removed entity or containing entity | previous container entity | An entity has left another entity's containment. |
+| `interaction_scope_started` | Implemented, optional mapping | Actor, actor location, carried objects, and nearby objects | none currently | An interactive actor's local command/perception scope is being refreshed; mudlib objects may register text commands or interaction affordances. |
+| `command_dispatch_started` | Reserved | Command actor or boundary object | command text, verb | JVMud is about to dispatch participant text to mudlib behavior. |
+| `command_dispatch_finished` | Reserved | Command actor or boundary object | command text, verb, handled status | JVMud has finished dispatching participant text. |
+| `scheduled_tick` | Reserved | Scheduled object | scheduler context | The engine scheduler is delivering deterministic recurring time to an object. |
+| `deferred_callback` | Reserved | Scheduled object | callback payload | A previously requested one-shot deferred callback is due. |
+
+No lifecycle hook is globally required today. The minimum runnable mudlib
+boundary can choose to define none of them. A playable LPC/LPMud mudlib will
+usually map at least `object_loaded` and `interaction_scope_started`, because
+those are the current hooks that let objects initialize state and expose local
+commands.
 
 ## Mudlib-To-Engine Requests
 
@@ -97,6 +136,8 @@ legacy method names as engine ontology.
   the scheduler.
 - Persistence is an engine concern; mudlibs can provide serialization behavior
   or policy but do not define whether the world endures.
+- Live reload of LPC-authored objects is an LPMud target requirement, but legacy
+  reload hooks and driver names are adapter details.
 - Vanilla upstream mudlib files are preserved by default.
 
 ## First Implementation Slice

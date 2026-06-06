@@ -20,6 +20,7 @@ public final class TelnetServer implements AutoCloseable {
     private final Path mudlibRoot;
     private final String configObjectPath;
     private final ExecutorService sessions;
+    private TelnetMud mud;
     private ServerSocket serverSocket;
     private Thread acceptThread;
     private volatile boolean running;
@@ -49,6 +50,7 @@ public final class TelnetServer implements AutoCloseable {
         if (running) {
             return;
         }
+        mud = TelnetMud.boot(mudlibRoot, configObjectPath);
         serverSocket = new ServerSocket(requestedPort, 50, InetAddress.getByName(bindAddress));
         running = true;
         acceptThread = new Thread(this::acceptLoop, "jvmud-telnet-accept");
@@ -93,7 +95,7 @@ public final class TelnetServer implements AutoCloseable {
         while (running) {
             try {
                 Socket socket = serverSocket.accept();
-                sessions.execute(new TelnetSession(socket, mudlibRoot, configObjectPath));
+                sessions.execute(new TelnetSession(socket, mud));
             } catch (IOException e) {
                 if (running) {
                     System.err.println("Telnet accept failed: " + e.getMessage());

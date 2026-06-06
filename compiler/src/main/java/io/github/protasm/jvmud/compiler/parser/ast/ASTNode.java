@@ -15,6 +15,7 @@ public abstract sealed class ASTNode
                 ASTParameter,
                 ASTStatement {
     protected final int line;
+    private int sourceOrder = -1;
 
     public ASTNode(int line) {
         this.line = line;
@@ -22,6 +23,14 @@ public abstract sealed class ASTNode
 
     public int line() {
         return line;
+    }
+
+    public int sourceOrder() {
+        return sourceOrder;
+    }
+
+    public void setSourceOrder(int sourceOrder) {
+        this.sourceOrder = sourceOrder;
     }
 
     public String className() {

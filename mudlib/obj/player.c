@@ -28,15 +28,15 @@ static string current_path;  /* Current directory */
 
 /* Some functions to set moving messages. */
 
-setmout(m) { msgout = m; return 1; }
-setmin(m) { msgin = m; return 1; }
-setmmout(m) { mmsgout = m; return 1; }
-setmmin(m) { mmsgin = m; return 1; }
+int setmout(mixed m) { msgout = m; return 1; }
+int setmin(mixed m) { msgin = m; return 1; }
+int setmmout(mixed m) { mmsgout = m; return 1; }
+int setmmin(mixed m) { mmsgin = m; return 1; }
 
 /*
 * Update our aligment.
 */
-add_alignment(a) {
+void add_alignment(mixed a) {
   if (!intp(a)) {
     write("Bad type argument to add_alignment.\n");
 
@@ -81,7 +81,7 @@ add_alignment(a) {
   al_title = "demonic";
 }
 
-add_exp(e) {
+void add_exp(mixed e) {
   #ifdef LOG_EXP
   if (this_player() && this_player() != this_object() &&
     query_ip_number(this_player()) && level < 20 && e >= ROOM_EXP_LIMIT)
@@ -96,7 +96,7 @@ add_exp(e) {
     add_worth(e);
 }
 
-add_intoxination(i) {
+void add_intoxination(mixed i) {
   if(i < 0) {
     if (-i > intoxicated / 10)
       i = -intoxicated / 10;
@@ -108,7 +108,7 @@ add_intoxination(i) {
     intoxicated = 0;
 }
 
-add_soaked(i) {
+void add_soaked(mixed i) {
   if(i < 0) {
     if (-i > soaked / 10)
       i = -soaked / 10;
@@ -120,7 +120,7 @@ add_soaked(i) {
     soaked = 0;
 }
 
-add_standard_commands() {
+void add_standard_commands() {
   add_action("set_email", "email");
   add_action("give_object", "give");
   add_action("score", "score");
@@ -156,7 +156,7 @@ add_standard_commands() {
   add_action("who", "who");
 }
 
-add_stuffed(i) {
+void add_stuffed(mixed i) {
   if(i < 0) {
     if (-i > stuffed / 10)
       i = -stuffed / 10;
@@ -168,7 +168,7 @@ add_stuffed(i) {
     stuffed = 0;
 }
 
-add_weight(w) {
+int add_weight(mixed w) {
   int max;
 
   max = level + 10;
@@ -186,7 +186,7 @@ add_weight(w) {
   return 1;
 }
 
-static bug(str) {
+static int bug(mixed str) {
   if (!str) {
     write("Give an argument.\n");
 
@@ -205,7 +205,7 @@ static bug(str) {
   return 1;
 }
 
-cat_file(path) {
+int cat_file(mixed path) {
   if (!path)
     return 0;
 
@@ -217,7 +217,7 @@ cat_file(path) {
 
 /* This is called for every shouted string to this player.
 */
-catch_shout(str) {
+int catch_shout(mixed str) {
   if (this_player()->query_level() >= listen_to_shouts_from_level) {
     tell_object(this_object(),str);
 
@@ -227,7 +227,7 @@ catch_shout(str) {
   return 0;
 }
 
-static cd(str) {
+static int cd(mixed str) {
   string old_path;
 
   old_path = current_path;
@@ -271,7 +271,7 @@ static cd(str) {
 /*
 * This one is called when the player wants to change his password.
 */
-static change_password(str) {
+static int change_password(mixed str) {
   if (password != 0 && !str) {
     write("Give old password as an argument.\n");
 
@@ -292,7 +292,7 @@ static change_password(str) {
   return 1;
 }
 
-static change_password2(str) {
+static void change_password2(mixed str) {
   if (!str) {
     write("Password not changed.\n");
 
@@ -320,7 +320,7 @@ static change_password2(str) {
   write("Password changed.\n");
 }
 
-check_access_list(top, dir, file) {
+mixed check_access_list(mixed top, mixed dir, mixed file) {
   string tmp1, tmp2;
 
   if (!access_list)
@@ -332,7 +332,7 @@ check_access_list(top, dir, file) {
   return 0;
 }
 
-static check_password(p) {
+static void check_password(mixed p) {
   write("\n");
   remove_call_out("time_out");
 
@@ -352,7 +352,7 @@ static check_password(p) {
   #endif
 }
 
-clone(str) {
+int clone(mixed str) {
   object ob;
 
   if (!str) {
@@ -382,7 +382,7 @@ clone(str) {
   return 1;
 }
 
-communicate(str) {
+int communicate(mixed str) {
   string verb;
 
   verb = query_verb();
@@ -406,7 +406,7 @@ communicate(str) {
   return 1;
 }
 
-compute_auto_str() {
+void compute_auto_str() {
   object ob;
   string str;
 
@@ -428,7 +428,7 @@ compute_auto_str() {
 * Recursively compute the values of the inventory.
 * Beware that object may selfdestruct when asked for query_value().
 */
-compute_values(ob) {
+int compute_values(mixed ob) {
   int v;
 
   while(ob) {
@@ -452,7 +452,7 @@ compute_values(ob) {
   return v;
 }
 
-static converse() {
+static int converse() {
   write("Give '**' to stop.\n");
   write("]");
   input_to("converse_more");
@@ -460,7 +460,7 @@ static converse() {
   return 1;
 }
 
-static converse_more(str) {
+static void converse_more(mixed str) {
   string cmd;
 
   if (str == "**") {
@@ -479,7 +479,7 @@ static converse_more(str) {
   input_to("converse_more");
 }
 
-static destruct_local_object(str) {
+static int destruct_local_object(mixed str) {
   object ob;
 
   if (!str) {
@@ -507,7 +507,7 @@ static destruct_local_object(str) {
   return 1;
 }
 
-drink_alco(strength) {
+int drink_alco(mixed strength) {
   if (intoxicated + strength > level * 3) {
     write("You fail to reach the drink with your mouth.\n");
 
@@ -537,7 +537,7 @@ drink_alco(strength) {
   return 1;
 }
 
-drink_alcohol(strength) {
+int drink_alcohol(mixed strength) {
   if (intoxicated > level + 3) {
     write("You fail to reach the drink with your mouth.\n");
 
@@ -567,7 +567,7 @@ drink_alcohol(strength) {
   return 1;
 }
 
-drink_soft(strength) {
+int drink_soft(mixed strength) {
   if (soaked + strength > level * 8) {
     write("You can't possibly drink that much right now!\n" +
     "You feel crosslegged enough as it is.\n");
@@ -586,7 +586,7 @@ drink_soft(strength) {
   return 1;
 }
 
-drop_all(verbose) {
+void drop_all(mixed verbose) {
   object ob;
   object next_ob;
 
@@ -617,7 +617,7 @@ drop_all(verbose) {
 * We return true if success.
 */
 
-drop_one_item(ob) {
+int drop_one_item(mixed ob) {
   int weight;
 
   if (call_other(ob, "drop", 0))
@@ -634,7 +634,7 @@ drop_one_item(ob) {
   return 1;
 }
 
-drop_thing(obj) {
+int drop_thing(mixed obj) {
   string tmp;
   string tmp2;
   int i;
@@ -682,7 +682,7 @@ drop_thing(obj) {
   return 1;
 }
 
-earmuffs(str) {
+int earmuffs(mixed str) {
   int lev;
 
   if (str && sscanf(str, "%d", lev) == 1)
@@ -693,7 +693,7 @@ earmuffs(str) {
   return 1;
 }
 
-eat_food(strength) {
+int eat_food(mixed strength) {
   if (stuffed + strength > level * 8) {
     write("This is much too rich for you right now! Perhaps something lighter?\n");
 
@@ -711,7 +711,7 @@ eat_food(strength) {
   return 1;
 }
 
-static echo(str) {
+static int echo(mixed str) {
   if (!str) {
     write ("Echo what?\n");
 
@@ -724,7 +724,10 @@ static echo(str) {
   return 1;
 }
 
-static echo_all(str) {
+#define SHOUT_OLD(x) shout(x)
+#define SHOUT(x) gTellstring=x; filter_objects(users(),"filter_tell",this_object())
+
+static int echo_all(mixed str) {
   if (!str) {
     write("Echoall what?\n");
 
@@ -737,7 +740,7 @@ static echo_all(str) {
   return 1;
 }
 
-static echo_to(str) {
+static int echo_to(mixed str) {
   object ob;
   string who;
   string msg;
@@ -762,7 +765,7 @@ static echo_to(str) {
   return 1;
 }
 
-static edit(file) {
+static int edit(mixed file) {
   string tmp_file;
 
   if (!file) {
@@ -784,7 +787,7 @@ static edit(file) {
   return 1;
 }
 
-static emote(str) {
+static int emote(mixed str) {
   if (!str) {
     write("emote what ?\n");
 
@@ -797,7 +800,9 @@ static emote(str) {
   return 1;
 }
 
-static even_more(str) {
+#define CHUNK 16
+
+static void even_more(mixed str) {
   if (str == "" || str == "d")
     more_line += CHUNK;
 
@@ -823,7 +828,7 @@ static even_more(str) {
   input_to("even_more");
 }
 
-static examine(str) {
+static int examine(mixed str) {
   return look("at " + str);
 }
 
@@ -837,20 +842,17 @@ These could be listed to the shouter if one wishes.
 
 */
 
-#define SHOUT_OLD(x) shout(x)
-#define SHOUT(x) gTellstring=x; filter_objects(users(),"filter_tell",this_object())
-
 static string gTellstring;
 static int listen_to_shouts_from_level;
 
-filter_tell(ob) {
+int filter_tell(mixed ob) {
   if (ob == this_player())
     return 0;
 
   return ob->catch_shout(gTellstring);
 }
 
-static force_player(str) {
+static int force_player(mixed str) {
   string who, what;
   object ob;
 
@@ -881,7 +883,7 @@ static force_player(str) {
 /*
 * Get all items here.
 */
-static get_all(from) {
+static void get_all(mixed from) {
   object ob, next_ob;
 
   ob = first_inventory(from);
@@ -914,7 +916,7 @@ static get_all(from) {
 /*  This function is called using input_to, and sets the
 *  gender of this player.
 */
-static getgender(gender_string) {
+static void getgender(mixed gender_string) {
   gender_string = lower_case(gender_string);
 
   if (gender_string[0] == 'm') {
@@ -943,13 +945,13 @@ static getgender(gender_string) {
   move_player_to_start3(saved_where);
 }
 
-static getmailaddr(maddr) {
+static void getmailaddr(mixed maddr) {
   mailaddr = maddr;
 
   move_player_to_start2(saved_where);
 }
 
-give_object(str) {
+int give_object(mixed str) {
   string item, dest;
   object item_ob, dest_ob;
   int weight;
@@ -1061,7 +1063,7 @@ give_object(str) {
   return 1;
 }
 
-static heal(name) {
+static int heal(mixed name) {
   object ob;
 
   if (!name)
@@ -1083,7 +1085,7 @@ static heal(name) {
   return 1;
 }
 
-static heart_beat() {
+static void heart_beat() {
   if (ghost)
     return;
 
@@ -1191,7 +1193,7 @@ static heart_beat() {
     run_away();
 }
 
-static help(what) {
+static int help(mixed what) {
   if (what == "wizard" && level >= 20) {
     cat("/doc/wiz_help");
 
@@ -1209,14 +1211,14 @@ static help(what) {
   return 1;
 }
 
-static home() {
+static int home() {
   move_player("home#players/" + name + "/workroom");
 
   return 1;
 }
 
 /* Identify ourself. */
-id(str, lvl) {
+int id(mixed str, mixed lvl) {
   /*
   *  Some wizzies make invisibility items useable by
   *  players , and this will prevent cheating.
@@ -1240,7 +1242,7 @@ id(str, lvl) {
   return 0;
 }
 
-static idea(str) {
+static int idea(mixed str) {
   if (!str) {
     write("Give an argument.\n");
 
@@ -1255,7 +1257,7 @@ static idea(str) {
   return 1;
 }
 
-illegal_patch(what) {
+int illegal_patch(mixed what) {
   write("You are struck by a mental bolt from the interior of the game.\n");
   log_file("ILLEGAL", ctime(time()) + ":\n");
 
@@ -1271,7 +1273,7 @@ illegal_patch(what) {
 * a command.
 */
 
-static in_room(str) {
+static int in_room(mixed str) {
   object room;
   object old_room;
   string cmd;
@@ -1307,7 +1309,7 @@ static in_room(str) {
   return 1;
 }
 
-inventory() {
+int inventory() {
   object ob;
 
   if (test_dark())
@@ -1332,7 +1334,7 @@ inventory() {
   return 1;
 }
 
-invis() {
+int invis() {
   if (is_invis) {
     tell_object(this_object(), "You are already invisible.\n");
 
@@ -1348,7 +1350,7 @@ invis() {
   return 1;
 }
 
-kill(str) {
+int kill(mixed str) {
   object ob;
 
   if (ghost)
@@ -1392,7 +1394,7 @@ kill(str) {
   return 1;
 }
 
-static list_files(path) {
+static int list_files(mixed path) {
   if (!path)
     path = "/" + current_path;
 
@@ -1404,7 +1406,7 @@ static list_files(path) {
   return 1;
 }
 
-list_peoples() {
+int list_peoples() {
   object list;
   int i, a;
 
@@ -1484,12 +1486,12 @@ This means you can not stop higher level players from shouting to you,
 but you can stop lower levels and your own level.
 
 */
-listen_shout(lev) {
+int listen_shout(mixed lev) {
   if (lev && lev <= level+1) listen_to_shouts_from_level=lev;
   return listen_to_shouts_from_level;
 }
 
-static load(str) {
+static int load(mixed str) {
   object env;
 
   if (!str) {
@@ -1516,7 +1518,7 @@ static load(str) {
   return 1;
 }
 
-load_auto_obj(str) {
+void load_auto_obj(mixed str) {
   string file, argument, rest;
   object ob;
 
@@ -1542,19 +1544,19 @@ load_auto_obj(str) {
   }
 }
 
-static local_commands() {
+static int local_commands() {
   localcmd();
 
   return 1;
 }
-query_msgin() { return msgin; }
-query_msgout() { return msgout; }
-query_mmsgin() { return mmsgin; }
-query_mmsgout() { return mmsgout; }
+string query_msgin() { return msgin; }
+string query_msgout() { return msgout; }
+string query_mmsgin() { return mmsgin; }
+string query_mmsgout() { return mmsgout; }
 
 /* logon() is called when the players logges on. */
 
-static logon() {
+static int logon() {
   time_to_save = 500;
   /* enable_commands(); */
   cat("/WELCOME");
@@ -1566,7 +1568,7 @@ static logon() {
   return 1;
 }
 
-static logon2(str) {
+static void logon2(mixed str) {
   if (!str || str == "") {
     destruct(this_object());
 
@@ -1637,7 +1639,7 @@ static logon2(str) {
   return;
 }
 
-long() {
+void long() {
   string cap_pronoun;
 
   cap_pronoun = capitalize(query_pronoun());
@@ -1676,7 +1678,7 @@ long() {
   write(cap_pronoun + " is in good shape.\n");
 }
 
-look(str) {
+int look(mixed str) {
   object ob, ob_tmp;
   string item;
   int max;
@@ -1799,14 +1801,14 @@ look(str) {
 }
 #define MAX_SCAR  10
 
-static make_scar() {
+static void make_scar() {
   if (level < 10)
     return;
 
   scar |= 1 << random(MAX_SCAR);
 }
 
-makedir(str) {
+int makedir(mixed str) {
   if (!str)
     return 0;
 
@@ -1818,12 +1820,11 @@ makedir(str) {
 
   return 1;
 }
-#define CHUNK 16
 
 static string more_file;  /* Used by the more command */
 static int more_line;
 
-more(str) {
+int more(mixed str) {
   if (!str)
     return 0;
 
@@ -1842,7 +1843,7 @@ more(str) {
   return 1;
 }
 
-static move_player_to_start(where) {
+static void move_player_to_start(mixed where) {
   if (!mailaddr || mailaddr == "") {
     write("Please enter your email address (or 'none'): ");
 
@@ -1856,7 +1857,7 @@ static move_player_to_start(where) {
   move_player_to_start2(where);
 }
 
-static move_player_to_start2(where) {
+static void move_player_to_start2(mixed where) {
   if (gender == -1) {
     write("Are you, male, female or other: ");
     input_to("getgender", 0);
@@ -1867,7 +1868,7 @@ static move_player_to_start2(where) {
   move_player_to_start3(where);
 }
 
-static move_player_to_start3(where) {
+static void move_player_to_start3(mixed where) {
   object ob;
   string tmp_name;
   /*
@@ -1976,7 +1977,7 @@ static move_player_to_start3(where) {
 /*
 * Give a new password to a player.
 */
-static new_password(p) {
+static void new_password(mixed p) {
   write("\n");
 
   if (!p || p == "") {
@@ -2025,7 +2026,7 @@ static new_password(p) {
   #endif
 }
 
-static pick_item(obj) {
+static int pick_item(mixed obj) {
   object ob;
   int i;
 
@@ -2081,7 +2082,7 @@ static pick_item(obj) {
   return 1;
 }
 
-pick_up(str) {
+int pick_up(mixed str) {
   string item;
   string container;
   object item_o;
@@ -2160,7 +2161,7 @@ pick_up(str) {
   return 1;
 }
 
-pose() {
+int pose() {
   if (level >= 15) {
     write("You send a ball of fire into the sky.\n");
     say(cap_name + " makes a magical gesture.\n");
@@ -2172,7 +2173,7 @@ pose() {
   return 0;
 }
 
-put(str) {
+int put(mixed str) {
   int i;
   string item;
   string container;
@@ -2245,30 +2246,30 @@ put(str) {
   return 1;
 }
 
-pwd() {
+int pwd() {
   write("/" + current_path + "\n");
 
   return 1;
 }
 
 /* Enable other objects to query our hit point. */
-query_hit_point() {
+int query_hit_point() {
   return hit_point;
 }
 
-query_intoxination() {
+int query_intoxination() {
   return intoxicated;
 }
 
-query_mailaddr() {
+string query_mailaddr() {
   return mailaddr;
 }
 
-query_path() {
+string query_path() {
   return current_path;
 }
 
-query_quests(str) {
+mixed query_quests(mixed str) {
   string tmp, rest, rest_tmp;
   int i;
 
@@ -2298,23 +2299,23 @@ query_quests(str) {
   return 0;
 }
 
-query_real_name() {
+string query_real_name() {
   return name;
 }
 
-query_soaked() {
+int query_soaked() {
   return soaked;
 }
 
-query_stuffed() {
+int query_stuffed() {
   return stuffed;
 }
 
-query_title() {
+string query_title() {
   return title;
 }
 
-quit() {
+int quit() {
   save_me(0);
   drop_all(1);
   write("Saving "); write(capitalize(name)); write(".\n");
@@ -2328,7 +2329,7 @@ quit() {
   return 1;
 }
 
-static remove_file(str) {
+static int remove_file(mixed str) {
   if (!str)
     return 0;
 
@@ -2337,7 +2338,7 @@ static remove_file(str) {
   return 1;
 }
 
-remove_ghost() {
+int remove_ghost() {
   if (!ghost)
     return 0;
 
@@ -2357,7 +2358,7 @@ remove_ghost() {
   return 1;
 }
 
-removedir(str) {
+int removedir(mixed str) {
   if (!str)
     return 0;
 
@@ -2370,7 +2371,7 @@ removedir(str) {
   return 1;
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
   /*
@@ -2395,7 +2396,7 @@ reset(arg) {
   gender = -1; /* Illegal value, so it will be changed! */
 }
 
-review() {
+int review() {
   write("mout:\t" + msgout +
   "\nmin:\t" + msgin +
   "\nmmout:\t" + mmsgout +
@@ -2405,14 +2406,14 @@ review() {
 }
 
 /* Called by command 'save' */
-save_character() {
+int save_character() {
   save_me(1);
   write("Ok.\n");
 
   return 1;
 }
 
-save_me(value_items) {
+void save_me(mixed value_items) {
   if (value_items)
     tot_value = compute_values(first_inventory(this_object()));
 
@@ -2423,7 +2424,7 @@ save_me(value_items) {
   save_object("players/" + name);
 }
 
-score(arg) {
+int score(mixed arg) {
   string tmp;
 
   if (ghost) {
@@ -2494,7 +2495,7 @@ score(arg) {
   return 1;
 }
 
-second_life() {
+int second_life() {
   #if 1
   object death_mark;
   #endif
@@ -2552,18 +2553,18 @@ second_life() {
   return 1;
 }
 
-set_al(a) {
+void set_al(mixed a) {
   if (!intp(a))
     return;
 
   alignment = a;
 }
 
-set_alignment(al) {
+void set_alignment(mixed al) {
   al_title = al;
 }
 
-static set_email(str) {
+static int set_email(mixed str) {
   if (!str) {
     write("Your official electric mail address is: " + mailaddr + "\n");
 
@@ -2577,7 +2578,7 @@ static set_email(str) {
   return 1;
 }
 
-set_level(lev) {
+mixed set_level(mixed lev) {
   object scroll;
 
   if (lev > 21 || lev < level && level >= 20)
@@ -2600,11 +2601,11 @@ set_level(lev) {
   }
 }
 
-set_mailaddr(addr) {
+void set_mailaddr(mixed addr) {
   mailaddr = addr;
 }
 
-set_quest(q) {
+mixed set_quest(mixed q) {
   if (!q)
     return;
 
@@ -2635,7 +2636,7 @@ set_quest(q) {
   return 1;
 }
 
-set_title(t) {
+int set_title(mixed t) {
   if (!t) {
     write("Your title is " + title + ".\n");
 
@@ -2646,7 +2647,7 @@ set_title(t) {
   return 1;
 }
 
-short() {
+mixed short() {
   if (is_invis)
     return 0;
 
@@ -2659,7 +2660,7 @@ short() {
   return cap_name + " " + title + " (" + al_title + ")";
 }
 
-shout_to_all(str) {
+int shout_to_all(mixed str) {
   if (spell_points < 0) {
     write("You are low on power.\n");
 
@@ -2691,7 +2692,7 @@ shout_to_all(str) {
   return 1;
 }
 
-show_scar() {
+void show_scar() {
   int i, j, first, old_value;
   string scar_desc;
 
@@ -2727,7 +2728,7 @@ show_scar() {
     write(".\n");
 }
 
-static shut_down_game(str) {
+static int shut_down_game(mixed str) {
   if (!str) {
     write("You must give a shutdown reason as argument.\n");
 
@@ -2744,7 +2745,7 @@ static shut_down_game(str) {
   return 1;
 }
 
-smart_report(str) {
+void smart_report(mixed str) {
   string who;
   string current_room;
 
@@ -2756,7 +2757,7 @@ smart_report(str) {
   log_file(who + ".rep", current_room + " " + str + "\n");
 }
 
-static snoop_on(str) {
+static int snoop_on(mixed str) {
   object ob;
   int ob_level;
 
@@ -2787,7 +2788,7 @@ static snoop_on(str) {
   return 1;
 }
 
-spell_fire_ball(str) {
+int spell_fire_ball(mixed str) {
   object ob;
 
   if (test_dark())
@@ -2819,7 +2820,7 @@ spell_fire_ball(str) {
   return 1;
 }
 
-spell_missile(str) {
+int spell_missile(mixed str) {
   object ob;
 
   if (test_dark())
@@ -2851,7 +2852,7 @@ spell_missile(str) {
   return 1;
 }
 
-spell_shock(str) {
+int spell_shock(mixed str) {
   object ob;
 
   if (test_dark())
@@ -2883,7 +2884,7 @@ spell_shock(str) {
   return 1;
 }
 
-static spell_zap(str) {
+static int spell_zap(mixed str) {
   object ob;
 
   if (!str)
@@ -2903,7 +2904,7 @@ static spell_zap(str) {
   return 1;
 }
 
-static stat(name) {
+static int stat(mixed name) {
   object ob;
 
   if (!name)
@@ -2926,7 +2927,7 @@ static stat(name) {
   return 1;
 }
 
-stop_hunting_mode() {
+int stop_hunting_mode() {
   if (!hunted) {
     write("You are not hunting anyone.\n");
 
@@ -2942,7 +2943,7 @@ stop_hunting_mode() {
   return 1;
 }
 
-tail_file(path) {
+int tail_file(mixed path) {
   if (!path)
     return 0;
 
@@ -2952,7 +2953,7 @@ tail_file(path) {
   return 1;
 }
 
-teleport(dest) {
+int teleport(mixed dest) {
   object ob;
 
   if (!dest) {
@@ -3011,7 +3012,7 @@ teleport(dest) {
   return 1;
 }
 
-static tell(str) {
+static int tell(mixed str) {
   object ob;
   string who;
   string msg;
@@ -3052,7 +3053,7 @@ static tell(str) {
   return 1;
 }
 
-static test_dark() {
+static int test_dark() {
   if (set_light(0) <= 0) {
     write("It is too dark.\n");
 
@@ -3062,13 +3063,13 @@ static test_dark() {
   return 0;
 }
 
-time_out() {
+void time_out() {
   write("Time out\n");
   destruct(this_object());
 }
-query_brief() { return brief; }
+int query_brief() { return brief; }
 
-toggle_brief() {
+int toggle_brief() {
   brief = !brief;
 
   if (brief)
@@ -3080,7 +3081,7 @@ toggle_brief() {
   return 1;
 }
 
-static toggle_whimpy() {
+static int toggle_whimpy() {
   whimpy = !whimpy;
 
   if (whimpy)
@@ -3092,7 +3093,7 @@ static toggle_whimpy() {
   return 1;
 }
 
-static trans(str) {
+static int trans(mixed str) {
   object ob;
   string out;
 
@@ -3128,7 +3129,7 @@ static trans(str) {
   return 1;
 }
 
-static try_throw_out(str) {
+static void try_throw_out(mixed str) {
   object ob;
 
   if (str == "" || (str[0] != 'y' && str[0] != 'Y')) {
@@ -3177,7 +3178,7 @@ static try_throw_out(str) {
   #endif
 }
 
-static typo(str) {
+static int typo(mixed str) {
   if (!str) {
     write("Give an argument.\n");
 
@@ -3194,7 +3195,7 @@ static typo(str) {
   return 1;
 }
 
-static update_object(str) {
+static int update_object(mixed str) {
   object ob;
 
   if (!str) {
@@ -3229,7 +3230,7 @@ static update_object(str) {
 * Check that a player name is valid. Only allow
 * lowercase letters.
 */
-valid_name(str) {
+int valid_name(mixed str) {
   int i, length;
 
   if (str == "logon") {
@@ -3262,7 +3263,7 @@ valid_name(str) {
   return 1;
 }
 
-valid_read(str, lvl) {
+mixed valid_read(mixed str, mixed lvl) {
   string who, file;
   int i;
 
@@ -3304,7 +3305,7 @@ valid_read(str, lvl) {
   return 0;    /* Should not happen */
 }
 
-valid_write(str) {
+mixed valid_write(mixed str) {
   string who, file, owner;
 
   owner = name;
@@ -3355,11 +3356,11 @@ valid_write(str) {
 }
 
 /* Define this after it was used. */
-version() {
+string version() {
   return "2.04.05";
 }
 
-vis() {
+int vis() {
   if (!is_invis) {
     tell_object(this_object(), "You are not invisible.\n");
 
@@ -3377,7 +3378,7 @@ vis() {
   return 1;
 }
 
-whisper(str) {
+int whisper(mixed str) {
   object ob;
   string who;
   string msg;
@@ -3410,7 +3411,7 @@ whisper(str) {
   return 1;
 }
 
-who() {
+int who() {
   object list;
   int i;
 
@@ -3433,7 +3434,7 @@ who() {
   return 1;
 }
 
-static wiz_commands() {
+static void wiz_commands() {
   if (this_object() != this_player())
     return;
 
@@ -3461,7 +3462,7 @@ static wiz_commands() {
   add_action("vis", "vis");
 }
 
-static wiz_commands2() {
+static void wiz_commands2() {
   if (this_object() != this_player())
     return;
 
@@ -3485,7 +3486,7 @@ static wiz_commands2() {
   add_action("cd", "cd");
 }
 
-static wiz_score_list(arg) {
+static int wiz_score_list(mixed arg) {
   if (arg)
     wizlist(arg);
 

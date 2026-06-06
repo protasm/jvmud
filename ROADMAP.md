@@ -1,21 +1,28 @@
 # JVMud Full-Stack Roadmap
 
-JVMud is being built as a readable, inspectable Java LPMud stack. The project
+JVMud is being built as a readable, inspectable Java LPC/LPMud stack. The project
 should advance through small vertical slices that leave behind working code,
 clear tests, and plain-language notes about what is supported next.
 
 ## Development Posture
 
 `PRINCIPLES.md` is now the controlling design document for the engine. The
-engine should be developed to support JVMud's core concepts: game, text,
-interactivity, multiplayer world, persistence, temporality, and presence.
+engine should be developed to support JVMud's core concepts: Game, Text,
+Multiplayer, Interactive, World (Linked Places, Entities, Movement),
+Persistence, Temporality, and Presence.
 
-The mudlib is no longer the authority that the engine must blindly emulate. LPC
-compatibility remains useful, but it is a content and compatibility concern, not
-the engine's identity. When old mudlib code conflicts with the engine model, the
-preferred move is to add dedicated mudlib-side compatibility shims and focused
-engine/compiler support rather than rewriting upstream mudlib files or adding
-accidental legacy LPC engine behavior to the engine.
+JVMud has one mudlib and language target: LPC for LPMud-style worlds. The
+mudlib is no longer the authority that the engine must blindly emulate, but LPC
+compatibility is the chosen target rather than one option among many. When old
+mudlib code conflicts with the engine model, the preferred move is to add
+dedicated mudlib-side compatibility shims and focused engine/compiler support
+rather than rewriting upstream mudlib files or adding accidental legacy LPC
+engine behavior to the engine.
+
+"LPMud" means that the game world is LPC code compiled into live game objects
+that can be rewritten, recompiled, and reloaded without rebooting the whole
+game. It does not mean importing legacy driver concepts such as room,
+heartbeat, apply, call_out, or master object into JVMud's engine model.
 
 The engine-mudlib boundary is documented in `docs/ENGINE_MUDLIB_CONTRACT.md`.
 Engine-facing concepts should use JVMud-native terms; legacy LPC names belong in
@@ -25,6 +32,10 @@ In practice:
 
 - engine concepts should be named and designed from `PRINCIPLES.md`, not from
   legacy LPC mudlib quirks;
+- compiler and runtime work should assume the sole LPC/LPMud target and avoid
+  generic multi-language mudlib architecture;
+- live reload of LPC-authored game objects is part of the target, while legacy
+  driver vocabulary remains compatibility vocabulary rather than ontology;
 - upstream mudlib files should be treated as read-only unless an explicit style
   or formatting change is requested;
 - compatibility shims should live in dedicated independent mudlib-side objects,
@@ -74,17 +85,16 @@ for one admin user. It can boot a runtime, load and clone LPC objects, call
 methods, move objects, inspect environments, list handles, reload compiled
 objects, destruct objects, and quit. It also has a mudlib-rooted virtual
 filesystem with `pwd`, `cd`, `ls`, and `cat`, so an admin can navigate content
-using LPC-style root-relative paths. This shell is intentionally local-only until
-command/session behavior is ready for networking. The shell also supports
+using LPC-style root-relative paths. The shell is admin-only: plain input is an
+admin command, and player/world input belongs to interactive sessions. It also supports
 `verbosity quiet`, `verbosity normal`, and `verbosity watch`; watch mode displays
 coarse compiler stage progress for compilation-backed commands.
 
-The first command-system slice now exists behind the CLI. The runtime tracks a
+The first command-system slice now exists behind Telnet. The runtime tracks a
 current command actor, supports minimal `enable_commands`, `add_action`, and
-`add_verb` engine functions, refreshes nearby `init` registrations, and dispatches explicit
-`/dispatch <command...>` input through object-defined verb handlers. The same CLI
-is now player-facing by default: ordinary input is routed directly through that
-command-dispatch path, while slash-prefixed input reaches shell/admin tooling.
+`add_verb` engine functions, refreshes nearby `init` registrations, and
+dispatches line input through object-defined verb handlers. The admin CLI no
+longer simulates a selected player or command actor.
 
 The first mudlib boot slice interprets `room/init_file` as a startup preload
 list, tolerates currently unsupported preload entries, loads a default starting
@@ -93,6 +103,14 @@ room through `WorldRuntime`. This actor is not an LPC player object; it is a
 small JVMud session entity that lets LPC-defined room exits move the local
 participant through the existing command path while the compiler runtime acts as
 an adapter.
+
+The first Telnet slice now owns the interactive command/session path over a
+line-oriented socket listener. The listener boots one shared development runtime
+and world for the process; each connection attaches a fresh host-owned persona
+in the configured starting room. It accepts player commands plus a small set of
+slash-prefixed session controls and performs basic Telnet option refusal. It
+deliberately stops short of mudlib-defined player login, session-to-session
+messaging, output routing between participants, and production server policy.
 
 ## Waypoints
 
@@ -126,11 +144,11 @@ an adapter.
 
 6. **Command System And Player-Like Session**
    Add `enable_commands`, `add_action`, `add_verb`, command dispatch, current
-   actor context, and enough built-in command behavior for a local admin/player
-   to look, move, get, and drop through LPC-defined objects. The first explicit
-   CLI dispatch path and player-facing input loop are in place; the next work is
-   to make common player commands feel natural with mudlib boot, starting rooms,
-   and movement support.
+   actor context, and enough built-in command behavior for an interactive Telnet
+   participant to look, move, get, and drop through LPC-defined objects. The
+   first Telnet player-facing input loop is in place; the next work is to make
+   common player commands feel natural with mudlib boot, starting rooms, and
+   movement support.
 
 7. **Mudlib Boot Slice**
    Interpret `mudlib/room/init_file`, load startup objects, boot a starting room,
@@ -148,8 +166,9 @@ an adapter.
    data areas, and permission checks.
 
 10. **Telnet Server**
-    Reuse the CLI-proven command/session engine behind Telnet sessions, login,
-    line input, output buffering, and disconnect handling.
+    Reuse the CLI-proven command/session engine behind Telnet sessions. The
+    first persistent listener is in place; the next work is mudlib-defined
+    player login, output buffering, session isolation, and disconnect handling.
 
 11. **Multi-User World Runtime**
     Support multiple sessions, shared rooms, messaging, command isolation, user

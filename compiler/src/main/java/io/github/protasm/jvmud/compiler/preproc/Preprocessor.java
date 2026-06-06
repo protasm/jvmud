@@ -292,8 +292,6 @@ public final class Preprocessor {
     // function-like?
     List<String> params = null;
 
-    skipWhitespaceExceptNewline(cc);
-
     if (cc.peek() == '(') {
       cc.advance(); // '('
 
@@ -378,6 +376,7 @@ public final class Preprocessor {
         skipConditionalBlock(cc);
 
       // Expect #elif / #else / #endif
+      skipWhitespaceExceptNewline(cc);
       if (!isStartOfDirective(cc)) break;
 
       cc.advance();
@@ -408,10 +407,11 @@ public final class Preprocessor {
 
   private void expandConditionalBlock(CharCursor cc, PreprocessedSourceBuilder out) {
     while (!cc.end()) {
+      int mark = cc.index();
+      skipWhitespaceExceptNewline(cc);
+
       if (isStartOfDirective(cc)) {
         // Lookahead to see if this is an #elif/#else/#endif to end this block
-        int mark = cc.index();
-
         cc.advance();
 
         skipWhitespaceExceptNewline(cc);
@@ -420,10 +420,13 @@ public final class Preprocessor {
 
         cc.rewind(mark);
 
-        if ("elif".equals(name) || "else".equals(name) || "endif".equals(name))
+        if ("elif".equals(name) || "else".equals(name) || "endif".equals(name)) {
+          cc.rewind(mark);
           return; // let caller handle the directive
+        }
       }
 
+      cc.rewind(mark);
       copyLineWithExpansion(cc, out);
     }
   }
@@ -439,9 +442,10 @@ public final class Preprocessor {
 
   private void skipConditionalBlock(CharCursor cc) {
     while (!cc.end()) {
-      if (isStartOfDirective(cc)) {
-        int mark = cc.index();
+      int mark = cc.index();
+      skipWhitespaceExceptNewline(cc);
 
+      if (isStartOfDirective(cc)) {
         cc.advance();
 
         skipWhitespaceExceptNewline(cc);
@@ -465,6 +469,8 @@ public final class Preprocessor {
         }
 
         // Other directive: skip its line
+        cc.rewind(mark);
+      } else {
         cc.rewind(mark);
       }
 
