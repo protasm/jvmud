@@ -18,6 +18,8 @@ JVMud is a JVM-based engine built around eight core concepts:
 
 Together these concepts define the kind of system JVMud exists to build.
 
+`GLOSSARY.md` defines the project vocabulary used by this document.
+
 JVMud is not intended to be a general-purpose simulation framework,
 chat server, collaboration platform, or generic game engine.
 
@@ -105,9 +107,30 @@ The Eight Core Concepts
 
 8. Presence
 
-   Participants perceive the world from within it.
+   Presence is the core MUD requirement that a player experiences
+   the game from within the World.
 
-   Presence is situated perception.
+   A player is not merely an outside observer manipulating a
+   simulation from above. The player participates through a
+   Persona: an Entity that serves as the player's current point of
+   perception and action.
+
+   Presence requires that the Persona be located. The Persona's
+   Location determines where the player experiences the World from,
+   what the player can perceive, and what actions are locally
+   available. A Persona may be located in a Place, or in another
+   Entity if the game supports containment, vehicles, possession,
+   carried objects, or similar structures.
+
+   Presence should be distinguished from Location. Location is the
+   mechanical relationship that says where an Entity is. Presence is
+   the experiential relationship created when a player engages the
+   World through a located Persona.
+
+   Many Entities have Location without creating Presence: trees,
+   tools, doors, animals, NPCs, dropped objects, and environmental
+   features. They are in the World, but they are not necessarily the
+   means by which a player experiences the World.
 
    Participants are somewhere, not everywhere.
 
@@ -122,6 +145,11 @@ The Eight Core Concepts
 
    Presence is central to the style of world simulation that
    JVMud is designed to support.
+
+   A Session is an active connection/control context.
+
+   A Persona is the Entity currently associated with a Session
+   as that Session's in-world perspective.
 
 Core Philosophy
 ---------------
@@ -208,6 +236,8 @@ where an Entity is present.
 Entity
 
     Something that exists within the world.
+
+    An Entity is a thing in the World.
 
     Examples:
 

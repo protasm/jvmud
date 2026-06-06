@@ -304,6 +304,14 @@ public final class LpcRuntime {
         runtimeContext.setOutputSink(outputSink);
     }
 
+    public void bindSession(String sessionId, Object persona, String remoteAddress, Consumer<String> sessionOutputSink) {
+        runtimeContext.bindSession(sessionId, persona, remoteAddress, sessionOutputSink);
+    }
+
+    public void unbindSession(String sessionId) {
+        runtimeContext.unbindSession(sessionId);
+    }
+
     public String outputTranscript() {
         return runtimeContext.outputTranscript();
     }

@@ -126,6 +126,14 @@ string query_verb() {
   return jvmud_current_verb();
 }
 
+int query_idle(mixed player) {
+  return jvmud_query_idle(player);
+}
+
+mixed query_ip_number(mixed player) {
+  return jvmud_query_ip_number(player);
+}
+
 int remove_call_out(string method) {
   return jvmud_remove_call_out(method);
 }

@@ -46,6 +46,11 @@ public final class MudlibBoundaryConfigReader {
             case "OBJECT_INITIALIZED" -> MudlibLifecycleEvent.OBJECT_LOADED;
             case "OBJECT_REACTIVATED" -> MudlibLifecycleEvent.OBJECT_ACTIVATED;
             case "INTERACTION_SCOPE_ENTERED" -> MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED;
+            case "PLAYER_CONNECTED" -> MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED;
+            case "PLAYER_RESOLVED", "PERSONA_RESOLVED" -> MudlibLifecycleEvent.PLAYER_PERSONA_RESOLVED;
+            case "PLAYER_BOUND" -> MudlibLifecycleEvent.PLAYER_OBJECT_BOUND;
+            case "PLAYER_ENTERED" -> MudlibLifecycleEvent.PLAYER_ENTERED_WORLD;
+            case "PLAYER_DISCONNECTED" -> MudlibLifecycleEvent.PLAYER_SESSION_DISCONNECTED;
             default -> MudlibLifecycleEvent.valueOf(normalized);
         };
     }

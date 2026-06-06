@@ -431,6 +431,62 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeRoutesPersonaSessionOutputAndPresenceQueries() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        LpcObjectHandle first = runtime.loadSource("smoke/first_player.c", """
+                void write_self() {
+                    jvmud_write("first-only");
+                }
+
+                void tell(mixed target) {
+                    jvmud_tell_object(target, "second-only");
+                }
+
+                mixed query_ip(mixed target) {
+                    return jvmud_query_ip_number(target);
+                }
+
+                int query_idle_for(mixed target) {
+                    return jvmud_query_idle(target);
+                }
+
+                int user_count() {
+                    return jvmud_size(jvmud_users());
+                }
+                """);
+        LpcObjectHandle second = runtime.loadSource("smoke/second_player.c", """
+                int value() {
+                    return 0;
+                }
+                """);
+        LpcObjectHandle unconnected = runtime.loadSource("smoke/unconnected.c", """
+                int value() {
+                    return 0;
+                }
+                """);
+        StringBuilder firstOutput = new StringBuilder();
+        StringBuilder secondOutput = new StringBuilder();
+
+        runtime.bindSession("s1", first.instance(), "127.0.0.1", firstOutput::append);
+        runtime.bindSession("s2", second.instance(), "10.0.0.2", secondOutput::append);
+
+        first.invoke("write_self");
+        first.invoke("tell", second.instance());
+
+        assertEquals("first-only", firstOutput.toString());
+        assertEquals("second-only", secondOutput.toString());
+        assertEquals("127.0.0.1", first.invoke("query_ip", first.instance()));
+        assertEquals(0, first.invoke("query_ip", unconnected.instance()));
+        assertTrue((Integer) first.invoke("query_idle_for", first.instance()) >= 0);
+        assertEquals(2, first.invoke("user_count"));
+
+        runtime.unbindSession("s2");
+
+        assertEquals(1, first.invoke("user_count"));
+    }
+
+    @Test
     void mfunShadowsEngineFunctionWithSameNameAndArity() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/functions.c"), """

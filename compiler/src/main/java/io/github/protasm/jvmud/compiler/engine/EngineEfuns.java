@@ -49,7 +49,7 @@ public final class EngineEfuns {
                 }));
         efuns.add(efun("jvmud_tell_object", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT, LPCType.LPCMIXED),
                 (runtime, args) -> {
-                    runtime.writeOutput(args[1]);
+                    runtime.tellObject(args[0], args[1]);
                     return null;
                 }));
         efuns.add(efun("jvmud_tell_room", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
@@ -73,6 +73,10 @@ public final class EngineEfuns {
                 (runtime, args) -> sizeOf(args[0])));
         efuns.add(efun("jvmud_users", LPCType.LPCARRAY, List.of(),
                 (runtime, args) -> runtime.users()));
+        efuns.add(efun("jvmud_query_idle", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.queryIdle(args[0])));
+        efuns.add(efun("jvmud_query_ip_number", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.queryIpNumber(args[0])));
         efuns.add(efun("jvmud_is_string", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof String ? 1 : 0));
         efuns.add(efun("jvmud_is_array", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),

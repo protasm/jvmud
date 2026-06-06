@@ -100,6 +100,8 @@ final class MudlibBoundaryTest {
                 handled_lifecycle_events = scheduled-tick
                 lifecycle.object_loaded = reset
                 lifecycle.interaction_scope_started = init
+                lifecycle.player_connected = player_connected
+                lifecycle.player-bound = player_bound
                 temporal_tick_method = heart_beat
                 temporal_tick_interval = 2
                 """);
@@ -118,6 +120,8 @@ final class MudlibBoundaryTest {
         assertTrue(boundary.handles(MudlibLifecycleEvent.SCHEDULED_TICK));
         assertEquals("reset", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED).orElseThrow());
         assertEquals("init", boundary.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElseThrow());
+        assertEquals("player_connected", boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElseThrow());
+        assertEquals("player_bound", boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_OBJECT_BOUND).orElseThrow());
         assertEquals("heart_beat", boundary.temporalTickMethod().orElseThrow());
         assertEquals(2, boundary.temporalTickIntervalSeconds());
     }

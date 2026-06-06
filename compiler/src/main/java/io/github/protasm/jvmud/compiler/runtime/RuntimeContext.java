@@ -36,6 +36,8 @@ public final class RuntimeContext {
     private final Map<Object, List<Object>> inventories = new IdentityHashMap<>();
     private final Map<Object, Integer> lightLevels = new IdentityHashMap<>();
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
+    private final Map<String, SessionBinding> sessions = new LinkedHashMap<>();
+    private final Map<Object, SessionBinding> sessionsByPersona = new IdentityHashMap<>();
     private final StringBuilder outputTranscript = new StringBuilder();
     private final ThreadLocal<Deque<Object>> currentObjectStack =
             ThreadLocal.withInitial(ArrayDeque::new);
@@ -92,9 +94,22 @@ public final class RuntimeContext {
     }
 
     public void writeOutput(Object value) {
+        writeOutputTo(outputTarget(), value);
+    }
+
+    public void tellObject(Object target, Object value) {
+        writeOutputTo(target, value);
+    }
+
+    private void writeOutputTo(Object target, Object value) {
         String text = String.valueOf(value).replace("\\n", "\n");
         outputTranscript.append(text);
-        outputSink.accept(text);
+        SessionBinding binding = target != null ? sessionsByPersona.get(target) : null;
+        if (binding != null) {
+            binding.outputSink().accept(text);
+        } else {
+            outputSink.accept(text);
+        }
     }
 
     public String outputTranscript() {
@@ -157,6 +172,16 @@ public final class RuntimeContext {
             return new EfunSignature(
                     new Symbol(LPCType.LPCARRAY, name),
                     List.of());
+        }
+        if ("query_idle".equals(name) && arity == 1) {
+            return new EfunSignature(
+                    new Symbol(LPCType.LPCINT, name),
+                    List.of(LPCType.LPCMIXED));
+        }
+        if ("query_ip_number".equals(name) && arity == 1) {
+            return new EfunSignature(
+                    new Symbol(LPCType.LPCMIXED, name),
+                    List.of(LPCType.LPCMIXED));
         }
         return new EfunSignature(
                 new Symbol(LPCType.LPCMIXED, name),
@@ -225,7 +250,68 @@ public final class RuntimeContext {
     }
 
     public List<Object> users() {
-        return new ArrayList<>(objects.values());
+        return sessions.values().stream()
+                .map(SessionBinding::persona)
+                .toList();
+    }
+
+    public void bindSession(String sessionId, Object persona, String remoteAddress, Consumer<String> sessionOutputSink) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        Objects.requireNonNull(persona, "persona");
+        Consumer<String> sink = sessionOutputSink != null ? sessionOutputSink : ignored -> {};
+        SessionBinding existing = sessions.get(sessionId);
+        if (existing != null) {
+            sessionsByPersona.remove(existing.persona());
+        }
+        SessionBinding previousPersonaBinding = sessionsByPersona.get(persona);
+        if (previousPersonaBinding != null) {
+            sessions.remove(previousPersonaBinding.sessionId());
+        }
+        SessionBinding binding = new SessionBinding(
+                sessionId,
+                persona,
+                normalizeSessionText(remoteAddress),
+                sink,
+                System.currentTimeMillis());
+        sessions.put(sessionId, binding);
+        sessionsByPersona.put(persona, binding);
+    }
+
+    public void unbindSession(String sessionId) {
+        if (sessionId == null) {
+            return;
+        }
+        SessionBinding binding = sessions.remove(sessionId);
+        if (binding != null) {
+            sessionsByPersona.remove(binding.persona());
+        }
+    }
+
+    public int queryIdle(Object persona) {
+        SessionBinding binding = sessionsByPersona.get(persona);
+        if (binding == null) {
+            return 0;
+        }
+        long elapsedMillis = Math.max(0L, System.currentTimeMillis() - binding.lastActivityMillis());
+        return (int) (elapsedMillis / 1000L);
+    }
+
+    public Object queryIpNumber(Object persona) {
+        SessionBinding binding = sessionsByPersona.get(persona);
+        if (binding == null || binding.remoteAddress() == null) {
+            return 0;
+        }
+        return binding.remoteAddress();
+    }
+
+    public void touchPersona(Object persona) {
+        SessionBinding binding = sessionsByPersona.get(persona);
+        if (binding == null) {
+            return;
+        }
+        SessionBinding touched = binding.touch(System.currentTimeMillis());
+        sessions.put(touched.sessionId(), touched);
+        sessionsByPersona.put(touched.persona(), touched);
     }
 
     private String normalizeMudlibPath(String path) {
@@ -459,6 +545,7 @@ public final class RuntimeContext {
     public Object dispatchCommand(Object actor, String commandLine) {
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(commandLine, "commandLine");
+        touchPersona(actor);
         String trimmed = commandLine.trim();
         if (trimmed.isEmpty()) {
             return 0;
@@ -550,6 +637,19 @@ public final class RuntimeContext {
         return id != null ? id : String.valueOf(object);
     }
 
+    private Object outputTarget() {
+        Object actor = currentCommandActor();
+        return actor != null ? actor : currentObject();
+    }
+
+    private String normalizeSessionText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
     private String causeSummary(Throwable throwable) {
         Throwable cause = throwable;
         while (cause.getCause() != null) {
@@ -589,4 +689,15 @@ public final class RuntimeContext {
     }
 
     private record CommandAction(Object handler, String methodName) {}
+
+    private record SessionBinding(
+            String sessionId,
+            Object persona,
+            String remoteAddress,
+            Consumer<String> outputSink,
+            long lastActivityMillis) {
+        private SessionBinding touch(long nowMillis) {
+            return new SessionBinding(sessionId, persona, remoteAddress, outputSink, nowMillis);
+        }
+    }
 }

@@ -5,14 +5,14 @@ repository is a monorepo: the core runtime lives under `runtime/`, the LPC
 compiler lives under `compiler/`, and vanilla LPMUD 2.4.5 mudlib source lives
 under `mudlib/`.
 
-`PRINCIPLES.md` is the controlling design document for the engine. The engine
-is being built around JVMud's core concepts: Game, Text, Multiplayer,
-Interactive, World (Linked Places, Entities, Movement), Persistence,
-Temporality, and Presence. JVMud has a sole LPC/LPMud target: compatibility
-choices should deepen that target, not broaden the engine into a generic MUD
-framework. The upstream mudlib should remain unchanged by default;
-compatibility belongs in dedicated mudlib-side shim objects plus the
-engine/compiler support needed to host them.
+`PRINCIPLES.md` is the controlling design document for the engine, and
+`GLOSSARY.md` defines JVMud vocabulary. The engine is being built around
+JVMud's core concepts: Game, Text, Multiplayer, Interactive, World (Linked
+Places, Entities, Movement), Persistence, Temporality, and Presence. JVMud has
+a sole LPC/LPMud target: compatibility choices should deepen that target, not
+broaden the engine into a generic MUD framework. The upstream mudlib should
+remain unchanged by default; compatibility belongs in dedicated mudlib-side shim
+objects plus the engine/compiler support needed to host them.
 
 Here "LPMud" means LPC-authored game worlds compiled into live objects that can
 be rewritten, recompiled, and reloaded without rebooting the whole game. It does
@@ -97,6 +97,7 @@ compiler/target/jvmud-mudlib-compatibility.md
 That report is deliberately non-failing: it records current parser, semantic,
 function, and runtime gaps while keeping the green build useful.
 
+See `GLOSSARY.md` for JVMud terminology.
 See `ROADMAP.md` for the full-stack project waypoints.
 See `docs/ENGINE_MUDLIB_CONTRACT.md` for the native JVMud boundary between the
 engine and mudlib compatibility layer.
@@ -161,8 +162,8 @@ The same command/session path is available through the first Telnet listener:
 
 By default it serves `mudlib` on `127.0.0.1:4000` using the standard JVMud
 mudlib config object. Starting this process boots one shared runtime and world;
-each Telnet connection attaches a fresh host-owned persona in the configured
-starting room. Player/world input is routed through LPC `init`, `add_action`,
+each Telnet connection attaches to a host-owned persona entity in the configured
+starting place. Player/world input is routed through LPC `init`, `add_action`,
 and `add_verb` registrations on nearby or carried objects. Telnet slash commands
 are limited to session controls such as `/help` and `/quit`; admin inspection
 and object mutation stay in the admin CLI. This is still an early development

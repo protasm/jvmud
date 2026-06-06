@@ -3,6 +3,8 @@
 JVMud's engine-mudlib boundary is a native JVMud contract. It is not a promise
 to preserve legacy LP engine vocabulary on the engine side.
 
+`../GLOSSARY.md` defines the vocabulary used by this contract.
+
 The engine owns the concepts described in `../PRINCIPLES.md`: Game, Text,
 Multiplayer, Interactive, World (Linked Places, Entities, Movement),
 Persistence, Temporality, Presence, places, links, locations, containment, and
@@ -73,6 +75,11 @@ The currently defined JVMud lifecycle events are:
 | `entity_departed_from_place` | Reserved | Departing entity or source place | source place, destination place, movement action | An entity is leaving a place. |
 | `entity_added_to_entity` | Reserved | Added entity or containing entity | container entity | An entity has entered another entity's containment. |
 | `entity_removed_from_entity` | Reserved | Removed entity or containing entity | previous container entity | An entity has left another entity's containment. |
+| `player_session_connected` | Reserved | Boundary object or player object | session id, remote address | A participant transport has connected and JVMud is about to resolve or create the in-world perspective entity. |
+| `player_persona_resolved` | Reserved | Boundary object or player object | persona id | JVMud has resolved the entity that this session will use as its in-world perspective. |
+| `player_object_bound` | Reserved | Player object | persona id, session id | JVMud has associated a live player object entity with a connected session. |
+| `player_entered_world` | Reserved | Player object | starting place | JVMud has placed the player object into the world and interaction can begin. |
+| `player_session_disconnected` | Reserved | Player object or boundary object | persona id, session id | The transport has disconnected and JVMud is about to save, unbind, or clean up session control. |
 | `interaction_scope_started` | Implemented, optional mapping | Actor, actor location, carried objects, and nearby objects | none currently | An interactive actor's local command/perception scope is being refreshed; mudlib objects may register text commands or interaction affordances. |
 | `command_dispatch_started` | Reserved | Command actor or boundary object | command text, verb | JVMud is about to dispatch participant text to mudlib behavior. |
 | `command_dispatch_finished` | Reserved | Command actor or boundary object | command text, verb, handled status | JVMud has finished dispatching participant text. |
@@ -84,6 +91,67 @@ boundary can choose to define none of them. A playable LPC/LPMud mudlib will
 usually map at least `object_loaded` and `interaction_scope_started`, because
 those are the current hooks that let objects initialize state and expose local
 commands.
+
+## Player Connection Lifecycle
+
+A connected player is represented by four related but distinct JVMud concepts:
+
+- an entity, which is a thing in the world;
+- presence, which is the experiential relationship created when a player
+  engages the world through a located persona;
+- a session, which is the active connection/control context;
+- a persona, which is the entity currently associated with a session as that
+  session's in-world perspective.
+
+The player object is the LPC-authored mudlib object that gives the persona
+entity its behavior. It is still an entity and therefore has a mechanical
+location. It creates player presence only while it is associated with an active
+session as that session's in-world perspective.
+
+The minimal JVMud-native attach sequence is:
+
+1. A telnet session connects. JVMud creates a session record and records the
+   transport address and idle timestamp.
+2. JVMud resolves, creates, loads, or restores the entity that will serve as
+   the session's persona.
+3. JVMud ensures that entity has a live LPC player object implementation.
+4. JVMud associates the session with that entity as its control context.
+5. JVMud gives the persona entity a location, using the configured initial place
+   when no stronger restored location exists.
+6. JVMud refreshes the interaction scope for the persona entity so surrounding
+   mudlib objects can register commands.
+7. Each input line is dispatched as that persona entity. During dispatch,
+   `this_player()` is the session's persona and `query_verb()` is the parsed
+   verb.
+8. When the session disconnects, JVMud removes the session association and
+   session-only routing. The entity may remain present in the world or be saved,
+   moved, or removed according to persistence policy.
+
+The player lifecycle hooks above correspond to this sequence. They are optional
+boundary hooks, not legacy driver applies. A mudlib may map them to LPC methods
+on a boundary object, a player shim, or the player object itself. If a mapping
+is absent, JVMud proceeds with the engine-owned step.
+
+The first playable implementation should prefer the smallest coherent contract:
+
+- bind one telnet session to one persona entity with a player object
+  implementation;
+- route `write` and `tell_object` to the bound session when their target is the
+  active persona;
+- route `say` and `shout` through presence-aware text delivery, even if the
+  first slice uses simple broadcast behavior;
+- make `users()` return connected persona entities, not all loaded objects;
+- make `query_idle(player)` and `query_ip_number(player)` read from the bound
+  session record;
+- dispatch input through the command registry populated by
+  `interaction_scope_started`;
+- move the persona entity through world containment/location APIs rather than
+  treating legacy rooms as engine concepts.
+
+`save_object` and `restore_object` are compatibility spellings for persistence
+requests. JVMud owns persistence timing and storage policy. Mudlib code may
+provide serialized fields or policy decisions, but player connection lifecycle
+should not depend on a legacy driver save file model.
 
 ## Mudlib-To-Engine Requests
 

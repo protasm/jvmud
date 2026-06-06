@@ -3,7 +3,32 @@ package io.github.protasm.jvmud.compiler;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTMethod;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallEfun;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
+import io.github.protasm.jvmud.compiler.parser.ast.visitor.ASTVisitor;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
@@ -15,11 +40,14 @@ import io.github.protasm.jvmud.runtime.MudlibBoundaryConfigReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
@@ -65,6 +93,11 @@ final class MudlibCompatibilityScanTest {
 
         writeReport(boundary, results);
 
+        CompilationResult playerResult = results.get(PLAYER_SOURCE);
+        assertTrue(playerResult != null, "`obj/player.c` is not part of the compatibility scan.");
+        assertTrue(playerResult.getProblems().isEmpty(), () -> "`obj/player.c` must compile cleanly: "
+                + playerResult.getProblems());
+        assertTrue(playerResult.getBytecode() != null, "`obj/player.c` must compile through bytecode generation.");
         assertTrue(Files.exists(Path.of("target", "jvmud-mudlib-compatibility.md")));
     }
 
@@ -101,6 +134,7 @@ final class MudlibCompatibilityScanTest {
         }
 
         appendPlayerTracker(report, results.get(PLAYER_SOURCE));
+        appendPlayerRuntimeSurface(report, results.get(PLAYER_SOURCE));
 
         Files.writeString(reportPath, report.toString());
     }
@@ -152,6 +186,159 @@ final class MudlibCompatibilityScanTest {
         appendGate(report, "Parser", first, CompilationStage.PARSE);
         appendGate(report, "Semantic analysis", first, CompilationStage.ANALYZE);
         appendGate(report, "Efun/runtime surface", first, CompilationStage.LOWER, CompilationStage.COMPILE);
+    }
+
+    private static void appendPlayerRuntimeSurface(StringBuilder report, CompilationResult playerResult) {
+        report.append("\n## obj/player.c Runtime Surface\n\n");
+        report.append("This checklist is extracted from the resolved `obj/player.c` AST. ");
+        report.append("It is a runtime prioritization aid: compiling these calls does not mean each behavior is implemented.\n\n");
+
+        if (playerResult == null || playerResult.getAstObject() == null) {
+            report.append("Runtime surface is unavailable until `obj/player.c` parses far enough to produce an AST.\n");
+            return;
+        }
+
+        RuntimeSurface surface = RuntimeSurfaceCollector.collect(playerResult.getAstObject());
+        report.append("| Category | Calls |\n");
+        report.append("| --- | --- |\n");
+        appendSurfaceRow(report, "Global mfun/efun calls", surface.globalFunctions());
+        appendSurfaceRow(report, "Mudlib method calls", surface.mudlibMethods());
+        appendSurfaceRow(report, "Object method invocations", surface.objectInvocations());
+        appendSurfaceRow(report, "Dynamic object invocations", surface.dynamicInvocations());
+
+        appendPlayerRuntimeSupportMatrix(report, surface);
+    }
+
+    private static void appendPlayerRuntimeSupportMatrix(StringBuilder report, RuntimeSurface surface) {
+        report.append("\n### Runtime Support Matrix\n\n");
+        report.append("| Call | Status | Notes |\n");
+        report.append("| --- | --- | --- |\n");
+        for (String call : surface.globalFunctions()) {
+            SupportEntry support = supportForGlobalCall(call);
+            report.append("| `")
+                    .append(escape(call))
+                    .append("` | ")
+                    .append(support.status())
+                    .append(" | ")
+                    .append(escape(support.notes()))
+                    .append(" |\n");
+        }
+        for (String call : surface.dynamicInvocations()) {
+            SupportEntry support = supportForDynamicCall(call);
+            report.append("| `")
+                    .append(escape(call))
+                    .append("` | ")
+                    .append(support.status())
+                    .append(" | ")
+                    .append(escape(support.notes()))
+                    .append(" |\n");
+        }
+    }
+
+    private static SupportEntry supportForGlobalCall(String call) {
+        return switch (call) {
+        case "add_action" -> support("Partial", "Registers handler methods and explicit verbs; player command lifecycle still needs session attachment.");
+        case "call_other" -> support("Partial", "Reflective invoke exists for zero/one argument calls; broader arity and error behavior remain compatibility work.");
+        case "call_out" -> support("Stubbed", "Engine accepts the call but does not schedule anything.");
+        case "clone_object" -> support("Partial", "Delegates to the runtime object factory; behavior depends on loaded source/object lifecycle.");
+        case "destruct" -> support("Partial", "Removes objects and inventory links from RuntimeContext.");
+        case "enable_commands" -> support("Stubbed", "Engine accepts the call but does not change interactive command state.");
+        case "environment" -> support("Implemented", "RuntimeContext tracks object environments.");
+        case "file_name" -> support("Implemented", "Returns the runtime object id for loaded objects.");
+        case "first_inventory" -> support("Implemented", "RuntimeContext can walk the first child in an inventory.");
+        case "next_inventory" -> support("Implemented", "RuntimeContext can walk sibling inventory links.");
+        case "living" -> support("Stubbed", "Mudlib mfun currently returns 0 for every value.");
+        case "move_object" -> support("Implemented", "RuntimeContext moves objects between inventories with cycle checks.");
+        case "present" -> support("Partial", "RuntimeContext searches inventory by identity or id method.");
+        case "query_idle" -> support("Implemented", "Reads idle time from the bound session/persona record.");
+        case "query_ip_number" -> support("Implemented", "Reads the remote address from the bound session/persona record.");
+        case "query_verb" -> support("Implemented", "Backed by the active command dispatch verb.");
+        case "remove_call_out" -> support("Stubbed", "Engine always returns -1.");
+        case "say" -> support("Partial", "Writes to the shared output sink; no room/session broadcast routing yet.");
+        case "set_heart_beat" -> support("Stubbed", "Accepted but ignored.");
+        case "set_light" -> support("Implemented", "RuntimeContext tracks per-object light deltas.");
+        case "sizeof" -> support("Implemented", "Typed and runtime-checked for arrays, mappings, strings, and dynamic mixed values.");
+        case "tell_object" -> support("Partial", "Routes to a bound target session, with shared-output fallback for unbound objects.");
+        case "this_object" -> support("Implemented", "Backed by RuntimeContext current-object stack.");
+        case "this_player" -> support("Partial", "Uses command actor when present, otherwise current object; real telnet persona binding still pending.");
+        case "time" -> support("Implemented", "Returns current Unix time in seconds.");
+        case "users" -> support("Implemented", "Returns connected persona objects from the session/persona registry.");
+        case "write" -> support("Partial", "Routes to the active persona session when bound, with shared-output fallback.");
+        case "add_worth",
+                "capitalize",
+                "cat",
+                "command",
+                "creator",
+                "crypt",
+                "ed",
+                "extract",
+                "file_size",
+                "filter_objects",
+                "find_living",
+                "find_object",
+                "find_player",
+                "input_to",
+                "intp",
+                "localcmd",
+                "log_file",
+                "lower_case",
+                "ls",
+                "mkdir",
+                "move_player",
+                "previous_object",
+                "random",
+                "restore_object",
+                "rm",
+                "rmdir",
+                "save_object",
+                "set_living_name",
+                "shout",
+                "shutdown",
+                "snoop",
+                "sscanf",
+                "strlen",
+                "tail",
+                "transfer",
+                "wizlist" -> support("Missing", "Resolved through the mfun boundary but no JVMud mfun/efun implementation exists yet.");
+        default -> support("Unknown", "No audit classification has been assigned yet.");
+        };
+    }
+
+    private static SupportEntry supportForDynamicCall(String call) {
+        return switch (call) {
+        case "catch_shout" -> support("Missing", "Requires real broadcast/session routing for shout delivery.");
+        case "id" -> support("Partial", "Can be invoked reflectively, but identifier matching depends on target mudlib objects being loaded.");
+        case "query_age",
+                "query_level",
+                "query_name",
+                "query_real_name",
+                "query_value",
+                "query_weight",
+                "short" -> support("Partial", "Can be invoked reflectively once the target mudlib object is loaded and exposes the method.");
+        default -> support("Unknown", "Dynamic object call requires runtime exercise to classify.");
+        };
+    }
+
+    private static SupportEntry support(String status, String notes) {
+        return new SupportEntry(status, notes);
+    }
+
+    private static void appendSurfaceRow(StringBuilder report, String category, Set<String> calls) {
+        report.append("| ")
+                .append(category)
+                .append(" | ")
+                .append(formatCalls(calls))
+                .append(" |\n");
+    }
+
+    private static String formatCalls(Set<String> calls) {
+        if (calls.isEmpty())
+            return "";
+
+        return calls.stream()
+                .map(call -> "`" + escape(call) + "`")
+                .reduce((left, right) -> left + ", " + right)
+                .orElse("");
     }
 
     private static void appendGate(
@@ -272,4 +459,164 @@ final class MudlibCompatibilityScanTest {
     }
 
     private record SourceExcerpt(String sourceName, int lineNumber, String line) {}
+
+    private record RuntimeSurface(
+            Set<String> globalFunctions,
+            Set<String> mudlibMethods,
+            Set<String> objectInvocations,
+            Set<String> dynamicInvocations) {}
+
+    private record SupportEntry(String status, String notes) {}
+
+    private static final class RuntimeSurfaceCollector implements ASTVisitor {
+        private final Set<String> globalFunctions = new TreeSet<>();
+        private final Set<String> mudlibMethods = new TreeSet<>();
+        private final Set<String> objectInvocations = new TreeSet<>();
+        private final Set<String> dynamicInvocations = new TreeSet<>();
+
+        static RuntimeSurface collect(ASTObject object) {
+            RuntimeSurfaceCollector collector = new RuntimeSurfaceCollector();
+            object.accept(collector);
+            return new RuntimeSurface(
+                    sortedCopy(collector.globalFunctions),
+                    sortedCopy(collector.mudlibMethods),
+                    sortedCopy(collector.objectInvocations),
+                    sortedCopy(collector.dynamicInvocations));
+        }
+
+        private static Set<String> sortedCopy(Set<String> calls) {
+            return Collections.unmodifiableSet(new TreeSet<>(calls));
+        }
+
+        @Override
+        public void visitObject(ASTObject object) {
+            object.fields().accept(this);
+            object.methods().accept(this);
+        }
+
+        @Override
+        public void visitMethod(ASTMethod method) {
+            if (method.body() != null)
+                method.body().accept(this);
+        }
+
+        @Override
+        public void visitStmtBlock(ASTStmtBlock stmt) {
+            stmt.statements().forEach(statement -> statement.accept(this));
+        }
+
+        @Override
+        public void visitStmtExpression(ASTStmtExpression stmt) {
+            stmt.expression().accept(this);
+        }
+
+        @Override
+        public void visitStmtFor(ASTStmtFor stmt) {
+            visitIfPresent(stmt.initializer());
+            visitIfPresent(stmt.condition());
+            visitIfPresent(stmt.update());
+            stmt.body().accept(this);
+        }
+
+        @Override
+        public void visitStmtIfThenElse(ASTStmtIfThenElse stmt) {
+            stmt.condition().accept(this);
+            stmt.thenBranch().accept(this);
+            if (stmt.elseBranch() != null)
+                stmt.elseBranch().accept(this);
+        }
+
+        @Override
+        public void visitStmtReturn(ASTStmtReturn stmt) {
+            visitIfPresent(stmt.returnValue());
+        }
+
+        @Override
+        public void visitStmtWhile(ASTStmtWhile stmt) {
+            stmt.condition().accept(this);
+            stmt.body().accept(this);
+        }
+
+        @Override
+        public void visitExpression(ASTExpression expression) {
+            if (expression instanceof ASTExprArrayAccess access) {
+                access.target().accept(this);
+                access.index().accept(this);
+            } else if (expression instanceof ASTExprArrayLiteral literal) {
+                literal.elements().forEach(element -> element.accept(this));
+            } else if (expression instanceof ASTExprArrayStore store) {
+                store.target().accept(this);
+                store.index().accept(this);
+                store.value().accept(this);
+            } else if (expression instanceof ASTExprMappingLiteral literal) {
+                literal.entries().forEach(entry -> {
+                    entry.key().accept(this);
+                    entry.value().accept(this);
+                });
+            } else if (expression instanceof ASTExprSequence sequence) {
+                sequence.expressions().forEach(expr -> expr.accept(this));
+            } else if (expression instanceof ASTExprTernary ternary) {
+                ternary.condition().accept(this);
+                ternary.thenBranch().accept(this);
+                ternary.elseBranch().accept(this);
+            }
+        }
+
+        @Override
+        public void visitExprFieldStore(ASTExprFieldStore expr) {
+            expr.value().accept(this);
+        }
+
+        @Override
+        public void visitExprLocalStore(ASTExprLocalStore expr) {
+            expr.value().accept(this);
+        }
+
+        @Override
+        public void visitExprOpBinary(ASTExprOpBinary expr) {
+            expr.left().accept(this);
+            expr.right().accept(this);
+        }
+
+        @Override
+        public void visitExprOpUnary(ASTExprOpUnary expr) {
+            expr.right().accept(this);
+        }
+
+        @Override
+        public void visitExprCallEfun(ASTExprCallEfun expr) {
+            globalFunctions.add(expr.signature().name());
+            expr.arguments().accept(this);
+        }
+
+        @Override
+        public void visitExprCallMethod(ASTExprCallMethod expr) {
+            mudlibMethods.add(expr.method().symbol().name());
+            expr.arguments().accept(this);
+        }
+
+        @Override
+        public void visitExprDynamicInvoke(ASTExprDynamicInvoke expr) {
+            dynamicInvocations.add(expr.methodName());
+            expr.target().accept(this);
+            expr.arguments().accept(this);
+        }
+
+        @Override
+        public void visitExprInvokeField(ASTExprInvokeField expr) {
+            objectInvocations.add(expr.methodName());
+            expr.arguments().accept(this);
+        }
+
+        @Override
+        public void visitExprInvokeLocal(ASTExprInvokeLocal expr) {
+            objectInvocations.add(expr.methodName());
+            expr.arguments().accept(this);
+        }
+
+        private void visitIfPresent(ASTExpression expression) {
+            if (expression != null)
+                expression.accept(this);
+        }
+    }
 }
