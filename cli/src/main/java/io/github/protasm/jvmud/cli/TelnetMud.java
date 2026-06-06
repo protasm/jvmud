@@ -65,9 +65,10 @@ final class TelnetMud {
         return startingRoomPath;
     }
 
-    synchronized Persona attachPersona(PrintWriter out) {
+    synchronized Persona attachPersona(PrintWriter out, String remoteAddress) {
         int id = nextPersonaId++;
         String objectId = "persona/" + id;
+        String sessionId = "telnet/" + id;
         String name = "player " + id;
         Place startingPlace = placeFor(startingRoomPath);
         Entity entity = worldRuntime.createEntity(
@@ -79,9 +80,19 @@ final class TelnetMud {
         LocalSessionActor actor = new LocalSessionActor(runtime, worldRuntime, entity, name);
         runtime.registerHostObject(objectId, actor);
         runtime.moveObject(actor, startingRoomObject);
+        runtime.bindSession(sessionId, actor, remoteAddress, text -> {
+            out.print(text);
+            out.flush();
+        });
         runtime.clearOutputTranscript();
         out.println("Attached " + name + " in " + startingRoomPath + ".");
-        return new Persona(objectId, name, actor);
+        return new Persona(sessionId, objectId, name, actor);
+    }
+
+    synchronized void detachPersona(Persona persona) {
+        if (persona != null) {
+            runtime.unbindSession(persona.sessionId());
+        }
     }
 
     synchronized Object dispatch(Persona persona, PrintWriter out, String commandLine) {
@@ -89,13 +100,16 @@ final class TelnetMud {
         runtime.refreshCommandActions(persona.actor());
         Object result = runtime.dispatchCommand(persona.actor(), commandLine);
         if (Integer.valueOf(0).equals(result) && isLookCommand(commandLine)) {
+            runtime.clearOutputTranscript();
             Object environment = runtime.environment(persona.actor());
             if (environment != null) {
                 lookAt(environment);
                 result = 1;
             }
+            printRuntimeOutput(out);
+        } else {
+            runtime.clearOutputTranscript();
         }
-        printRuntimeOutput(out);
         return result;
     }
 
@@ -134,6 +148,6 @@ final class TelnetMud {
         return "look".equals(trimmed) || "l".equals(trimmed) || trimmed.startsWith("look ");
     }
 
-    record Persona(String objectId, String name, Object actor) {
+    record Persona(String sessionId, String objectId, String name, Object actor) {
     }
 }

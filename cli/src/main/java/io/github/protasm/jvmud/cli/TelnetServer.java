@@ -11,7 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Minimal telnet listener for interactive JVMud sessions. */
+/** Starts a mudlib as a persistent telnet target for interactive JVMud sessions. */
 public final class TelnetServer implements AutoCloseable {
     public static final int DEFAULT_PORT = 4000;
 
@@ -30,7 +30,7 @@ public final class TelnetServer implements AutoCloseable {
         this.requestedPort = port;
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         this.configObjectPath = Objects.requireNonNullElse(configObjectPath, MudlibBoot.DEFAULT_CONFIG_PATH);
-        this.sessions = Executors.newCachedThreadPool(new TelnetThreadFactory("jvmud-telnet-session"));
+        this.sessions = Executors.newCachedThreadPool(new TelnetThreadFactory("jvmud-session"));
     }
 
     public static void main(String[] args) throws IOException {
@@ -41,8 +41,8 @@ public final class TelnetServer implements AutoCloseable {
 
         TelnetServer server = new TelnetServer(bindAddress, port, mudlib, configObjectPath);
         server.start();
-        System.out.println("JVMud telnet listening on " + server.bindAddress() + ":" + server.port());
-        Runtime.getRuntime().addShutdownHook(new Thread(server::close, "jvmud-telnet-shutdown"));
+        System.out.println("JVMud mudlib listening on " + server.bindAddress() + ":" + server.port());
+        Runtime.getRuntime().addShutdownHook(new Thread(server::close, "jvmud-start-shutdown"));
         server.await();
     }
 
@@ -53,7 +53,7 @@ public final class TelnetServer implements AutoCloseable {
         mud = TelnetMud.boot(mudlibRoot, configObjectPath);
         serverSocket = new ServerSocket(requestedPort, 50, InetAddress.getByName(bindAddress));
         running = true;
-        acceptThread = new Thread(this::acceptLoop, "jvmud-telnet-accept");
+        acceptThread = new Thread(this::acceptLoop, "jvmud-start-accept");
         acceptThread.start();
     }
 

@@ -57,7 +57,7 @@
             </configuration>
           </execution>
           <execution>
-            <id>telnet-server</id>
+            <id>start-mudlib</id>
             <goals>
               <goal>java</goal>
             </goals>

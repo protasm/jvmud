@@ -27,11 +27,12 @@ final class TelnetSession implements Runnable {
 
     @Override
     public void run() {
+        SessionState session = null;
         try (socket;
                 BufferedInputStream in = new BufferedInputStream(socket.getInputStream());
                 OutputStream rawOut = socket.getOutputStream();
                 PrintWriter out = new PrintWriter(new OutputStreamWriter(rawOut, StandardCharsets.UTF_8), true)) {
-            SessionState session = new SessionState(mud.attachPersona(out));
+            session = new SessionState(mud.attachPersona(out, socket.getInetAddress().getHostAddress()));
             out.println("JVMud telnet. Type /help for commands or /quit to disconnect.");
             prompt(out);
 
@@ -60,6 +61,10 @@ final class TelnetSession implements Runnable {
             }
         } catch (IOException ignored) {
             // A telnet client dropping the socket is a normal session ending.
+        } finally {
+            if (session != null) {
+                mud.detachPersona(session.persona);
+            }
         }
     }
 

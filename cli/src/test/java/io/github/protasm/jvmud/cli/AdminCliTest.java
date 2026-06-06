@@ -137,6 +137,62 @@ final class AdminCliTest {
     }
 
     @Test
+    void telnetConnectionsBindRuntimeSessionsAndRouteTargetedOutput() throws Exception {
+        installMfunShim();
+        Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
+                void init() {
+                    add_action("who");
+                    add_verb("who");
+                    add_action("poke");
+                    add_verb("poke");
+                }
+
+                int who(mixed str) {
+                    write("users=" + sizeof(users()) + " ip=" + query_ip_number(this_player()) + "\\n");
+                    return 1;
+                }
+
+                int poke(mixed str) {
+                    object *list;
+
+                    list = users();
+                    tell_object(list[1], "poke from " + query_ip_number(this_player()) + "\\n");
+                    write("sent\\n");
+                    return 1;
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket first = new Socket("127.0.0.1", server.port());
+                    Socket second = new Socket("127.0.0.1", server.port())) {
+                first.setSoTimeout(5000);
+                second.setSoTimeout(5000);
+                assertTrue(readUntilPrompt(first).contains("Attached player 1"));
+                assertTrue(readUntilPrompt(second).contains("Attached player 2"));
+
+                first.getOutputStream().write("who\n".getBytes(StandardCharsets.UTF_8));
+                first.getOutputStream().flush();
+                String who = readUntilPrompt(first);
+                assertTrue(who.contains("users=2 ip=127.0.0.1"));
+
+                first.getOutputStream().write("poke\n".getBytes(StandardCharsets.UTF_8));
+                first.getOutputStream().flush();
+                assertTrue(readUntilPrompt(first).contains("sent"));
+                assertTrue(readUntilContains(second, "poke from 127.0.0.1").contains("poke from 127.0.0.1"));
+
+                first.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                second.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                first.getOutputStream().flush();
+                second.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
     void adminCanLoadCallCloneMoveInspectAndQuit() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("room.c"), """
@@ -609,6 +665,18 @@ final class AdminCliTest {
         return output.toString();
     }
 
+    private String readUntilContains(Socket socket, String expected) throws Exception {
+        StringBuilder output = new StringBuilder();
+        while (!output.toString().contains(expected)) {
+            int value = socket.getInputStream().read();
+            if (value == -1) {
+                break;
+            }
+            output.append((char) value);
+        }
+        return output.toString();
+    }
+
     private void installMfunShim() throws Exception {
         installMfunShim(tempDir);
     }
@@ -628,6 +696,26 @@ final class AdminCliTest {
         Files.writeString(mudlibRoot.resolve("jvmud/mfuns.c"), """
                 void write(mixed value) {
                     jvmud_write(value);
+                }
+
+                void tell_object(object target, mixed value) {
+                    jvmud_tell_object(target, value);
+                }
+
+                int sizeof(mixed value) {
+                    return jvmud_size(value);
+                }
+
+                object *users() {
+                    return jvmud_users();
+                }
+
+                int query_idle(mixed player) {
+                    return jvmud_query_idle(player);
+                }
+
+                mixed query_ip_number(mixed player) {
+                    return jvmud_query_ip_number(player);
                 }
 
                 void add_action(string method) {

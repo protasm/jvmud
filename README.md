@@ -154,10 +154,11 @@ output. `watch` prints compiler stage progress for commands such as `load` and
 `clone`, which is useful when inspecting parser, analyzer, lowering, or bytecode
 failures.
 
-The same command/session path is available through the first Telnet listener:
+The same command/session path is available by starting a mudlib as a persistent
+Telnet target:
 
 ```text
-./jvmud-telnet [mudlib-root] [port] [bind-address] [config-object]
+./jvmud-start [mudlib-root] [port] [bind-address] [config-object]
 ```
 
 By default it serves `mudlib` on `127.0.0.1:4000` using the standard JVMud
