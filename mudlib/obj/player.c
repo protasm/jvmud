@@ -1407,7 +1407,7 @@ static int list_files(mixed path) {
 }
 
 int list_peoples() {
-  object list;
+  object *list;
   int i, a;
 
   list = users();
@@ -3412,7 +3412,7 @@ int whisper(mixed str) {
 }
 
 int who() {
-  object list;
+  object *list;
   int i;
 
   list = users();

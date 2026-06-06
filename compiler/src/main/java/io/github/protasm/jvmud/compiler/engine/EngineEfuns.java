@@ -71,6 +71,8 @@ public final class EngineEfuns {
                 (runtime, args) -> runtime.objectId(args[0])));
         efuns.add(efun("jvmud_size", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> sizeOf(args[0])));
+        efuns.add(efun("jvmud_users", LPCType.LPCARRAY, List.of(),
+                (runtime, args) -> runtime.users()));
         efuns.add(efun("jvmud_is_string", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof String ? 1 : 0));
         efuns.add(efun("jvmud_is_array", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
@@ -155,7 +157,7 @@ public final class EngineEfuns {
         if (value.getClass().isArray()) {
             return java.lang.reflect.Array.getLength(value);
         }
-        return 0;
+        throw new IllegalArgumentException("sizeof expects array, mapping, or string value");
     }
 
     private static Object callOther(RuntimeContext runtime, Object target, String methodName) {

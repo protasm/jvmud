@@ -352,8 +352,47 @@ public final class SemanticTypeChecker {
             return LPCType.LPCMIXED;
         }
 
-        inferArguments(expr.arguments(), signature.parameterTypes(), context);
+        if (isSizeFunction(signature)) {
+            inferSizeofArgument(expr.arguments(), context);
+        } else {
+            inferArguments(expr.arguments(), signature.parameterTypes(), context);
+        }
         return signature.returnType();
+    }
+
+    private boolean isSizeFunction(EfunSignature signature) {
+        return "sizeof".equals(signature.name()) || "jvmud_size".equals(signature.name());
+    }
+
+    private void inferSizeofArgument(ASTArguments arguments, MethodContext context) {
+        if (arguments == null)
+            return;
+
+        if (arguments.size() != 1) {
+            problems.add(
+                    new CompilationProblem(
+                            CompilationStage.ANALYZE,
+                            "Argument count mismatch: expected 1 but found " + arguments.size(),
+                            arguments.line()));
+            inferArguments(arguments, null, context);
+            return;
+        }
+
+        ASTArgument argument = arguments.get(0);
+        LPCType actual = inferExpressionType(argument.expression(), context);
+        if (actual == LPCType.LPCARRAY
+                || actual == LPCType.LPCMAPPING
+                || actual == LPCType.LPCSTRING
+                || actual == LPCType.LPCMIXED
+                || actual == LPCType.LPCNULL) {
+            return;
+        }
+
+        problems.add(
+                new CompilationProblem(
+                        CompilationStage.ANALYZE,
+                        "sizeof expects array, mapping, or string argument",
+                        argument.line()));
     }
 
     private LPCType inferMethodCall(ASTExprCallMethod expr, MethodContext context) {

@@ -183,6 +183,10 @@ int time() {
   return jvmud_time();
 }
 
+object *users() {
+  return jvmud_users();
+}
+
 void write(mixed value) {
   jvmud_write(value);
 }

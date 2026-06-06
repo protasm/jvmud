@@ -129,9 +129,7 @@ public final class RuntimeContext {
         return new Efun() {
             @Override
             public EfunSignature signature() {
-                return new EfunSignature(
-                        new Symbol(LPCType.LPCMIXED, name),
-                        Collections.nCopies(arity, LPCType.LPCMIXED));
+                return mfunSignature(name, arity);
             }
 
             @Override
@@ -147,6 +145,22 @@ public final class RuntimeContext {
                 return invokeObjectPreservingCurrentObject(mfunObject, name, args);
             }
         };
+    }
+
+    private EfunSignature mfunSignature(String name, int arity) {
+        if ("sizeof".equals(name) && arity == 1) {
+            return new EfunSignature(
+                    new Symbol(LPCType.LPCINT, name),
+                    List.of(LPCType.LPCMIXED));
+        }
+        if ("users".equals(name) && arity == 0) {
+            return new EfunSignature(
+                    new Symbol(LPCType.LPCARRAY, name),
+                    List.of());
+        }
+        return new EfunSignature(
+                new Symbol(LPCType.LPCMIXED, name),
+                Collections.nCopies(arity, LPCType.LPCMIXED));
     }
 
     private Object loadMfunObject() {
@@ -208,6 +222,10 @@ public final class RuntimeContext {
 
     public Object cloneObject(String sourcePath) {
         return objectFactory.apply(sourcePath);
+    }
+
+    public List<Object> users() {
+        return new ArrayList<>(objects.values());
     }
 
     private String normalizeMudlibPath(String path) {

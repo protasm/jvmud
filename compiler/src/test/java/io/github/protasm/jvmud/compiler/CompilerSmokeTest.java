@@ -13,6 +13,7 @@ import io.github.protasm.jvmud.compiler.exec.LpcRuntimeConfig;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
 import java.nio.file.Files;
@@ -388,6 +389,45 @@ final class CompilerSmokeTest {
         LpcObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
 
         assertEquals(3, caller.invoke("value"));
+    }
+
+    @Test
+    void sizeofRejectsScalarObjects() {
+        RuntimeContext context = new RuntimeContext(null);
+        EngineEfuns.registerCore(context);
+        context.setMfunObjectPath("jvmud/functions");
+
+        CompilationResult result = new CompilationPipeline("java/lang/Object", context).run("""
+                object target;
+
+                int value() {
+                    return sizeof(target);
+                }
+                """);
+
+        assertTrue(result.getProblems().stream()
+                .anyMatch(problem -> problem.getMessage()
+                        .contains("sizeof expects array, mapping, or string argument")));
+        assertNull(result.getBytecode());
+    }
+
+    @Test
+    void usersMfunIsTypedAsArrayForSizeofAndIndexing() {
+        RuntimeContext context = new RuntimeContext(null);
+        EngineEfuns.registerCore(context);
+        context.setMfunObjectPath("jvmud/functions");
+
+        CompilationResult result = new CompilationPipeline("java/lang/Object", context).run("""
+                int value() {
+                    object *list;
+
+                    list = users();
+                    return sizeof(list);
+                }
+                """);
+
+        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
+        assertNotNull(result.getBytecode());
     }
 
     @Test
