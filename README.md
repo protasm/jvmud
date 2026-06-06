@@ -158,12 +158,12 @@ The same command/session path is available by starting a mudlib as a persistent
 Telnet target:
 
 ```text
-./jvmud-start [mudlib-root] [port] [bind-address] [config-object]
+./jvmud-start [-mudlib-dir mudlib] [-port 4000] [-host localhost] [-config jvmud/config]
 ```
 
-By default it serves `mudlib` on `127.0.0.1:4000` using the standard JVMud
-mudlib config object. Starting this process boots one shared runtime and world;
-each Telnet connection attaches to a host-owned persona entity in the configured
+All flags are optional. By default it serves `mudlib` on `localhost:4000` using
+`jvmud/config`. Starting this process boots one shared runtime and world; each
+Telnet connection attaches to a host-owned persona entity in the configured
 starting place. Player/world input is routed through LPC `init`, `add_action`,
 and `add_verb` registrations on nearby or carried objects. Telnet slash commands
 are limited to session controls such as `/help` and `/quit`; admin inspection

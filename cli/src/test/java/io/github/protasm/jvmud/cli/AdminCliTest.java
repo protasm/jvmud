@@ -2,6 +2,7 @@ package io.github.protasm.jvmud.cli;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
@@ -27,6 +28,54 @@ import org.junit.jupiter.api.io.TempDir;
 final class AdminCliTest {
     @TempDir
     Path tempDir;
+
+    @Test
+    void telnetServerLaunchOptionsDefaultToLocalMudlibStart() {
+        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[0]);
+
+        assertEquals(Path.of("mudlib"), options.mudlibRoot());
+        assertEquals(4000, options.port());
+        assertEquals("localhost", options.bindAddress());
+        assertEquals(MudlibBoot.DEFAULT_CONFIG_PATH, options.configObjectPath());
+        assertFalse(options.help());
+    }
+
+    @Test
+    void telnetServerLaunchOptionsAcceptNamedFlags() {
+        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {
+                "-mudlib-dir", "mudlib",
+                "-port", "4303",
+                "-host", "127.0.0.1",
+                "-config", "jvmud/config"
+        });
+
+        assertEquals(Path.of("mudlib"), options.mudlibRoot());
+        assertEquals(4303, options.port());
+        assertEquals("127.0.0.1", options.bindAddress());
+        assertEquals("jvmud/config", options.configObjectPath());
+    }
+
+    @Test
+    void telnetServerLaunchOptionsStillAcceptLegacyPositionals() {
+        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {
+                "custom-mudlib", "4303", "0.0.0.0", "custom/config"
+        });
+
+        assertEquals(Path.of("custom-mudlib"), options.mudlibRoot());
+        assertEquals(4303, options.port());
+        assertEquals("0.0.0.0", options.bindAddress());
+        assertEquals("custom/config", options.configObjectPath());
+    }
+
+    @Test
+    void telnetServerLaunchOptionsRejectBadFlags() {
+        assertThrows(IllegalArgumentException.class, () ->
+                TelnetServer.parseLaunchOptions(new String[] {"-port"}));
+        assertThrows(IllegalArgumentException.class, () ->
+                TelnetServer.parseLaunchOptions(new String[] {"-port", "70000"}));
+        assertThrows(IllegalArgumentException.class, () ->
+                TelnetServer.parseLaunchOptions(new String[] {"-bogus", "value"}));
+    }
 
     @Test
     void telnetSessionAcceptsPlayerCommandsOverSocket() throws Exception {

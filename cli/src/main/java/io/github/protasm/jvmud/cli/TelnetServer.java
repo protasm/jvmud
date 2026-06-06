@@ -14,6 +14,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** Starts a mudlib as a persistent telnet target for interactive JVMud sessions. */
 public final class TelnetServer implements AutoCloseable {
     public static final int DEFAULT_PORT = 4000;
+    private static final Path DEFAULT_MUDLIB_ROOT = Path.of("mudlib");
+    private static final String DEFAULT_BIND_ADDRESS = "localhost";
 
     private final String bindAddress;
     private final int requestedPort;
@@ -34,16 +36,86 @@ public final class TelnetServer implements AutoCloseable {
     }
 
     public static void main(String[] args) throws IOException {
-        Path mudlib = args.length > 0 ? Path.of(args[0]) : Path.of("mudlib");
-        int port = args.length > 1 ? Integer.parseInt(args[1]) : DEFAULT_PORT;
-        String bindAddress = args.length > 2 ? args[2] : "127.0.0.1";
-        String configObjectPath = args.length > 3 ? args[3] : MudlibBoot.DEFAULT_CONFIG_PATH;
+        LaunchOptions options;
+        try {
+            options = parseLaunchOptions(args);
+        } catch (IllegalArgumentException e) {
+            System.err.println(e.getMessage());
+            System.err.println(usage());
+            System.exit(2);
+            return;
+        }
 
-        TelnetServer server = new TelnetServer(bindAddress, port, mudlib, configObjectPath);
+        if (options.help()) {
+            System.out.println(usage());
+            return;
+        }
+
+        TelnetServer server = new TelnetServer(
+                options.bindAddress(), options.port(), options.mudlibRoot(), options.configObjectPath());
         server.start();
         System.out.println("JVMud mudlib listening on " + server.bindAddress() + ":" + server.port());
         Runtime.getRuntime().addShutdownHook(new Thread(server::close, "jvmud-start-shutdown"));
         server.await();
+    }
+
+    static LaunchOptions parseLaunchOptions(String[] args) {
+        Path mudlibRoot = DEFAULT_MUDLIB_ROOT;
+        int port = DEFAULT_PORT;
+        String bindAddress = DEFAULT_BIND_ADDRESS;
+        String configObjectPath = MudlibBoot.DEFAULT_CONFIG_PATH;
+        int positional = 0;
+
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            switch (arg) {
+                case "-help", "--help" -> {
+                    return new LaunchOptions(mudlibRoot, port, bindAddress, configObjectPath, true);
+                }
+                case "-mudlib-dir", "--mudlib-dir" -> mudlibRoot = Path.of(requireValue(args, ++i, arg));
+                case "-port", "--port" -> port = parsePort(requireValue(args, ++i, arg));
+                case "-host", "--host" -> bindAddress = requireValue(args, ++i, arg);
+                case "-config", "--config" -> configObjectPath = requireValue(args, ++i, arg);
+                default -> {
+                    if (arg.startsWith("-")) {
+                        throw new IllegalArgumentException("Unknown option: " + arg);
+                    }
+                    switch (positional++) {
+                        case 0 -> mudlibRoot = Path.of(arg);
+                        case 1 -> port = parsePort(arg);
+                        case 2 -> bindAddress = arg;
+                        case 3 -> configObjectPath = arg;
+                        default -> throw new IllegalArgumentException("Too many positional arguments: " + arg);
+                    }
+                }
+            }
+        }
+
+        return new LaunchOptions(mudlibRoot, port, bindAddress, configObjectPath, false);
+    }
+
+    private static String requireValue(String[] args, int index, String option) {
+        if (index >= args.length || args[index].startsWith("-")) {
+            throw new IllegalArgumentException("Missing value for " + option);
+        }
+        return args[index];
+    }
+
+    private static int parsePort(String value) {
+        try {
+            int port = Integer.parseInt(value);
+            if (port < 0 || port > 65535) {
+                throw new IllegalArgumentException("Port must be between 0 and 65535: " + value);
+            }
+            return port;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Port must be an integer: " + value, e);
+        }
+    }
+
+    private static String usage() {
+        return "Usage: ./jvmud-start [-mudlib-dir mudlib] [-port 4000] "
+                + "[-host localhost] [-config jvmud/config]";
     }
 
     public synchronized void start() throws IOException {
@@ -119,4 +191,11 @@ public final class TelnetServer implements AutoCloseable {
             return thread;
         }
     }
+
+    record LaunchOptions(
+            Path mudlibRoot,
+            int port,
+            String bindAddress,
+            String configObjectPath,
+            boolean help) {}
 }
