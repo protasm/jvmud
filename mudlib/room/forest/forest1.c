@@ -1,10 +1,19 @@
-#include "room/room.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET fix_jacket();
-TWO_EXIT("room/forest/wild1", "east",
-"room/forest/clearing", "west",
-"In a forest",
-"You are in a big forest.\n", 1)
+inherit "room/room";
+
+reset(arg) {
+  if (!arg) {
+    set_light(1);
+    short_desc = "In a forest";
+    long_desc = "You are in a big forest.\n";
+    dest_dir = ({
+      "room/forest/wild1", "east",
+      "room/forest/clearing", "west"
+    });
+  }
+
+  fix_jacket();
+}
+
 fix_jacket() {
   object leather_jacket;
 

@@ -1,6 +1,5 @@
-#include "room/std.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET extra_reset();
+inherit "room/room";
+
 int door_is_open, door_is_locked;
 object guard;
 
@@ -63,41 +62,61 @@ extra_reset() {
 
   door_is_open = 0; door_is_locked = 1;
 }
-#undef EXTRA_LONG
-#define EXTRA_LONG\
-if (str == "counter") {\
-  write("There is a sign  in the counter that says\n" +\
-  "CLOSED FOR RECONSTRUCTION\n");\
-
-  return;\
-}\
-
-if (str == "door") {\
-  if (door_is_open) {\
-    write("The door is open.\n");\
-
-    return;\
-  }\
-
-  write("The door is closed.\n");\
-
-  return;\
+void init() {
+  add_action("move", "west");
+  add_action("open", "open");
+  add_action("unlock", "unlock");
+  add_action("east", "east");
 }
 
-#undef EXTRA_INIT
-#define EXTRA_INIT\
-add_action("open", "open");\
-add_action("unlock", "unlock");\
-add_action("east", "east");
+void long(mixed str) {
+  if (set_light(0) == 0) {
+    write("It is dark.\n");
 
-ONE_EXIT("room/village/narr_alley","west",
-"The bank",
-"You are in the bank.\n" +
-"To the east is a low counter. The counter is covered\n" +
-"with heavy iron bars. On the wall beside the counter, a door\n" +
-"leads further east\n", 1)
+    return;
+  }
 
-id(str) {
+  if (str == "counter") {
+    write("There is a sign  in the counter that says\n" +
+    "CLOSED FOR RECONSTRUCTION\n");
+
+    return;
+  }
+
+  if (str == "door") {
+    if (door_is_open) {
+      write("The door is open.\n");
+
+      return;
+    }
+
+    write("The door is closed.\n");
+
+    return;
+  }
+
+  write(long_desc);
+  write("    The only obvious exit is west.\n");
+}
+
+reset(arg) {
+  extra_reset();
+
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "The bank";
+  long_desc = "You are in the bank.\n" +
+  "To the east is a low counter. The counter is covered\n" +
+  "with heavy iron bars. On the wall beside the counter, a door\n" +
+  "leads further east\n";
+  dest_dir = ({
+    "room/village/narr_alley", "west"
+  });
+}
+
+status id(mixed str) {
   return str == "door" || str == "counter";
 }
 
@@ -131,7 +150,7 @@ query_door() {
   return !door_is_open;
 }
 
-query_drop_castle() {
+int query_drop_castle() {
   return 1;
 }
 

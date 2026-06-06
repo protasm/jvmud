@@ -1,4 +1,3 @@
-#include "room/std.h"
 int lamp_is_lit, reboot_time, time_from_reset, last_reset_cycle;
 int list_length;
 

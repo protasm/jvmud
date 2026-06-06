@@ -1,4 +1,3 @@
-#include "room/std.h"
 #define STILL  0
 #define DOWN  1
 #define UP  2

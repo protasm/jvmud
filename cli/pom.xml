@@ -56,6 +56,16 @@
               <skip>false</skip>
             </configuration>
           </execution>
+          <execution>
+            <id>telnet-server</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>io.github.protasm.jvmud.cli.TelnetServer</mainClass>
+              <skip>false</skip>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
     </plugins>

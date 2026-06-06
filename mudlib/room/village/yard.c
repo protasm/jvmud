@@ -1,6 +1,5 @@
-#include "room/room.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET extra_reset();
+inherit "room/room";
+
 object beggar;
 string chat_str, a_chat_str, function, type, match;
 /*
@@ -65,10 +64,19 @@ extra_reset() {
     call_other(beggar, "load_a_chat", 20, a_chat_str);
   }
 }
-TWO_EXIT("room/village/vill_road1", "south",
-"room/village/pub2", "east",
-"Small yard",
-"A small yard surrounded by houses.\n", 1)
+reset(arg) {
+  if (!arg) {
+    set_light(1);
+    short_desc = "Small yard";
+    long_desc = "A small yard surrounded by houses.\n";
+    dest_dir = ({
+      "room/village/vill_road1", "south",
+      "room/village/pub2", "east"
+    });
+  }
+
+  extra_reset();
+}
 
 give_beggar(str) {
   int money;

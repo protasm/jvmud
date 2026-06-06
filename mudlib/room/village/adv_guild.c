@@ -1,10 +1,9 @@
-#include "room/std.h"
+inherit "room/room";
+
 #include "room/tune.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET extra_reset(arg);
 string banished_by;
 int exp;
-int exp_str;
+int *exp_str;
 int level;
 string male_title_str, fem_title_str, neut_title_str;
 int next_exp;
@@ -251,21 +250,32 @@ extra_reset(arg) {
 
   move_object(ob, "room/village/quest_room");
 }
-#undef EXTRA_INIT
-#define EXTRA_INIT\
-add_action("cost_for_level", "cost");\
-add_action("advance", "advance");\
-add_action("south", "south");\
-add_action("banish", "banish");\
-add_action("list_quests", "list");
+void init() {
+  add_action("move", "north");
+  add_action("cost_for_level", "cost");
+  add_action("advance", "advance");
+  add_action("south", "south");
+  add_action("banish", "banish");
+  add_action("list_quests", "list");
+}
 
-ONE_EXIT("room/village/vill_road2", "north",
-"The adventurers guild",
-"You have to come here when you want to advance your level.\n" +
-"You can also buy points for a new level.\n" +
-"Commands: cost, advance [level, str, dex, int, con], list (number).\n" +
-"There is an opening to the south, and some shimmering\n" +
-"blue light in the doorway.\n", 1)
+reset(arg) {
+  extra_reset(arg);
+
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "The adventurers guild";
+  long_desc = "You have to come here when you want to advance your level.\n" +
+  "You can also buy points for a new level.\n" +
+  "Commands: cost, advance [level, str, dex, int, con], list (number).\n" +
+  "There is an opening to the south, and some shimmering\n" +
+  "blue light in the doorway.\n";
+  dest_dir = ({
+    "room/village/vill_road2", "north"
+  });
+}
 
 /* some minor changes by Iggy. */
 /* get level asks get_next_exp() and  get_next_title() */
@@ -450,7 +460,7 @@ query_cost_for_level(l, e) {
   return (next_exp - exp) * 1000 / EXP_COST;
 }
 
-query_drop_castle() {
+int query_drop_castle() {
   return 1;
 }
 

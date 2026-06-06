@@ -1,19 +1,32 @@
-#include "room/std.h"
-#undef EXTRA_INIT
-#define EXTRA_INIT\
-add_action("sell", "sell");\
-add_action("value", "value");\
-add_action("buy", "buy");\
-add_action("north", "north");\
-add_action("list", "list");
-TWO_EXIT("room/village/vill_road2", "south",
-"room/village/storage", "west",
-"The shop",
-"You are in a shop. You can buy or sell things here.\n" +
-"Commands are: 'buy item', 'sell item', 'sell all', 'list', 'list weapons'\n"+
-"'list armours' and 'value item'.\n" +
-"There is an opening to the north, and some shimmering\n" +
-"blue light in the doorway.\nTo the west you see a small room.\n", 1)
+inherit "room/room";
+
+reset(arg) {
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "The shop";
+  long_desc = "You are in a shop. You can buy or sell things here.\n" +
+  "Commands are: 'buy item', 'sell item', 'sell all', 'list', 'list weapons'\n"+
+  "'list armours' and 'value item'.\n" +
+  "There is an opening to the north, and some shimmering\n" +
+  "blue light in the doorway.\nTo the west you see a small room.\n";
+  dest_dir = ({
+    "room/village/vill_road2", "south",
+    "room/village/storage", "west"
+  });
+}
+
+void init() {
+  add_action("move", "south");
+  add_action("move", "west");
+  add_action("sell", "sell");
+  add_action("value", "value");
+  add_action("buy", "buy");
+  add_action("north", "north");
+  add_action("list", "list");
+}
+
 buy(item) {
   if (!item)
     return 0;
@@ -114,7 +127,7 @@ north() {
   return 1;
 }
 
-query_drop_castle() {
+int query_drop_castle() {
   return 1;
 }
 

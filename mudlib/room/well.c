@@ -1,30 +1,56 @@
-#include "std.h"
-#undef EXTRA_LONG
-#define EXTRA_LONG\
-#undef EXTRA_INIT
-#define EXTRA_INIT\
-if (str == "lever") {\
-  write("The lever can be moved between two positions.\n");\
-  return;\
-}\
-if (str == "door") {\
-  if (call_other("room/sub/door_trap", "query_west_door"))\
-    write("The door is closed.\n");\
-  else\
-    write("The door is open\n");\
-}
-add_action("west", "west");\
-add_action("open", "open");\
-add_action("close", "close");\
-add_action("pull", "pull");\
-add_action("pull", "turn");\
-add_action("pull", "move");
+inherit "room/room";
 
-TWO_EXIT("room/village/narr_alley", "up",
-"room/maze1/maze1", "north",
-"Down the well",
-"You are down the well. It is wet and slippery.\n" +
-"There is a lever beside a door to the west.\n", 0)
+reset(arg) {
+  if (arg)
+    return;
+
+  set_light(0);
+  short_desc = "Down the well";
+  long_desc = "You are down the well. It is wet and slippery.\n" +
+  "There is a lever beside a door to the west.\n";
+  dest_dir = ({
+    "room/village/narr_alley", "up",
+    "room/maze1/maze1", "north"
+  });
+}
+
+void init() {
+  add_action("move", "up");
+  add_action("move", "north");
+  add_action("west", "west");
+  add_action("open", "open");
+  add_action("close", "close");
+  add_action("pull", "pull");
+  add_action("pull", "turn");
+  add_action("pull", "move");
+}
+
+void long(mixed str) {
+  if (set_light(0) == 0) {
+    write("It is dark.\n");
+
+    return;
+  }
+
+  if (str == "lever") {
+    write("The lever can be moved between two positions.\n");
+
+    return;
+  }
+
+  if (str == "door") {
+    if (call_other("room/sub/door_trap", "query_west_door"))
+      write("The door is closed.\n");
+    else
+      write("The door is open\n");
+
+    return;
+  }
+
+  write(long_desc);
+  write("There are two obvious exits, up and north.\n");
+}
+
 close(str) {
   if (!str && str != "door")
     return 0;
@@ -34,7 +60,7 @@ close(str) {
   return 1;
 }
 
-id(str) {
+status id(mixed str) {
   return str == "lever" || str == "door";
 }
 

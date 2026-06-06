@@ -17,6 +17,8 @@ import io.github.protasm.jvmud.runtime.World;
 import io.github.protasm.jvmud.runtime.WorldRuntime;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -25,6 +27,36 @@ import org.junit.jupiter.api.io.TempDir;
 final class AdminCliTest {
     @TempDir
     Path tempDir;
+
+    @Test
+    void telnetSessionAcceptsPlayerCommandsOverSocket() throws Exception {
+        installMfunShim();
+        Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
+                void long(str) {
+                    write("A test green.\\n");
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                String initial = readUntilPrompt(socket);
+                assertTrue(initial.contains("JVMud telnet."));
+
+                socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String look = readUntilPrompt(socket);
+                assertTrue(look.contains("A test green."));
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
 
     @Test
     void adminCanLoadCallCloneMoveInspectAndQuit() throws Exception {
@@ -709,6 +741,18 @@ final class AdminCliTest {
         assertTrue(output.contains("A track going into the village."));
         assertTrue(output.contains("A long road going east through the village."));
         assertTrue(output.contains("An old humpbacked bridge."));
+    }
+
+    private String readUntilPrompt(Socket socket) throws Exception {
+        StringBuilder output = new StringBuilder();
+        while (!output.toString().endsWith("> ")) {
+            int value = socket.getInputStream().read();
+            if (value == -1) {
+                break;
+            }
+            output.append((char) value);
+        }
+        return output.toString();
     }
 
     private void installMfunShim() throws Exception {
