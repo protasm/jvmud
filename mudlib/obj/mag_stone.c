@@ -1,67 +1,73 @@
 int gived;
 
-id(str) {
-    return str == "stone" || str == "black stone";
-}
+cat_file(path) {
+  if (!path)
+    return 0;
 
-short() {
-    return "A black stone";
-}
+  cat(path);
 
-long() {
-    write("The stone is completely black, and feels warm to the touch.\n");
-    write("There seems to be somthing magic with it.\n");
+  return 1;
 }
-
 query_weight() { return 1; }
 
 /* Prevent giving away this object */
 drop() {
-    gived += 1;
-    if (gived == 2)
-	return 1;
-    else
-	return 0;
-}
+  gived += 1;
 
-get() { return 1; }
-
-init() {
-    add_action("list_peoples", "people");
-    add_action("list_files", "ls");
-    add_action("cat_file", "cat");
-    add_action("drop_object", "drop");
-}
-
-list_files(path)
-{
-    ls(path);
+  if (gived == 2)
     return 1;
-}
 
-cat_file(path)
-{
-    if (!path)
-	return 0;
-    cat(path);
-    return 1;
-}
-
-list_peoples() {
-    people();
-    return 1;
+  else
+    return 0;
 }
 
 drop_object(str) {
-    if (str == "all") {
-	drop_object("black stone");
-	return 0;
-    }
-    if (!str || !id(str))
-	return 0;
-    write("The stone dissapears.\n");
-    say(call_other(this_player(), "query_name") + " drops a black stone. It dissapears.\n");
-    call_other(this_player(), "add_weight", -1);
-    destruct(this_object());
-    return 1;
+  if (str == "all") {
+    drop_object("black stone");
+
+    return 0;
+  }
+
+  if (!str || !id(str))
+    return 0;
+
+  write("The stone dissapears.\n");
+  say(call_other(this_player(), "query_name") + " drops a black stone. It dissapears.\n");
+  call_other(this_player(), "add_weight", -1);
+  destruct(this_object());
+
+  return 1;
+}
+
+id(str) {
+  return str == "stone" || str == "black stone";
+}
+get() { return 1; }
+
+init() {
+  add_action("list_peoples", "people");
+  add_action("list_files", "ls");
+  add_action("cat_file", "cat");
+  add_action("drop_object", "drop");
+}
+
+list_files(path) {
+  ls(path);
+
+  return 1;
+}
+
+list_peoples() {
+  people();
+
+  return 1;
+}
+
+long() {
+  write("The stone is completely black, and feels warm to the touch.\n");
+  write("There seems to be somthing magic with it.\n");
+}
+
+short() {
+  return "A black stone";
 }

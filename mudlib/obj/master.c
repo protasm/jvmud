@@ -1,5 +1,9 @@
 #pragma strict_types
-
+#endif
+#if 0 /* Dedicated flags not used. A save file method is used below */
+#define FIRST_ED_FLAG 0 /* adjust this value so that no flags are clobbered */
+#define NUM_ED_FLAGS 10
+#else
 /*
 * MOVE THIS FILE TO /obj/master.c !
 *
@@ -36,25 +40,26 @@
 * input_to() can't be called from here.
 */
 object connect() {
-    object ob;
-    string ret;
+  object ob;
+  string ret;
 
-    write("obj/master: Connect to player.c...");
-    #if 0
-    ret = (string)catch(ob = clone_object("obj/player"));
-    #else
-    ob = clone_object("obj/player");
-    #endif
-    write("\n");
+  write("obj/master: Connect to player.c...");
+  #if 0
+  ret = (string)catch(ob = clone_object("obj/player"));
+  #else
+  ob = clone_object("obj/player");
+  #endif
+  write("\n");
 
-    if (ret) {
-        write(ret + "\n");
+  if (ret) {
+    write(ret + "\n");
 
-        return 0;
-    }
+    return 0;
+  }
 
-    return ob;
+  return ob;
 }
+
 /*
 * Define where the '#include' statement is supposed to search for files.
 * "." will automatically be searched first, followed in order as given
@@ -62,115 +67,119 @@ object connect() {
 * searched for.
 */
 string *define_include_dirs() {
-    return ({"/room/%s", "/sys/%s"});
+  return ({"/room/%s", "/sys/%s"});
 }
+
 /*
 * When an object is destructed, this function is called with every
 * item in that room. We get the chance to save players !
 */
 void destruct_environment_of(object ob) {
-    if (!interactive(ob))
-        return;
+  if (!interactive(ob))
+    return;
 
-    tell_object(ob, "Everything you see is disolved. Luckily, you are transported somewhere...\n");
-    ob->move_player("is transfered#room/void");
+  tell_object(ob, "Everything you see is disolved. Luckily, you are transported somewhere...\n");
+  ob->move_player("is transfered#room/void");
 }
 
 void flag(string str) {
-    string file, arg;
-    int num_arg;
+  string file, arg;
+  int num_arg;
 
-    if (sscanf(str, "for %d", num_arg) == 1) {
-        write("Got : " + catch(this_object()->xx(num_arg)) + "\n");
+  if (sscanf(str, "for %d", num_arg) == 1) {
+    write("Got : " + catch(this_object()->xx(num_arg)) + "\n");
 
-        return;
-    }
+    return;
+  }
 
-    if (str == "shutdown") {
-        shutdown();
+  if (str == "shutdown") {
+    shutdown();
 
-        return;
-    }
+    return;
+  }
 
-    if (sscanf(str, "dhrystone %d", arg) == 1) {
-        call_other("players/lars/dry", "main", arg);
+  if (sscanf(str, "dhrystone %d", arg) == 1) {
+    call_other("players/lars/dry", "main", arg);
 
-        return;
-    }
+    return;
+  }
 
-    if (sscanf(str, "echo %s", arg) == 1) {
-        write(arg + "\n");
+  if (sscanf(str, "echo %s", arg) == 1) {
+    write(arg + "\n");
 
-        return;
-    }
+    return;
+  }
 
-    if (sscanf(str, "call %s %s", file, arg) == 2) {
-        arg = (string)call_other(file, arg);
+  if (sscanf(str, "call %s %s", file, arg) == 2) {
+    arg = (string)call_other(file, arg);
 
-        write("Got " + arg + " back.\n");
+    write("Got " + arg + " back.\n");
 
-        return;
-    }
+    return;
+  }
 
-    write("master: Unknown flag " + str + "\n");
+  write("master: Unknown flag " + str + "\n");
 }
+
 /*
 * Give a file name for edit preferences to be saved in.
 */
 string get_ed_buffer_save_file_name(string file) {
-    string *file_ar;
+  string *file_ar;
 
-    file_ar=explode(file,"/");
-    file=file_ar[sizeof(file_ar)-1];
-    return "/players/"+this_player()->query_real_name()+"/.dead_ed_files/"+file;
+  file_ar=explode(file,"/");
+  file=file_ar[sizeof(file_ar)-1];
+  return "/players/"+this_player()->query_real_name()+"/.dead_ed_files/"+file;
 }
+
 /*
 * Give a path to a simul_efun file. Observe that it is a string returned,
 * not an object. But the object has to be loaded here. Return 0 if this
 * feature isn't wanted.
 */
 string get_simul_efun() {
-    string fname;
+  string fname;
 
-    fname = "/obj/simul_efun";
+  fname = "/obj/simul_efun";
 
-    if (catch(call_other(fname, "??"))) {
-        write("Failed to load " + fname + "\n");
-        shutdown();
+  if (catch(call_other(fname, "??"))) {
+    write("Failed to load " + fname + "\n");
+    shutdown();
 
-        return 0;
-    }
+    return 0;
+  }
 
-    return fname;
+  return fname;
 }
+
 /*
 * Get the owner of a file. This is called from the game driver, so as
 * to be able to know which wizard should have the error.
 */
 string get_wiz_name(string file) {
-    string name, rest;
+  string name, rest;
 
-    if (sscanf(file, "players/%s/%s", name, rest) == 2) {
-        return name;
-    }
+  if (sscanf(file, "players/%s/%s", name, rest) == 2) {
+    return name;
+  }
 
-    return 0;
+  return 0;
 }
+
 /*
 * Write an error message into a log file. The error occured in the object
 * 'file', giving the error message 'message'.
 */
 void log_error(string file, string message) {
-    string name;
+  string name;
 
-    name = get_wiz_name(file);
+  name = get_wiz_name(file);
 
-    if (name == 0)
-        name = "log";
+  if (name == 0)
+    name = "log";
 
-    log_file(name, message);
+  log_file(name, message);
 }
-#endif
 
 /*
 * Create a home dritectory and a castle for a new wizard. It is called
@@ -182,80 +191,82 @@ void log_error(string file, string message) {
 * garded from calls from the wrong places.
 */
 string master_create_wizard(string owner, string domain, object caller) {
-    string def_castle;
-    string dest, castle, wizard;
-    object player;
+  string def_castle;
+  string dest, castle, wizard;
+  object player;
 
-    player = find_player(owner);
+  player = find_player(owner);
 
-    if (!player)
-        return 0;
+  if (!player)
+    return 0;
 
-    if (!verify_create_wizard(caller)) {
-        tell_object(player, "That is an illegal attempt!\n");
+  if (!verify_create_wizard(caller)) {
+    tell_object(player, "That is an illegal attempt!\n");
 
-        return 0;
-    }
+    return 0;
+  }
 
-    if (caller != previous_object()) {
-        tell_object(player, "Faked call!\n");
+  if (caller != previous_object()) {
+    tell_object(player, "Faked call!\n");
 
-        return 0;
-    }
+    return 0;
+  }
 
-    wizard = "/players/" + owner;
-    castle = "/players/" + owner + "/castle.c";
+  wizard = "/players/" + owner;
+  castle = "/players/" + owner + "/castle.c";
 
-    if (file_size(wizard) == -1) {
-        tell_object(player, "You now have a home drirectory: " +
-        wizard + "\n");
+  if (file_size(wizard) == -1) {
+    tell_object(player, "You now have a home drirectory: " +
+    wizard + "\n");
 
-        mkdir(wizard);
-    }
+    mkdir(wizard);
+  }
 
-    dest = file_name(environment(player));
+  dest = file_name(environment(player));
 
-    def_castle = "#define NAME \"" + owner + "\"\n#define DEST \"" +
-    dest + "\"\n" + read_file("/room/def_castle.c");
+  def_castle = "#define NAME \"" + owner + "\"\n#define DEST \"" +
+  dest + "\"\n" + read_file("/room/def_castle.c");
 
-    if (file_size(castle) > 0) {
-        tell_object(player, "You already had a castle !\n");
+  if (file_size(castle) > 0) {
+    tell_object(player, "You already had a castle !\n");
+  } else {
+    /* The master object can do this ! */
+    if (write_file(castle, def_castle)) {
+      tell_object(player, "You now have a castle: " + castle + "\n");
+
+      if (!write_file("/room/init_file", extract(castle, 1) + "\n"))
+        tell_object(player, "It couldn't be loaded automatically!\n");
     } else {
-        /* The master object can do this ! */
-        if (write_file(castle, def_castle)) {
-            tell_object(player, "You now have a castle: " + castle + "\n");
-
-            if (!write_file("/room/init_file", extract(castle, 1) + "\n"))
-                tell_object(player, "It couldn't be loaded automatically!\n");
-        } else {
-            tell_object(player, "Failed to make castle for you!\n");
-        }
+      tell_object(player, "Failed to make castle for you!\n");
     }
+  }
 
-    return castle;
+  return castle;
 }
 
 string *parse_command_adjectiv_id_list() {
-    return ({ "iffish" });
+  return ({ "iffish" });
 }
 
 string parse_command_all_word() {
-    return "all";
+  return "all";
 }
+
 /*
 * Default language functions used by parse_command() in non -o mode
 */
 string *parse_command_id_list() {
-    return ({ "one", "thing" });
+  return ({ "one", "thing" });
 }
 
 string *parse_command_plural_id_list() {
-    return ({ "ones", "things", "them" });
+  return ({ "ones", "things", "them" });
 }
 
 string *parse_command_prepos_list() {
-    return ({ "in", "on", "under", "behind", "beside" });
+  return ({ "in", "on", "under", "behind", "beside" });
 }
+
 /*
 * The master object is asked if it is ok to shadow object ob. Use
 * previous_object() to find out who is asking.
@@ -264,35 +275,37 @@ string *parse_command_prepos_list() {
 * hasn't denied it with a query_prevent_shadow() returning 1.
 */
 int query_allow_shadow(object ob) {
-    return !ob->query_prevent_shadow(previous_object());
+  return !ob->query_prevent_shadow(previous_object());
 }
 
 int retrieve_ed_setup(object wiz) {
-    int i,setup;
+  int i,setup;
 
-    for(i=FIRST_ED_FLAG+NUM_ED_FLAGS;i>FIRST_ED_FLAG;) {
-        setup+=setup+wiz->test_flag(--i);
-    }
+  for(i=FIRST_ED_FLAG+NUM_ED_FLAGS;i>FIRST_ED_FLAG;) {
+    setup+=setup+wiz->test_flag(--i);
+  }
 
-    return setup;
+  return setup;
 }
+
 /*
 * Retrieve the ed setup. No meaning to defend this file read from
 * unauthorized access.
 */
 int retrieve_ed_setup(object who) {
-    string file;
-    int code;
+  string file;
+  int code;
 
-    file = "/players/" + lower_case((string)who->query_name()) + "/.edrc";
+  file = "/players/" + lower_case((string)who->query_name()) + "/.edrc";
 
-    if (file_size(file) <= 0)
-        return 0;
+  if (file_size(file) <= 0)
+    return 0;
 
-    sscanf(read_file(file), "%d", code);
+  sscanf(read_file(file), "%d", code);
 
-    return code;
+  return code;
 }
+
 /* save_ed_setup and restore_ed_setup are called by the ed to maintain
 individual options settings. These functions are located in the master
 object so that the local gods can decide what strategy they want to use.
@@ -316,21 +329,16 @@ Will also work for nonm-wizards.
 disadvantage:    care has to be taken to avoid collision with
 other uses of the /obj/living flags.          */
 
-#if 0 /* Dedicated flags not used. A save file method is used below */
-
-#define FIRST_ED_FLAG 0 /* adjust this value so that no flags are clobbered */
-#define NUM_ED_FLAGS 10
 int save_ed_setup(object wiz, int setup) {
-    int mask,i;
+  int mask,i;
 
-    for (mask=1,i=FIRST_ED_FLAG;i<FIRST_ED_FLAG+NUM_ED_FLAGS;mask<<=1,i++) {
-        if ( setup & mask ) wiz->set_flag(i);
-        else wiz->clear_flag(i);
-    }
+  for (mask=1,i=FIRST_ED_FLAG;i<FIRST_ED_FLAG+NUM_ED_FLAGS;mask<<=1,i++) {
+    if ( setup & mask ) wiz->set_flag(i);
+    else wiz->clear_flag(i);
+  }
 
-    return 1; /* function is defined, success */
+  return 1; /* function is defined, success */
 }
-#else
 
 /*
 * The wizard object 'who' wants to save his ed setup. It is saved in the
@@ -341,31 +349,32 @@ int save_ed_setup(object wiz, int setup) {
 * that a number is given as argument.
 */
 int save_ed_setup(object who, int code) {
-    string file;
+  string file;
 
-    if (!intp(code))
-        return 0;
+  if (!intp(code))
+    return 0;
 
-    file = "/players/" + lower_case((string)who->query_name()) + "/.edrc";
+  file = "/players/" + lower_case((string)who->query_name()) + "/.edrc";
 
-    rm(file);
+  rm(file);
 
-    return write_file(file, code + "");
+  return write_file(file, code + "");
 }
+
 /*
 * This function is called for a wizard that has dropped a castle.
 * The argument is the file name of the object that called create_wizard().
 * Verify that this object is allowed to do this call.
 */
 int verify_create_wizard(object ob) {
-    int dummy;
+  int dummy;
 
-    if (sscanf(file_name(ob), "room/port_castle#%d", dummy) == 1)
-        return 1;
+  if (sscanf(file_name(ob), "room/port_castle#%d", dummy) == 1)
+    return 1;
 
-    return 0;
+  return 0;
 }
 
 int xx(int arg) {
-    return 1/arg;
+  return 1/arg;
 }

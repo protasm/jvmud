@@ -77,6 +77,23 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsAllocateAndLegacyStringDeclaredArrays() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        LpcObjectHandle object = runtime.loadSource("smoke/allocate.c", """
+                string values;
+
+                mixed value() {
+                    values = allocate(3);
+                    values[1] = "middle";
+                    return values[1];
+                }
+                """);
+
+        assertEquals("middle", object.invoke("value"));
+    }
+
+    @Test
     void runtimeLoadsInstantiatesAndInvokesCompiledSource() {
         LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LpcObjectHandle object = runtime.loadSource("smoke/object.c", """
@@ -263,12 +280,13 @@ final class CompilerSmokeTest {
     @Test
     void runtimeResolvesExtensionlessMudlibRootInherits() throws Exception {
         Files.createDirectories(tempDir.resolve("room"));
+        Files.createDirectories(tempDir.resolve("room/village"));
         Files.writeString(tempDir.resolve("room/room.c"), """
                 int base_value() {
                     return 30;
                 }
                 """);
-        Files.writeString(tempDir.resolve("room/vill_green.c"), """
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
                 inherit "room/room";
 
                 int child_value() {
@@ -277,7 +295,7 @@ final class CompilerSmokeTest {
                 """);
 
         LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle child = runtime.load(tempDir.resolve("room/vill_green.c"));
+        LpcObjectHandle child = runtime.load(tempDir.resolve("room/village/vill_green.c"));
 
         assertEquals(42, child.invoke("child_value"));
     }

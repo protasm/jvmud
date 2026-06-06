@@ -250,7 +250,7 @@ refresh(obj) {
     }
     refreshing = 1;
     
-    move_object(this_object(), "room/storage");
+    move_object(this_object(), "room/village/storage");
     
     if(is_debug) {
 	tell_object(obj, "moved to storage,");

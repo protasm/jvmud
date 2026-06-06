@@ -166,6 +166,28 @@ Places hold Entities.
 Links connect Places.
 Together, they define the explorable World.
 
+### Movement
+
+Movement is the transition of an Entity from one Place to another through the
+links that connect Places.
+
+Because a World is composed of Linked Places, Entities do not merely exist in
+isolated locations. They may move between Places by traversing the connections
+the World defines. Movement changes an Entity's Presence: the Entity leaves one
+Place and enters another.
+
+In the simplest case, Movement is immediate: an Entity moves through an
+available link and its Presence changes from the source Place to the destination
+Place. More complex forms of movement, such as blocked movement, forced
+movement, delayed travel, vehicles, portals, or scripted transitions, should be
+understood as refinements of this same basic concept.
+
+Movement should remain conceptually separate from decision-making. An Actor may
+initiate movement, but not all movement is voluntary. A player may choose to
+walk north; a trapdoor may drop an Entity into a cellar; a spell may move an
+Entity to another Place. In all cases, Movement is the World-level change in
+where an Entity is present.
+
 Entity
 
     Something that exists within the world.

@@ -1,34 +1,36 @@
 int exit_num;
 object leather;
 
-short() {
-    return "End of maze";
-}
+e1() {
+  call_other(this_player(), "move_player", "south#room/maze1/maze4");
 
-long() {
-    write("The end of the maze.\n");
-    write("There are one obvious exit to the south.\n");
+  return 1;
 }
 
 init() {
-    add_action("e1"); add_verb("south");
+  add_action("e1"); add_verb("south");
 }
 
-e1() {
-    call_other(this_player(), "move_player", "south#room/maze1/maze4");
-    return 1;
+long() {
+  write("The end of the maze.\n");
+  write("There are one obvious exit to the south.\n");
 }
 
 reset() {
-    if (!leather || !present(leather)) {
-	leather = clone_object("obj/armour");
-	call_other(leather, "set_ac", 3);
-	call_other(leather, "set_name", "armour");
-	call_other(leather, "set_alias", "leather armour");
-	call_other(leather, "set_value", 110);
-	call_other(leather, "set_short", "A leather armour");
-	call_other(leather, "set_weight", 3);
-	call_other(leather, "set_type", "armour");
-	move_object(leather, this_object());
-    }
+  if (!leather || !present(leather)) {
+    leather = clone_object("obj/armour");
+
+    call_other(leather, "set_ac", 3);
+    call_other(leather, "set_name", "armour");
+    call_other(leather, "set_alias", "leather armour");
+    call_other(leather, "set_value", 110);
+    call_other(leather, "set_short", "A leather armour");
+    call_other(leather, "set_weight", 3);
+    call_other(leather, "set_type", "armour");
+    move_object(leather, this_object());
+  }
+}
+
+short() {
+  return "End of maze";
 }

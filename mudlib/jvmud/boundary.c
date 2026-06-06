@@ -1,9 +1,8 @@
 /*
- * JVMud boundary declarations for this mudlib.
- *
- * This object is intentionally separate from the vanilla LPMUD 2.4.5 files.
- */
-
+* JVMud boundary declarations for this mudlib.
+*
+* This object is intentionally separate from the vanilla LPMUD 2.4.5 files.
+*/
 string mfun_object() {
-    return "jvmud/mfuns";
+  return "jvmud/mfuns";
 }

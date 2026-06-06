@@ -11,10 +11,10 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class LpcFormatter {
-    private static final String INDENT = "    ";
+public final class LPCFormatter {
+    private static final String INDENT = "  ";
     private static final Pattern METHOD_HEADER =
-            Pattern.compile("^(?:(?:[A-Za-z_][A-Za-z0-9_]*\\s+)|(?:[A-Za-z_][A-Za-z0-9_]*\\s*\\*\\s*))?([A-Za-z_][A-Za-z0-9_]*)\\s*\\([^;]*\\)\\s*\\{\\s*(?://.*)?$");
+            Pattern.compile("^(?:(?:[A-Za-z_][A-Za-z0-9_]*\\s+)|(?:[A-Za-z_][A-Za-z0-9_]*\\s*\\*\\s*))?([A-Za-z_][A-Za-z0-9_]*)\\s*\\([^;]*\\)\\s*\\{\\s*(?://.*|/\\*.*\\*/\\s*)?$");
     private static final Pattern METHOD_DECLARATION =
             Pattern.compile("^(?:(?:[A-Za-z_][A-Za-z0-9_]*\\s+)|(?:[A-Za-z_][A-Za-z0-9_]*\\s*\\*\\s*))?[A-Za-z_][A-Za-z0-9_]*\\s*\\([^;]*\\)\\s*$");
     private static final Pattern CONTROL_HEADER =
@@ -49,6 +49,7 @@ public final class LpcFormatter {
         ScanState scanState = new ScanState();
         int blockIndent = 0;
         int singleLineIndents = 0;
+        boolean inPreprocessorContinuation = false;
         Deque<Integer> controlBlockDepths = new ArrayDeque<>();
 
         for (int i = 0; i < rawLines.length; i++) {
@@ -61,6 +62,12 @@ public final class LpcFormatter {
             String trimmed = rawLine.stripLeading();
             if (trimmed.isEmpty()) {
                 result.add(FormattedLine.blank());
+                continue;
+            }
+
+            if (inPreprocessorContinuation || trimmed.startsWith("#")) {
+                result.add(new FormattedLine(rawLine, 0, LineKind.PREPROCESSOR));
+                inPreprocessorContinuation = rawLine.endsWith("\\");
                 continue;
             }
 
@@ -119,11 +126,18 @@ public final class LpcFormatter {
     }
 
     private List<FormattedLine> sortTopLevelFields(List<FormattedLine> lines) {
+        List<FormattedLine> prefix = new ArrayList<>();
         List<FieldDeclaration> fields = new ArrayList<>();
         List<FormattedLine> rest = new ArrayList<>();
+        boolean seenMethod = false;
 
         for (FormattedLine line : lines) {
-            if (isTopLevelFieldDeclaration(line)) {
+            if (isTopLevelMethodHeader(line))
+                seenMethod = true;
+
+            if (!seenMethod && isTopLevelPreamble(line)) {
+                prefix.add(line);
+            } else if (isTopLevelFieldDeclaration(line)) {
                 fields.add(new FieldDeclaration(fieldName(line), line));
             } else {
                 rest.add(line);
@@ -132,12 +146,17 @@ public final class LpcFormatter {
 
         fields.sort(Comparator.comparing(FieldDeclaration::name));
 
-        List<FormattedLine> sorted = new ArrayList<>();
+        List<FormattedLine> sorted = new ArrayList<>(trimTrailingBlanks(prefix));
         for (FieldDeclaration field : fields)
             sorted.add(field.line());
 
         sorted.addAll(trimLeadingBlanks(rest));
         return sorted;
+    }
+
+    private boolean isTopLevelPreamble(FormattedLine line) {
+        return line.indent() == 0
+                && (line.kind() == LineKind.PREPROCESSOR || line.content().strip().startsWith("inherit "));
     }
 
     private boolean isTopLevelFieldDeclaration(FormattedLine line) {
@@ -174,6 +193,8 @@ public final class LpcFormatter {
                 methodLines.addAll(trimLeadingBlanks(pending));
                 pending.clear();
             }
+            if (!methodLines.isEmpty())
+                methodLines.set(0, methodLines.get(0).asMethodLeading());
 
             int braceDepth = 0;
             ScanState methodScanState = new ScanState();
@@ -205,11 +226,24 @@ public final class LpcFormatter {
     }
 
     private String methodName(FormattedLine line) {
-        Matcher matcher = METHOD_HEADER.matcher(line.content().strip());
+        String header = line.content().strip();
+        Matcher matcher = METHOD_HEADER.matcher(header);
         if (!matcher.matches())
             throw new IllegalStateException("Cannot extract method name from: " + line.content());
 
-        return matcher.group(1);
+        String declarationPrefix = header.substring(0, header.indexOf('(')).strip();
+        int nameEnd = declarationPrefix.length();
+        while (nameEnd > 0 && !Character.isJavaIdentifierPart(declarationPrefix.charAt(nameEnd - 1)))
+            nameEnd--;
+
+        int nameStart = nameEnd;
+        while (nameStart > 0 && Character.isJavaIdentifierPart(declarationPrefix.charAt(nameStart - 1)))
+            nameStart--;
+
+        if (nameStart == nameEnd)
+            throw new IllegalStateException("Cannot extract method name from: " + line.content());
+
+        return declarationPrefix.substring(nameStart, nameEnd);
     }
 
     private List<FormattedLine> trimLeadingBlanks(List<FormattedLine> lines) {
@@ -255,11 +289,21 @@ public final class LpcFormatter {
     }
 
     private boolean needsBlankBefore(FormattedLine previous, FormattedLine current) {
+        if (current.kind() == LineKind.METHOD_LEADING_BLOCK_COMMENT)
+            return previous.kind() == LineKind.CLOSING_BRACE
+                    || previous.kind() == LineKind.PREPROCESSOR
+                    || previous.kind().statementGroup();
+
         if (current.kind() == LineKind.ELSE || current.kind() == LineKind.CLOSING_BRACE || current.kind() == LineKind.BLOCK_COMMENT)
             return false;
 
         if (current.kind() == LineKind.COMMENT)
             return previous.kind().statementGroup() || previous.kind() == LineKind.PREPROCESSOR;
+
+        if (current.kind() == LineKind.METHOD_LEADING_COMMENT)
+            return previous.kind() == LineKind.CLOSING_BRACE
+                    || previous.kind() == LineKind.PREPROCESSOR
+                    || previous.kind().statementGroup();
 
         if (current.kind() == LineKind.CONTROL_BLOCK_END)
             return false;
@@ -440,6 +484,8 @@ public final class LpcFormatter {
         DECLARATION(true),
         ELSE(false),
         METHOD_HEADER(false),
+        METHOD_LEADING_BLOCK_COMMENT(false),
+        METHOD_LEADING_COMMENT(false),
         OTHER(true),
         PREPROCESSOR(false),
         RETURN(false);
@@ -468,6 +514,16 @@ public final class LpcFormatter {
         boolean opensBlock() {
             return (kind == LineKind.METHOD_HEADER || kind == LineKind.CONTROL_HEADER || kind == LineKind.ELSE)
                     && content.contains("{");
+        }
+
+        FormattedLine asMethodLeading() {
+            if (kind == LineKind.BLOCK_COMMENT)
+                return new FormattedLine(content, indent, LineKind.METHOD_LEADING_BLOCK_COMMENT);
+
+            if (kind == LineKind.COMMENT)
+                return new FormattedLine(content, indent, LineKind.METHOD_LEADING_COMMENT);
+
+            return this;
         }
     }
 

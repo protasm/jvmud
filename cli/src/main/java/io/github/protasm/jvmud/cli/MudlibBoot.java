@@ -22,7 +22,7 @@ import java.util.Objects;
 final class MudlibBoot {
     static final String DEFAULT_CONFIG_PATH = "jvmud/config";
     static final String DEFAULT_BOUNDARY_OBJECT = "jvmud/boundary";
-    static final String DEFAULT_STARTING_ROOM = "room/vill_green";
+    static final String DEFAULT_STARTING_ROOM = "room/village/vill_green";
     static final String LOCAL_ACTOR_HANDLE = "local/player";
 
     private final LpcRuntime runtime;

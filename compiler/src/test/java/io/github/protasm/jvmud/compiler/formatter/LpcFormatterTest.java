@@ -4,11 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
-final class LpcFormatterTest {
-    private final LpcFormatter formatter = new LpcFormatter();
+final class LPCFormatterTest {
+    private final LPCFormatter formatter = new LPCFormatter();
 
     @Test
-    void formatsLegacyLpcWithFourSpaceIndentsAndBlankStatementGroups() {
+    void formatsLegacyLpcWithTwoSpaceIndentsAndBlankStatementGroups() {
         String source = """
                 long() { //untyped methods are a compiler error in JVMud, not a formatter issue.
                 \tif (east_door_open) //replace tabs with 4 spaces
@@ -116,20 +116,53 @@ final class LpcFormatterTest {
                 """;
 
         String expected = """
-                int counter;
                 #define LIMIT 3
+                int counter;
 
                 // comment for alpha
                 alpha() {
-                    return 1;
+                  return 1;
                 }
 
                 mixed *middle() {
-                    return ({ 2 });
+                  return ({ 2 });
                 }
 
                 zed() {
-                    return 3;
+                  return 3;
+                }
+                """;
+
+        assertEquals(expected, formatter.format(source));
+    }
+
+    @Test
+    void sortsOldStyleMethodsByMethodNameNotArgumentName() {
+        String source = """
+                zed() {
+                \treturn 3;
+                }
+
+                set_object(ob) {  /* NOTE: a string */
+                \tobject = ob;
+                }
+
+                alpha() {
+                \treturn 1;
+                }
+                """;
+
+        String expected = """
+                alpha() {
+                  return 1;
+                }
+
+                set_object(ob) {  /* NOTE: a string */
+                  object = ob;
+                }
+
+                zed() {
+                  return 3;
                 }
                 """;
 
@@ -162,14 +195,127 @@ final class LpcFormatterTest {
                 string title;
 
                 alpha() {
-                    return amount;
+                  return amount;
                 }
 
                 zed() {
-                    object local;
+                  object local;
 
-                    local = this_object();
-                    return local;
+                  local = this_object();
+                  return local;
+                }
+                """;
+
+        assertEquals(expected, formatter.format(source));
+    }
+
+    @Test
+    void keepsLeadingPreambleBeforeSortedFields() {
+        String source = """
+                #include "std.h"
+                string title;
+                int amount;
+
+                alpha() {
+                    return amount;
+                }
+                """;
+
+        String expected = """
+                #include "std.h"
+                int amount;
+                string title;
+
+                alpha() {
+                  return amount;
+                }
+                """;
+
+        assertEquals(expected, formatter.format(source));
+    }
+
+    @Test
+    void preservesPreprocessorContinuationBlocksAsPreprocessorLines() {
+        String source = """
+                #define ROOM_MACRO(NAME)\\
+                reset(arg) { if (arg) return; }\\
+                    short() {\\
+                        return NAME;\\
+                    }
+
+                zed() {
+                \treturn 2;
+                }
+                """;
+
+        String expected = """
+                #define ROOM_MACRO(NAME)\\
+                reset(arg) { if (arg) return; }\\
+                    short() {\\
+                        return NAME;\\
+                    }
+                zed() {
+                  return 2;
+                }
+                """;
+
+        assertEquals(expected, formatter.format(source));
+    }
+
+    @Test
+    void keepsBlankLineBetweenMethodsWhenNextMethodHasLeadingBlockComment() {
+        String source = """
+                int save_ed_setup(object who, int code) {
+                  string file;
+
+                  if (!intp(code))
+                    return 0;
+
+                  file = "/players/" + lower_case((string)who->query_name()) + "/.edrc";
+
+                  rm(file);
+
+                  return write_file(file, code + "");
+                }
+                /*
+                * This function is called for a wizard that has dropped a castle.
+                * Verify that this object is allowed to do this call.
+                */
+                int verify_create_wizard(object ob) {
+                  int dummy;
+
+                  if (sscanf(file_name(ob), "room/port_castle#%d", dummy) == 1)
+                    return 1;
+
+                  return 0;
+                }
+                """;
+
+        String expected = """
+                int save_ed_setup(object who, int code) {
+                  string file;
+
+                  if (!intp(code))
+                    return 0;
+
+                  file = "/players/" + lower_case((string)who->query_name()) + "/.edrc";
+
+                  rm(file);
+
+                  return write_file(file, code + "");
+                }
+
+                /*
+                * This function is called for a wizard that has dropped a castle.
+                * Verify that this object is allowed to do this call.
+                */
+                int verify_create_wizard(object ob) {
+                  int dummy;
+
+                  if (sscanf(file_name(ob), "room/port_castle#%d", dummy) == 1)
+                    return 1;
+
+                  return 0;
                 }
                 """;
 
@@ -204,23 +350,23 @@ final class LpcFormatterTest {
 
         String expected = """
                 status drink(mixed str) { //move this to the end of the method declaration
-                    if (str && str != "beer" && str != "from bottle")
-                        return 0;
+                  if (str && str != "beer" && str != "from bottle")
+                    return 0;
 
-                    if (!full)
-                        return 0;
+                  if (!full)
+                    return 0;
 
-                    if (!call_other(this_player(), "drink_alcohol", 2))
-                        return 1;
-
-                    full = 0;
-
-                    write("It is really good beer!\\n");
-
-                    say(call_other(this_player(), "query_name", 0) +
-                    " drinks a bottle of beer.\\n");
-
+                  if (!call_other(this_player(), "drink_alcohol", 2))
                     return 1;
+
+                  full = 0;
+
+                  write("It is really good beer!\\n");
+
+                  say(call_other(this_player(), "query_name", 0) +
+                  " drinks a bottle of beer.\\n");
+
+                  return 1;
                 }
                 """;
 
@@ -241,11 +387,11 @@ final class LpcFormatterTest {
 
         String expected = """
                 value() {
-                    write("{ not a block }"); // } not a close brace
-                    /* { not an open brace */
-                    if (ready) {
-                        write("ok");
-                    }
+                  write("{ not a block }"); // } not a close brace
+                  /* { not an open brace */
+                  if (ready) {
+                    write("ok");
+                  }
                 }
                 """;
 
@@ -255,105 +401,105 @@ final class LpcFormatterTest {
     private String expectedFormattedRoom() {
         return """
                 close_door() {
-                    east_door_open = 0;
+                  east_door_open = 0;
 
-                    write("Ok.\\n");
+                  write("Ok.\\n");
                 }
 
                 door_open() {
-                    return east_door_open;
+                  return east_door_open;
                 }
 
                 fac(n) {
-                    if (n <= 0)
-                        return 1;
+                  if (n <= 0)
+                    return 1;
 
-                    return n * fac(n-1);
+                  return n * fac(n-1);
                 }
 
                 go_east() {
-                    if (!east_door_open)
-                        write("The door is closed\\n");
+                  if (!east_door_open)
+                    write("The door is closed\\n");
 
-                    if (east_door_open)
-                        move_object(this_player(), "room/rum2");
+                  if (east_door_open)
+                    move_object(this_player(), "room/rum2");
                 }
 
                 hit() {
-                    if (!name) {
-                        write("Hit what ?\\n");
+                  if (!name) {
+                    write("Hit what ?\\n");
 
-                        return;
-                    }
+                    return;
+                  }
 
-                    call_other(name, "hit_player", 3);
+                  call_other(name, "hit_player", 3);
                 }
 
                 long() { //untyped methods are a compiler error in JVMud, not a formatter issue.
-                    if (east_door_open) //replace tabs with 4 spaces
-                        write("An empty room with an open door to the east.\\n");
+                  if (east_door_open) //replace tabs with 4 spaces
+                    write("An empty room with an open door to the east.\\n");
 
-                    if (!east_door_open) //indenting is four spaces per indent
-                        write("An empty room with a closed door to the east.\\n");
+                  if (!east_door_open) //indenting is four spaces per indent
+                    write("An empty room with a closed door to the east.\\n");
 
-                    if (amiga_present) {
-                        if (!amiga_power)
-                            write("There is an amiga here.\\n");
+                  if (amiga_present) {
+                    if (!amiga_power)
+                      write("There is an amiga here.\\n");
 
-                        if (amiga_power)
-                            write("There is a powered on amiga here.\\n");
-                    }
+                    if (amiga_power)
+                      write("There is a powered on amiga here.\\n");
+                  }
                 }
 
                 open_door() {
-                    east_door_open = 1;
+                  east_door_open = 1;
 
-                    write("Ok.\\n");
+                  write("Ok.\\n");
                 }
 
                 power() {
-                    amiga_power = 1;
+                  amiga_power = 1;
 
-                    write("The screen lights up.\\n");
+                  write("The screen lights up.\\n");
                 }
 
                 sesam() {
-                    write("An amiga materialises!\\n");
+                  write("An amiga materialises!\\n");
 
-                    amiga_present = 1;
+                  amiga_present = 1;
 
-                    add_action("power", "power");
+                  add_action("power", "power");
                 }
 
                 short() {
-                    write("Computer room\\n");
+                  write("Computer room\\n");
 
-                    if (amiga_present) {
-                        if (amiga_power)
-                            write("A powered amiga.\\n");
+                  if (amiga_present) {
+                    if (amiga_power)
+                      write("A powered amiga.\\n");
 
-                        if (!amiga_power)
-                            write("An amiga.\\n");
-                    }
+                    if (!amiga_power)
+                      write("An amiga.\\n");
+                  }
 
-                    return 0;
+                  return 0;
                 }
 
                 summon() {
-                    name = clone_object("obj/player");
+                  name = clone_object("obj/player");
 
-                    write("Summoning a player...\\n");
-                    write(name);
-                    write(", His hp is ");
-                    write(call_other(name, "condition", 0));
-                    write("\\n");
+                  write("Summoning a player...\\n");
+                  write(name);
+                  write(", His hp is ");
+                  write(call_other(name, "condition", 0));
+                  write("\\n");
                 }
 
                 test() {
-                    a = a + 1;
+                  a = a + 1;
 
-                    //this is okay
-                    write("Fac "); write(a); write(" is "); write(fac(a)); write("\\n");
+                  //this is okay
+                  write("Fac "); write(a); write(" is "); write(fac(a)); write("\\n");
                 }
                 """;
     }

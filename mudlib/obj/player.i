@@ -1203,7 +1203,7 @@ static new_password(p)
 	return;
     }
     password = crypt(password, 0);	
-    call_other("room/adv_guild", "advance", 0);
+    call_other("room/village/adv_guild", "advance", 0);
     set_level(1); set_str(1); set_con(1); set_int(1); set_dex(1);
     hit_point = max_hp;
     move_player_to_start(0);
@@ -1325,7 +1325,7 @@ static move_player_to_start3(where) {
     if (where)
 	move_object(myself, where);
     else {
-	move_object(myself, "room/church");
+	move_object(myself, "room/village/church");
 	load_auto_obj(auto_load);
     }
     if (is_invis && level < 20)
@@ -1336,7 +1336,7 @@ static move_player_to_start3(where) {
 	write("YOU ARE INVISIBLE !\n\n");
     if (level >= 21)
 	cat("/WIZNEWS");
-    call_other("room/post", "query_mail", 0);
+    call_other("room/village/post", "query_mail", 0);
     if (query_ip_number() != called_from_ip && called_from_ip)
 	write("Your last login was from " + called_from_ip + "\n");
     called_from_ip = query_ip_number();

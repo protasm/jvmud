@@ -9,7 +9,7 @@ game_name = Vanilla LPMUD 2.4.5
 
 mfun_object = jvmud/mfuns
 
-initial_place = room/vill_green
+initial_place = room/village/vill_green
 initial_presence_id = local/player
 
 preload_file = room/init_file

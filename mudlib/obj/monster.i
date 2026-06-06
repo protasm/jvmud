@@ -211,7 +211,7 @@ set_level(l) {
     hit_point = 50 + (level - 1) * 8;	
     max_hp = hit_point;
     spell_points = max_hp;
-    experience = call_other("room/adv_guild", "query_cost", l-1);
+    experience = call_other("room/village/adv_guild", "query_cost", l-1);
     
     if (experience == 0)
 	experience = random(500);

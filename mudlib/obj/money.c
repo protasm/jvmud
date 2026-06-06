@@ -1,19 +1,20 @@
 int money;
 
-reset(arg) {
-    if (arg)
-        return;
-
-    money = 1;
+get() {
+  return money>0;
 }
 
-query_weight() { return 0; }
+heart_beat() {
+  if (money == 0)
+    destruct(this_object());
+}
 
-short() {
-    if (money == 0)
-        return 0;
+id(str) {
+  if (str == "coins")
+    return 1;
 
-    return money + " gold coins";
+  if (str == "money")
+    return 1;
 }
 
 /*
@@ -24,37 +25,31 @@ short() {
 player, i.e. object moved to the players inventory with move_object()
 
 */
-init()
-{
+init() {
+  if (environment(this_object())==this_player()) {
+    call_other(this_player(), "add_money", money);
 
-    if (environment(this_object())==this_player()) {
-        call_other(this_player(), "add_money", money);
+    money = 0;
 
-        money = 0;
-
-        set_heart_beat(1);
-    }
+    set_heart_beat(1);
+  }
 }
 
-get()
-{
+reset(arg) {
+  if (arg)
+    return;
 
-    return money>0;
+  money = 1;
 }
 
 set_money(m) {
-    money = m;
+  money = m;
 }
+query_weight() { return 0; }
 
-id(str) {
-    if (str == "coins")
-        return 1;
+short() {
+  if (money == 0)
+    return 0;
 
-    if (str == "money")
-        return 1;
-}
-
-heart_beat() {
-    if (money == 0)
-        destruct(this_object());
+  return money + " gold coins";
 }

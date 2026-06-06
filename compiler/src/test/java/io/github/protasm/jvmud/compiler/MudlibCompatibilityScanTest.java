@@ -28,12 +28,14 @@ final class MudlibCompatibilityScanTest {
                     "obj/beer.c",
                     "obj/money.c",
                     "obj/torch.c",
-                    "room/hump.c",
+                    "room/mountain/hump.c",
                     "room/test.c",
-                    "room/vill_green.c",
-                    "room/vill_road1.c",
-                    "room/vill_track.c",
-                    "room/wild1.c");
+                    "room/village/vill_green.c",
+                    "room/village/vill_road1.c",
+                    "room/village/vill_road2.c",
+                    "room/village/vill_track.c",
+                    "room/forest/forest1.c",
+                    "room/forest/wild1.c");
 
     @Test
     void selectedMudlibFilesProduceCompatibilityReport() throws IOException {

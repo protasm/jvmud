@@ -128,7 +128,8 @@ final class AdminCliTest {
     @Test
     void localSessionMovementRegistersNativeWorldLinks() throws Exception {
         Files.createDirectories(tempDir.resolve("room"));
-        Files.writeString(tempDir.resolve("room/vill_green.c"), """
+        Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
                 void long(str) {
                 }
                 """);
@@ -136,14 +137,14 @@ final class AdminCliTest {
         LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
         WorldRuntime worldRuntime = new WorldRuntime(new World("test", "Test World"));
-        Place church = worldRuntime.createPlace("room/church", "Village church");
+        Place church = worldRuntime.createPlace("room/village/church", "Village church");
         Entity actorEntity = worldRuntime.createEntity(
                 "session/local", "local session", church, Capability.ACTOR, Capability.PERCEPTIVE);
         LocalSessionActor actor = new LocalSessionActor(runtime, worldRuntime, actorEntity, "tester");
 
-        assertEquals(1, actor.move_player("south#room/vill_green"));
+        assertEquals(1, actor.move_player("south#room/village/vill_green"));
 
-        Place green = worldRuntime.place("room/vill_green");
+        Place green = worldRuntime.place("room/village/vill_green");
         Link south = worldRuntime.linkFrom(church, "south");
         assertEquals(green, south.destination());
         assertEquals(church, south.origin());
@@ -501,6 +502,7 @@ final class AdminCliTest {
         installMfunShim();
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room"));
+        Files.createDirectories(tempDir.resolve("room/village"));
         Files.writeString(tempDir.resolve("room/init_file"), """
                 # preload one simple object
                 obj/preload.c
@@ -510,7 +512,7 @@ final class AdminCliTest {
                     return "preloaded object";
                 }
                 """);
-        Files.writeString(tempDir.resolve("room/vill_green.c"), """
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
                 void init() {
                     add_action("north");
                     add_verb("north");
@@ -521,11 +523,11 @@ final class AdminCliTest {
                 }
 
                 int north(str) {
-                    call_other(this_player(), "move_player", "north#room/church");
+                    call_other(this_player(), "move_player", "north#room/village/church");
                     return 1;
                 }
                 """);
-        Files.writeString(tempDir.resolve("room/church.c"), """
+        Files.writeString(tempDir.resolve("room/village/church.c"), """
                 void init() {
                     add_action("south");
                     add_verb("south");
@@ -536,7 +538,7 @@ final class AdminCliTest {
                 }
 
                 int south(str) {
-                    call_other(this_player(), "move_player", "south#room/vill_green");
+                    call_other(this_player(), "move_player", "south#room/village/vill_green");
                     return 1;
                 }
                 """);
@@ -557,14 +559,14 @@ final class AdminCliTest {
 
         String output = transcript.toString();
         assertTrue(output.contains("Preloaded 1 startup object(s)."));
-        assertTrue(output.contains("Started local session in room/vill_green"));
-        assertTrue(output.contains("local/player is in room/vill_green"));
+        assertTrue(output.contains("Started local session in room/village/vill_green"));
+        assertTrue(output.contains("local/player is in room/village/vill_green"));
         assertTrue(output.contains("You are on the green."));
         assertTrue(output.contains("You are in the church."));
-        assertTrue(output.contains("local/player is in room/church"));
-        assertTrue(output.contains("local/player is in room/vill_green"));
+        assertTrue(output.contains("local/player is in room/village/church"));
+        assertTrue(output.contains("local/player is in room/village/vill_green"));
         assertTrue(output.contains("obj/preload : obj/preload"));
-        assertTrue(output.contains("room/vill_green : room/vill_green"));
+        assertTrue(output.contains("room/village/vill_green : room/village/vill_green"));
         assertTrue(output.contains("local/player : local/player"));
     }
 
@@ -700,10 +702,10 @@ final class AdminCliTest {
         cli.execute("/where local/player");
 
         String output = transcript.toString();
-        assertTrue(output.contains("Started local session in room/vill_green"));
-        assertTrue(output.contains("local/player is in room/vill_green"));
+        assertTrue(output.contains("Started local session in room/village/vill_green"));
+        assertTrue(output.contains("local/player is in room/village/vill_green"));
         assertTrue(output.contains("You are in the local village church."));
-        assertTrue(output.contains("local/player is in room/church"));
+        assertTrue(output.contains("local/player is in room/village/church"));
         assertTrue(output.contains("A track going into the village."));
         assertTrue(output.contains("A long road going east through the village."));
         assertTrue(output.contains("An old humpbacked bridge."));

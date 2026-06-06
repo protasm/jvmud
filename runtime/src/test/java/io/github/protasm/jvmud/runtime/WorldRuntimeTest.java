@@ -10,7 +10,7 @@ final class WorldRuntimeTest {
     @Test
     void createsSituatedEntitiesInPlaces() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
-        Place green = runtime.createPlace("room/vill_green", "Village Green");
+        Place green = runtime.createPlace("room/village/vill_green", "Village Green");
 
         Entity player = runtime.createEntity(
                 "local/player", "local player", green, Capability.ACTOR, Capability.PERCEPTIVE);
@@ -24,8 +24,8 @@ final class WorldRuntimeTest {
     @Test
     void movingEntityMaintainsExactlyOneImmediateLocation() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
-        Place green = runtime.createPlace("room/vill_green", "Village Green");
-        Place church = runtime.createPlace("room/church", "Church");
+        Place green = runtime.createPlace("room/village/vill_green", "Village Green");
+        Place church = runtime.createPlace("room/village/church", "Church");
         Entity player = runtime.createEntity("local/player", "local player", green, Capability.ACTOR);
 
         runtime.move(player, church);
@@ -38,7 +38,7 @@ final class WorldRuntimeTest {
     @Test
     void entitiesCanContainOtherEntitiesWithoutLosingWorldLocationResolution() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
-        Place green = runtime.createPlace("room/vill_green", "Village Green");
+        Place green = runtime.createPlace("room/village/vill_green", "Village Green");
         Entity player = runtime.createEntity("local/player", "local player", green, Capability.ACTOR);
         Entity bag = runtime.createEntity("obj/bag", "bag", player);
         Entity coin = runtime.createEntity("obj/coin", "coin", bag);
@@ -52,7 +52,7 @@ final class WorldRuntimeTest {
     @Test
     void rejectsContainmentCycles() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
-        Place green = runtime.createPlace("room/vill_green", "Village Green");
+        Place green = runtime.createPlace("room/village/vill_green", "Village Green");
         Entity player = runtime.createEntity("local/player", "local player", green, Capability.ACTOR);
         Entity bag = runtime.createEntity("obj/bag", "bag", player);
         Entity coin = runtime.createEntity("obj/coin", "coin", bag);
@@ -66,7 +66,7 @@ final class WorldRuntimeTest {
     @Test
     void rejectsUnknownLocations() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
-        Place green = runtime.createPlace("room/vill_green", "Village Green");
+        Place green = runtime.createPlace("room/village/vill_green", "Village Green");
         Entity player = runtime.createEntity("local/player", "local player", green, Capability.ACTOR);
         Place unregistered = new Place("room/void", "Void");
 
@@ -76,8 +76,8 @@ final class WorldRuntimeTest {
     @Test
     void linksConnectPlacesIntoTraversableWorld() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
-        Place green = runtime.createPlace("room/vill_green", "Village Green");
-        Place church = runtime.createPlace("room/church", "Church");
+        Place green = runtime.createPlace("room/village/vill_green", "Village Green");
+        Place church = runtime.createPlace("room/village/church", "Church");
         Entity player = runtime.createEntity("local/player", "local player", green, Capability.ACTOR);
 
         Link north = runtime.connect(green, "north", church);
@@ -93,7 +93,7 @@ final class WorldRuntimeTest {
     void bidirectionalLinksCanUseDifferentActions() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
         Place cellar = runtime.createPlace("room/cellar", "Cellar");
-        Place attic = runtime.createPlace("room/attic", "Attic");
+        Place attic = runtime.createPlace("room/village/attic", "Attic");
 
         runtime.connectBothWays(cellar, "climb ladder", attic, "descend ladder");
 
@@ -104,7 +104,7 @@ final class WorldRuntimeTest {
     @Test
     void missingLinkDoesNotMoveEntity() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
-        Place green = runtime.createPlace("room/vill_green", "Village Green");
+        Place green = runtime.createPlace("room/village/vill_green", "Village Green");
         Entity player = runtime.createEntity("local/player", "local player", green, Capability.ACTOR);
 
         assertTrue(!runtime.traverse(player, "north"));
@@ -115,7 +115,7 @@ final class WorldRuntimeTest {
     void placeResolutionFollowsEntityContainmentBeforeTraversal() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
         Place road = runtime.createPlace("room/road", "Road");
-        Place station = runtime.createPlace("room/station", "Station");
+        Place station = runtime.createPlace("room/village/station", "Station");
         Entity carriage = runtime.createEntity("obj/carriage", "carriage", road);
         Entity passenger = runtime.createEntity("local/player", "local player", carriage, Capability.ACTOR);
 
@@ -130,7 +130,7 @@ final class WorldRuntimeTest {
     void entityContainmentDoesNotCreateEntityLinks() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
         Place road = runtime.createPlace("room/road", "Road");
-        Place station = runtime.createPlace("room/station", "Station");
+        Place station = runtime.createPlace("room/village/station", "Station");
         Entity carriage = runtime.createEntity("obj/carriage", "carriage", road);
         Entity passenger = runtime.createEntity("local/player", "local player", carriage, Capability.ACTOR);
 

@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
+cd "$ROOT"
+mvn -q -pl compiler -am compile
+
+exec java \
+  -cp "compiler/target/classes" \
+  io.github.protasm.jvmud.compiler.formatter.LPCFormatterCli "$@"

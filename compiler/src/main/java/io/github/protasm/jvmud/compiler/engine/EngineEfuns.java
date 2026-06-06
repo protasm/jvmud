@@ -8,6 +8,7 @@ import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -74,6 +75,9 @@ public final class EngineEfuns {
                 (runtime, args) -> args[0] instanceof String ? 1 : 0));
         efuns.add(efun("jvmud_is_array", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof List<?> ? 1 : 0));
+        efuns.add(efun("allocate", LPCType.LPCARRAY, List.of(LPCType.LPCINT),
+                (runtime, args) -> new ArrayList<>(
+                        Collections.nCopies(Math.max(0, ((Number) args[0]).intValue()), Integer.valueOf(0)))));
         efuns.add(efun("jvmud_invoke_object", LPCType.LPCMIXED,
                 List.of(LPCType.LPCMIXED, LPCType.LPCSTRING),
                 (runtime, args) -> callOther(runtime, args[0], String.valueOf(args[1]))));

@@ -2,92 +2,83 @@
 /* Mrpr 901122 */
 
 /*
- * Function name: init
- * Description:   Init this object
- */
-init()
-{
+* Function name: init
+* Description:   Init this object
+*/
+/*
+* Function name: drop
+* Description:   No dropping.
+*/
+drop() {
+  return 1;
+}
 
-	start_death();
+/*
+* Function name: get
+* Description:   Don't give it away.
+*/
+get() {
+  return 1;
+}
+
+/*
+* Function name: id
+* Description:   Identify the object
+*/
+id(str) {
+  return str == "death_mark";
+
+}
+
+init() {
+  start_death();
 
 }
 
 /*
- * Function name: get
- * Description:   Don't give it away.
- */
-get()
-{
-	return 1;
-}
-
-/*
- * Function name: id
- * Description:   Identify the object
- */
-id(str) 
-{ 
-
-	return str == "death_mark"; 
+* Function name: query_auto_load
+* Description:   Automatic load of this object
+*/
+query_auto_load() {
+  return "room/death/death_mark:";
 
 }
 
 /*
- * Function name: start_death
- * Description:   Start the death sequence.
- */
-start_death()
-{
-	
-	object ned, my_host;
+* Function name: start_death
+* Description:   Start the death sequence.
+*/
+start_death() {
+  object ned, my_host;
 
-	my_host = environment(this_object());
+  my_host = environment(this_object());
 
-	if (my_host)
-	{
-		if(living(my_host))
-		{
-			if(my_host->query_ghost() != 1)
-			{
-				destruct(this_object());
-				return;
-			}
-		}
-		else
-			return;
-	}
-	else
-		return;
+  if (my_host) {
+    if(living(my_host)) {
+      if(my_host->query_ghost() != 1) {
+        destruct(this_object());
 
-	say("You see a dark shape gathering some mist... or maybe you're just imagining that.\n");
-	write("You can see a dark hooded man standing beside your corpse.\n" +
-		"He is wiping the bloody blade of a wicked looking scythe with slow measured\n" +
-		"motions. Suddenly he stops and seems to look straight at you with his empty...\n" +
-		"no, not empty but.... orbs....\n\n");
+        return;
+      }
+    }
 
-	write("Death says: COME WITH ME, MORTAL ONE!\n\n");
+    else
+      return;
+  }
 
-	write("He reaches for you and suddenly you find yourself in another place.\n\n");
-	move_object(my_host, "/room/death/death_room");
+  else
+    return;
 
-}
+  say("You see a dark shape gathering some mist... or maybe you're just imagining that.\n");
 
-/*
- * Function name: query_auto_load
- * Description:   Automatic load of this object
- */
-query_auto_load()
-{
+  write("You can see a dark hooded man standing beside your corpse.\n" +
+  "He is wiping the bloody blade of a wicked looking scythe with slow measured\n" +
+  "motions. Suddenly he stops and seems to look straight at you with his empty...\n" +
+  "no, not empty but.... orbs....\n\n");
 
-	return "room/death/death_mark:";
+  write("Death says: COME WITH ME, MORTAL ONE!\n\n");
 
-}
+  write("He reaches for you and suddenly you find yourself in another place.\n\n");
+  move_object(my_host, "/room/death/death_room");
 
-/*
- * Function name: drop
- * Description:   No dropping.
- */
-drop()
-{
-	return 1;
 }

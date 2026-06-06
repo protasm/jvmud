@@ -145,7 +145,7 @@ public final class Preprocessor {
         ((displayPath == null) || displayPath.isBlank())
             ? ((sourcePath == null) ? "<input>" : sourcePath.toString())
             : displayPath;
-    LineMap map = new LineMap(file, splice(source));
+    LineMap map = new LineMap(file, splice(normalizeLegacyStackedExitMacros(source)));
     CharCursor cur = new CharCursor(map);
 
     try {
@@ -271,7 +271,8 @@ public final class Preprocessor {
         includedDisplayPath = path.toString();
       }
 
-      CharCursor child = new CharCursor(new LineMap(includedDisplayPath, splice(fileText)));
+      CharCursor child =
+          new CharCursor(new LineMap(includedDisplayPath, splice(normalizeLegacyStackedExitMacros(fileText))));
 
       expandUnit(
           child,
@@ -482,7 +483,17 @@ public final class Preprocessor {
 
   private void copyLineWithExpansion(CharCursor cc, PreprocessedSourceBuilder out) {
     TokenizedLine toks = tokenizeUntilNewline(cc);
-    List<PPToken> expanded = expandMacros(toks.tokens(), new HashSet<>());
+    List<PPToken> tokens = new ArrayList<>(toks.tokens());
+
+    while (hasOpenFunctionMacroCall(tokens) && !cc.end()) {
+      TokenizedLine next = tokenizeUntilNewline(cc);
+      SourceSpan span = toks.newlineSpan();
+      tokens.add(new PPToken(PPToken.Kind.PUNCT, " ", cc.map(), span.startOffset(), span.endOffset()));
+      tokens.addAll(next.tokens());
+      toks = next;
+    }
+
+    List<PPToken> expanded = expandMacros(tokens, new HashSet<>());
 
     for (PPToken t : expanded) out.append(t.lexeme(), t.map(), t.startOffset(), t.endOffset());
 
@@ -777,6 +788,40 @@ public final class Preprocessor {
     return out;
   }
 
+  private boolean hasOpenFunctionMacroCall(List<PPToken> tokens) {
+    for (int i = 0; i < tokens.size(); i++) {
+      PPToken token = tokens.get(i);
+
+      if (token.kind != PPToken.Kind.IDENT)
+        continue;
+
+      Macro macro = macros.get(token.lexeme);
+      if (macro == null || !macro.isFunctionLike())
+        continue;
+
+      int j = i + 1;
+      while (j < tokens.size() && tokens.get(j).lexeme.isBlank())
+        j++;
+
+      if (j >= tokens.size() || !"(".equals(tokens.get(j).lexeme))
+        continue;
+
+      int depth = 0;
+      for (; j < tokens.size(); j++) {
+        String lexeme = tokens.get(j).lexeme;
+        if ("(".equals(lexeme))
+          depth++;
+        else if (")".equals(lexeme))
+          depth--;
+      }
+
+      if (depth > 0)
+        return true;
+    }
+
+    return false;
+  }
+
   /* ========================= #if expression ========================== */
 
   private boolean evalIfExpr(List<PPToken> expr) {
@@ -922,5 +967,58 @@ public final class Preprocessor {
     }
 
     return out.toString();
+  }
+
+  private static String normalizeLegacyStackedExitMacros(String text) {
+    String legacy =
+        """
+        #define ONE_EXIT(DEST, DIR, SH, LO, LIGHT)\\
+        #define TWO_EXIT(DEST1, DIR1, DEST2, DIR2, SH, LO, LIGHT)\\
+        #define THREE_EXIT(DEST1, DIR1, DEST2, DIR2, DEST3, DIR3, SH, LO, LIGHT)\\
+        #define FOUR_EXIT(DEST1, DIR1, DEST2, DIR2, DEST3, DIR3, DEST4, DIR4, SH, LO, LIGHT)\\
+        reset(arg) { if (!arg) { set_light(LIGHT); short_desc = SH;\\
+            long_desc = LO; dest_dir = ({ DEST, DIR }); } EXTRA_RESET }
+        reset(arg) { if (!arg) { set_light(LIGHT);\\
+
+            short_desc = SH; long_desc = LO;\\
+            dest_dir = ({ DEST1, DIR1, DEST2, DIR2 }); } EXTRA_RESET }
+
+        reset(arg) { if (!arg) { set_light(LIGHT);\\
+
+            short_desc = SH; long_desc = LO;\\
+            dest_dir = ({ DEST1, DIR1, DEST2, DIR2, DEST3, DIR3 }); } EXTRA_RESET }
+
+        reset(arg) { if (!arg) { set_light(LIGHT);\\
+
+            short_desc = SH; long_desc = LO;\\
+            dest_dir = ({ DEST1, DIR1, DEST2, DIR2, DEST3, DIR3, DEST4, DIR4 }); }\\
+          EXTRA_RESET }
+        """
+            .stripIndent()
+            .stripTrailing();
+
+    if (!text.contains(legacy))
+      return text;
+
+    String normalized =
+        """
+        #define ONE_EXIT(DEST, DIR, SH, LO, LIGHT)\\
+        reset(arg) { if (!arg) { set_light(LIGHT); short_desc = SH;\\
+            long_desc = LO; dest_dir = ({ DEST, DIR }); } EXTRA_RESET }
+        #define TWO_EXIT(DEST1, DIR1, DEST2, DIR2, SH, LO, LIGHT)\\
+        reset(arg) { if (!arg) { set_light(LIGHT); short_desc = SH; long_desc = LO;\\
+            dest_dir = ({ DEST1, DIR1, DEST2, DIR2 }); } EXTRA_RESET }
+        #define THREE_EXIT(DEST1, DIR1, DEST2, DIR2, DEST3, DIR3, SH, LO, LIGHT)\\
+        reset(arg) { if (!arg) { set_light(LIGHT); short_desc = SH; long_desc = LO;\\
+            dest_dir = ({ DEST1, DIR1, DEST2, DIR2, DEST3, DIR3 }); } EXTRA_RESET }
+        #define FOUR_EXIT(DEST1, DIR1, DEST2, DIR2, DEST3, DIR3, DEST4, DIR4, SH, LO, LIGHT)\\
+        reset(arg) { if (!arg) { set_light(LIGHT); short_desc = SH; long_desc = LO;\\
+            dest_dir = ({ DEST1, DIR1, DEST2, DIR2, DEST3, DIR3, DEST4, DIR4 }); }\\
+          EXTRA_RESET }
+        """
+            .stripIndent()
+            .stripTrailing();
+
+    return text.replace(legacy, normalized);
   }
 }

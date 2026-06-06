@@ -163,6 +163,8 @@ public final class SemanticTypeChecker {
         if (expression instanceof ASTExprFieldStore store) {
             LPCType valueType = inferExpressionType(store.value(), context);
             LPCType fieldType = valueType(store.field().symbol());
+            if (fieldType == LPCType.LPCSTRING && valueType == LPCType.LPCARRAY)
+                fieldType = promoteStringSymbolToArray(store.field().symbol());
             valueType = coerceZeroLiteralNull(fieldType, store.value(), valueType);
             ensureAssignable(fieldType, valueType, store.line(), "Field assignment type mismatch");
             return fieldType(store.field().symbol(), valueType);
@@ -171,6 +173,8 @@ public final class SemanticTypeChecker {
         if (expression instanceof ASTExprLocalStore store) {
             LPCType valueType = inferExpressionType(store.value(), context);
             LPCType localType = valueType(store.local().symbol());
+            if (localType == LPCType.LPCSTRING && valueType == LPCType.LPCARRAY)
+                localType = promoteStringSymbolToArray(store.local().symbol());
             valueType = coerceZeroLiteralNull(localType, store.value(), valueType);
             ensureAssignable(localType, valueType, store.line(), "Local assignment type mismatch");
             return localType != null ? localType : valueType;
@@ -401,6 +405,11 @@ public final class SemanticTypeChecker {
             return valueType;
         }
 
+        if (targetType == LPCType.LPCSTRING && promoteIndexedStringTarget(store.target())) {
+            ensureAssignable(LPCType.LPCINT, indexType, store.line(), "Array index expects integer");
+            return valueType;
+        }
+
         if (targetType == LPCType.LPCMIXED || targetType == null)
             return valueType;
 
@@ -408,6 +417,27 @@ public final class SemanticTypeChecker {
                 new CompilationProblem(
                         CompilationStage.ANALYZE, "Assignment expects array or mapping target", store.line()));
         return valueType;
+    }
+
+    private boolean promoteIndexedStringTarget(ASTExpression target) {
+        Symbol symbol = null;
+
+        if (target instanceof ASTExprLocalAccess access)
+            symbol = access.local().symbol();
+        else if (target instanceof ASTExprFieldAccess access)
+            symbol = access.field().symbol();
+
+        if (symbol == null || symbol.lpcType() != LPCType.LPCSTRING)
+            return false;
+
+        promoteStringSymbolToArray(symbol);
+        return true;
+    }
+
+    private LPCType promoteStringSymbolToArray(Symbol symbol) {
+        if (symbol != null)
+            symbol.setLpcType(LPCType.LPCARRAY);
+        return LPCType.LPCARRAY;
     }
 
     private void ensureAssignable(LPCType expected, LPCType actual, int line, String message) {
