@@ -43,6 +43,258 @@
         concepts the engine's ontology. Compatibility belongs at the boundary.
       </p>
     </section>
+
+    <section>
+      <h2>Current Core Efuns</h2>
+      <p>
+        This is the core set currently registered by JVMud's engine efun
+        registry. Overloaded efuns are listed once per supported signature.
+      </p>
+
+      <div class="efun-group">
+        <h3>Text And Output</h3>
+        <table class="efun-table">
+          <thead>
+            <tr>
+              <th>Signature</th>
+              <th>Current behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>void jvmud_write(mixed message)</code></td>
+              <td>Writes text to the active output sink.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_say(mixed message)</code></td>
+              <td>Currently captured like direct output until room/session routing is richer.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_tell_object(object target, mixed message)</code></td>
+              <td>Delivers text to a target object through runtime output routing.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_tell_room(mixed room, mixed message)</code></td>
+              <td>Currently writes the message to the observable output sink.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="efun-group">
+        <h3>Execution Context And Sessions</h3>
+        <table class="efun-table">
+          <thead>
+            <tr>
+              <th>Signature</th>
+              <th>Current behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>object jvmud_current_object()</code></td>
+              <td>Returns the current LPC object in the active runtime context.</td>
+            </tr>
+            <tr>
+              <td><code>object jvmud_current_actor()</code></td>
+              <td>Returns the current command actor, falling back to the current object.</td>
+            </tr>
+            <tr>
+              <td><code>string jvmud_current_verb()</code></td>
+              <td>Returns the verb being dispatched for the active command.</td>
+            </tr>
+            <tr>
+              <td><code>array jvmud_users()</code></td>
+              <td>Returns the runtime's currently bound session personas.</td>
+            </tr>
+            <tr>
+              <td><code>int jvmud_query_idle(mixed user)</code></td>
+              <td>Reports idle time for a runtime session/user target.</td>
+            </tr>
+            <tr>
+              <td><code>mixed jvmud_query_ip_number(mixed user)</code></td>
+              <td>Reports the remote address associated with a session/user target when known.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_capture_session_input(string method, int noecho)</code></td>
+              <td>Captures the next line of session input for a mudlib method.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="efun-group">
+        <h3>Objects, Movement, And Inventory</h3>
+        <table class="efun-table">
+          <thead>
+            <tr>
+              <th>Signature</th>
+              <th>Current behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>string jvmud_object_name(mixed object)</code></td>
+              <td>Returns the registered runtime object id.</td>
+            </tr>
+            <tr>
+              <td><code>mixed jvmud_invoke_object(mixed target, string method)</code></td>
+              <td>Invokes a method on an object or path-resolved shared object.</td>
+            </tr>
+            <tr>
+              <td><code>mixed jvmud_invoke_object(mixed target, string method, mixed arg)</code></td>
+              <td>Invokes a method with one argument on an object or path-resolved shared object.</td>
+            </tr>
+            <tr>
+              <td><code>object jvmud_clone_object(string path)</code></td>
+              <td>Compiles if needed and creates a new runtime clone.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_move_object(mixed object, mixed destination)</code></td>
+              <td>Moves an object into another object or path-resolved destination.</td>
+            </tr>
+            <tr>
+              <td><code>object jvmud_present(string id)</code></td>
+              <td>Finds a present object by identifier using the current context.</td>
+            </tr>
+            <tr>
+              <td><code>object jvmud_present(mixed id, mixed container)</code></td>
+              <td>Finds a present object by identifier in a supplied container.</td>
+            </tr>
+            <tr>
+              <td><code>object jvmud_first_inventory(mixed container)</code></td>
+              <td>Starts inventory traversal for a container.</td>
+            </tr>
+            <tr>
+              <td><code>object jvmud_next_inventory(mixed object)</code></td>
+              <td>Continues inventory traversal from a previous object.</td>
+            </tr>
+            <tr>
+              <td><code>object jvmud_environment()</code></td>
+              <td>Returns the current object's immediate environment.</td>
+            </tr>
+            <tr>
+              <td><code>object jvmud_environment(mixed object)</code></td>
+              <td>Returns the supplied object's immediate environment.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_destruct(object object)</code></td>
+              <td>Destructs an object and removes it from runtime indexes.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="efun-group">
+        <h3>Commands And Interaction Scope</h3>
+        <table class="efun-table">
+          <thead>
+            <tr>
+              <th>Signature</th>
+              <th>Current behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>void jvmud_enable_commands()</code></td>
+              <td>Compatibility entry point for command-capable objects.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_add_action(string method)</code></td>
+              <td>Remembers a mudlib action method for later verb registration.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_add_action(string method, string verb)</code></td>
+              <td>Registers a verb to dispatch to a mudlib action method.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_add_verb(string verb)</code></td>
+              <td>Registers a verb for the most recently remembered action method.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="efun-group">
+        <h3>Time, Light, And Compatibility Hooks</h3>
+        <table class="efun-table">
+          <thead>
+            <tr>
+              <th>Signature</th>
+              <th>Current behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>int jvmud_time()</code></td>
+              <td>Returns current Unix-style wall-clock seconds.</td>
+            </tr>
+            <tr>
+              <td><code>int jvmud_set_light(int amount)</code></td>
+              <td>Updates runtime light state and returns the current light value.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_set_heart_beat(int enabled)</code></td>
+              <td>Compatibility placeholder for legacy heartbeat requests.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_call_out(string method, int delay)</code></td>
+              <td>Compatibility placeholder for delayed callback requests.</td>
+            </tr>
+            <tr>
+              <td><code>void jvmud_call_out(string method, int delay, mixed arg)</code></td>
+              <td>Compatibility placeholder for delayed callback requests with one argument.</td>
+            </tr>
+            <tr>
+              <td><code>int jvmud_remove_call_out(string method)</code></td>
+              <td>Compatibility placeholder; currently returns <code>-1</code>.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="efun-group">
+        <h3>Text, Type, And Collection Utilities</h3>
+        <table class="efun-table">
+          <thead>
+            <tr>
+              <th>Signature</th>
+              <th>Current behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>int jvmud_size(mixed value)</code></td>
+              <td>Returns the size of a string, collection, mapping, or array.</td>
+            </tr>
+            <tr>
+              <td><code>mixed jvmud_read_mudlib_text(string path)</code></td>
+              <td>Reads a mudlib-relative text file, returning LPC false when unavailable.</td>
+            </tr>
+            <tr>
+              <td><code>string jvmud_lowercase_text(mixed value)</code></td>
+              <td>Converts text to lowercase.</td>
+            </tr>
+            <tr>
+              <td><code>string jvmud_capitalize_text(mixed value)</code></td>
+              <td>Capitalizes the first character of text.</td>
+            </tr>
+            <tr>
+              <td><code>status jvmud_is_string(mixed value)</code></td>
+              <td>Returns LPC true when the value is a string.</td>
+            </tr>
+            <tr>
+              <td><code>status jvmud_is_array(mixed value)</code></td>
+              <td>Returns LPC true when the value is represented as an array/list.</td>
+            </tr>
+            <tr>
+              <td><code>array allocate(int size)</code></td>
+              <td>Creates an array initialized with zero values.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
 </body>
 </html>
