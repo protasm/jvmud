@@ -429,6 +429,7 @@ final class TelnetServerTest {
                 String greeting = readUntilPrompt(socket);
                 assertTrue(greeting.contains("Welcome login."), greeting);
                 assertTrue(greeting.contains("What is your name: "), greeting);
+                assertTrue(greeting.indexOf("JVMud telnet.") < greeting.indexOf("What is your name: "), greeting);
 
                 socket.getOutputStream().write("Alice\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
