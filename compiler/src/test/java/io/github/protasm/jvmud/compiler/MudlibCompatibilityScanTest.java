@@ -1,8 +1,12 @@
 package io.github.protasm.jvmud.compiler;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
+import io.github.protasm.jvmud.compiler.exec.LpcObjectHandle;
+import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
+import io.github.protasm.jvmud.compiler.exec.LpcRuntimeConfig;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTMethod;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
@@ -98,7 +102,18 @@ final class MudlibCompatibilityScanTest {
         assertTrue(playerResult.getProblems().isEmpty(), () -> "`obj/player.c` must compile cleanly: "
                 + playerResult.getProblems());
         assertTrue(playerResult.getBytecode() != null, "`obj/player.c` must compile through bytecode generation.");
+        assertLoadsThroughJvmVerification(boundary);
         assertTrue(Files.exists(Path.of("target", "jvmud-mudlib-compatibility.md")));
+    }
+
+    private static void assertLoadsThroughJvmVerification(MudlibBoundary boundary) {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LpcObjectHandle player = runtime.load(stripExtension(PLAYER_SOURCE));
+
+        assertNotNull(player, "`obj/player.c` must define, verify, and instantiate through the JVM.");
     }
 
     private static void writeReport(MudlibBoundary boundary, Map<String, CompilationResult> results) throws IOException {

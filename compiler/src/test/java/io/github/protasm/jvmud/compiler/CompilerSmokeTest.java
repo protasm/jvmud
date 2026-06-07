@@ -15,7 +15,6 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
-import io.github.protasm.jvmud.runtime.MudlibBoundaryConfigReader;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,8 +22,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 final class CompilerSmokeTest {
-    private static final Path REPO_ROOT = Path.of("..").toAbsolutePath().normalize();
-
     @TempDir
     Path tempDir;
 
@@ -105,18 +102,6 @@ final class CompilerSmokeTest {
 
         assertEquals(14, object.invoke("adjust", 7));
         assertEquals(7, object.invoke("adjust", -2));
-    }
-
-    @Test
-    void runtimeLoadsVanillaMudlibPlayerThroughJvmVerification() throws Exception {
-        Path mudlibRoot = REPO_ROOT.resolve("mudlib");
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(mudlibRoot).build());
-        EngineEfuns.registerCore(runtime);
-        runtime.registerMudlibBoundary(MudlibBoundaryConfigReader.read(mudlibRoot, "jvmud/config"));
-
-        LpcObjectHandle player = runtime.load("obj/player");
-
-        assertNotNull(player);
     }
 
     @Test
