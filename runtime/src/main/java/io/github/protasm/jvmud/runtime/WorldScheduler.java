@@ -4,7 +4,12 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.PriorityQueue;
 
-/** Owns deterministic world time and scheduled work for one JVMud world. */
+/**
+ * Owns deterministic world time and scheduled work for one JVMud world.
+ *
+ * <p>The scheduler does not run on a background thread. Callers explicitly advance world time, which
+ * makes tests, admin tooling, and future persistence checkpoints repeatable.</p>
+ */
 public final class WorldScheduler {
     private final PriorityQueue<ScheduledWork> queue = new PriorityQueue<>(
             Comparator.comparingLong(ScheduledWork::dueTick)
@@ -13,10 +18,16 @@ public final class WorldScheduler {
     private long nextTaskId = 1;
     private long nextOrder = 1;
 
+    /** Returns the current deterministic world tick. */
     public long currentTick() {
         return currentTick;
     }
 
+    /**
+     * Schedules one action after a non-negative number of ticks.
+     *
+     * @return a handle that can cancel the scheduled action before it runs
+     */
     public ScheduledTask scheduleAfter(long delayTicks, Runnable action) {
         requireNonNegative(delayTicks, "delayTicks");
         Objects.requireNonNull(action, "action");
@@ -25,6 +36,13 @@ public final class WorldScheduler {
         return task;
     }
 
+    /**
+     * Schedules a recurring action.
+     *
+     * @param initialDelayTicks non-negative delay before the first run
+     * @param intervalTicks positive interval between later runs
+     * @return a handle that can cancel future occurrences
+     */
     public ScheduledTask scheduleRecurring(long initialDelayTicks, long intervalTicks, Runnable action) {
         requireNonNegative(initialDelayTicks, "initialDelayTicks");
         if (intervalTicks <= 0) {
@@ -36,11 +54,17 @@ public final class WorldScheduler {
         return task;
     }
 
+    /** Advances world time by the supplied non-negative number of ticks. */
     public void advanceBy(long ticks) {
         requireNonNegative(ticks, "ticks");
         advanceTo(currentTick + ticks);
     }
 
+    /**
+     * Advances world time to an absolute target tick and runs all due work in deterministic order.
+     *
+     * @throws IllegalArgumentException if the target would move time backward
+     */
     public void advanceTo(long targetTick) {
         if (targetTick < currentTick) {
             throw new IllegalArgumentException("targetTick cannot move world time backward.");

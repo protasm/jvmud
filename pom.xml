@@ -47,7 +47,35 @@
             <skip>true</skip>
           </configuration>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>3.11.2</version>
+        </plugin>
       </plugins>
     </pluginManagement>
   </build>
+
+  <profiles>
+    <profile>
+      <id>site-docs</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <configuration>
+              <doctitle>JVMud Compiler and Engine API</doctitle>
+              <windowtitle>JVMud API</windowtitle>
+              <outputDirectory>${maven.multiModuleProjectDirectory}/docs/api</outputDirectory>
+              <sourcepath>${maven.multiModuleProjectDirectory}/runtime/src/main/java:${maven.multiModuleProjectDirectory}/compiler/src/main/java</sourcepath>
+              <subpackages>io.github.protasm.jvmud.runtime:io.github.protasm.jvmud.compiler.pipeline:io.github.protasm.jvmud.compiler.efun:io.github.protasm.jvmud.compiler.engine:io.github.protasm.jvmud.compiler.exec:io.github.protasm.jvmud.compiler.runtime</subpackages>
+              <source>${maven.compiler.release}</source>
+              <doclint>all,-missing</doclint>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

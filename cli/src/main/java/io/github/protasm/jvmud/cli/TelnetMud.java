@@ -6,6 +6,8 @@ import io.github.protasm.jvmud.compiler.exec.LpcRuntimeConfig;
 import io.github.protasm.jvmud.runtime.Capability;
 import io.github.protasm.jvmud.runtime.Entity;
 import io.github.protasm.jvmud.runtime.Location;
+import io.github.protasm.jvmud.runtime.MudlibBoundary;
+import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.runtime.Place;
 import io.github.protasm.jvmud.runtime.WorldRuntime;
 import java.io.PrintWriter;
@@ -20,6 +22,7 @@ final class TelnetMud {
     private final String startingRoomPath;
     private final Object startingRoomObject;
     private final String playerObjectPath;
+    private final String playerSessionConnectedMethod;
     private int nextPersonaId = 1;
 
     private TelnetMud(
@@ -28,13 +31,15 @@ final class TelnetMud {
             Path mudlibRoot,
             String startingRoomPath,
             Object startingRoomObject,
-            String playerObjectPath) {
+            String playerObjectPath,
+            String playerSessionConnectedMethod) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         this.startingRoomPath = Objects.requireNonNull(startingRoomPath, "startingRoomPath");
         this.startingRoomObject = Objects.requireNonNull(startingRoomObject, "startingRoomObject");
         this.playerObjectPath = playerObjectPath;
+        this.playerSessionConnectedMethod = playerSessionConnectedMethod;
     }
 
     static TelnetMud boot(Path mudlibRoot, String configObjectPath) {
@@ -51,6 +56,7 @@ final class TelnetMud {
         }
 
         Object startingRoomObject = runtime.loadOrGetObject(result.startingRoom());
+        MudlibBoundary boundary = result.mudlibBoundary();
         runtime.clearOutputTranscript();
         return new TelnetMud(
                 runtime,
@@ -58,7 +64,8 @@ final class TelnetMud {
                 normalizedRoot,
                 result.startingRoom(),
                 startingRoomObject,
-                result.mudlibBoundary().playerObjectPath().orElse(null));
+                boundary.playerObjectPath().orElse(null),
+                boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null));
     }
 
     Path mudlibRoot() {
@@ -102,6 +109,7 @@ final class TelnetMud {
             });
             runtime.clearOutputTranscript();
             out.println("Attached " + name + " as " + objectId + " in " + startingRoomPath + ".");
+            invokePlayerSessionConnected(actor);
             return new Persona(sessionId, objectId, name, actor);
         } catch (RuntimeException | LinkageError e) {
             System.err.println("Could not attach mudlib player object " + playerObjectPath
@@ -134,6 +142,14 @@ final class TelnetMud {
         return new Persona(sessionId, objectId, name, actor);
     }
 
+    private void invokePlayerSessionConnected(Object actor) {
+        if (playerSessionConnectedMethod == null) {
+            return;
+        }
+        runtime.invokeObject(actor, playerSessionConnectedMethod);
+        runtime.clearOutputTranscript();
+    }
+
     synchronized void detachPersona(Persona persona) {
         if (persona != null) {
             runtime.unbindSession(persona.sessionId());
@@ -141,6 +157,13 @@ final class TelnetMud {
     }
 
     synchronized Object dispatch(Persona persona, PrintWriter out, String commandLine) {
+        if (runtime.hasCapturedSessionInput(persona.actor())) {
+            runtime.clearOutputTranscript();
+            Object result = runtime.deliverCapturedSessionInput(persona.actor(), commandLine);
+            runtime.clearOutputTranscript();
+            return result;
+        }
+
         runtime.clearOutputTranscript();
         runtime.refreshCommandActions(persona.actor());
         Object result = runtime.dispatchCommand(persona.actor(), commandLine);

@@ -47,75 +47,93 @@ public final class MudlibBoundary {
         this.lifecycleMethods = immutableCopy(builder.lifecycleMethods);
     }
 
+    /** Returns a boundary with no declared mudlib integration points. */
     public static MudlibBoundary empty() {
         return EMPTY;
     }
 
+    /** Starts a builder for immutable mudlib boundary metadata. */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Returns the optional stable game id declared by the mudlib. */
     public Optional<String> gameId() {
         return Optional.ofNullable(gameId);
     }
 
+    /** Returns the optional display name declared by the mudlib. */
     public Optional<String> gameName() {
         return Optional.ofNullable(gameName);
     }
 
+    /** Returns the optional object path for a general mudlib boundary adapter. */
     public Optional<String> boundaryObjectPath() {
         return Optional.ofNullable(boundaryObjectPath);
     }
 
+    /** Returns the optional object path for legacy mudlib function adapters. */
     public Optional<String> mfunObjectPath() {
         return Optional.ofNullable(mfunObjectPath);
     }
 
+    /** Returns the optional LPC player object path used when binding interactive sessions. */
     public Optional<String> playerObjectPath() {
         return Optional.ofNullable(playerObjectPath);
     }
 
+    /** Returns the optional starting place object path for new local presence. */
     public Optional<String> initialPlacePath() {
         return Optional.ofNullable(initialPlacePath);
     }
 
+    /** Returns the optional initial engine presence id used for host-owned personas. */
     public Optional<String> initialPresenceId() {
         return Optional.ofNullable(initialPresenceId);
     }
 
+    /** Returns the optional mudlib-relative file that lists startup preload objects. */
     public Optional<String> preloadFilePath() {
         return Optional.ofNullable(preloadFilePath);
     }
 
+    /** Returns additional mudlib object paths to preload at startup. */
     public Set<String> preloadObjectPaths() {
         return preloadObjectPaths;
     }
 
+    /** Returns the optional mudlib method to invoke for deterministic temporal ticks. */
     public Optional<String> temporalTickMethod() {
         return Optional.ofNullable(temporalTickMethod);
     }
 
+    /** Returns the configured temporal tick interval in seconds, or {@code 0} when disabled. */
     public int temporalTickIntervalSeconds() {
         return temporalTickIntervalSeconds;
     }
 
+    /** Returns lifecycle events the mudlib has declared interest in handling. */
     public Set<MudlibLifecycleEvent> lifecycleEvents() {
         return lifecycleEvents;
     }
 
+    /** Returns explicit lifecycle event-to-method mappings declared by the mudlib. */
     public Map<MudlibLifecycleEvent, String> lifecycleMethods() {
         return lifecycleMethods;
     }
 
+    /** Returns the configured mudlib method for an event, if one was declared. */
     public Optional<String> lifecycleMethod(MudlibLifecycleEvent event) {
         return Optional.ofNullable(lifecycleMethods.get(Objects.requireNonNull(event, "event")));
     }
 
+    /** Returns whether the mudlib declares any handler for an event. */
     public boolean handles(MudlibLifecycleEvent event) {
         Objects.requireNonNull(event, "event");
         return lifecycleEvents.contains(event) || lifecycleMethods.containsKey(event);
     }
 
+    /** Returns whether any boundary value was declared. */
     public boolean declared() {
         return boundaryObjectPath != null
                 || gameId != null
@@ -203,56 +221,67 @@ public final class MudlibBoundary {
 
         private Builder() {}
 
+        /** Sets a stable game id. Blank values are treated as absent. */
         public Builder gameId(String gameId) {
             this.gameId = gameId;
             return this;
         }
 
+        /** Sets a display name for the game. Blank values are treated as absent. */
         public Builder gameName(String gameName) {
             this.gameName = gameName;
             return this;
         }
 
+        /** Sets a mudlib object path for a general boundary adapter. */
         public Builder boundaryObjectPath(String boundaryObjectPath) {
             this.boundaryObjectPath = boundaryObjectPath;
             return this;
         }
 
+        /** Sets a mudlib object path for legacy mfun/efun adapter behavior. */
         public Builder mfunObjectPath(String mfunObjectPath) {
             this.mfunObjectPath = mfunObjectPath;
             return this;
         }
 
+        /** Sets the LPC player object path used when binding interactive sessions. */
         public Builder playerObjectPath(String playerObjectPath) {
             this.playerObjectPath = playerObjectPath;
             return this;
         }
 
+        /** Sets the starting place object path for new presence. */
         public Builder initialPlacePath(String initialPlacePath) {
             this.initialPlacePath = initialPlacePath;
             return this;
         }
 
+        /** Sets the initial host-owned presence id. */
         public Builder initialPresenceId(String initialPresenceId) {
             this.initialPresenceId = initialPresenceId;
             return this;
         }
 
+        /** Sets the mudlib-relative file that lists startup preload objects. */
         public Builder preloadFilePath(String preloadFilePath) {
             this.preloadFilePath = preloadFilePath;
             return this;
         }
 
+        /** Adds a startup preload object path. */
         public Builder preloadObjectPath(String preloadObjectPath) {
             this.preloadObjectPaths.add(preloadObjectPath);
             return this;
         }
 
+        /** Sets the mudlib method to invoke for deterministic temporal ticks. */
         public Builder temporalTickMethod(String temporalTickMethod) {
             this.temporalTickMethod = temporalTickMethod;
             return this;
         }
 
+        /** Sets the temporal tick interval in seconds. */
         public Builder temporalTickIntervalSeconds(int temporalTickIntervalSeconds) {
             if (temporalTickIntervalSeconds < 0) {
                 throw new IllegalArgumentException("Temporal tick interval cannot be negative.");
@@ -261,11 +290,13 @@ public final class MudlibBoundary {
             return this;
         }
 
+        /** Declares interest in a lifecycle event without naming a specific method. */
         public Builder handle(MudlibLifecycleEvent event) {
             lifecycleEvents.add(Objects.requireNonNull(event, "event"));
             return this;
         }
 
+        /** Maps a lifecycle event to a mudlib method name. Blank method names remove the mapping. */
         public Builder lifecycleMethod(MudlibLifecycleEvent event, String methodName) {
             Objects.requireNonNull(event, "event");
             String normalized = normalizeOptionalText(methodName);
@@ -278,6 +309,7 @@ public final class MudlibBoundary {
             return this;
         }
 
+        /** Builds an immutable, normalized boundary declaration. */
         public MudlibBoundary build() {
             return new MudlibBoundary(this);
         }

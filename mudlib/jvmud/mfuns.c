@@ -32,8 +32,27 @@ void call_out(string method, int delay, mixed arg) {
   jvmud_call_out(method, delay, arg);
 }
 
+int cat(string path) {
+  mixed text;
+
+  text = jvmud_read_mudlib_text(path);
+  if (!stringp(text))
+    return 0;
+
+  write(text);
+  return 1;
+}
+
+int cat(string path, int line, int count) {
+  return cat(path);
+}
+
 object clone_object(string path) {
   return jvmud_clone_object(path);
+}
+
+string capitalize(mixed value) {
+  return jvmud_capitalize_text(value);
 }
 
 string convert_number(int n) {
@@ -82,6 +101,14 @@ void enable_commands() {
   jvmud_enable_commands();
 }
 
+void input_to(string method) {
+  jvmud_capture_session_input(method, 0);
+}
+
+void input_to(string method, int noecho) {
+  jvmud_capture_session_input(method, noecho);
+}
+
 object environment() {
   return jvmud_environment();
 }
@@ -104,6 +131,10 @@ string jvmud_mfun_status() {
 
 status living(mixed ob) {
   return 0;
+}
+
+string lower_case(mixed value) {
+  return jvmud_lowercase_text(value);
 }
 
 void move_object(mixed ob, mixed destination) {

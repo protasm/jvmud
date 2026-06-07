@@ -26,37 +26,73 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+/**
+ * Coordinates the LPC compiler stages for one source unit.
+ *
+ * <p>The pipeline is the compiler facade used by host tooling. It preprocesses and scans source,
+ * parses an LPC object, resolves inherited source, performs semantic analysis, lowers to typed IR,
+ * and optionally produces JVM bytecode. Stage failures are returned as {@link CompilationProblem}
+ * values rather than thrown for ordinary source errors.</p>
+ */
 public final class CompilationPipeline {
     private final String parentInternalName;
     private final RuntimeContext runtimeContext;
     private final CompilationObserver observer;
 
+    /**
+     * Creates a pipeline whose generated classes inherit from the supplied JVM internal class name.
+     *
+     * @param parentInternalName JVM internal name such as {@code java/lang/Object}
+     */
     public CompilationPipeline(String parentInternalName) {
         this(parentInternalName, new RuntimeContext(null));
     }
 
+    /**
+     * Creates a pipeline using an explicit generated-code runtime context.
+     *
+     * @param parentInternalName JVM internal name used as the generated superclass
+     * @param runtimeContext runtime helper context used by parser and semantic analysis
+     */
     public CompilationPipeline(String parentInternalName, RuntimeContext runtimeContext) {
         this(parentInternalName, runtimeContext, CompilationObserver.NONE);
     }
 
+    /**
+     * Creates a pipeline with stage observation.
+     *
+     * @param observer callback sink for scan, parse, analyze, lower, and compile progress
+     */
     public CompilationPipeline(String parentInternalName, RuntimeContext runtimeContext, CompilationObserver observer) {
         this.parentInternalName = parentInternalName;
         this.runtimeContext = (runtimeContext != null) ? runtimeContext : new RuntimeContext(null);
         this.observer = (observer != null) ? observer : CompilationObserver.NONE;
     }
 
+    /** Compiles source text with default parser options. */
     public CompilationResult run(String source) {
         return run(source, ParserOptions.defaults());
     }
 
+    /** Compiles source text with explicit parser options. */
     public CompilationResult run(String source, ParserOptions parserOptions) {
         return run(null, source, null, null, parserOptions);
     }
 
+    /** Compiles source loaded from a path with explicit parser options. */
     public CompilationResult run(Path sourcePath, String source, ParserOptions parserOptions) {
         return run(sourcePath, source, null, null, parserOptions);
     }
 
+    /**
+     * Compiles source with the display metadata used for diagnostics and inherited-source lookup.
+     *
+     * @param sourcePath real filesystem path, or {@code null} for in-memory source
+     * @param source LPC source text
+     * @param sourceName mudlib-relative or internal source name, if known
+     * @param displayPath path shown in diagnostics, if different from {@code sourceName}
+     * @param parserOptions parser feature options
+     */
     public CompilationResult run(
             Path sourcePath, String source, String sourceName, String displayPath, ParserOptions parserOptions) {
         ParserOptions options = Objects.requireNonNull(parserOptions, "parserOptions");

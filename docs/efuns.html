@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Efuns - JVMud</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="side-nav" aria-label="Project sections">
+    <a class="brand" href="index.html">JVMud</a>
+    <a href="philosophy.html">Philosophy</a>
+    <a href="grammar.html">Grammar</a>
+    <a href="efuns.html" aria-current="page">Efuns</a>
+    <a href="lpc.html">LPC</a>
+    <a href="api/index.html">API Docs</a>
+    <a href="https://github.com/protasm/jvmud">GitHub</a>
+  </nav>
+
+  <main class="content-page">
+    <header>
+      <p class="eyebrow">Engine functions</p>
+      <h1>Efuns</h1>
+      <p>
+        Efuns are the LPC-facing entry points that let compiled mudlib objects
+        talk to JVMud runtime behavior.
+      </p>
+    </header>
+
+    <section>
+      <h2>Compatibility Layer</h2>
+      <p>
+        JVMud can expose legacy LPC names while translating them toward
+        engine-native operations: output delivery, current execution context,
+        object calls, movement, inventory traversal, perception, and scheduling.
+      </p>
+    </section>
+
+    <section>
+      <h2>Design Bias</h2>
+      <p>
+        Efuns should keep current LPC content usable without making old driver
+        concepts the engine's ontology. Compatibility belongs at the boundary.
+      </p>
+    </section>
+  </main>
+</body>
+</html>

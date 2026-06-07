@@ -8,8 +8,8 @@ public interface IncludeResolver {
    * Resolve an include path to source text.
    *
    * @param includingFile absolute or virtual path of the including fileName (may be null for roots)
-   * @param includePath the raw string inside #include "..." or <...>
-   * @param system true for <...>, false for "..."
+   * @param includePath the raw string inside {@code #include "..."} or {@code #include <...>}
+   * @param system true for {@code #include <...>}, false for {@code #include "..."}
    * @return the loaded source text
    * @throws IOException if not found or unreadable
    */

@@ -7,7 +7,13 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
-/** Configuration options for the host-facing LPC execution runtime. */
+/**
+ * Configuration options for the host-facing LPC execution runtime.
+ *
+ * <p>The base include path is the mudlib root for host calls that use mudlib-style paths. Include
+ * search paths and custom resolvers control preprocessor and inherited-source lookup. Class loading
+ * options control the JVM parent visible to generated LPC classes.</p>
+ */
 public final class LpcRuntimeConfig {
     private final Path baseIncludePath;
     private final List<Path> includeSearchPaths;
@@ -27,30 +33,37 @@ public final class LpcRuntimeConfig {
         this.compilationObserver = Objects.requireNonNull(builder.compilationObserver, "compilationObserver");
     }
 
+    /** Starts a builder with local-development defaults. */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Returns the normalized mudlib root used to resolve host-supplied LPC paths. */
     public Path baseIncludePath() {
         return baseIncludePath;
     }
 
+    /** Returns additional include search paths used by the default include resolver. */
     public List<Path> includeSearchPaths() {
         return includeSearchPaths;
     }
 
+    /** Returns the JVM internal superclass name used for generated LPC objects. */
     public String parentInternalName() {
         return parentInternalName;
     }
 
+    /** Returns the parent class loader for generated LPC classes. */
     public ClassLoader parentClassLoader() {
         return parentClassLoader;
     }
 
+    /** Returns the explicitly supplied include resolver, if any. */
     public IncludeResolver includeResolver() {
         return includeResolver;
     }
 
+    /** Returns the observer used for compiler stage progress. */
     public CompilationObserver compilationObserver() {
         return compilationObserver;
     }
@@ -71,16 +84,19 @@ public final class LpcRuntimeConfig {
         private IncludeResolver includeResolver;
         private CompilationObserver compilationObserver = CompilationObserver.NONE;
 
+        /** Sets the mudlib root used to resolve host-supplied source paths. */
         public Builder baseIncludePath(Path baseIncludePath) {
             this.baseIncludePath = baseIncludePath;
             return this;
         }
 
+        /** Sets additional include search paths for the default include resolver. */
         public Builder includeSearchPaths(List<Path> includeSearchPaths) {
             this.includeSearchPaths = (includeSearchPaths != null) ? includeSearchPaths : List.of();
             return this;
         }
 
+        /** Sets the JVM internal superclass name for generated LPC classes. */
         public Builder parentInternalName(String parentInternalName) {
             if (parentInternalName != null) {
                 this.parentInternalName = parentInternalName;
@@ -88,6 +104,7 @@ public final class LpcRuntimeConfig {
             return this;
         }
 
+        /** Sets the parent class loader visible to generated LPC classes. */
         public Builder parentClassLoader(ClassLoader parentClassLoader) {
             if (parentClassLoader != null) {
                 this.parentClassLoader = parentClassLoader;
@@ -95,11 +112,13 @@ public final class LpcRuntimeConfig {
             return this;
         }
 
+        /** Supplies a custom include resolver. */
         public Builder includeResolver(IncludeResolver includeResolver) {
             this.includeResolver = includeResolver;
             return this;
         }
 
+        /** Supplies a compiler stage observer. */
         public Builder compilationObserver(CompilationObserver compilationObserver) {
             if (compilationObserver != null) {
                 this.compilationObserver = compilationObserver;
@@ -107,6 +126,7 @@ public final class LpcRuntimeConfig {
             return this;
         }
 
+        /** Builds an immutable runtime configuration. */
         public LpcRuntimeConfig build() {
             return new LpcRuntimeConfig(this);
         }

@@ -15,9 +15,8 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Minimal LPC preprocessor: - #include "..." / <...> - #define / #undef (object-like and
- * function-like) - #if/#elif/#else/#endif with integer const exprs + defined(NAME) - #ifdef/#ifndef
- * - comment stripping - line splicing with backslash-newline
+ * Minimal LPC preprocessor for includes, macro definitions, conditional directives, comment
+ * stripping, and line splicing with backslash-newline.
  *
  * <p>It expands macros outside of string/char literals and respects a simple hideset to avoid
  * recursive re-expansion.

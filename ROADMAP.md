@@ -101,7 +101,7 @@ list, tolerates currently unsupported preload entries, loads a default starting
 room when present, and creates a host-owned local session actor situated in that
 room through `WorldRuntime`. This actor is not an LPC player object; it is a
 small JVMud session entity that lets LPC-defined room exits move the local
-participant through the existing command path while the compiler runtime acts as
+Player through the existing command path while the compiler runtime acts as
 an adapter.
 
 The first Telnet slice now owns the interactive command/session path over a
@@ -110,7 +110,7 @@ and world for the process; each connection attaches a fresh host-owned persona
 in the configured starting room. It accepts player commands plus a small set of
 slash-prefixed session controls and performs basic Telnet option refusal. It
 deliberately stops short of mudlib-defined player login, session-to-session
-messaging, output routing between participants, and production server policy.
+messaging, output routing between Players, and production server policy.
 
 ## Waypoints
 
@@ -145,7 +145,7 @@ messaging, output routing between participants, and production server policy.
 6. **Command System And Player-Like Session**
    Add `enable_commands`, `add_action`, `add_verb`, command dispatch, current
    actor context, and enough built-in command behavior for an interactive Telnet
-   participant to look, move, get, and drop through LPC-defined objects. The
+   Player to look, move, get, and drop through LPC-defined objects. The
    first Telnet player-facing input loop is in place; the next work is to make
    common player commands feel natural with mudlib boot, starting rooms, and
    movement support.

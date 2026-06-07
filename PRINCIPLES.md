@@ -57,14 +57,14 @@ The Eight Core Concepts
 
 3. Interactive
 
-   Participants can affect the world and the world can affect
-   participants.
+   Players can affect the world and the world can affect
+   players.
 
    Actions have consequences.
 
 4. Multiplayer
 
-   Multiple participants inhabit the same world simultaneously.
+   Multiple players inhabit the same world simultaneously.
 
    The world is shared.
 
@@ -72,7 +72,7 @@ The Eight Core Concepts
 
    The game takes place within a concrete virtual domain.
 
-   Participants and entities occupy places and exist somewhere
+   Players and entities occupy places and exist somewhere
    within the world.
 
    The World concept includes Linked Places, Entities, and Movement.
@@ -86,9 +86,9 @@ The Eight Core Concepts
 6. Persistence
 
    The world and its state endure independently of any individual
-   participant's session.
+   player's session.
 
-   A participant may disconnect and later return to a world whose
+   A player may disconnect and later return to a world whose
    state has continued to exist.
 
    Persistence does not require eternal continuity. Periodic
@@ -132,7 +132,7 @@ The Eight Core Concepts
    features. They are in the World, but they are not necessarily the
    means by which a player experiences the World.
 
-   Participants are somewhere, not everywhere.
+   Players are somewhere, not everywhere.
 
    Presence creates locality of information and enables:
 
@@ -418,8 +418,8 @@ What an entity can perceive depends upon where it is.
 
 Presence and Perception are closely related.
 
-A participant located in a carriage perceives a different
-subset of the world than a participant located inside a bag
+A Player located in a carriage perceives a different
+subset of the world than a Player located inside a bag
 within that carriage.
 
 The engine provides the structural model.
@@ -464,7 +464,7 @@ One Temporality Model
 
 One Player Population
 
-    Represents the participants inhabiting the world.
+    Represents the Players inhabiting the world.
 
 One Canonical Text Model
 
@@ -546,7 +546,7 @@ Guiding Principle
 -----------------
 
 JVMud models persistent, temporal, multiplayer text worlds
-inhabited by participants who perceive those worlds from
+inhabited by Players who perceive those worlds from
 within them.
 
 The engine is responsible for providing the fundamental

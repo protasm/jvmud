@@ -13,10 +13,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Registers the first JVMud engine functions needed by compiled mudlib objects. */
+/**
+ * Registers the core LPC-facing engine functions needed by compiled mudlib objects.
+ *
+ * <p>The functions in this class are compatibility entry points. Some names are intentionally
+ * legacy-shaped or shim-facing, but their implementations delegate into JVMud runtime context
+ * operations such as output delivery, object identity, containment, command dispatch, and
+ * scheduling.</p>
+ */
 public final class EngineEfuns {
     private EngineEfuns() {}
 
+    /** Registers the core efun set directly into a generated-code runtime context. */
     public static void registerCore(RuntimeContext context) {
         Objects.requireNonNull(context, "context");
 
@@ -25,6 +33,7 @@ public final class EngineEfuns {
         }
     }
 
+    /** Registers the core efun set into a host-facing LPC runtime. */
     public static void registerCore(LpcRuntime runtime) {
         Objects.requireNonNull(runtime, "runtime");
 
@@ -77,6 +86,19 @@ public final class EngineEfuns {
                 (runtime, args) -> runtime.queryIdle(args[0])));
         efuns.add(efun("jvmud_query_ip_number", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.queryIpNumber(args[0])));
+        efuns.add(efun("jvmud_read_mudlib_text", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.readMudlibText(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_lowercase_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> String.valueOf(args[0]).toLowerCase()));
+        efuns.add(efun("jvmud_capitalize_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> capitalizeText(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_capture_session_input", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
+                (runtime, args) -> {
+                    runtime.captureSessionInput(
+                            String.valueOf(args[0]),
+                            ((Number) args[1]).intValue() != 0);
+                    return null;
+                }));
         efuns.add(efun("jvmud_is_string", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof String ? 1 : 0));
         efuns.add(efun("jvmud_is_array", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
@@ -162,6 +184,13 @@ public final class EngineEfuns {
             return java.lang.reflect.Array.getLength(value);
         }
         throw new IllegalArgumentException("sizeof expects array, mapping, or string value");
+    }
+
+    private static String capitalizeText(String value) {
+        if (value.isEmpty()) {
+            return value;
+        }
+        return value.substring(0, 1).toUpperCase() + value.substring(1);
     }
 
     private static Object callOther(RuntimeContext runtime, Object target, String methodName) {

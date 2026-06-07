@@ -240,14 +240,18 @@ final class MudlibCompatibilityScanTest {
         case "add_action" -> support("Partial", "Registers handler methods and explicit verbs; player command lifecycle still needs session attachment.");
         case "call_other" -> support("Partial", "Reflective invoke exists for zero/one argument calls; broader arity and error behavior remain compatibility work.");
         case "call_out" -> support("Stubbed", "Engine accepts the call but does not schedule anything.");
+        case "capitalize" -> support("Implemented", "Mudlib mfun delegates to JVMud text capitalization.");
+        case "cat" -> support("Partial", "Mudlib mfun reads and writes mudlib-rooted text; line-range paging remains compatibility work.");
         case "clone_object" -> support("Partial", "Delegates to the runtime object factory; behavior depends on loaded source/object lifecycle.");
         case "destruct" -> support("Partial", "Removes objects and inventory links from RuntimeContext.");
         case "enable_commands" -> support("Stubbed", "Engine accepts the call but does not change interactive command state.");
         case "environment" -> support("Implemented", "RuntimeContext tracks object environments.");
         case "file_name" -> support("Implemented", "Returns the runtime object id for loaded objects.");
         case "first_inventory" -> support("Implemented", "RuntimeContext can walk the first child in an inventory.");
+        case "input_to" -> support("Partial", "Captures the next line of bound session input for a persona; no-echo handling remains transport work.");
         case "next_inventory" -> support("Implemented", "RuntimeContext can walk sibling inventory links.");
         case "living" -> support("Stubbed", "Mudlib mfun currently returns 0 for every value.");
+        case "lower_case" -> support("Implemented", "Mudlib mfun delegates to JVMud text lowercasing.");
         case "move_object" -> support("Implemented", "RuntimeContext moves objects between inventories with cycle checks.");
         case "present" -> support("Partial", "RuntimeContext searches inventory by identity or id method.");
         case "query_idle" -> support("Implemented", "Reads idle time from the bound session/persona record.");
@@ -265,8 +269,6 @@ final class MudlibCompatibilityScanTest {
         case "users" -> support("Implemented", "Returns connected persona objects from the session/persona registry.");
         case "write" -> support("Partial", "Routes to the active persona session when bound, with shared-output fallback.");
         case "add_worth",
-                "capitalize",
-                "cat",
                 "command",
                 "creator",
                 "crypt",
@@ -277,11 +279,9 @@ final class MudlibCompatibilityScanTest {
                 "find_living",
                 "find_object",
                 "find_player",
-                "input_to",
                 "intp",
                 "localcmd",
                 "log_file",
-                "lower_case",
                 "ls",
                 "mkdir",
                 "move_player",

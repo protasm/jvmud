@@ -4,47 +4,104 @@
   <meta charset="utf-8">
   <title>JVMud</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      max-width: 760px;
-      margin: 4rem auto;
-      padding: 0 1rem;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.6;
-    }
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 0.25rem;
-    }
-    .tagline {
-      font-size: 1.2rem;
-      color: #555;
-    }
-    code {
-      background: #f3f3f3;
-      padding: 0.1rem 0.25rem;
-      border-radius: 4px;
-    }
-  </style>
+  <meta name="description" content="JVMud is an experimental LPC/LPMud text-world engine for the JVM.">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>JVMud</h1>
-  <p class="tagline">An LPMUD platform for the JVM.</p>
+  <nav class="side-nav" aria-label="Project sections">
+    <a class="brand" href="index.html" aria-current="page">JVMud</a>
+    <a href="philosophy.html">Philosophy</a>
+    <a href="grammar.html">Grammar</a>
+    <a href="efuns.html">Efuns</a>
+    <a href="lpc.html">LPC</a>
+    <a href="api/index.html">API Docs</a>
+    <a href="https://github.com/protasm/jvmud">GitHub</a>
+  </nav>
 
-  <p>
-    JVMud is an experimental LPMUD platform focused on clarity,
-    maintainability, and a clean Java implementation.
-  </p>
+  <main>
+    <section class="hero">
+      <img src="assets/jvmud-hero.png" alt="A text adventure world rendered as connected rooms, command output, and bytecode motifs.">
+      <div class="hero-copy">
+        <p class="eyebrow">Open-source LPC on the JVM</p>
+        <h1>JVMud</h1>
+        <p>
+          A readable Java stack for persistent, multiplayer, text-based worlds
+          in the LP MUD tradition.
+        </p>
+      </div>
+    </section>
 
-  <h2>Status</h2>
-  <p>
-    Early development.
-  </p>
+    <section class="intro">
+      <div>
+        <h2>What It Is</h2>
+        <p>
+          JVMud compiles LPC-authored game objects to JVM classes and hosts them
+          inside an engine built around world, place, entity, movement,
+          temporality, persistence, and presence.
+        </p>
+      </div>
+      <div>
+        <h2>Current Shape</h2>
+        <p>
+          The repository contains a Java runtime, an LPC compiler, a local admin
+          CLI, an early Telnet listener, and a vanilla LPMUD 2.4.5 mudlib used
+          as the compatibility target.
+        </p>
+      </div>
+    </section>
 
-  <h2>Source</h2>
-  <p>
-    The project is hosted on GitHub:
-    <a href="https://github.com/protasm/jvmud">protasm/jvmud</a>
-  </p>
+    <section class="band">
+      <h2>Project Areas</h2>
+      <div class="feature-grid">
+        <article>
+          <h3>Runtime</h3>
+          <p>
+            Engine-owned world concepts: worlds, places, links, entities,
+            containment, capabilities, and deterministic scheduling.
+          </p>
+        </article>
+        <article>
+          <h3>Compiler</h3>
+          <p>
+            Scanner, preprocessor, parser, semantic analysis, typed IR, bytecode
+            generation, efun contracts, and generated-code helpers.
+          </p>
+        </article>
+        <article>
+          <h3>Interaction</h3>
+          <p>
+            A local admin shell and an early Telnet path for walking the live
+            mudlib through player-style commands.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="status">
+      <div>
+        <h2>Status</h2>
+        <p>
+          JVMud is early-stage engine work. The baseline build is Maven-backed,
+          the compiler can run smoke paths, and the runtime can boot a small
+          interactive session. Compatibility work is deliberately incremental.
+        </p>
+      </div>
+      <pre><code>mvn test
+./jvmud-admin
+./jvmud-start -mudlib-dir mudlib</code></pre>
+    </section>
+
+    <section class="api-callout">
+      <div>
+        <h2>Java API Docs</h2>
+        <p>
+          Generated Javadocs publish the current compiler and engine contracts:
+          runtime world primitives, mudlib boundary declarations, compiler
+          pipeline entry points, LPC runtime loading, and efun registration.
+        </p>
+      </div>
+      <a class="button-link" href="api/index.html">Open API Docs</a>
+    </section>
+  </main>
 </body>
 </html>

@@ -16,12 +16,12 @@ The primary medium through which the World is perceived and manipulated.
 
 ### Interactive
 
-The property that participants can affect the World and the World can affect
-participants.
+The property that Players can affect the World and the World can affect
+Players.
 
 ### Multiplayer
 
-The property that multiple participants inhabit the same World at the same time.
+The property that multiple Players inhabit the same World at the same time.
 
 ### World
 
@@ -96,12 +96,20 @@ inside another Entity.
 
 ## Player And Connection Model
 
+### Player
+
+The human person playing the Game from outside the fictional World.
+
+A Player interacts with JVMud through a Session and experiences the World
+through a Persona. The Player is not an Entity inside the World; the Persona is
+the in-world Entity that creates Presence for that Player.
+
 ### Session
 
 An active connection/control context, such as a telnet connection.
 
-A Session is not itself an Entity. It controls or observes the World through a
-Persona.
+A Session is not itself an Entity. It is the live connection between JVMud and a
+Player, and it controls or observes the World through a Persona.
 
 ### Persona
 
@@ -115,8 +123,11 @@ objects, or similar structures.
 
 ### Player Object
 
-The LPC-authored mudlib object that gives a Persona its behavior. A player
-object is still an Entity when viewed by the engine.
+The LPC-authored mudlib object that gives a Persona its behavior.
+
+This is mudlib and compatibility vocabulary, especially for legacy LP mudlibs.
+It should not be confused with a JVMud Player, who is the human person outside
+the World. A player object is still an Entity when viewed by the engine.
 
 ### Player Connection Lifecycle
 
@@ -133,7 +144,7 @@ register local interactions.
 
 ### Command Dispatch
 
-The engine process that takes a line of participant input, identifies the verb,
+The engine process that takes a line of Player input, identifies the verb,
 sets the active command context, and invokes mudlib behavior registered for that
 Interaction Scope.
 
@@ -146,11 +157,6 @@ The capability to receive information about the World.
 ### Actor
 
 The capability to initiate change within the World.
-
-### Participant
-
-A human or external user of the Game. Participants interact through Sessions and
-experience the World through Personas.
 
 ## LPC/LPMud Target
 

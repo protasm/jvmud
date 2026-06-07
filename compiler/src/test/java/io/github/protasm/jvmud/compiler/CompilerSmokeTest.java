@@ -487,6 +487,126 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeCapturesNextSessionInputForPersona() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        LpcObjectHandle player = runtime.loadSource("smoke/input_player.c", """
+                string response;
+
+                void ask() {
+                    jvmud_write("Name: ");
+                    jvmud_capture_session_input("answer", 0);
+                }
+
+                void answer(mixed line) {
+                    response = line;
+                    jvmud_write("Hello " + response + "\\n");
+                }
+
+                string last_response() {
+                    return response;
+                }
+                """);
+        StringBuilder output = new StringBuilder();
+        runtime.bindSession("s1", player.instance(), "127.0.0.1", output::append);
+
+        player.invoke("ask");
+
+        assertTrue(runtime.hasCapturedSessionInput(player.instance()));
+        assertEquals("Name: ", output.toString());
+
+        runtime.deliverCapturedSessionInput(player.instance(), "Alice");
+
+        assertEquals("Alice", player.invoke("last_response"));
+        assertEquals("Name: Hello Alice\n", output.toString());
+    }
+
+    @Test
+    void runtimeReadsMudlibRootedTextForCompatibilityShims() throws Exception {
+        Files.writeString(tempDir.resolve("WELCOME"), "Welcome to JVMud.\n");
+
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        LpcObjectHandle reader = runtime.loadSource("smoke/text_reader.c", """
+                mixed welcome() {
+                    return jvmud_read_mudlib_text("/WELCOME");
+                }
+
+                mixed escaped() {
+                    return jvmud_read_mudlib_text("../outside");
+                }
+
+                string lower() {
+                    return jvmud_lowercase_text("MiXeD");
+                }
+
+                string capitalized() {
+                    return jvmud_capitalize_text("alice");
+                }
+                """);
+
+        assertEquals("Welcome to JVMud.\n", reader.invoke("welcome"));
+        assertEquals(0, reader.invoke("escaped"));
+        assertEquals("mixed", reader.invoke("lower"));
+        assertEquals("Alice", reader.invoke("capitalized"));
+    }
+
+    @Test
+    void mfunTextCompatibilityWrapsNativeTextOperations() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("WELCOME"), "Welcome through mfun.\n");
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void write(mixed value) {
+                    jvmud_write(value);
+                }
+
+                status stringp(mixed value) {
+                    return jvmud_is_string(value);
+                }
+
+                int cat(string path) {
+                    mixed text;
+
+                    text = jvmud_read_mudlib_text(path);
+                    if (!stringp(text))
+                        return 0;
+
+                    write(text);
+                    return 1;
+                }
+
+                string lower_case(mixed value) {
+                    return jvmud_lowercase_text(value);
+                }
+
+                string capitalize(mixed value) {
+                    return jvmud_capitalize_text(value);
+                }
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                int show_welcome() {
+                    return cat("/WELCOME");
+                }
+
+                string normalized() {
+                    return capitalize(lower_case("ALICE"));
+                }
+                """);
+
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .build());
+
+        LpcObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+
+        assertEquals(1, caller.invoke("show_welcome"));
+        assertEquals("Welcome through mfun.\n", runtime.outputTranscript());
+        assertEquals("Alice", caller.invoke("normalized"));
+    }
+
+    @Test
     void mfunShadowsEngineFunctionWithSameNameAndArity() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/functions.c"), """

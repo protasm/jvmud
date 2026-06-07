@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>LPC - JVMud</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="side-nav" aria-label="Project sections">
+    <a class="brand" href="index.html">JVMud</a>
+    <a href="philosophy.html">Philosophy</a>
+    <a href="grammar.html">Grammar</a>
+    <a href="efuns.html">Efuns</a>
+    <a href="lpc.html" aria-current="page">LPC</a>
+    <a href="api/index.html">API Docs</a>
+    <a href="https://github.com/protasm/jvmud">GitHub</a>
+  </nav>
+
+  <main class="content-page">
+    <header>
+      <p class="eyebrow">Language target</p>
+      <h1>LPC</h1>
+      <p>
+        JVMud has one language and mudlib target: LPC for LPMud-style worlds.
+      </p>
+    </header>
+
+    <section>
+      <h2>Why LPC</h2>
+      <p>
+        LPC is the authored world language. JVMud's compiler and runtime are
+        being built so game objects can be rewritten, recompiled, reloaded, and
+        exercised while the world continues running.
+      </p>
+    </section>
+
+    <section>
+      <h2>Mudlib Compatibility</h2>
+      <p>
+        The repository includes vanilla LPMUD 2.4.5 mudlib content. Upstream
+        files are treated as source material; JVMud compatibility should come
+        from focused compiler/runtime support and dedicated shim objects.
+      </p>
+    </section>
+  </main>
+</body>
+</html>

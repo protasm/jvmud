@@ -75,14 +75,14 @@ The currently defined JVMud lifecycle events are:
 | `entity_departed_from_place` | Reserved | Departing entity or source place | source place, destination place, movement action | An entity is leaving a place. |
 | `entity_added_to_entity` | Reserved | Added entity or containing entity | container entity | An entity has entered another entity's containment. |
 | `entity_removed_from_entity` | Reserved | Removed entity or containing entity | previous container entity | An entity has left another entity's containment. |
-| `player_session_connected` | Reserved | Boundary object or player object | session id, remote address | A participant transport has connected and JVMud is about to resolve or create the in-world perspective entity. |
+| `player_session_connected` | Implemented, optional mapping | Player object | none currently | A Player transport has connected and JVMud has bound the Session to the player object; compatibility mudlibs may use this to start login input. |
 | `player_persona_resolved` | Reserved | Boundary object or player object | persona id | JVMud has resolved the entity that this session will use as its in-world perspective. |
 | `player_object_bound` | Reserved | Player object | persona id, session id | JVMud has associated a live player object entity with a connected session. |
 | `player_entered_world` | Reserved | Player object | starting place | JVMud has placed the player object into the world and interaction can begin. |
 | `player_session_disconnected` | Reserved | Player object or boundary object | persona id, session id | The transport has disconnected and JVMud is about to save, unbind, or clean up session control. |
 | `interaction_scope_started` | Implemented, optional mapping | Actor, actor location, carried objects, and nearby objects | none currently | An interactive actor's local command/perception scope is being refreshed; mudlib objects may register text commands or interaction affordances. |
-| `command_dispatch_started` | Reserved | Command actor or boundary object | command text, verb | JVMud is about to dispatch participant text to mudlib behavior. |
-| `command_dispatch_finished` | Reserved | Command actor or boundary object | command text, verb, handled status | JVMud has finished dispatching participant text. |
+| `command_dispatch_started` | Reserved | Command actor or boundary object | command text, verb | JVMud is about to dispatch Player text to mudlib behavior. |
+| `command_dispatch_finished` | Reserved | Command actor or boundary object | command text, verb, handled status | JVMud has finished dispatching Player text. |
 | `scheduled_tick` | Reserved | Scheduled object | scheduler context | The engine scheduler is delivering deterministic recurring time to an object. |
 | `deferred_callback` | Reserved | Scheduled object | callback payload | A previously requested one-shot deferred callback is due. |
 
@@ -167,8 +167,8 @@ entry points, not the conceptual boundary.
 | Query location | Ask where an entity currently is. | `environment` |
 | Query contents | Ask what entities are contained by a place or entity. | `all_inventory`, `first_inventory`, `next_inventory` |
 | Query current execution context | Ask which object, actor, verb, or command is active. | `this_object`, `this_player`, `query_verb` |
-| Register interaction commands | Make an object respond to participant text in its interaction scope. | `enable_commands`, `add_action`, `add_verb` |
-| Send text | Deliver text to one participant, nearby participants, or a place. | `write`, `say`, `tell_object`, `tell_room` |
+| Register interaction commands | Make an object respond to Player text in its interaction scope. | `enable_commands`, `add_action`, `add_verb` |
+| Send text | Deliver text to one Player, nearby Players, or a place. | `write`, `say`, `tell_object`, `tell_room` |
 | Schedule time | Request recurring or delayed work. | `set_heart_beat`, `call_out`, `remove_call_out` |
 | Access mudlib storage | Read, write, list, or query files within policy. | `read_file`, `write_file`, `file_size`, directory engine functions |
 | Ask mudlib policy | Delegate permissions or compatibility choices to mudlib policy objects. | master object hooks |
@@ -179,6 +179,14 @@ entry points, not the conceptual boundary.
 Compatibility shims are mudlib-side objects dedicated to translation. They are
 allowed to know legacy LPC names. They should be independent from upstream
 mudlib content so vanilla files remain intact.
+
+New compatibility work should be added in two steps. First identify and name
+the JVMud-native engine operation in terms of this contract, such as session
+input capture, text delivery, persistence, scheduled time, movement, location,
+or interaction scope. Then expose the legacy LPC spelling in a compatibility
+shim that delegates to that native operation. The fact that a legacy mudlib
+uses a driver function is evidence for a needed capability; it is not by itself
+the engine API design.
 
 Recommended shim roles:
 
@@ -199,7 +207,7 @@ legacy method names as engine ontology.
 - Entities have containment and location, but entities are not link endpoints.
 - Every entity has exactly one immediate location.
 - Text is the primary interaction medium.
-- Presence is situated; participants perceive from somewhere in the world.
+- Presence is situated; Players perceive from somewhere in the world.
 - Time is an engine concern; mudlibs can request timed behavior but do not own
   the scheduler.
 - Persistence is an engine concern; mudlibs can provide serialization behavior

@@ -58,15 +58,29 @@ public final class LpcRuntime {
         this.runtimeContext = new RuntimeContext(config.resolveIncludeResolver());
         this.runtimeContext.setObjectFactory(this::cloneObject);
         this.runtimeContext.setObjectLoader(this::loadOrGetObject);
+        this.runtimeContext.setMudlibTextReader(this::readMudlibText);
         this.classLoader = new LpcRuntimeClassLoader(config.parentClassLoader());
         this.pipeline = new CompilationPipeline(config.parentInternalName(), runtimeContext, config.compilationObserver());
     }
 
+    /**
+     * Loads, compiles, instantiates, registers, and initializes one LPC source file.
+     *
+     * <p>Relative paths are resolved under the configured base include path. Absolute-looking mudlib
+     * paths such as {@code /room/church} are also resolved under that base path when one is
+     * configured.</p>
+     */
     public LpcObjectHandle load(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         return load(resolveSourcePathWithExtensions(sourcePath));
     }
 
+    /**
+     * Returns a registered shared object for a source path, loading it if needed.
+     *
+     * <p>This is the host-side equivalent of resolving a mudlib singleton object rather than making
+     * a clone.</p>
+     */
     public Object loadOrGetObject(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
@@ -78,11 +92,18 @@ public final class LpcRuntime {
         return load(normalized).instance();
     }
 
+    /** Reloads an LPC source path, replacing the shared registered object if it already exists. */
     public LpcObjectHandle reload(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         return reload(resolveSourcePathWithExtensions(sourcePath));
     }
 
+    /**
+     * Reloads a source file from a filesystem path.
+     *
+     * <p>Reloading creates a fresh class loader because generated JVM classes cannot be redefined in
+     * the same loader.</p>
+     */
     public LpcObjectHandle reload(Path sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
@@ -98,6 +119,7 @@ public final class LpcRuntime {
         return load(normalized);
     }
 
+    /** Loads, compiles, instantiates, registers, and initializes one source file. */
     public LpcObjectHandle load(Path sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
@@ -142,6 +164,7 @@ public final class LpcRuntime {
         return new LpcObjectHandle(this, internalName, compiledClass, instance);
     }
 
+    /** Attempts to load source and captures runtime failures as a result object. */
     public LpcLoadResult tryLoad(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         try {
@@ -151,6 +174,7 @@ public final class LpcRuntime {
         }
     }
 
+    /** Attempts to load source and captures runtime failures as a result object. */
     public LpcLoadResult tryLoad(Path sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         try {
@@ -160,6 +184,7 @@ public final class LpcRuntime {
         }
     }
 
+    /** Compiles and loads in-memory LPC source under the supplied source name. */
     public LpcObjectHandle loadSource(String sourceName, String source) {
         Objects.requireNonNull(sourceName, "sourceName");
         Objects.requireNonNull(source, "source");
@@ -194,6 +219,11 @@ public final class LpcRuntime {
         return new LpcObjectHandle(this, internalName, compiledClass, instance);
     }
 
+    /**
+     * Creates a new clone of a compiled LPC object.
+     *
+     * <p>The source class is compiled if needed. Each clone receives a unique runtime object id.</p>
+     */
     public Object cloneObject(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
@@ -207,6 +237,7 @@ public final class LpcRuntime {
         return instance;
     }
 
+    /** Moves one runtime object into another object or into the shared object named by a path. */
     public void moveObject(Object object, Object destination) {
         if (destination instanceof String path) {
             destination = loadOrGetObject(path);
@@ -214,47 +245,78 @@ public final class LpcRuntime {
         runtimeContext.moveObject(object, destination);
     }
 
+    /** Returns the immediate runtime environment/container for an object. */
     public Object environment(Object object) {
         return runtimeContext.environment(object);
     }
 
+    /** Resolves an object by identifier in a container, using current-context defaults when needed. */
     public Object present(Object identifier, Object container) {
         return runtimeContext.present(identifier, container);
     }
 
+    /** Returns the first object contained by a runtime object. */
     public Object firstInventory(Object container) {
         return runtimeContext.firstInventory(container);
     }
 
+    /** Returns the next sibling object in inventory traversal. */
     public Object nextInventory(Object object) {
         return runtimeContext.nextInventory(object);
     }
 
+    /** Destructs a runtime object and removes it from object identity and containment indexes. */
     public void destructObject(Object object) {
         runtimeContext.destructObject(object);
     }
 
+    /** Registers a host-created object under a mudlib-style object id. */
     public void registerHostObject(String objectId, Object object) {
         runtimeContext.registerObject(normalizeInternalName(objectId), object);
     }
 
+    /** Returns the registered object id for an object, or {@code null} if it is not registered. */
     public String objectId(Object object) {
         return runtimeContext.objectId(object);
     }
 
+    /** Reads a mudlib-relative text file, returning LPC false ({@code 0}) when unavailable. */
+    public Object readMudlibText(String path) {
+        Objects.requireNonNull(path, "path");
+        Path resolved = resolveMudlibStoragePath(path);
+        if (resolved == null || !Files.isRegularFile(resolved)) {
+            return 0;
+        }
+        try {
+            return Files.readString(resolved);
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    /** Returns the active mudlib boundary metadata. */
     public MudlibBoundary mudlibBoundary() {
         return mudlibBoundary;
     }
 
+    /** Registers mudlib boundary metadata and updates generated-code helper configuration. */
     public void registerMudlibBoundary(MudlibBoundary mudlibBoundary) {
         this.mudlibBoundary = Objects.requireNonNull(mudlibBoundary, "mudlibBoundary");
         runtimeContext.setMfunObjectPath(mudlibBoundary.mfunObjectPath().orElse(null));
     }
 
+    /** Invokes a public LPC method with this runtime installed as the current generated-code context. */
     public Object invokeObject(Object object, String methodName, Object... args) {
         return withRuntimeContext(() -> runtimeContext.invokeObject(object, methodName, args));
     }
 
+    /**
+     * Rebuilds command actions for an actor from nearby mudlib objects.
+     *
+     * <p>This invokes the configured interaction-scope lifecycle method on the actor, its
+     * environment, and immediately nearby inventory objects so LPC {@code init}/{@code add_action}
+     * style registrations can be refreshed.</p>
+     */
     public void refreshCommandActions(Object actor) {
         Objects.requireNonNull(actor, "actor");
         withRuntimeContext(() -> runtimeContext.withCommandActor(actor, () -> {
@@ -277,6 +339,7 @@ public final class LpcRuntime {
         }));
     }
 
+    /** Dispatches one player command line through the actor's registered command actions. */
     public Object dispatchCommand(Object actor, String commandLine) {
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(commandLine, "commandLine");
@@ -284,6 +347,20 @@ public final class LpcRuntime {
                 runtimeContext.dispatchCommand(actor, commandLine)));
     }
 
+    /** Returns whether a persona is waiting for captured session input. */
+    public boolean hasCapturedSessionInput(Object persona) {
+        Objects.requireNonNull(persona, "persona");
+        return runtimeContext.hasCapturedSessionInput(persona);
+    }
+
+    /** Delivers one captured input line to a persona. */
+    public Object deliverCapturedSessionInput(Object persona, String line) {
+        Objects.requireNonNull(persona, "persona");
+        Objects.requireNonNull(line, "line");
+        return withRuntimeContext(() -> runtimeContext.deliverCapturedSessionInput(persona, line));
+    }
+
+    /** Builds a reflection-backed inspection snapshot for admin tooling. */
     public LpcObjectInspection inspectObject(Object object) {
         Objects.requireNonNull(object, "object");
         Object environment = runtimeContext.environment(object);
@@ -303,30 +380,37 @@ public final class LpcRuntime {
                 inspectMethods(object));
     }
 
+    /** Registers one LPC-facing engine function in this runtime. */
     public void registerEfun(Efun efun) {
         runtimeContext.registerEfun(efun);
     }
 
+    /** Sets the default output sink used for runtime text delivery. */
     public void setOutputSink(Consumer<String> outputSink) {
         runtimeContext.setOutputSink(outputSink);
     }
 
+    /** Binds a host session id to a persona and session-specific output sink. */
     public void bindSession(String sessionId, Object persona, String remoteAddress, Consumer<String> sessionOutputSink) {
         runtimeContext.bindSession(sessionId, persona, remoteAddress, sessionOutputSink);
     }
 
+    /** Removes a host session binding. */
     public void unbindSession(String sessionId) {
         runtimeContext.unbindSession(sessionId);
     }
 
+    /** Returns the accumulated default output transcript for diagnostics and tests. */
     public String outputTranscript() {
         return runtimeContext.outputTranscript();
     }
 
+    /** Clears the accumulated default output transcript. */
     public void clearOutputTranscript() {
         runtimeContext.clearOutputTranscript();
     }
 
+    /** Runs an action with this runtime installed as the current generated-code context. */
     public <T> T withRuntimeContext(Supplier<T> action) {
         Objects.requireNonNull(action, "action");
         RuntimeContext previous = RuntimeContextHolder.current();
@@ -338,11 +422,13 @@ public final class LpcRuntime {
         }
     }
 
+    /** Runs an action with this runtime and a current LPC object installed. */
     public <T> T withCurrentObject(Object object, Supplier<T> action) {
         Objects.requireNonNull(action, "action");
         return withRuntimeContext(() -> runtimeContext.withCurrentObject(object, action));
     }
 
+    /** Runnable convenience wrapper for {@link #withCurrentObject(Object, Supplier)}. */
     public void runWithCurrentObject(Object object, Runnable action) {
         Objects.requireNonNull(action, "action");
         withCurrentObject(object, () -> {
@@ -351,6 +437,7 @@ public final class LpcRuntime {
         });
     }
 
+    /** Runnable convenience wrapper for {@link #withRuntimeContext(Supplier)}. */
     public void runWithRuntimeContext(Runnable action) {
         Objects.requireNonNull(action, "action");
         withRuntimeContext(() -> {
@@ -581,6 +668,21 @@ public final class LpcRuntime {
         }
 
         return raw.normalize();
+    }
+
+    private Path resolveMudlibStoragePath(String path) {
+        if (baseIncludePath == null) {
+            return null;
+        }
+        String normalized = path.trim();
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        if (normalized.isBlank()) {
+            return null;
+        }
+        Path resolved = baseIncludePath.resolve(normalized).normalize();
+        return resolved.startsWith(baseIncludePath) ? resolved : null;
     }
 
     private Path resolveSourcePathWithExtensions(String sourcePath) {

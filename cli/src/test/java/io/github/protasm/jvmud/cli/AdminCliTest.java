@@ -234,6 +234,174 @@ final class AdminCliTest {
     }
 
     @Test
+    void telnetSessionRoutesCapturedInputThroughMfunInputTo() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/config"), """
+                mfun_object = jvmud/mfuns
+                player_object = obj/test_player
+                initial_place = room/start
+                lifecycle.object_loaded = reset
+                lifecycle.interaction_scope_started = init
+                """);
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.writeString(tempDir.resolve("obj/test_player.c"), """
+                string name;
+
+                void reset(mixed arg) {
+                    name = "unnamed";
+                }
+
+                string query_name() {
+                    return name;
+                }
+
+                string query_real_name() {
+                    return name;
+                }
+
+                int query_level() {
+                    return 0;
+                }
+
+                int query_invis() {
+                    return 0;
+                }
+
+                int remove_ghost() {
+                    return 1;
+                }
+
+                int id(mixed str) {
+                    return str == "player";
+                }
+
+                void init() {
+                    add_action("ask_name", "name");
+                }
+
+                int ask_name(mixed str) {
+                    write("Name: ");
+                    input_to("set_name");
+                    return 1;
+                }
+
+                void set_name(mixed str) {
+                    name = str;
+                    write("Hello " + name + "\\n");
+                }
+                """);
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void long(mixed str) {
+                    write("Start room.\\n");
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                readUntilPrompt(socket);
+
+                socket.getOutputStream().write("name\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilPrompt(socket).contains("Name: "));
+
+                socket.getOutputStream().write("Alice\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilPrompt(socket).contains("Hello Alice"));
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
+    void telnetSessionInvokesConfiguredPlayerConnectionLifecycleHook() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("WELCOME"), "Welcome login.\\n");
+        Files.writeString(tempDir.resolve("jvmud/config"), """
+                mfun_object = jvmud/mfuns
+                player_object = obj/test_player
+                initial_place = room/start
+                lifecycle.object_loaded = reset
+                lifecycle.player_session_connected = logon
+                """);
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.writeString(tempDir.resolve("obj/test_player.c"), """
+                string name;
+
+                void reset(mixed arg) {
+                    name = "logon";
+                }
+
+                int logon() {
+                    cat("/WELCOME");
+                    write("What is your name: ");
+                    input_to("logon2");
+                    return 1;
+                }
+
+                void logon2(mixed str) {
+                    name = lower_case(str);
+                    write("Hello " + capitalize(name) + "\\n");
+                }
+
+                string query_name() {
+                    return name;
+                }
+
+                string query_real_name() {
+                    return name;
+                }
+
+                int query_level() {
+                    return 0;
+                }
+
+                int query_invis() {
+                    return 0;
+                }
+
+                int remove_ghost() {
+                    return 1;
+                }
+
+                int id(mixed str) {
+                    return str == "player";
+                }
+                """);
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void long(mixed str) {
+                    write("Start room.\\n");
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                String greeting = readUntilPrompt(socket);
+                assertTrue(greeting.contains("Welcome login."), greeting);
+                assertTrue(greeting.contains("What is your name: "), greeting);
+
+                socket.getOutputStream().write("Alice\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilPrompt(socket).contains("Hello Alice"));
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
     void telnetConnectionsShareOneBootedMudRuntime() throws Exception {
         installMfunShim();
         Files.createDirectories(tempDir.resolve("room/village"));
@@ -875,6 +1043,14 @@ final class AdminCliTest {
                     jvmud_add_verb(verb);
                 }
 
+                void input_to(string method) {
+                    jvmud_capture_session_input(method, 0);
+                }
+
+                void input_to(string method, int noecho) {
+                    jvmud_capture_session_input(method, noecho);
+                }
+
                 object this_player() {
                     return jvmud_current_actor();
                 }
@@ -885,6 +1061,21 @@ final class AdminCliTest {
 
                 mixed call_other(mixed target, string method, mixed arg) {
                     return jvmud_invoke_object(target, method, arg);
+                }
+
+                int cat(string path) {
+                    mixed text;
+
+                    text = jvmud_read_mudlib_text(path);
+                    if (!stringp(text))
+                        return 0;
+
+                    write(text);
+                    return 1;
+                }
+
+                string capitalize(mixed value) {
+                    return jvmud_capitalize_text(value);
                 }
 
                 mixed creator(mixed ob) {
@@ -901,6 +1092,14 @@ final class AdminCliTest {
 
                 void move_object(mixed ob, mixed destination) {
                     jvmud_move_object(ob, destination);
+                }
+
+                string lower_case(mixed value) {
+                    return jvmud_lowercase_text(value);
+                }
+
+                status stringp(mixed value) {
+                    return jvmud_is_string(value);
                 }
 
                 object this_object() {

@@ -38,6 +38,7 @@ public final class RuntimeContext {
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
     private final Map<String, SessionBinding> sessions = new LinkedHashMap<>();
     private final Map<Object, SessionBinding> sessionsByPersona = new IdentityHashMap<>();
+    private final Map<Object, PendingSessionInput> pendingInputsByPersona = new IdentityHashMap<>();
     private final StringBuilder outputTranscript = new StringBuilder();
     private final ThreadLocal<Deque<Object>> currentObjectStack =
             ThreadLocal.withInitial(ArrayDeque::new);
@@ -50,6 +51,7 @@ public final class RuntimeContext {
     private Consumer<String> outputSink = ignored -> {};
     private Function<String, Object> objectFactory = path -> null;
     private Function<String, Object> objectLoader = path -> null;
+    private Function<String, Object> mudlibTextReader = path -> 0;
     private String mfunObjectPath;
 
     public RuntimeContext(IncludeResolver includeResolver) {
@@ -83,6 +85,10 @@ public final class RuntimeContext {
 
     public void setObjectLoader(Function<String, Object> objectLoader) {
         this.objectLoader = (objectLoader != null) ? objectLoader : path -> null;
+    }
+
+    public void setMudlibTextReader(Function<String, Object> mudlibTextReader) {
+        this.mudlibTextReader = (mudlibTextReader != null) ? mudlibTextReader : path -> 0;
     }
 
     public void setMfunObjectPath(String mfunObjectPath) {
@@ -284,7 +290,34 @@ public final class RuntimeContext {
         SessionBinding binding = sessions.remove(sessionId);
         if (binding != null) {
             sessionsByPersona.remove(binding.persona());
+            pendingInputsByPersona.remove(binding.persona());
         }
+    }
+
+    public void captureSessionInput(String methodName, boolean noEcho) {
+        Objects.requireNonNull(methodName, "methodName");
+        Object persona = outputTarget();
+        Object handler = currentObject();
+        if (persona == null || handler == null || !sessionsByPersona.containsKey(persona)) {
+            return;
+        }
+        pendingInputsByPersona.put(persona, new PendingSessionInput(handler, methodName, noEcho));
+    }
+
+    public boolean hasCapturedSessionInput(Object persona) {
+        return pendingInputsByPersona.containsKey(persona);
+    }
+
+    public Object deliverCapturedSessionInput(Object persona, String line) {
+        Objects.requireNonNull(persona, "persona");
+        Objects.requireNonNull(line, "line");
+        touchPersona(persona);
+        PendingSessionInput pendingInput = pendingInputsByPersona.remove(persona);
+        if (pendingInput == null) {
+            return 0;
+        }
+        return withCommandActor(persona, () ->
+                invokeObject(pendingInput.handler(), pendingInput.methodName(), line));
     }
 
     public int queryIdle(Object persona) {
@@ -302,6 +335,10 @@ public final class RuntimeContext {
             return 0;
         }
         return binding.remoteAddress();
+    }
+
+    public Object readMudlibText(String path) {
+        return mudlibTextReader.apply(path);
     }
 
     public void touchPersona(Object persona) {
@@ -449,6 +486,7 @@ public final class RuntimeContext {
         inventories.remove(object);
         lightLevels.remove(object);
         commandActions.remove(object);
+        pendingInputsByPersona.remove(object);
         removeCommandHandler(object);
         String id = objectIds.remove(object);
         if (id != null) {
@@ -689,6 +727,8 @@ public final class RuntimeContext {
     }
 
     private record CommandAction(Object handler, String methodName) {}
+
+    private record PendingSessionInput(Object handler, String methodName, boolean noEcho) {}
 
     private record SessionBinding(
             String sessionId,
