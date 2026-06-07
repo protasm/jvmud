@@ -2,13 +2,13 @@ string messages, new_hd, new_body;
 int num_messages;
 object who;
 
-get() {
+status get() {
   write("It is secured to the ground.\n");
 
   return 0;
 }
 
-get_body(str) {
+void get_body(mixed str) {
   if (str == "**") {
     new_hd = new_hd + "(" + call_other(this_player(), "query_name") +
     ", " + extract(ctime(time()), 4, 9) + ")";
@@ -31,7 +31,7 @@ get_body(str) {
   input_to("get_body");
 }
 
-headers() {
+status headers() {
   string hd, body, rest;
   int i, tmp;
 
@@ -44,26 +44,28 @@ headers() {
     if (tmp != 2 && tmp != 3) {
       write("Corrupt.\n");
 
-      return;
+      return 1;
     }
 
     write(i + ":\t" + hd + "\n");
 
     i += 1;
   }
+
+  return 1;
 }
 
-id(str) {
+status id(mixed str) {
   return str == "bulletin board" || str == "board" || str == "bulletinboard";
 }
 
-init() {
+void init() {
   add_action("new"); add_verb("note");
   add_action("read"); add_verb("read");
   add_action("remove"); add_verb("remove");
 }
 
-long() {
+void long() {
   write("You can set up new notes with the command 'note headline'.\n");
   write("Read a note with 'read num', and remove an old note with\n");
   write("'remove num'.\n");
@@ -88,7 +90,7 @@ long() {
   headers();
 }
 
-new(hd) {
+status new(mixed hd) {
   if (!hd)
     return 0;
 
@@ -120,7 +122,7 @@ new(hd) {
   return 1;
 }
 
-read(str) {
+status read(mixed str) {
   string hd, body, rest;
   int i, tmp;
 
@@ -144,7 +146,7 @@ read(str) {
     if (tmp != 2 && tmp != 3) {
       write("Corrupt.\n");
 
-      return;
+      return 1;
     }
 
     if (i == 0) {
@@ -159,9 +161,11 @@ read(str) {
   }
 
   write("Hm. This should not happen.\n");
+
+  return 1;
 }
 
-remove(str) {
+status remove(mixed str) {
   string hd, body, rest;
   int i, tmp;
 
@@ -186,7 +190,7 @@ remove(str) {
     if (tmp != 2 && tmp != 3) {
       write("Corrupt.\n");
 
-      return;
+      return 1;
     }
 
     if (i == 0) {
@@ -207,15 +211,17 @@ remove(str) {
   }
 
   write("Hm. This should not happen.\n");
+
+  return 1;
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
   restore_object("bulletin");
 }
 
-short() {
+string short() {
   return ("A bulletin board");
 }

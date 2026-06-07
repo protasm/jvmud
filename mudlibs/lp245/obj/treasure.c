@@ -28,34 +28,34 @@ int value, local_weight;
 *
 * The reason of this, is that the above saves a lot of memory.
 */
-get() {
+status get() {
   return 1;
 }
 
-id(str) {
+status id(mixed str) {
   return str == name || str == alias_name;
 }
 
-init() {
+void init() {
   if (!read_msg)
     return;
 
   add_action("read", "read");
 }
 
-long() {
+void long() {
   write(long_desc);
 }
 
-query_info() {
+string query_info() {
   return info;
 }
 
-query_weight() {
+int query_weight() {
   return local_weight;
 }
 
-read(str) {
+status read(mixed str) {
   if (str != name &&  str != alias_name)
     return 0;
 
@@ -64,41 +64,41 @@ read(str) {
   return 1;
 }
 
-set_alias(str) {
+void set_alias(mixed str) {
   alias_name = str;
 }
-query_value() { return value; }
+int query_value() { return value; }
 
-set_id(str) {
+void set_id(mixed str) {
   local_weight = 1;
   name = str;
 }
 
-set_info(i) {
+void set_info(mixed i) {
   info = i;
 }
 
-set_long(str) {
+void set_long(mixed str) {
   long_desc = str;
 }
 
-set_read(str) {
+void set_read(mixed str) {
   read_msg = str;
 }
 
-set_short(str) {
+void set_short(mixed str) {
   short_desc = str;
   long_desc = "You see nothing special.\n";
 }
 
-set_value(v) {
+void set_value(int v) {
   value = v;
 }
 
-set_weight(w) {
+void set_weight(int w) {
   local_weight = w;
 }
 
-short() {
+string short() {
   return short_desc;
 }

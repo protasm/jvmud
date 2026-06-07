@@ -1,9 +1,9 @@
 #include "living.h"
 int a_chat_chance;
-string a_chat_head;  /* Vector with all a_chat strings. */
+string *a_chat_head;  /* Vector with all a_chat strings. */
 int busy_catch_tell;
 int chat_chance;
-string chat_head;  /* Vector with all chat strings. */
+string *chat_head;  /* Vector with all chat strings. */
 object create_room;
 object dead_ob;
 int have_text;
@@ -15,10 +15,10 @@ int random_pick;
 string short_desc, long_desc, alias, alt_name, race;
 int spell_chance, spell_dam;
 string spell_mess1, spell_mess2;
-string talk_func;  /* Vector of functions. */
-string talk_match;  /* Vector of strings. */
+string *talk_func;  /* Vector of functions. */
+string *talk_match;  /* Vector of strings. */
 object talk_ob;
-string talk_type;  /* Vector of types. */
+string *talk_type;  /* Vector of types. */
 string the_text;
 /*
 * A general purpose monster. Clone this object,
@@ -51,14 +51,14 @@ string the_text;
 */
 
 status healing;    /* True if this monster is healing itself. */
-can_put_and_get(str) {
+status can_put_and_get(mixed str) {
   if (!str)
     return 0;
 
   return 1;
 }
 
-catch_tell(str) {
+void catch_tell(mixed str) {
   if (busy_catch_tell)
     return;
 
@@ -81,7 +81,7 @@ catch_tell(str) {
 /*
 * The monster will heal itself slowly.
 */
-heal_slowly() {
+void heal_slowly() {
   hit_point += 120 / (INTERVAL_BETWEEN_HEALING * 2);
 
   if (hit_point > max_hp)
@@ -100,9 +100,9 @@ heal_slowly() {
   else
     healing = 0;
 }
-id(str) { return str == name || str == alias || str == race || str == alt_name; }
+status id(mixed str) { return str == name || str == alias || str == race || str == alt_name; }
 
-heart_beat() {
+void heart_beat() {
   int c;
 
   age += 1;
@@ -176,7 +176,7 @@ heart_beat() {
   }
 }
 
-init() {
+void init() {
   create_room = environment(me);
 
   if(this_player() == me)
@@ -203,31 +203,31 @@ init() {
 * always good, because it checks the level of the caller, and this function
 * can be called by a room.
 */
-init_command(cmd) {
+void init_command(mixed cmd) {
   command(cmd);
 }
 
 /* Load attack chat */
 
-load_a_chat(chance, strs) {
+void load_a_chat(int chance, mixed strs) {
   sizeof(strs);    /* Just ensure that it is an array. */
 
   a_chat_head = strs;
   a_chat_chance = chance;
 }
 
-load_chat(chance, strs) {
+void load_chat(int chance, mixed strs) {
   sizeof(strs);    /* Just ensure that it is an array. */
 
   chat_head = strs;
   chat_chance = chance;
 }
 
-long() {
+void long() {
   write (long_desc);
 }
 
-pick_any_obj() {
+void pick_any_obj() {
   object ob;
   int weight;
 
@@ -260,7 +260,7 @@ pick_any_obj() {
   }
 }
 
-random_move() {
+void random_move() {
   int n;
 
   n = random(4);
@@ -278,7 +278,7 @@ random_move() {
     command("north");
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg) {
     if (move_at_reset)
       random_move();
@@ -294,38 +294,38 @@ reset(arg) {
   create_room = environment(me);
 }
 
-second_life() {
+mixed second_life() {
   if(dead_ob)
     return call_other(dead_ob,"monster_died",this_object());
 }
 
 /* Optional */
-set_alias(a) { alias = a; }
+void set_alias(mixed a) { alias = a; }
 /* Optional */
-set_alt_name(a) { alt_name = a; }
+void set_alt_name(mixed a) { alt_name = a; }
 /* Optional */
-set_race(r) { race = r; }
+void set_race(mixed r) { race = r; }
 /* optional */
-set_hp(hp) { max_hp = hp; hit_point = hp; }
+void set_hp(int hp) { max_hp = hp; hit_point = hp; }
 /* optional. Can only be lowered */
-set_ep(ep) { if (ep < experience) experience = ep; }
+void set_ep(int ep) { if (ep < experience) experience = ep; }
 /* optional */
-set_al(al) { alignment = al; }
+void set_al(int al) { alignment = al; }
 /* optional */
-set_short(sh) { short_desc = sh; long_desc = short_desc + "\n";}
+void set_short(mixed sh) { short_desc = sh; long_desc = short_desc + "\n";}
 /* optional */
-set_long(lo) { long_desc = lo; }
+void set_long(mixed lo) { long_desc = lo; }
 /* optional */
-set_wc(wc) { if (wc > weapon_class) weapon_class = wc; }
+void set_wc(int wc) { if (wc > weapon_class) weapon_class = wc; }
 /* optional */
-set_ac(ac) { if (ac > armour_class) armour_class = ac; }
+void set_ac(int ac) { if (ac > armour_class) armour_class = ac; }
 /* optional */
-set_move_at_reset() { move_at_reset = 1; }
+void set_move_at_reset() { move_at_reset = 1; }
 /* optional
 * 0: Peaceful.
 * 1: Attack on sight.
 */
-set_aggressive(a) {
+void set_aggressive(int a) {
   aggressive = a;
 }
 
@@ -335,24 +335,24 @@ set_aggressive(a) {
 /*
 * The percent chance of casting a spell.
 */
-set_chance(c) {
+void set_chance(int c) {
   spell_chance = c;
 }
 
-set_dead_ob(ob) {
+void set_dead_ob(object ob) {
   dead_ob = ob;
 }
 
 /* Set the frog curse. */
-set_frog() {
+void set_frog() {
   frog = 1;
 }
 
-set_init_ob(ob) {
+void set_init_ob(object ob) {
   init_ob = ob;
 }
 
-set_level(l) {
+void set_level(int l) {
   level = l;
   Str = l; Int = l; Con = l; Dex = l;
   weapon_class = level/2 + 3;
@@ -368,7 +368,7 @@ set_level(l) {
 
 /* Catch the talk */
 
-set_match(ob, func, type, match) {
+void set_match(object ob, mixed func, mixed type, mixed match) {
   object old;
 
   if (sizeof(func) != sizeof(type) || sizeof(match) != sizeof(type))
@@ -387,7 +387,7 @@ set_match(ob, func, type, match) {
 * Call them in the order they appear.
 */
 
-set_name(n) {
+void set_name(mixed n) {
   name = n;
 
   set_living_name(n);
@@ -398,36 +398,36 @@ set_name(n) {
   long_desc = "You see nothing special.\n";
 }
 
-set_random_pick(r) {
+void set_random_pick(int r) {
   random_pick = r;
 }
 
-set_spell_dam(d) {
+void set_spell_dam(int d) {
   spell_dam = d;
 }
 
 /* Message to the victim. */
-set_spell_mess1(m) {
+void set_spell_mess1(mixed m) {
   spell_mess1 = m;
 }
 
-set_spell_mess2(m) {
+void set_spell_mess2(mixed m) {
   spell_mess2 = m;
 }
 
 /* Set the whimpy mode */
-set_whimpy() {
+void set_whimpy() {
   whimpy = 1;
 }
 
-short() {
+string short() {
   return short_desc;
 }
-query_create_room() { return create_room; }
+object query_create_room() { return create_room; }
 
-query_race() { return race; }
+string query_race() { return race; }
 
-test_match(str) {
+mixed test_match(mixed str) {
   string who, str1, type, match, func;
   int i;
 

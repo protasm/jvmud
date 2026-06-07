@@ -1,7 +1,7 @@
 string cap_name;
 object the_owner;
 /* Modified for genders: padrone, Oct 22 1990 */
-applaud() {
+int applaud() {
   if (ghost())
     return 0;
 
@@ -11,7 +11,7 @@ applaud() {
   return 1;
 }
 
-blush() {
+int blush() {
   if (ghost())
     return 0;
 
@@ -21,7 +21,7 @@ blush() {
   return 1;
 }
 
-bounce() {
+int bounce() {
   if (ghost())
     return 0;
 
@@ -31,7 +31,7 @@ bounce() {
   return 1;
 }
 
-bow(str) {
+int bow(mixed str) {
   object who;
 
   if (ghost())
@@ -56,7 +56,7 @@ bow(str) {
   return 1;
 }
 
-burp() {
+int burp() {
   if (ghost())
     return 0;
 
@@ -66,7 +66,7 @@ burp() {
   return 1;
 }
 
-cackle() {
+int cackle() {
   if (ghost())
     return 0;
 
@@ -78,7 +78,7 @@ cackle() {
   return 1;
 }
 
-chuckle() {
+int chuckle() {
   if (ghost())
     return 0;
 
@@ -88,7 +88,7 @@ chuckle() {
   return 1;
 }
 
-clap() {
+int clap() {
   if (ghost())
     return 0;
 
@@ -98,7 +98,7 @@ clap() {
   return 1;
 }
 
-comfort(str) {
+int comfort(mixed str) {
   object who;
 
   if (ghost())
@@ -119,7 +119,7 @@ comfort(str) {
   return 1;
 }
 
-cough() {
+int cough() {
   if (ghost())
     return 0;
 
@@ -129,7 +129,7 @@ cough() {
   return 1;
 }
 
-cry() {
+int cry() {
   if (ghost())
     return 0;
 
@@ -139,7 +139,7 @@ cry() {
   return 1;
 }
 
-cuddle(str) {
+int cuddle(mixed str) {
   object who;
 
   if (ghost())
@@ -160,7 +160,7 @@ cuddle(str) {
   return 1;
 }
 
-curtsey() {
+int curtsey() {
   if (ghost())
     return 0;
 
@@ -170,7 +170,7 @@ curtsey() {
   return 1;
 }
 
-dance(str) {
+int dance(mixed str) {
   object who;
 
   if (ghost())
@@ -195,7 +195,7 @@ dance(str) {
   return 1;
 }
 
-fart() {
+int fart() {
   if (ghost())
     return 0;
 
@@ -205,7 +205,7 @@ fart() {
   return 1;
 }
 
-flip() {
+int flip() {
   if (ghost())
     return 0;
 
@@ -215,7 +215,7 @@ flip() {
   return 1;
 }
 
-fondle(str) {
+int fondle(mixed str) {
   object who;
 
   if (ghost())
@@ -236,7 +236,7 @@ fondle(str) {
   return 1;
 }
 
-french(str) {
+int french(mixed str) {
   object who;
 
   if (ghost())
@@ -261,7 +261,7 @@ french(str) {
   return 1;
 }
 
-frown() {
+int frown() {
   if (ghost())
     return 0;
 
@@ -271,7 +271,7 @@ frown() {
   return 1;
 }
 
-gasp() {
+int gasp() {
   if (ghost())
     return 0;
 
@@ -281,19 +281,19 @@ gasp() {
   return 1;
 }
 
-get() {
+int get() {
   the_owner = this_player();
   cap_name = call_other(this_player(), "query_name", 0);
   return 1;
 }
 
-ghost() {
+int ghost() {
   the_owner = this_player();
   cap_name = call_other(this_player(), "query_name", 0);
   return call_other(this_player(), "query_ghost");
 }
 
-giggle() {
+int giggle() {
   if (ghost())
     return 0;
 
@@ -303,7 +303,7 @@ giggle() {
   return 1;
 }
 
-glare(str) {
+int glare(mixed str) {
   object who;
 
   if (ghost())
@@ -324,7 +324,7 @@ glare(str) {
   return 1;
 }
 
-grin() {
+int grin() {
   if (ghost())
     return 0;
 
@@ -334,7 +334,7 @@ grin() {
   return 1;
 }
 
-groan() {
+int groan() {
   if (ghost())
     return 0;
 
@@ -344,7 +344,7 @@ groan() {
   return 1;
 }
 
-grope(str) {
+int grope(mixed str) {
   object who;
 
   if (ghost())
@@ -365,7 +365,7 @@ grope(str) {
   return 1;
 }
 
-growl(str) {
+int growl(mixed str) {
   object who;
 
   if (ghost())
@@ -390,7 +390,7 @@ growl(str) {
   return 1;
 }
 
-hiccup() {
+int hiccup() {
   if (ghost())
     return 0;
 
@@ -400,7 +400,7 @@ hiccup() {
   return 1;
 }
 
-hug(str) {
+int hug(mixed str) {
   object who;
 
   if (ghost())
@@ -421,7 +421,7 @@ hug(str) {
   return 1;
 }
 
-init() {
+void init() {
   the_owner = this_player();
   cap_name = call_other(this_player(), "query_name", 0);
 
@@ -495,7 +495,7 @@ init() {
   add_action("yawn", "yawn");
 }
 
-kick(str) {
+int kick(mixed str) {
   object who;
 
   if (ghost())
@@ -516,7 +516,7 @@ kick(str) {
   return 1;
 }
 
-kiss(str) {
+int kiss(mixed str) {
   object who;
 
   if (ghost())
@@ -545,7 +545,7 @@ kiss(str) {
   return 1;
 }
 
-knee(str) {
+int knee(mixed str) {
   object who;
 
   if (ghost())
@@ -581,7 +581,7 @@ knee(str) {
   return 1;
 }
 
-laugh() {
+int laugh() {
   if (ghost())
     return 0;
 
@@ -591,7 +591,7 @@ laugh() {
   return 1;
 }
 
-lick(str) {
+int lick(mixed str) {
   object who;
 
   if (ghost())
@@ -611,15 +611,15 @@ lick(str) {
 
   return 1;
 }
-drop() { return 1; }
+int drop() { return 1; }
 
-id(str) { return str == "soul"; }
+int id(mixed str) { return str == "soul"; }
 
-long() {
+void long() {
   write("It is transparent.\n");
 }
 
-love(str) {
+int love(mixed str) {
   object who;
 
   if (ghost())
@@ -640,7 +640,7 @@ love(str) {
   return 1;
 }
 
-moan() {
+int moan() {
   if (ghost())
     return 0;
 
@@ -650,7 +650,7 @@ moan() {
   return 1;
 }
 
-nibble(str) {
+int nibble(mixed str) {
   object who;
 
   if (ghost())
@@ -671,7 +671,7 @@ nibble(str) {
   return 1;
 }
 
-nod() {
+int nod() {
   if (ghost())
     return 0;
 
@@ -681,7 +681,7 @@ nod() {
   return 1;
 }
 
-poke(str) {
+int poke(mixed str) {
   object who;
 
   if (ghost())
@@ -702,7 +702,7 @@ poke(str) {
   return 1;
 }
 
-pout() {
+int pout() {
   if (ghost())
     return 0;
 
@@ -712,7 +712,7 @@ pout() {
   return 1;
 }
 
-puke(str) {
+int puke(mixed str) {
   object who;
 
   if (ghost())
@@ -737,7 +737,7 @@ puke(str) {
   return 1;
 }
 
-purr() {
+int purr() {
   if (ghost())
     return 0;
 
@@ -747,7 +747,7 @@ purr() {
   return 1;
 }
 
-ruffle(str) {
+int ruffle(mixed str) {
   object who;
 
   if (ghost())
@@ -768,7 +768,7 @@ ruffle(str) {
   return 1;
 }
 
-scream() {
+int scream() {
   if (ghost())
     return 0;
 
@@ -778,7 +778,7 @@ scream() {
   return 1;
 }
 
-shake(str) {
+int shake(mixed str) {
   object who;
 
   if (ghost())
@@ -803,7 +803,7 @@ shake(str) {
   return 1;
 }
 
-shiver() {
+int shiver() {
   if (ghost())
     return 0;
 
@@ -813,7 +813,7 @@ shiver() {
   return 1;
 }
 
-shrug() {
+int shrug() {
   if (ghost())
     return 0;
 
@@ -823,7 +823,7 @@ shrug() {
   return 1;
 }
 
-sigh() {
+int sigh() {
   if (ghost())
     return 0;
 
@@ -833,7 +833,7 @@ sigh() {
   return 1;
 }
 
-sing() {
+int sing() {
   if (ghost())
     return 0;
 
@@ -843,7 +843,7 @@ sing() {
   return 1;
 }
 
-slap(str) {
+int slap(mixed str) {
   object who;
 
   if (ghost())
@@ -864,7 +864,7 @@ slap(str) {
   return 1;
 }
 
-smile(str) {
+int smile(mixed str) {
   object who;
 
   if (ghost()) {
@@ -892,7 +892,7 @@ smile(str) {
   return 1;
 }
 
-smirk() {
+int smirk() {
   if (ghost())
     return 0;
 
@@ -902,7 +902,7 @@ smirk() {
   return 1;
 }
 
-snap() {
+int snap() {
   if (ghost())
     return 0;
 
@@ -914,7 +914,7 @@ snap() {
   return 1;
 }
 
-sneeze() {
+int sneeze() {
   if (ghost())
     return 0;
 
@@ -924,7 +924,7 @@ sneeze() {
   return 1;
 }
 
-snicker() {
+int snicker() {
   if (ghost())
     return 0;
 
@@ -934,7 +934,7 @@ snicker() {
   return 1;
 }
 
-sniff() {
+int sniff() {
   if (ghost())
     return 0;
 
@@ -944,7 +944,7 @@ sniff() {
   return 1;
 }
 
-snore() {
+int snore() {
   if (ghost())
     return 0;
 
@@ -954,7 +954,7 @@ snore() {
   return 1;
 }
 
-snuggle(str) {
+int snuggle(mixed str) {
   object who;
 
   if (ghost())
@@ -975,7 +975,7 @@ snuggle(str) {
   return 1;
 }
 
-spit(str) {
+int spit(mixed str) {
   object who;
 
   if (ghost())
@@ -1000,7 +1000,7 @@ spit(str) {
   return 1;
 }
 
-squeeze(str) {
+int squeeze(mixed str) {
   object who;
 
   if (ghost())
@@ -1021,7 +1021,7 @@ squeeze(str) {
   return 1;
 }
 
-stare(str) {
+int stare(mixed str) {
   object who;
 
   if (ghost())
@@ -1046,7 +1046,7 @@ stare(str) {
   return 1;
 }
 
-strut() {
+int strut() {
   if (ghost())
     return 0;
 
@@ -1056,7 +1056,7 @@ strut() {
   return 1;
 }
 
-sulk() {
+int sulk() {
   if (ghost())
     return 0;
 
@@ -1066,7 +1066,7 @@ sulk() {
   return 1;
 }
 
-thank(str) {
+int thank(mixed str) {
   object who;
 
   if (ghost())
@@ -1087,7 +1087,7 @@ thank(str) {
   return 1;
 }
 
-twiddle() {
+int twiddle() {
   if (ghost())
     return 0;
 
@@ -1099,7 +1099,7 @@ twiddle() {
   return 1;
 }
 
-whistle(str) {
+int whistle(mixed str) {
   object who;
 
   if (ghost())
@@ -1124,7 +1124,7 @@ whistle(str) {
   return 1;
 }
 
-wiggle() {
+int wiggle() {
   if (ghost())
     return 0;
 
@@ -1136,7 +1136,7 @@ wiggle() {
   return 1;
 }
 
-wink(str) {
+int wink(mixed str) {
   object who;
 
   if (ghost())
@@ -1161,7 +1161,7 @@ wink(str) {
   return 1;
 }
 
-yawn() {
+int yawn() {
   if (ghost())
     return 0;
 

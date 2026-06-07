@@ -1,10 +1,9 @@
-#include "room/std.h"
-init() {
+void init() {
   add_action("west", "west");
   add_action("open", "open");
 }
 
-long(str) {
+void long(mixed str) {
   if (str == "door") {
     if (call_other("room/village/bank", "query_door"))
       write("The door is closed.\n");
@@ -18,7 +17,7 @@ long(str) {
   write("You are in the backroom of the bank.\n");
 }
 
-open(str) {
+status open(mixed str) {
   if (!str) return 0;
   if (!call_other("room/village/bank", "query_door"))
     return 0;
@@ -33,18 +32,18 @@ open(str) {
   return 1;
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (!arg) {
     set_light(1);
     move_object(clone_object("obj/safe"), this_object());
   }
 }
 
-short() {
+string short() {
   return "backroom of bank";
 }
 
-west() {
+status west() {
   if (call_other("room/village/bank", "query_door")) {
     write("The door is closed.\n");
 

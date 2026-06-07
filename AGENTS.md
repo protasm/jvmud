@@ -39,6 +39,9 @@ the baseline test suite unless the task calls for a narrower command.
 - Treat `mudlibs/lp245/` as LPC source/content, not Java module source. Preserve
   upstream mudlib files by default; compatibility belongs in dedicated shim
   objects and focused compiler/runtime support.
+- Do not change the compiler to accept untyped LPC method declarations or
+  untyped method parameters. When vanilla mudlib files need to compile, add
+  explicit LPC return and parameter types to those mudlib sources instead.
 - Keep runtime/server concepts separate from compiler execution helpers.
 - Prefer small documentation updates that reflect the current repo state over
   speculative roadmaps.

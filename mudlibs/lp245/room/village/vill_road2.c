@@ -6,21 +6,21 @@ int count;
 string function, type, match;
 object harry;
 
-down() {
+status down() {
   call_other(this_player(), "move_player", "down#room/village/station");
 
   return 1;
 
 }
 
-follow(str) {
+void follow(mixed str) {
   string who, where;
 
   if(sscanf(str, "%s leaves %s.\n", who, where) == 2)
     call_other(harry, "init_command", where);
 }
 
-gives(str) {
+void gives(mixed str) {
   string who, what, whom;
   int rand;
   object obj, next_obj;
@@ -93,7 +93,7 @@ gives(str) {
   }
 }
 
-how_does_it_feel(str) {
+void how_does_it_feel(mixed str) {
   string who, what;
 
   sscanf(str, "%s %s", who, what);
@@ -107,7 +107,7 @@ how_does_it_feel(str) {
   }
 }
 
-monster_died() {
+void monster_died() {
   object obj, b;
   int num;
 
@@ -129,12 +129,12 @@ monster_died() {
     notify("There is a crushing sound of bottles breaking, as the body falls.\n");
 }
 
-notify(str) {
+void notify(mixed str) {
   say(str);
   write(str);
 }
 
-reset(arg) {
+void reset(mixed arg) {
   start_harry();
 
   if (arg)
@@ -157,7 +157,7 @@ reset(arg) {
   set_light(1);
 }
 
-say_hello(str) {
+void say_hello(mixed str) {
   string who;
 
   if (sscanf(str, "%s arrives.", who) == 1) {
@@ -165,7 +165,7 @@ say_hello(str) {
   }
 }
 
-smiles(str) {
+void smiles(mixed str) {
   string who, what;
 
   sscanf(str, "%s %s", who, what);
@@ -180,7 +180,7 @@ smiles(str) {
   }
 }
 
-start_harry() {
+void start_harry() {
   if(!harry) {
     if (!chat_str) {
       chat_str = allocate(10);
@@ -253,7 +253,7 @@ start_harry() {
   }
 }
 
-test_say(str) {
+void test_say(mixed str) {
   string a, b, message;
 
   sscanf(str, "%s %s", a, b);
@@ -287,7 +287,7 @@ test_say(str) {
   notify(message);
 }
 
-why_did(str) {
+void why_did(mixed str) {
   string who, what;
 
   sscanf(str, "%s %s", who, what);

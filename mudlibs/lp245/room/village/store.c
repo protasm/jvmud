@@ -1,31 +1,31 @@
 #define MAX_LIST  30
-string name_of_item;
-int value;
+object name_of_item;
+int item_value;
 
-buy(item) {
+status buy(mixed item) {
   name_of_item = present(item);
 
   if (!name_of_item) {
     write("No such item in the store.\n");
 
-    return;
+    return 0;
   }
 
-  value = call_other(name_of_item, "query_value", 0);
+  item_value = call_other(name_of_item, "query_value", 0);
 
-  if (!value) {
+  if (!item_value) {
     write("Item has no value.\n");
 
-    return;
+    return 0;
   }
 
-  value *= 2;
+  item_value *= 2;
 
-  if (call_other(this_player(), "query_money", 0) < value) {
+  if (call_other(this_player(), "query_money", 0) < item_value) {
     write("It would cost you ");
-    write(value); write(" gold coins, which you don't have.\n");
+    write(item_value); write(" gold coins, which you don't have.\n");
 
-    return;
+    return 0;
   }
 
   if (!call_other(this_player(), "add_weight",
@@ -33,15 +33,17 @@ buy(item) {
 
     write("You can't carry that much.\n");
 
-    return;
+    return 0;
   }
-  call_other(this_player(), "add_money", 0 - value);
+  call_other(this_player(), "add_money", 0 - item_value);
   move_object(name_of_item, this_player());
   write("Ok.\n");
   say(call_other(this_player(), "query_name") + " buys " + item + ".\n");
+
+  return 1;
 }
 
-heart_beat() {
+void heart_beat() {
   object ob, next_ob;
 
   ob = first_inventory(this_object());
@@ -55,11 +57,11 @@ heart_beat() {
   }
 }
 
-init() {
+void init() {
   add_action("south", "south");
 }
 
-inventory(str) {
+void inventory(mixed str) {
   object ob;
   int max;
 
@@ -92,21 +94,21 @@ inventory(str) {
   }
 }
 
-list(ob) {
-  int value;
+void list(object ob) {
+  int item_value;
 
-  value = call_other(ob, "query_value", 0);
+  item_value = call_other(ob, "query_value", 0);
 
-  if (value) {
-    write(value*2 + ":\t" + call_other(ob, "short") + ".\n");
+  if (item_value) {
+    write(item_value*2 + ":\t" + call_other(ob, "short") + ".\n");
   }
 }
 
-long() {
+void long() {
   write("All things from the shop are stored here.\n");
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (!arg)
     set_light(1);
 
@@ -122,17 +124,17 @@ reset(arg) {
   }
 }
 
-short() {
+string short() {
   return "store room for the shop";
 }
 
-south() {
+status south() {
   call_other(this_player(), "move_player", "leaves#room/village/shop");
 
   return 1;
 }
 
-store(item) {
+void store(object item) {
   string short_desc;
   object ob;
 
@@ -156,21 +158,21 @@ store(item) {
   move_object(item, this_object());
 }
 
-value(item) {
+status value(mixed item) {
   name_of_item = present(item);
 
   if (!name_of_item) {
     return 0;
   }
 
-  value = call_other(name_of_item, "query_value", 0);
+  item_value = call_other(name_of_item, "query_value", 0);
 
-  if (!value) {
+  if (!item_value) {
     return 0;
   }
 
   write("The "); write(item); write(" would cost you ");
-  write(value*2); write(" gold coins.\n");
+  write(item_value*2); write(" gold coins.\n");
 
   return 1;
 }

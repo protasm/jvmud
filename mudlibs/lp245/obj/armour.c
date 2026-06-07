@@ -29,8 +29,8 @@ object worn_by;
 *
 * The reason of this, is that the above saves a lot of memory.
 */
-get() { return 1; }
-drop(silently) {
+status get() { return 1; }
+status drop(mixed silently) {
   if (worn) {
     call_other(worn_by, "stop_wearing",name);
 
@@ -44,35 +44,35 @@ drop(silently) {
   return 0;
 }
 
-id(str) {
+status id(mixed str) {
   return str == name || str == alias || str == type;
 }
 
-init() {
+void init() {
   add_action("wear", "wear");
   add_action("remove", "remove");
 }
 
-link(ob) {
+void link(object ob) {
   next = ob;
 }
 
-long(str) {
+void long(mixed str) {
   write(long_desc);
 }
 
-query_info() {
+string query_info() {
   return info;
 }
 
-rec_short() {
+string rec_short() {
   if(next)
     return name + ", " + call_other(next, "rec_short");
 
   return name;
 }
 
-remove(str) {
+status remove(mixed str) {
   if (!id(str))
     return 0;
 
@@ -87,7 +87,7 @@ remove(str) {
   return 1;
 }
 
-remove_link(str) {
+object remove_link(mixed str) {
   object ob;
 
   if (str == name) {
@@ -102,31 +102,31 @@ remove_link(str) {
   return this_object();
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if(arg)
     return;
 
   type = "armour";
 }
-set_arm_light(l) { set_light(l); }
-set_info(i) {
+void set_arm_light(int l) { set_light(l); }
+void set_info(mixed i) {
   info = i;
 }
-query_weight() { return weight; }
+mixed query_weight() { return weight; }
 
-set_id(n) { name = n; }
-set_name(n) { name = n; }
-set_short(s) { short_desc = s; long_desc = s + ".\n"; }
-set_value(v) { value = v; }
-set_weight(w) { weight = w; }
-set_ac(a) { ac = a; }
-set_alias(a) { alias = a; }
-set_long(l) { long_desc = l; }
-set_type(t) {
+void set_id(mixed n) { name = n; }
+void set_name(mixed n) { name = n; }
+void set_short(mixed s) { short_desc = s; long_desc = s + ".\n"; }
+void set_value(mixed v) { value = v; }
+void set_weight(mixed w) { weight = w; }
+void set_ac(int a) { ac = a; }
+void set_alias(mixed a) { alias = a; }
+void set_long(mixed l) { long_desc = l; }
+void set_type(mixed t) {
   type = t;
 }
 
-short() {
+mixed short() {
   if (!short_desc)
     return 0;
 
@@ -136,7 +136,7 @@ short() {
   return short_desc;
 }
 
-test_type(str) {
+object test_type(mixed str) {
   if(str == type)
     return this_object();
 
@@ -146,23 +146,23 @@ test_type(str) {
   return 0;
 }
 
-tot_ac() {
+int tot_ac() {
   if(next)
     return ac + call_other(next, "tot_ac");
 
   return ac;
 }
-query_type() { return type; }
+string query_type() { return type; }
 
-query_value() { return value; }
+mixed query_value() { return value; }
 
-query_worn() { return worn; }
+status query_worn() { return worn; }
 
-query_name() { return name; }
+string query_name() { return name; }
 
-armour_class() { return ac; }
+int armour_class() { return ac; }
 
-wear(str) {
+status wear(mixed str) {
   object ob;
 
   if (!id(str))

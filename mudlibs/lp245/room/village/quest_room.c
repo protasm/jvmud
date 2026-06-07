@@ -1,19 +1,30 @@
-#include "room/room.h"
+inherit "room/room";
+
 #include "room/tune.h"
-ONE_EXIT("room/village/wiz_hall", "south",
-"Room of quests",
-"This is the room of quests. Every wizard can make at most one quest.\n" +
-"When he has made a quest, he should have it approved by an arch wizard.\n" +
-"When it is approved, put a permanent object in this room, wich has as\n"+
-"short description the name of the wizard. All objects in this room will be\n"+
-"checked when a player wants to become a wizard. The player must have\n"+
-"solved ALL quests. To mark that a quest is solved, call 'set_quest(\"name\")'\n"+
-"in the player object. The objects must all accept the id 'quest' and the\n"+
-"name of the wizard. The objects must also define a function hint(),\n"+
-"that should return a message giving a hint of where to start the quest.\n"+
-"Note that players never can come here. set_quest(str) will return 1 if\n"+
-"this is the first time it was solved by this player, otherwise 0.\n", 1)
-count(silently) {
+
+void reset(mixed arg) {
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "Room of quests";
+  long_desc = "This is the room of quests. Every wizard can make at most one quest.\n" +
+  "When he has made a quest, he should have it approved by an arch wizard.\n" +
+  "When it is approved, put a permanent object in this room, wich has as\n" +
+  "short description the name of the wizard. All objects in this room will be\n" +
+  "checked when a player wants to become a wizard. The player must have\n" +
+  "solved ALL quests. To mark that a quest is solved, call 'set_quest('name')'\n" +
+  "in the player object. The objects must all accept the id 'quest' and the\n" +
+  "name of the wizard. The objects must also define a function hint(),\n" +
+  "that should return a message giving a hint of where to start the quest.\n" +
+  "Note that players never can come here. set_quest(str) will return 1 if\n" +
+  "this is the first time it was solved by this player, otherwise 0.\n";
+  dest_dir = ({
+    "room/village/wiz_hall", "south"
+  });
+}
+
+int count(mixed silently) {
   object ob;
   int i;
 
@@ -53,7 +64,7 @@ count(silently) {
   return i - FREE_QUESTS;
 }
 
-list(i) {
+void list(int i) {
   object ob;
 
   ob = first_inventory(this_object());

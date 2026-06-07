@@ -9,7 +9,7 @@
 * Function name: drop
 * Description:   No dropping.
 */
-drop() {
+status drop() {
   return 1;
 }
 
@@ -17,7 +17,7 @@ drop() {
 * Function name: get
 * Description:   Don't give it away.
 */
-get() {
+status get() {
   return 1;
 }
 
@@ -25,12 +25,12 @@ get() {
 * Function name: id
 * Description:   Identify the object
 */
-id(str) {
+status id(mixed str) {
   return str == "death_mark";
 
 }
 
-init() {
+void init() {
   start_death();
 
 }
@@ -39,7 +39,7 @@ init() {
 * Function name: query_auto_load
 * Description:   Automatic load of this object
 */
-query_auto_load() {
+string query_auto_load() {
   return "room/death/death_mark:";
 
 }
@@ -48,7 +48,7 @@ query_auto_load() {
 * Function name: start_death
 * Description:   Start the death sequence.
 */
-start_death() {
+void start_death() {
   object ned, my_host;
 
   my_host = environment(this_object());

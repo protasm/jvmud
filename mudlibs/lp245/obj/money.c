@@ -1,15 +1,15 @@
 int money;
 
-get() {
+int get() {
   return money>0;
 }
 
-heart_beat() {
+void heart_beat() {
   if (money == 0)
     destruct(this_object());
 }
 
-id(str) {
+int id(mixed str) {
   if (str == "coins")
     return 1;
 
@@ -25,7 +25,7 @@ id(str) {
 player, i.e. object moved to the players inventory with move_object()
 
 */
-init() {
+void init() {
   if (environment(this_object())==this_player()) {
     call_other(this_player(), "add_money", money);
 
@@ -35,19 +35,19 @@ init() {
   }
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
   money = 1;
 }
 
-set_money(m) {
+void set_money(mixed m) {
   money = m;
 }
-query_weight() { return 0; }
+int query_weight() { return 0; }
 
-short() {
+mixed short() {
   if (money == 0)
     return 0;
 

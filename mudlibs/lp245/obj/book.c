@@ -1,6 +1,6 @@
 int current_page;
 
-close(str) {
+status close(mixed str) {
   if (!id(str))
     return 0;
 
@@ -20,7 +20,7 @@ close(str) {
   return 1;
 }
 
-get(str) {
+status get(mixed str) {
   if (str == "book") {
     write("The book is attached to a chain.\n");
 
@@ -36,14 +36,14 @@ get(str) {
   return 0;
 }
 
-init() {
+void init() {
   add_action("open", "open");
   add_action("close", "close");
   add_action("read_book", "read");
 }
-short() { return "a book in a chain"; }
+string short() { return "a book in a chain"; }
 
-long(str) {
+void long(mixed str) {
   if (str == "chain") {
     write("The chain is secured to the wall.\n");
 
@@ -53,9 +53,9 @@ long(str) {
   write("There is a book hanging in a chain from the wall.\n");
   write("The title is: 'ADVENTURING'.\n");
 }
-id(str) { return str == "book" || str == "chain"; }
+status id(mixed str) { return str == "book" || str == "chain"; }
 
-open(str) {
+status open(mixed str) {
   if (!id(str))
     return 0;
 
@@ -75,7 +75,7 @@ open(str) {
   return 1;
 }
 
-read_book(str) {
+status read_book(mixed str) {
   if (!id(str) && str != "page")
     return 0;
 
@@ -91,6 +91,6 @@ read_book(str) {
   return 1;
 }
 
-reset() {
+void reset() {
   current_page = 0;
 }

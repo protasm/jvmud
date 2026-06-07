@@ -20,7 +20,7 @@ tell_object(ob, "in routine...\n");
 */
 
 /* do add_action("debug_toggle", "debug"); */
-debug_toggle(str) {
+status debug_toggle(mixed str) {
   if(!str || !id(str)) return 0;
 
   is_debug += 1;
@@ -34,6 +34,6 @@ debug_toggle(str) {
 
   return 1;
 }
-query_debug() { return is_debug; }
+int query_debug() { return is_debug; }
 
-set_debug(arg) { is_debug = arg; }
+void set_debug(mixed arg) { is_debug = arg; }

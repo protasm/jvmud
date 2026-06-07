@@ -1,6 +1,6 @@
 inherit "room/room";
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 

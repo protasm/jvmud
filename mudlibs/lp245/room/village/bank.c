@@ -3,7 +3,7 @@ inherit "room/room";
 int door_is_open, door_is_locked;
 object guard;
 
-east() {
+status east() {
   if (!door_is_open) {
     write("The door is closed.\n");
 
@@ -21,7 +21,7 @@ east() {
   return 1;
 }
 
-extra_reset() {
+void extra_reset() {
   if (!guard || !living(guard)) {
     object key, weapon;
 
@@ -99,7 +99,7 @@ void long(mixed str) {
   write("    The only obvious exit is west.\n");
 }
 
-reset(arg) {
+void reset(mixed arg) {
   extra_reset();
 
   if (arg)
@@ -120,7 +120,7 @@ status id(mixed str) {
   return str == "door" || str == "counter";
 }
 
-open(str) {
+status open(mixed str) {
   if (str && str != "door")
     return 0;
 
@@ -141,12 +141,12 @@ open(str) {
   return 1;
 }
 
-open_door_inside() {
+void open_door_inside() {
   door_is_locked = 0;
   door_is_open = 1;
 }
 
-query_door() {
+status query_door() {
   return !door_is_open;
 }
 
@@ -154,7 +154,7 @@ int query_drop_castle() {
   return 1;
 }
 
-unlock(str) {
+status unlock(mixed str) {
   if (str && str != "door")
     return 0;
 

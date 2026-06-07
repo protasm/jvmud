@@ -114,13 +114,18 @@ with connect_with_retry() as sock:
 
     sock.sendall(b"look\n")
     transcript = read_until(sock, "> ")
-    if "You are at an open green place south of the village church." not in transcript:
-        raise AssertionError(f"look did not render the village green:\n{transcript}")
-
-    sock.sendall(b"north\n")
-    transcript = read_until(sock, "> ")
     if "You are in the local village church." not in transcript:
-        raise AssertionError(f"north did not move to the church:\n{transcript}")
+        raise AssertionError(f"look did not render the village church:\n{transcript}")
+
+    sock.sendall(b"south\n")
+    transcript = read_until(sock, "> ")
+    if "You are at an open green place south of the village church." not in transcript:
+        raise AssertionError(f"south did not move to the village green:\n{transcript}")
+
+    sock.sendall(b"west\n")
+    transcript = read_until(sock, "> ")
+    if "An old humpbacked bridge." not in transcript:
+        raise AssertionError(f"west did not move to the humpbacked bridge:\n{transcript}")
 
     sock.sendall(b"/quit\n")
 

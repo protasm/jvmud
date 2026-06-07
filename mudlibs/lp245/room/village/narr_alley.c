@@ -1,6 +1,6 @@
 inherit "room/room";
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
@@ -39,7 +39,7 @@ void long(mixed str) {
   write("There are three obvious exits, north, east and south.\n");
 }
 
-go_down() {
+status go_down() {
   call_other(this_player(), "move_player", "down#room/well");
 
   return 1;

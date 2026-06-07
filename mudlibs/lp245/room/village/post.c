@@ -3,20 +3,20 @@ inherit "room/room";
 string messages;
 int new_mail;
 
-exit() {
+void exit() {
   object ob;
 
   if (ob = present("mailread", this_player()))
     destruct(ob);
 }
 
-init() {
+void init() {
   ::init();
 
   move_object(clone_object("obj/mail_reader"), this_player());
 }
 
-query_mail(silent) {
+status query_mail(mixed silent) {
   string name;
   string new;
 
@@ -35,7 +35,7 @@ query_mail(silent) {
   return 1;
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 

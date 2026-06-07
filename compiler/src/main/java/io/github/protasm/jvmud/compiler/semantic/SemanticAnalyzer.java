@@ -474,6 +474,7 @@ public final class SemanticAnalyzer {
                                 CompilationStage.ANALYZE,
                                 "Method '" + method.symbol().name() + "' must declare a return type",
                                 method.line()));
+                // Keep the hard error, but recover as mixed so later diagnostics can continue.
                 method.symbol().resolveDeclaredType(LPCType.LPCMIXED);
             }
             resolveSymbolType(method.symbol(), method.line(), problems);
@@ -486,6 +487,7 @@ public final class SemanticAnalyzer {
                                         "Parameter '" + parameter.symbol().name() + "' in method '"
                                                 + method.symbol().name() + "' must declare a type",
                                         parameter.line()));
+                        // Keep the hard error, but recover as mixed so later diagnostics can continue.
                         parameter.symbol().resolveDeclaredType(LPCType.LPCMIXED);
                     }
                     resolveSymbolType(parameter.symbol(), parameter.line(), problems);

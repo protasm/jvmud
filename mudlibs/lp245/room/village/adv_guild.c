@@ -11,7 +11,7 @@ int next_level;
 object player_ob;
 string title;         /* now with arrays. :) */
 
-advance(arg) {
+status advance(mixed arg) {
   string name_of_player;
   int cost;
 
@@ -116,7 +116,7 @@ advance(arg) {
   return 1;
 }
 
-alas(what) {
+void alas(mixed what) {
   write("Sorry " + gnd_prn() + ", but you are already as " + what +
   "\nas any");
 
@@ -130,7 +130,7 @@ alas(what) {
 /*
 * Banish a monster name from being used.
 */
-banish(who) {
+status banish(mixed who) {
   level = call_other(this_player(), "query_level");
 
   if (level < 21)
@@ -171,7 +171,7 @@ banish(who) {
   return 1;
 }
 
-cost_for_level() {
+status cost_for_level() {
   int cost;
 
   player_ob = this_player();
@@ -232,7 +232,7 @@ cost_for_level() {
   return 1;
 }
 
-extra_reset(arg) {
+void extra_reset(mixed arg) {
   object ob;
 
   if (arg)
@@ -259,7 +259,7 @@ void init() {
   add_action("list_quests", "list");
 }
 
-reset(arg) {
+void reset(mixed arg) {
   extra_reset(arg);
 
   if (arg)
@@ -280,7 +280,7 @@ reset(arg) {
 /* some minor changes by Iggy. */
 /* get level asks get_next_exp() and  get_next_title() */
 
-get_level(str) {
+void get_level(mixed str) {
   level = str;
 
   next_exp   = get_next_exp(level);
@@ -289,7 +289,7 @@ get_level(str) {
 }
 
 /*xxx  return title */
-get_new_title(str) {
+string get_new_title(int str) {
   if (!male_title_str){
     male_title_str = allocate(20);
 
@@ -372,7 +372,7 @@ get_new_title(str) {
 }
 
 /*  returns the next_exp. */
-get_next_exp(str) {
+int get_next_exp(int str) {
   if(!exp_str){
     exp_str = allocate(20);
 
@@ -401,7 +401,7 @@ get_next_exp(str) {
   return exp_str[str];
 }
 
-gnd_prn() {
+string gnd_prn() {
   int gnd;
 
   gnd = this_player()->query_gender();
@@ -416,7 +416,7 @@ gnd_prn() {
     return "best creature";
 }
 
-list_quests(num) {
+status list_quests(mixed num) {
   int qnumber;
 
   if (num && (sscanf(num, "%d", qnumber) == 1))
@@ -432,7 +432,7 @@ list_quests(num) {
 * This routine is called by monster, to calculate how much they are worth.
 * This value should not depend on the tuning.
 */
-query_cost(l) {
+int query_cost(int l) {
   player_ob = this_player();
   level = l;
 
@@ -448,7 +448,7 @@ query_cost(l) {
 * Special function for other guilds to call. Arguments are current level
 * and experience points.
 */
-query_cost_for_level(l, e) {
+int query_cost_for_level(int l, int e) {
   level = l;
   exp = e;
 
@@ -464,7 +464,7 @@ int query_drop_castle() {
   return 1;
 }
 
-raise_con() {
+void raise_con() {
   int lvl;
 
   if (too_high_average())
@@ -491,7 +491,7 @@ raise_con() {
 * Compute cost for raising a stat one level. 'base' is the level that
 * you have now, but never less than 1.
 */
-raise_cost(base, action) {
+int raise_cost(int base, int action) {
   int cost, saldo;
 
   if (base >= 20)
@@ -514,7 +514,7 @@ raise_cost(base, action) {
   return cost;
 }
 
-raise_dex() {
+void raise_dex() {
   int lvl;
 
   if (too_high_average())
@@ -537,7 +537,7 @@ raise_dex() {
     write("You don't have enough experience.\n");
 }
 
-raise_int() {
+void raise_int() {
   int lvl;
 
   if (too_high_average())
@@ -560,7 +560,7 @@ raise_int() {
     write("You don't have enough experience.\n");
 }
 
-raise_str() {
+void raise_str() {
   int lvl;
 
   if (too_high_average())
@@ -583,7 +583,7 @@ raise_str() {
     write("You don't have enough experience.\n");
 }
 
-south() {
+status south() {
   if (call_other(this_player(), "query_level", 0) < 20) {
     write("A strong magic force stops you.\n");
 
@@ -602,7 +602,7 @@ south() {
 /*
 * Check that the player does not have too high average of the stats.
 */
-too_high_average() {
+status too_high_average() {
   if ((this_player()->query_con() + this_player()->query_str() +
     this_player()->query_int() + this_player()->query_dex()) / 4 >=
 

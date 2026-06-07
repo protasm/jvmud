@@ -1,5 +1,5 @@
 inherit "room/room";
-init(arg) {
+void init() {
   object  ob;
   int  does_exist;
 
@@ -17,10 +17,10 @@ init(arg) {
     }
   }
 
-  ::init(arg);
+  ::init();
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg) return;
 
   set_light(1);

@@ -6,7 +6,7 @@ object rules;
 object solved_by, wrong_by;
 object top_list;
 /* #define MUST_STAY_WITH_DRINKS */
-got_play(str) {
+void got_play(mixed str) {
   string who, what;
 
   if (sscanf(str, "%s tells you: play %s\n", who , what) == 2 ||
@@ -49,7 +49,7 @@ got_play(str) {
   }
 }
 #ifdef MUST_STAY_WITH_DRINKS
-has_drink(obj) {
+status has_drink(object obj) {
   status drink;
 
   object ob;
@@ -71,14 +71,14 @@ has_drink(obj) {
   return drink;
 }
 
-init() {
+void init() {
   add_action("move", "west");
   add_action("order", "order");
   add_action("order", "buy");
   add_action("look", "look");
 }
 
-long() {
+void long() {
   write("You are in the local pub.\n");
   write("You can order drinks here.\n\n");
   write("     First class beer    : 12 coins\n");
@@ -88,7 +88,7 @@ long() {
   write("The only obvious exit is to " +  "west" + ".\n");
 }
 
-look(str) {
+status look(mixed str) {
   string what, rest;
 
   if(str) {
@@ -107,7 +107,7 @@ look(str) {
   return 0;
 }
 
-make_move(str) {
+void make_move(mixed str) {
   if (solved_by) {
     int i;
 
@@ -132,7 +132,7 @@ make_move(str) {
   }
 }
 
-move() {
+status move() {
   #ifdef MUST_STAY_WITH_DRINKS
   if (has_drink(this_player())) {
     tell_object(this_player(),
@@ -147,12 +147,12 @@ move() {
   return 1;
 }
 
-notify(str) {
+void notify(mixed str) {
   say(str);
   write(str);
 }
 
-order(str) {
+status order(mixed str) {
   object drink;
   string name, short_desc, mess;
   int value, cost, strength, heal;
@@ -236,11 +236,11 @@ order(str) {
 }
 #endif
 
-query_drop_castle() {
+int query_drop_castle() {
   return 1;
 }
 
-reset(arg) {
+void reset(mixed arg) {
   start_player();
 
   if (!top_list || !present(top_list, this_object())) {
@@ -259,11 +259,11 @@ reset(arg) {
   set_light( 1);
 }
 
-short() {
+string short() {
   return "The local pub";
 }
 
-show_problem() {
+void show_problem() {
   if(current_problem > 2) {
     write("The player looks tired.\n");
 
@@ -322,7 +322,7 @@ show_problem() {
 * Make this global, and only initialized once.
 */
 
-start_player() {
+void start_player() {
   if(!player) {
     player = clone_object("obj/monster");
 

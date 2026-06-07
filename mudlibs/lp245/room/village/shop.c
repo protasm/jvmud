@@ -1,6 +1,6 @@
 inherit "room/room";
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
@@ -27,7 +27,7 @@ void init() {
   add_action("list", "list");
 }
 
-buy(item) {
+status buy(mixed item) {
   if (!item)
     return 0;
 
@@ -36,7 +36,7 @@ buy(item) {
   return 1;
 }
 
-do_sell(ob) {
+status do_sell(object ob) {
   int value, do_destroy;
 
   value = ob->query_value();
@@ -90,7 +90,7 @@ do_sell(ob) {
   return 1;
 }
 
-find_item_in_player(i) {
+object find_item_in_player(mixed i) {
   object ob;
 
   ob = first_inventory(this_player());
@@ -105,13 +105,13 @@ find_item_in_player(i) {
   return 0;
 }
 
-list(obj) {
+status list(mixed obj) {
   call_other("room/village/store", "inventory", obj);
 
   return 1;
 }
 
-north() {
+status north() {
   if (call_other(this_player(), "query_level", 0) < 20) {
     write("A strong magic force stops you.\n");
 
@@ -131,7 +131,7 @@ int query_drop_castle() {
   return 1;
 }
 
-sell(item) {
+status sell(mixed item) {
   object ob;
 
   if (!item)
@@ -174,9 +174,9 @@ sell(item) {
   return 1;
 }
 
-value(item) {
+status value(mixed item) {
   int value;
-  string name_of_item;
+  object name_of_item;
 
   if (!item)
     return 0;

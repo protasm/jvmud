@@ -40,8 +40,8 @@ string wielded_by;
 
 status wielded;
 
-query_name() { return name_of_weapon; }
-drop(silently) {
+string query_name() { return name_of_weapon; }
+status drop(mixed silently) {
   if (wielded) {
     call_other(wielded_by, "stop_wielding");
 
@@ -54,18 +54,18 @@ drop(silently) {
   return 0;
 }
 
-hit(attacker) {
+int hit(object attacker) {
   if (hit_func)
     return call_other(hit_func,"weapon_hit",attacker);
 
   return 0;
 }
 
-id(str) {
+status id(mixed str) {
   return str == name_of_weapon || str == alt_name || str == alias_name;
 }
 
-init() {
+void init() {
   if (read_msg) {
     add_action("read", "read");
   }
@@ -73,19 +73,19 @@ init() {
   add_action("wield", "wield");
 }
 
-long() {
+void long() {
   write(long_desc);
 }
 
-query_info() {
+string query_info() {
   return info;
 }
 
-query_value() {
+int query_value() {
   return value;
 }
 
-read(str) {
+status read(mixed str) {
   if (!id(str))
     return 0;
 
@@ -94,55 +94,55 @@ read(str) {
   return 1;
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
   wielded = 0; value = 0;
 }
 
-set_id(n) {
+void set_id(mixed n) {
   name_of_weapon = n;
   cap_name = capitalize(n);
   short_desc = cap_name;
   long_desc = "You see nothing special.\n";
 }
-get() { return 1; }
+status get() { return 1; }
 
-query_weight() { return local_weight; }
+int query_weight() { return local_weight; }
 
-set_class(c) { class_of_weapon = c; }
+void set_class(int c) { class_of_weapon = c; }
 
-set_weight(w) { local_weight = w; }
+void set_weight(int w) { local_weight = w; }
 
-set_value(v) { value = v; }
+void set_value(int v) { value = v; }
 
-set_alt_name(n) { alt_name = n; }
+void set_alt_name(mixed n) { alt_name = n; }
 
-set_hit_func(ob) { hit_func = ob; }
+void set_hit_func(object ob) { hit_func = ob; }
 
-set_wield_func(ob) { wield_func = ob; }
+void set_wield_func(object ob) { wield_func = ob; }
 
-set_alias(n) { alias_name = n; }
+void set_alias(mixed n) { alias_name = n; }
 
-set_short(sh) { short_desc = sh; long_desc = short_desc + "\n";}
+void set_short(mixed sh) { short_desc = sh; long_desc = short_desc + "\n";}
 
-set_long(long) { long_desc = long; }
+void set_long(mixed long) { long_desc = long; }
 
-set_read(str) { read_msg = str; }
+void set_read(mixed str) { read_msg = str; }
 
-set_info(i) {
+void set_info(mixed i) {
   info = i;
 }
 
-set_name(n) {
+void set_name(mixed n) {
   name_of_weapon = n;
   cap_name = capitalize(n);
   short_desc = cap_name;
   long_desc = "You see nothing special.\n";
 }
 
-short() {
+string short() {
   if (wielded)
     if(short_desc)
     return short_desc + " (wielded)";
@@ -150,16 +150,16 @@ short() {
   return short_desc;
 }
 
-un_wield() {
+void un_wield() {
   if (wielded)
     wielded = 0;
 }
 
-weapon_class() {
+int weapon_class() {
   return class_of_weapon;
 }
 
-wield(str) {
+status wield(mixed str) {
   if (!id(str))
     return 0;
 

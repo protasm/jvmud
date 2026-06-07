@@ -1,6 +1,6 @@
 int lamp_is_lit;
 
-close(str) {
+status close(mixed str) {
   if (str != "door")
     return 0;
 
@@ -9,17 +9,17 @@ close(str) {
   return 1;
 }
 
-elevator_arrives() {
+void elevator_arrives() {
   say("The lamp on the button beside the elevator goes out.\n");
 
   lamp_is_lit = 0;
 }
 
-id(str) {
+status id(mixed str) {
   return str == "door";
 }
 
-init() {
+void init() {
   add_action("west", "west");
   add_action("open", "open");
   add_action("push", "push");
@@ -27,7 +27,7 @@ init() {
   add_action("close", "close");
 }
 
-long(str) {
+void long(mixed str) {
   if (str == "door") {
     if (!call_other("room/village/elevator", "query_door", 0) &&
       call_other("room/village/elevator", "query_level", 0))
@@ -48,7 +48,7 @@ long(str) {
 
 }
 
-open(str) {
+status open(mixed str) {
   if (str != "door")
     return 0;
 
@@ -63,11 +63,11 @@ open(str) {
   return 1;
 }
 
-prevent_look_at_inv(str) {
+status prevent_look_at_inv(mixed str) {
   return str != 0;
 }
 
-push(str) {
+status push(mixed str) {
   if (str && str != "button")
     return 0;
 
@@ -77,18 +77,18 @@ push(str) {
   return 1;
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
   set_light(1);
 }
 
-short() {
+string short() {
   return "The attic";
 }
 
-west() {
+status west() {
   if (call_other("room/village/elevator", "query_door", 0) ||
     call_other("room/village/elevator", "query_level", 0) != 3) {
 

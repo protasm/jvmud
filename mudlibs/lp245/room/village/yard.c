@@ -5,7 +5,7 @@ string chat_str, a_chat_str, function, type, match;
 /*
 * Make these arrays global, so they only have to be initialized once.
 */
-extra_reset() {
+void extra_reset() {
   no_castle_flag = 1;
 
   if (!present("knife")) {
@@ -64,7 +64,7 @@ extra_reset() {
     call_other(beggar, "load_a_chat", 20, a_chat_str);
   }
 }
-reset(arg) {
+void reset(mixed arg) {
   if (!arg) {
     set_light(1);
     short_desc = "Small yard";
@@ -78,7 +78,7 @@ reset(arg) {
   extra_reset();
 }
 
-give_beggar(str) {
+void give_beggar(mixed str) {
   int money;
   string who;
 

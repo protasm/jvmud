@@ -9,9 +9,9 @@ int  history_offset;
 int  history_pos;
 string  last_cmd_added;
 string  last_str_added;
-object  list_ab;
-object  list_cmd;
-object  list_history;
+string  *list_ab;
+string  *list_cmd;
+string  *list_history;
 string  more_cmds;
 int  needs_refresh;
 int  no_history_add;
@@ -46,7 +46,7 @@ and bug reports etc should be sent to me
 return som info for the interested
 
 */
-alias(str) {
+status alias(mixed str) {
   int  i;
   string  ab, cmd;
 
@@ -138,7 +138,7 @@ alias(str) {
 
 /* check to see if an object "obj" contains another object "str" */
 
-contains(str, obj) {
+status contains(mixed str, object obj) {
   object  ob;
 
   if(!str || str == "") return 0;
@@ -161,11 +161,11 @@ contains(str, obj) {
 
 /* do one ore more commands */
 
-do_cmd(str) {
+status do_cmd(mixed str) {
   if(!str || str == "")  {
     if(more_cmds) {
       set_heart_beat(0);
-      write("Paused. Use \"resume to continue\"\n");
+      write("Paused. Use 'resume' to continue\n");
 
       paused = 1;
     } else {
@@ -200,7 +200,7 @@ do_cmd(str) {
   return 1;
 }
 
-do_it(str) {
+status do_it(mixed str) {
   int  i;
   string  verb;
 
@@ -255,7 +255,7 @@ do_it(str) {
   return 0;
 }
 
-do_old(verb, str) {
+status do_old(mixed verb, mixed str) {
   int  pos;
   string  temp;
 
@@ -392,7 +392,7 @@ do_old(verb, str) {
   return 0;
 }
 
-do_refresh() {
+status do_refresh() {
   write("Refreshing Quicktyper ..");
   refresh(this_player());
   write("Done.\n");
@@ -400,11 +400,11 @@ do_refresh() {
   return 1;
 }
 
-drop() {
+status drop() {
   return 1;  /* cant drop ! */
 }
 
-get() {
+status get() {
   if(contains("tech_quicktyper", this_player())) {
     return 0;
   }
@@ -412,7 +412,7 @@ get() {
   return 1;
 }
 
-heart_beat() {
+void heart_beat() {
   string  the_rest;
   string  cmd;
 
@@ -455,7 +455,7 @@ heart_beat() {
   }
 }
 
-help(str) {
+status help(mixed str) {
   if(!str || !id(str)) {
     return 0;
   }
@@ -463,8 +463,8 @@ help(str) {
   write("This Quicktyper alows for command alias, e.g. short commands \nthat is expanded by the Quicktyper\n");
   write("The commands available for the quicktyper are:\n");
   write("alias      - show the list of current alias\n");
-  write("alias command what to do\n      - make \"command\" an alias for the \"what to do\"\n");
-  write("alias command    - remove alias for \"command\"\n");
+  write("alias command what to do\n      - make 'command' an alias for the 'what to do'\n");
+  write("alias command    - remove alias for 'command'\n");
   write("do cmd1,cmd2,cmd3,..  - do a series of commands\n");
   write("do      - pauses execution of a series of commands\n");
   write("resume      - resume paused commands\n");
@@ -488,7 +488,7 @@ help(str) {
   return 1;
 }
 
-history() {
+status history() {
   int  i;
   int  number;
 
@@ -528,7 +528,7 @@ history() {
 }
 #define COUNT_UNTIL_REFRESH  40
 
-history_add(str) {
+status history_add(mixed str) {
   string  verb;
   int  i;
 
@@ -620,7 +620,7 @@ history_add(str) {
   return 0;
 }
 
-id(str) {
+status id(mixed str) {
   if(str && (str == "quicktyper" || str == owner + "'s quicktyper" || str == "tech_quicktyper")) {
     return 1;
   }
@@ -628,7 +628,7 @@ id(str) {
   return 0;
 }
 
-init(arg) {
+void init(mixed arg) {
   int  i;
   object  obj;
 
@@ -696,7 +696,7 @@ init(arg) {
   }
 }
 
-init_alias_list() {
+void init_alias_list() {
   object  obj;
 
   #if 0
@@ -738,7 +738,7 @@ init_alias_list() {
   }
 }
 
-init_arg(arg) {
+void init_arg(mixed arg) {
   int  temp;
   int  count, place;
   string  ab, cmd;
@@ -768,14 +768,14 @@ init_arg(arg) {
   }
 }
 
-long() {
+void long() {
   write("This is a typing aid to allow long commands to be replaced with short aliases.\n");
   write("It also contains a history of your commands\n");
-  write("Do \"help quicktyper\" to get more information about how to use this tool.\n");
+  write("Do 'help quicktyper' to get more information about how to use this tool.\n");
 
 }
 
-query_auto_load() {
+string query_auto_load() {
   string  temp;
   int  i, count;
 
@@ -804,11 +804,11 @@ query_auto_load() {
   return temp;
 }
 
-query_info() {
+string query_info() {
   return "A magic quick typing utility made by Tech.";
 }
 
-query_name() {
+string query_name() {
   return owner + "'s quicktyper";
 }
 
@@ -816,7 +816,7 @@ query_name() {
 make it possible to retrieve information from the quicktyper
 
 */
-query_quicktyper(arg) {
+mixed query_quicktyper(int arg) {
   if(arg == 0) {
     return list_ab;
   }
@@ -840,11 +840,11 @@ query_quicktyper(arg) {
   return 0;
 }
 
-query_value() {
+int query_value() {
   return 0;  /* no value */
 }
 
-refresh(obj) {
+status refresh(object obj) {
   int  may_need_warning;
 
   may_need_warning = 0;
@@ -881,7 +881,7 @@ refresh(obj) {
   return 1;
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if(is_debug) {
     write("reset(" + arg + ")\n");
     write(VERSION + "\n");
@@ -902,7 +902,7 @@ reset(arg) {
 
 }
 
-resume() {
+status resume() {
   if(paused && ob && more_cmds && more_cmds != "") {
     paused = 0;
     first_call = 1;
@@ -921,13 +921,13 @@ resume() {
   return 1;
 }
 
-short() {
+string short() {
   int  temp;
 
   return owner + "'s quicktyper";
 }
 
-version(str) {
+status version(mixed str) {
   if(!str || !id(str)) {
     return 0;
   }

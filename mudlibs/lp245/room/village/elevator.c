@@ -12,12 +12,12 @@ int time_to_close_door;
 * floor 2: church
 */
 
-query_level() { return level; }
+int query_level() { return level; }
 
 /*
 * This routine is called from various rooms that the elevator connects to.
 */
-call_elevator(button) {
+status call_elevator(int button) {
   if (door_is_open)
     return 0;
 
@@ -51,11 +51,11 @@ call_elevator(button) {
 /*
 * Only list inventory if not looking at anything special.
 */
-can_put_and_get() {
+status can_put_and_get() {
   return 0;
 }
 
-close_door(str) {
+status close_door(mixed str) {
   if (str != "door")
     return 0;
 
@@ -74,7 +74,7 @@ close_door(str) {
   return 1;
 }
 
-go_east() {
+status go_east() {
   if (moving_time > 0) {
     write("You can't go anywhere when the elevator is moving.\n");
 
@@ -99,7 +99,7 @@ go_east() {
   return 1;
 }
 
-heart_beat() {
+void heart_beat() {
   if (time_to_close_door > 0) {
     time_to_close_door -= 1;
 
@@ -133,11 +133,11 @@ heart_beat() {
     call_other("room/village/wiz_hall", "elevator_arrives", 0);
 }
 
-id(str) {
+status id(mixed str) {
   return str == "door" || str == "button" || str == "buttons";
 }
 
-init() {
+void init() {
   add_action("press", "press");
   add_action("press", "push");
   add_action("open_door", "open");
@@ -148,7 +148,7 @@ init() {
 /*
 * Called by others to see if the elevator is moving
 */
-is_moving() {
+int is_moving() {
   if (level == dest )
     /* Still */
 
@@ -167,9 +167,9 @@ is_moving() {
 * Return true if closed door.
 */
 
-query_door() { return !door_is_open; }
+status query_door() { return !door_is_open; }
 
-long() {
+void long() {
   write("You are in the elevator. On the wall are three buttons,\n");
   write("numbered 1 to 3.\n");
 
@@ -180,7 +180,7 @@ long() {
     write("There is a closed door to the east.\n");
 }
 
-open_door(str) {
+status open_door(mixed str) {
   if (str != "door")
     return 0;
 
@@ -205,7 +205,7 @@ open_door(str) {
   return 1;
 }
 
-press(button) {
+status press(mixed button) {
   string b;
 
   if (!button)
@@ -265,11 +265,11 @@ press(button) {
   return 1;
 }
 
-query_drop_castle() {
+int query_drop_castle() {
   return 1;
 }
 
-reset(arg) {
+void reset(mixed arg) {
   door_is_open = 0;
 
   if (arg)
@@ -282,6 +282,6 @@ reset(arg) {
   moving_time = 0;
 }
 
-short() {
+string short() {
   return "elevator";
 }

@@ -1,10 +1,15 @@
-#include "room/room.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET\
-if (!arg) {\
-  move_object(clone_object("obj/wiz_bull_board2"), this_object()); \
+inherit "room/room";
+
+void reset(mixed arg) {
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "The LPC board";
+  long_desc = "This is the LPC discussion room.\n" +
+  "Only wizards can access this room.\n";
+  dest_dir = ({
+    "room/village/adv_inner", "north"
+  });
+  move_object(clone_object("obj/wiz_bull_board2"), this_object());
 }
-ONE_EXIT("room/village/adv_inner", "north",
-"The LPC board",
-"This is the LPC discussion room.\n" +
-"Only wizards can access this room.\n", 1)

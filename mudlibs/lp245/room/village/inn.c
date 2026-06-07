@@ -1,28 +1,32 @@
-#include "room/room.h"
+inherit "room/room";
+
 #define FOODS 2
 #define Level this_player()->query_level()
 #define Name this_player()->query_name()
-#define Speak(s)\
-#undef EXTRA_RESET
-#define EXTRA_RESET\
+#define Speak(s) write("Innkeeper says: "+s+"\n")
+
 int cm,mm,rmm;
 string last_eater;
 /* this constant should be 1 for virgin Mud's */
-write("Innkeeper says: "+s+"\n")
 
-cm=FOODS*4;\
-mm=FOODS*2;\
-rmm=FOODS;\
+void reset(mixed arg) {
+  cm=FOODS*4;
+  mm=FOODS*2;
+  rmm=FOODS;
 
-if(arg) return;\
+  if(arg) return;
+
+  set_light(1);
+  short_desc = "Eastroad Inn";
+  long_desc = "You are in the Eastroad Inn. Here you can buy food to still your\n"+
+  "hunger, but only a limited selection is available.\n";
+  dest_dir = ({
+    "room/shore/eastroad5", "east"
+  });
   items=({"menu","The menu looks like this"});
+}
 
-ONE_EXIT("room/shore/eastroad5","east",
-"Eastroad Inn",
-"You are in the Eastroad Inn. Here you can buy food to still your\n"+
-"hunger, but only a limited selection is available.\n",
-1)
-buy(s) {
+status buy(mixed s) {
   if(!s) {
     Speak("What do you want to buy ?");
 
@@ -103,20 +107,20 @@ buy(s) {
   return 1;
 }
 
-init() {
+void init() {
   add_action("buy","buy");
   add_action("buy","order");
 
   ::init();
 }
 
-long(s) {
+void long(mixed s) {
   ::long(s);
 
   show_menu();
 }
 
-no_food() {
+status no_food() {
   Speak("Sorry - we have sold out of that.");
 
   if(cm||mm||rmm)
@@ -128,7 +132,7 @@ no_food() {
   return 1;
 }
 
-pays(n) {
+status pays(int n) {
   if(this_player()->query_money()<n) {
     Speak("You cannot afford that.");
 
@@ -140,7 +144,7 @@ pays(n) {
   return 1;
 }
 
-show_menu() {
+void show_menu() {
   write("\n");
 
   if(!(cm||mm||rmm))
@@ -160,7 +164,7 @@ show_menu() {
   return;
 }
 
-tease(n) {
+status tease(int n) {
   if(Name==last_eater)
     Speak("My - Are we hungry today.");
 
