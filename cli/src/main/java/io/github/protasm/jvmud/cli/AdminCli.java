@@ -5,7 +5,12 @@ import io.github.protasm.jvmud.compiler.exec.LPCObjectInspection;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
+import io.github.protasm.jvmud.compiler.ir.IRPrettyPrinter;
 import io.github.protasm.jvmud.compiler.ir.TypedIR;
+import io.github.protasm.jvmud.compiler.parser.Parser;
+import io.github.protasm.jvmud.compiler.parser.ParserOptions;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
+import io.github.protasm.jvmud.compiler.parser.ast.visitor.PrintVisitor;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationObserver;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
@@ -99,6 +104,7 @@ public final class AdminCli {
             case "verbosity" -> verbosity(command.optional(0, ""));
             case "preprocess" -> preprocess(command.required(0));
             case "scan" -> scan(command.required(0));
+            case "parse" -> parse(command.required(0));
             case "ir" -> ir(command.required(0));
             case "compile" -> compile(command.required(0));
             case "load" -> load(command.required(0));
@@ -175,6 +181,7 @@ public final class AdminCli {
         helpLine("i", "inspect <handle>", "Show object state, inventory, environment, and methods.");
         helpLine("pp", "preprocess <path>", "Expand includes, macros, and preprocessor directives.");
         helpLine("", "scan <path>", "Preprocess and print scanner tokens for an LPC source file.");
+        helpLine("", "parse <path>", "Preprocess, scan, parse, and print the LPC AST.");
         helpLine("", "ir <path>", "Compile through lowering and print the typed IR.");
         helpLine("", "compile <path>", "Compile an LPC source file to bytecode without loading it.");
         helpLine("l", "load <path>", "Compile, load, and register an LPC object.");
@@ -276,6 +283,15 @@ public final class AdminCli {
         }
     }
 
+    private void parse(String path) {
+        SourceInput input = readSourceInput(path);
+        Scanner scanner = new Scanner(new Preprocessor(includeResolver()));
+        TokenList tokens = scanner.scan(input.sourcePath(), input.source(), input.displayPath());
+        Parser parser = new Parser(ParserOptions.defaults());
+        ASTObject astObject = parser.parse(input.sourceName(), tokens);
+        astObject.accept(new PrintVisitor(out));
+    }
+
     private void compile(String path) {
         SourceInput input = readSourceInput(path);
         CompilationResult result = compileSource(input);
@@ -310,7 +326,7 @@ public final class AdminCli {
         }
 
         TypedIR typedIr = result.getTypedIr();
-        out.println(typedIr);
+        out.print(IRPrettyPrinter.format(typedIr));
         if (!result.getProblems().isEmpty()) {
             reportProblems(result.getProblems());
         }
@@ -556,6 +572,7 @@ public final class AdminCli {
         case "ls" -> "ls [path]";
         case "move" -> "move <handle> <dest>";
         case "objects" -> "objects";
+        case "parse" -> "parse <path>";
         case "preprocess" -> "preprocess <path>";
         case "pwd" -> "pwd";
         case "reload" -> "reload <path>";

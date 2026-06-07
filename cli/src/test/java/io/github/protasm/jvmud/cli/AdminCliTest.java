@@ -143,6 +143,7 @@ final class AdminCliTest {
         assertTrue(output.contains("Show or change compiler/shell output detail."));
         assertTrue(output.contains("pp preprocess <path>"));
         assertTrue(output.contains("scan <path>"));
+        assertTrue(output.contains("parse <path>"));
         assertTrue(output.contains("ir <path>"));
         assertTrue(output.contains("compile <path>"));
         assertTrue(output.indexOf("h  help") < output.indexOf("b  boot"));
@@ -152,7 +153,13 @@ final class AdminCliTest {
         assertTrue(output.indexOf("cd") < output.indexOf("n  clone"));
         assertTrue(output.indexOf("n  clone") < output.indexOf("x  destruct"));
         assertTrue(output.indexOf("x  destruct") < output.indexOf("i  inspect"));
-        assertTrue(output.indexOf("i  inspect") < output.indexOf("l  load"));
+        assertTrue(output.indexOf("i  inspect") < output.indexOf("pp preprocess"));
+        assertTrue(output.indexOf("pp preprocess") < output.indexOf("scan"));
+        assertTrue(output.indexOf("     scan <path>") < output.indexOf("     parse <path>"));
+        assertTrue(output.indexOf("     parse <path>") < output.indexOf("     ir <path>"));
+        assertTrue(output.indexOf("     ir <path>") < output.indexOf("     compile <path>"));
+        assertTrue(output.indexOf("     compile <path>") < output.indexOf("l  load"));
+        assertTrue(output.indexOf("l  load") < output.indexOf("k  look"));
         assertTrue(output.indexOf("ls") < output.indexOf("m  move"));
         assertTrue(output.indexOf("pwd") < output.indexOf("r  reload"));
         assertTrue(output.indexOf("w  where") < output.indexOf("q  quit"));
@@ -255,6 +262,7 @@ final class AdminCliTest {
         cli.execute("call missingOnlyMethod");
         cli.execute("inspect");
         cli.execute("pp");
+        cli.execute("parse");
         cli.execute("compile");
 
         String output = transcript.toString();
@@ -264,6 +272,8 @@ final class AdminCliTest {
         assertTrue(output.contains("Usage: inspect <handle>"));
         assertTrue(output.contains("Error: Missing argument 0 for pp"));
         assertTrue(output.contains("Usage: preprocess <path>"));
+        assertTrue(output.contains("Error: Missing argument 0 for parse"));
+        assertTrue(output.contains("Usage: parse <path>"));
         assertTrue(output.contains("Error: Missing argument 0 for compile"));
         assertTrue(output.contains("Usage: compile <path>"));
     }
@@ -319,6 +329,7 @@ final class AdminCliTest {
         cli.execute("boot " + tempDir);
         cli.execute("pp tool");
         cli.execute("scan tool");
+        cli.execute("parse tool");
         cli.execute("ir tool");
         cli.execute("compile tool");
         cli.execute("objects");
@@ -326,7 +337,14 @@ final class AdminCliTest {
         String output = transcript.toString();
         assertTrue(output.contains("return  7;"));
         assertTrue(output.contains("T_STRING_LITERAL"));
-        assertTrue(output.contains("TypedIR"));
+        assertTrue(output.contains("ASTObject(tool)"));
+        assertTrue(output.contains("ASTMethod[null value]"));
+        assertFalse(output.contains("TypedIR"));
+        assertTrue(output.contains("object tool extends java/lang/Object"));
+        assertTrue(output.contains("method int value()"));
+        assertTrue(output.contains("entry entry_0"));
+        assertTrue(output.contains("entry_0:"));
+        assertTrue(output.contains("return const 7:int"));
         assertTrue(output.contains("value"));
         assertTrue(output.contains("Compiled tool as tool"));
         assertTrue(output.contains("(no objects)"));

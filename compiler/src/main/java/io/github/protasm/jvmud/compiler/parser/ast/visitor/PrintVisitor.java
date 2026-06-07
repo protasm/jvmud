@@ -1,5 +1,7 @@
 package io.github.protasm.jvmud.compiler.parser.ast.visitor;
 
+import java.io.PrintWriter;
+
 import io.github.protasm.jvmud.compiler.parser.ast.ASTArgument;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTArguments;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTField;
@@ -43,13 +45,19 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 
 public final class PrintVisitor implements ASTVisitor {
     private int indentLvl;
+    private final PrintWriter out;
 
     public PrintVisitor() {
+        this(new PrintWriter(System.out, true));
+    }
+
+    public PrintVisitor(PrintWriter out) {
         indentLvl = 0;
+        this.out = out;
     }
 
     private void doOutput(String str) {
-        System.out.println(String.format("%s%s", "  ".repeat(indentLvl), str));
+        out.println(String.format("%s%s", "  ".repeat(indentLvl), str));
     }
 
     @Override
@@ -236,7 +244,7 @@ public final class PrintVisitor implements ASTVisitor {
     public void visitFields(ASTFields fields) {
         if (fields.size() == 0) {
             doOutput("[No Fields]");
-            System.out.println();
+            out.println();
             return;
         }
 
@@ -244,7 +252,7 @@ public final class PrintVisitor implements ASTVisitor {
         indentLvl++;
         for (ASTField field : fields) {
             field.accept(this);
-            System.out.println();
+            out.println();
         }
         indentLvl--;
     }
@@ -278,7 +286,7 @@ public final class PrintVisitor implements ASTVisitor {
         for (ASTMethod method : methods) {
             method.accept(this);
             if (++count < methods.size())
-                System.out.println();
+                out.println();
         }
         indentLvl--;
     }
@@ -316,7 +324,7 @@ public final class PrintVisitor implements ASTVisitor {
             for (ASTParameter param : parameters)
                 param.accept(this);
 
-        System.out.println();
+        out.println();
     }
 
     @Override
@@ -332,7 +340,7 @@ public final class PrintVisitor implements ASTVisitor {
         for (ASTStatement statement : stmt) {
             statement.accept(this);
             if (++count < stmt.size())
-                System.out.println();
+                out.println();
         }
         indentLvl--;
     }
@@ -364,19 +372,19 @@ public final class PrintVisitor implements ASTVisitor {
             stmt.initializer().accept(this);
         else
             doOutput("[No Initializer]");
-        System.out.println();
+        out.println();
         doOutput("[CONDITION]");
         if (stmt.condition() != null)
             stmt.condition().accept(this);
         else
             doOutput("[No Condition]");
-        System.out.println();
+        out.println();
         doOutput("[UPDATE]");
         if (stmt.update() != null)
             stmt.update().accept(this);
         else
             doOutput("[No Update]");
-        System.out.println();
+        out.println();
         doOutput("[BODY]");
         stmt.body().accept(this);
         indentLvl--;
@@ -388,10 +396,10 @@ public final class PrintVisitor implements ASTVisitor {
         indentLvl++;
         doOutput("[IF]");
         stmt.condition().accept(this);
-        System.out.println();
+        out.println();
         doOutput("[THEN]");
         stmt.thenBranch().accept(this);
-        System.out.println();
+        out.println();
         if (stmt.elseBranch() != null) {
             doOutput("[ELSE]");
             stmt.elseBranch().accept(this);
@@ -406,7 +414,7 @@ public final class PrintVisitor implements ASTVisitor {
         indentLvl++;
         doOutput("[CONDITION]");
         stmt.condition().accept(this);
-        System.out.println();
+        out.println();
         doOutput("[BODY]");
         stmt.body().accept(this);
         indentLvl--;
