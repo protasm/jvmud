@@ -1,6 +1,6 @@
 object wyrm;
 
-extra_reset() {
+void extra_reset() {
   if (!wyrm || !living(wyrm)) {
     object coins, jem;
     int jemnum;
@@ -55,29 +55,29 @@ extra_reset() {
   }
 }
 
-init() {
+void init() {
   add_action("up"); add_verb("up");
 }
 
-long() {
+void long() {
   write("You are standing at the bottom of the well, about thirty feet below the\n" +
   "surface. Bones lie strwen about in a random fashion, many of them broken\n" +
   "or shattered.\n" +
   "\tThe only way out is the way in, back up the ladder.\n");
 }
 
-reset(started) {
+void reset(mixed started) {
   if (!started)
     set_light(0);
 
   extra_reset();
 }
 
-short() {
+string short() {
   return "The bottom of the well";
 }
 
-up() {
+status up() {
   call_other(this_player(), "move_player", "up the ladder#room/south/sislnd17");
 
   return 1;

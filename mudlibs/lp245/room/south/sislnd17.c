@@ -1,16 +1,16 @@
-down() {
+status down() {
   call_other(this_player(), "move_player", "down the well#room/south/lair");
 
   return 1;
 }
 
-east() {
+status east() {
   call_other(this_player(), "move_player", "east#room/south/sislnd18");
 
   return 1;
 }
 
-init() {
+void init() {
   add_action("north"); add_verb("north");
   add_action("south"); add_verb("south");
   add_action("east");  add_verb("east");
@@ -18,7 +18,7 @@ init() {
   add_action("down");  add_verb("down");
 }
 
-long() {
+void long() {
   write("You are halfway up the hill.\n" +
   "An old, disused well stands here, the roof having fallen in from neglect.\n" +
   "On top of the hill, to the east, stands the ruins of the tower of\n" +
@@ -28,28 +28,28 @@ long() {
   "The well has a ladder runing down into it.\n");
 }
 
-north() {
+status north() {
   call_other(this_player(), "move_player", "north#room/south/sislnd12");
 
   return 1;
 }
 
-reset(started) {
+void reset(mixed started) {
   if (!started)
     set_light(1);
 }
 
-short() {
+string short() {
   return "An old disused well";
 }
 
-south() {
+status south() {
   call_other(this_player(), "move_player", "south#room/south/sislnd8");
 
   return 1;
 }
 
-west() {
+status west() {
   call_other(this_player(), "move_player", "west#room/south/sislnd9");
 
   return 1;

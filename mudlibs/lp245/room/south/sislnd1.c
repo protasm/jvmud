@@ -1,17 +1,17 @@
-east() {
+status east() {
   call_other(this_player(), "move_player", "east#room/south/sislnd2");
 
   return 1;
 }
 
-init() {
+void init() {
   add_action("south");     add_verb("south");
   add_action("east");      add_verb("east");
   add_action("northwest"); add_verb("northwest");
   add_action("southwest"); add_verb("southwest");
 }
 
-long() {
+void long() {
   write("You are standing on the shore of the Isle of the Magi\n" +
   "The shore of the island continues east and southwest from here\n" +
   "To the south, a hill rises up to the ancient ruins of the Tower\n" +
@@ -20,7 +20,7 @@ long() {
   "to the northwest\n");
 }
 
-northwest() {
+status northwest() {
   write("You trust in your faith and step oun onto the near invisible " +
   "bridge...");
 
@@ -29,22 +29,22 @@ northwest() {
   return 1;
 }
 
-reset(started) {
+void reset(mixed started) {
   if (!started)
     set_light(1);
 }
 
-short() {
+string short() {
   return "Link to the mainland";
 }
 
-south() {
+status south() {
   call_other(this_player(), "move_player", "south#room/south/sislnd13");
 
   return 1;
 }
 
-southwest() {
+status southwest() {
   call_other(this_player(), "move_player", "southwest#room/south/sislnd12");
 
   return 1;

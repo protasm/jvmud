@@ -1,11 +1,11 @@
-init() {
+void init() {
   add_action("northwest"); add_verb("northwest");
   add_action("south");     add_verb("south");
   add_action("west");      add_verb("west");
   add_action("southeast"); add_verb("southeast");
 }
 
-long() {
+void long() {
   write("You are standing on the shore of Crescent Lake, a beautiful and\n" +
   "clear lake. Out in the centre of the lake stands the Isle\n" +
   "of the Magi.\n" +
@@ -13,34 +13,34 @@ long() {
   "The shore of Crescent Lake continues northwest and southeast\n");
 }
 
-northwest() {
+status northwest() {
   call_other(this_player(),"move_player", "northwest#room/south/sshore19");
 
   return 1;
 }
 
-reset(started) {
+void reset(mixed started) {
   if (!started)
     set_light(1);
 }
 
-short() {
+string short() {
   return "The shore of Crescent Lake";
 }
 
-south() {
+status south() {
   call_other(this_player(), "move_player", "south#room/south/sforst33");
 
   return 1;
 }
 
-southeast() {
+status southeast() {
   call_other(this_player(),"move_player", "southeast#room/south/sshore17");
 
   return 1;
 }
 
-west() {
+status west() {
   call_other(this_player(),"move_player", "west#room/south/sforst31");
 
   return 1;

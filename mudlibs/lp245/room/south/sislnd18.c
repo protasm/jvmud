@@ -1,17 +1,17 @@
-east() {
+status east() {
   call_other(this_player(), "move_player", "north#room/south/sislnd15");
 
   return 1;
 }
 
-init() {
+void init() {
   add_action("north"); add_verb("north");
   add_action("south"); add_verb("south");
   add_action("east");  add_verb("east");
   add_action("west");  add_verb("west");
 }
 
-long() {
+void long() {
   write("You are standing among the ruins of the tower of the evil mage, Arcanarton.\n" +
   "Legend has it that the tower was destroyed in the mage wars about five hundred\n" +
   "years ago, when all of the mages of Lustria combined their forces and attacked\n" +
@@ -26,28 +26,28 @@ long() {
   "To the south of the ruins, the hill slopes away, down to the edge of Crescent Lake.\n");
 }
 
-north() {
+status north() {
   call_other(this_player(), "move_player", "north#room/south/sislnd13");
 
   return 1;
 }
 
-reset(started) {
+void reset(mixed started) {
   if (!started)
     set_light(1);
 }
 
-short() {
+string short() {
   return "The ruins of Arcanarton's tower";
 }
 
-south() {
+status south() {
   call_other(this_player(), "move_player", "north#room/south/sislnd16");
 
   return 1;
 }
 
-west() {
+status west() {
   call_other(this_player(), "move_player", "west#room/south/sislnd17");
 
   return 1;

@@ -1,9 +1,9 @@
-init() {
+void init() {
   add_action("south"); add_verb("south");
   add_action("west");  add_verb("west");
 }
 
-long() {
+void long() {
   write("You are standing on the shore of the Isle of the Magi\n" +
   "The shore of the island continues south and west from here\n" +
   "To the south, a hill rises up to the ancient ruins of the Tower\n" +
@@ -11,22 +11,22 @@ long() {
   "although no track leads directly there from here\n");
 }
 
-reset(started) {
+void reset(mixed started) {
   if (!started)
     set_light(1);
 }
 
-short() {
+string short() {
   return "Shore of the Isle of the Magi";
 }
 
-south() {
+status south() {
   call_other(this_player(), "move_player", "south#room/south/sislnd4");
 
   return 1;
 }
 
-west() {
+status west() {
   call_other(this_player(), "move_player", "west#room/south/sislnd2");
 
   return 1;

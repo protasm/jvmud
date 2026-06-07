@@ -1,19 +1,49 @@
-#include "../std.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET extra_reset();
-#undef EXTRA_MOVE1
-#define EXTRA_MOVE1\
 object rat;
-if (call_other("room/sub/door_trap", "query_west_door") == 0) {\
-  write("The door is closed.\n");\
 
-  return 1;\
+void reset(mixed arg) {
+  extra_reset();
+
+  if (arg)
+    return;
+
+  set_light(0);
 }
 
-ONE_EXIT("room/sub/door_trap", "east",
-"Black room",
-"This is the black room.\n", 0)
-extra_reset() {
+string short() {
+  if (set_light(0))
+    return "Black room";
+
+  return "dark room";
+}
+
+void init() {
+  add_action("move", "east");
+}
+
+status move() {
+  if (call_other("room/sub/door_trap", "query_west_door") == 0) {
+    write("The door is closed.\n");
+
+    return 1;
+  }
+
+  call_other(this_player(), "move_player", "east#room/sub/door_trap");
+
+  return 1;
+}
+
+void long(mixed str) {
+  if (set_light(0) == 0) {
+    write("It is dark.\n");
+
+    return;
+  }
+
+  write("This is the black room.\n");
+  write("    The only obvious exit is east.\n");
+}
+
+void extra_reset() {
   object black_stone;
 
   if (!rat || !living(rat)) {

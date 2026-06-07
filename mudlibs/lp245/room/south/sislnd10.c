@@ -1,15 +1,15 @@
-east() {
+status east() {
   call_other(this_player(), "move_player", "east#room/south/sislnd11");
 
   return 1;
 }
 
-init() {
+void init() {
   add_action("east");       add_verb("east");
   add_action("southeast"); add_verb("southeast");
 }
 
-long() {
+void long() {
   write("You are standing in a small grove on the western most point of the Isle\n" +
   "of the Magi, Focus Point\n" +
   "All of the trees here are either diseased, dead or heavily mutated.\n" +
@@ -21,16 +21,16 @@ long() {
   "small grove from here\n" );
 }
 
-reset(started) {
+void reset(mixed started) {
   if (!started)
     set_light(1);
 }
 
-short() {
+string short() {
   return "Focus Point";
 }
 
-southeast() {
+status southeast() {
   call_other(this_player(), "move_player", "southeast#room/south/sislnd9");
 
   return 1;
