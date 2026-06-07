@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Glossary - JVMud</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="side-nav" aria-label="Project sections">
+    <a class="brand" href="index.html">
+      <img src="assets/jvmud-logo.png" alt="JVMud">
+    </a>
+    <a href="principles.html">Principles</a>
+    <a href="glossary.html" aria-current="page">Glossary</a>
+    <a href="efuns.html">Efuns</a>
+    <a href="lpc.html">LPC</a>
+    <a href="api/index.html" target="_blank" rel="noopener">API Docs</a>
+    <a href="https://github.com/protasm/jvmud">GitHub</a>
+  </nav>
+
+  <main class="content-page">
+    <header>
+      <p class="eyebrow">Project vocabulary</p>
+      <h1>Glossary</h1>
+      <p>
+        JVMud vocabulary keeps engine concepts distinct from legacy LPC/LPMud
+        compatibility names.
+      </p>
+    </header>
+
+    <section>
+      <h2>Core Concepts</h2>
+      <dl class="term-list">
+        <dt>Game</dt>
+        <dd>The playable system JVMud hosts: rules, mechanics, goals, challenges, progression, or other game-like structures.</dd>
+        <dt>Text</dt>
+        <dd>The primary medium through which the world is perceived and manipulated.</dd>
+        <dt>Interactive</dt>
+        <dd>The property that players can affect the world and the world can affect players.</dd>
+        <dt>Multiplayer</dt>
+        <dd>The property that multiple players inhabit the same world at the same time.</dd>
+        <dt>World</dt>
+        <dd>The complete shared virtual domain of the game, composed of places, links, entities, locations, containment, and movement.</dd>
+        <dt>Persistence</dt>
+        <dd>The property that the world and its state endure independently of any individual session.</dd>
+        <dt>Temporality</dt>
+        <dd>The property that the world can change through time.</dd>
+        <dt>Presence</dt>
+        <dd>The requirement that a player experiences the game from within the world through a located persona.</dd>
+      </dl>
+    </section>
+
+    <section>
+      <h2>World Model</h2>
+      <dl class="term-list">
+        <dt>Place</dt>
+        <dd>A discrete location in game space where entities may exist, be perceived, or interact.</dd>
+        <dt>Link</dt>
+        <dd>A traversable relationship between places. Links make the world navigable.</dd>
+        <dt>Entity</dt>
+        <dd>A thing in the world: a player persona, coin, sword, bag, vehicle, NPC, effect, or environmental feature.</dd>
+        <dt>Location</dt>
+        <dd>The mechanical relationship that says where an entity is. A location is either a place or another entity.</dd>
+        <dt>Containment</dt>
+        <dd>The relationship in which one entity is inside, carried by, mounted on, or otherwise immediately located in another entity.</dd>
+        <dt>Single Containment</dt>
+        <dd>The rule that every entity has exactly one immediate location.</dd>
+        <dt>Movement</dt>
+        <dd>The transition of an entity from one location to another, often through a place-to-place link.</dd>
+      </dl>
+    </section>
+
+    <section>
+      <h2>Player And Connection Model</h2>
+      <dl class="term-list">
+        <dt>Player</dt>
+        <dd>The human person playing the game from outside the fictional world.</dd>
+        <dt>Session</dt>
+        <dd>An active connection or control context, such as a Telnet connection.</dd>
+        <dt>Persona</dt>
+        <dd>The entity currently associated with a session as that session's in-world perspective.</dd>
+        <dt>Player Object</dt>
+        <dd>The LPC-authored mudlib object that gives a persona its behavior.</dd>
+        <dt>Interaction Scope</dt>
+        <dd>The local command and perception context around a persona.</dd>
+        <dt>Command Dispatch</dt>
+        <dd>The engine process that routes one line of player input to mudlib behavior registered for the current interaction scope.</dd>
+      </dl>
+    </section>
+
+    <section>
+      <h2>LPC And Compatibility</h2>
+      <dl class="term-list">
+        <dt>LPC</dt>
+        <dd>The language used by JVMud's sole mudlib target.</dd>
+        <dt>LPMud</dt>
+        <dd>A MUD whose game world is authored in LPC, compiled into live game objects, and reloadable while the game continues running.</dd>
+        <dt>Mudlib</dt>
+        <dd>The LPC source and content layer that defines world fiction, object behavior, commands, rules, and presentation.</dd>
+        <dt>Compatibility Shim</dt>
+        <dd>A mudlib-side object dedicated to translating legacy LPC/LPMud vocabulary into JVMud-native engine requests.</dd>
+        <dt>Mfun</dt>
+        <dd>A mudlib-global function provided by a configured mudlib object.</dd>
+        <dt>Efun</dt>
+        <dd>An engine function callable from compiled LPC code.</dd>
+        <dt>Lifecycle Hook</dt>
+        <dd>A configured engine-to-mudlib call for a JVMud lifecycle event.</dd>
+        <dt>Live Reload</dt>
+        <dd>The requirement that LPC-authored objects can be rewritten, recompiled, and reloaded while the game continues running.</dd>
+      </dl>
+    </section>
+
+    <section>
+      <h2>Legacy Terms</h2>
+      <dl class="term-list">
+        <dt>Room</dt>
+        <dd>A legacy mudlib term for a location-like object. JVMud's engine concept is place.</dd>
+        <dt>Heartbeat</dt>
+        <dd>A legacy driver concept for recurring object callbacks. JVMud's engine concept is temporality and scheduled time.</dd>
+        <dt>Call Out</dt>
+        <dd>A legacy driver concept for delayed callbacks. JVMud treats delayed work as a mudlib request to the engine's temporality model.</dd>
+        <dt>Apply</dt>
+        <dd>A legacy driver term for driver-invoked mudlib methods. JVMud uses explicit lifecycle hooks.</dd>
+        <dt>Master Object</dt>
+        <dd>A legacy driver policy object. JVMud uses explicit boundary configuration and compatibility shims.</dd>
+      </dl>
+    </section>
+  </main>
+</body>
+</html>
