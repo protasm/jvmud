@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntimeConfig;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.runtime.Capability;
 import io.github.protasm.jvmud.runtime.Entity;
 import io.github.protasm.jvmud.runtime.Link;
@@ -613,7 +613,7 @@ final class AdminCliTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
         WorldRuntime worldRuntime = new WorldRuntime(new World("test", "Test World"));
         Place church = worldRuntime.createPlace("room/village/church", "Village church");
@@ -868,7 +868,7 @@ final class AdminCliTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder()
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(tempDir)
                 .build());
         EngineEfuns.registerCore(runtime);
@@ -912,7 +912,7 @@ final class AdminCliTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder()
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(tempDir)
                 .build());
         EngineEfuns.registerCore(runtime);

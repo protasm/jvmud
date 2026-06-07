@@ -1,6 +1,6 @@
 package io.github.protasm.jvmud.cli;
 
-import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.runtime.Entity;
 import io.github.protasm.jvmud.runtime.Location;
 import io.github.protasm.jvmud.runtime.Place;
@@ -9,12 +9,12 @@ import java.util.Objects;
 
 /** Host-owned actor for the local CLI session. */
 public final class LocalSessionActor {
-    private final LpcRuntime runtime;
+    private final LPCRuntime runtime;
     private final WorldRuntime worldRuntime;
     private final Entity entity;
     private final String name;
 
-    LocalSessionActor(LpcRuntime runtime, WorldRuntime worldRuntime, Entity entity, String name) {
+    LocalSessionActor(LPCRuntime runtime, WorldRuntime worldRuntime, Entity entity, String name) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
         this.entity = Objects.requireNonNull(entity, "entity");

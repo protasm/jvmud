@@ -4,14 +4,14 @@ import java.lang.reflect.Method;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-/** Handle to a compiled LPC object instance managed by an {@link LpcRuntime}. */
-public final class LpcObjectHandle {
-    private final LpcRuntime runtime;
+/** Handle to a compiled LPC object instance managed by an {@link LPCRuntime}. */
+public final class LPCObjectHandle {
+    private final LPCRuntime runtime;
     private final String internalName;
     private final Class<?> objectClass;
     private final Object instance;
 
-    LpcObjectHandle(LpcRuntime runtime, String internalName, Class<?> objectClass, Object instance) {
+    LPCObjectHandle(LPCRuntime runtime, String internalName, Class<?> objectClass, Object instance) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.internalName = Objects.requireNonNull(internalName, "internalName");
         this.objectClass = Objects.requireNonNull(objectClass, "objectClass");

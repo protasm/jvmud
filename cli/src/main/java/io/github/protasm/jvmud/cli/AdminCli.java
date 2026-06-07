@@ -1,10 +1,10 @@
 package io.github.protasm.jvmud.cli;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
-import io.github.protasm.jvmud.compiler.exec.LpcObjectInspection;
-import io.github.protasm.jvmud.compiler.exec.LpcObjectHandle;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntimeConfig;
+import io.github.protasm.jvmud.compiler.exec.LPCObjectInspection;
+import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationObserver;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationStage;
@@ -25,7 +25,7 @@ public final class AdminCli {
     private final PrintWriter out;
     private final Map<String, Object> handles = new java.util.LinkedHashMap<>();
     private final Map<Object, String> objectNames = new IdentityHashMap<>();
-    private LpcRuntime runtime;
+    private LPCRuntime runtime;
     private Path mudlibRoot;
     private Path virtualCwd = Path.of("");
     private Verbosity verbosity = Verbosity.NORMAL;
@@ -119,7 +119,7 @@ public final class AdminCli {
     public void boot(Path mudlibRoot, String configObjectPath) {
         this.mudlibRoot = mudlibRoot.toAbsolutePath().normalize();
         this.virtualCwd = Path.of("");
-        runtime = new LpcRuntime(LpcRuntimeConfig.builder()
+        runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(this.mudlibRoot)
                 .compilationObserver(new CliCompilationObserver())
                 .build());
@@ -240,7 +240,7 @@ public final class AdminCli {
 
     private void load(String path) {
         ensureBooted();
-        LpcObjectHandle handle = runtime.load(resolveVirtualPath(path));
+        LPCObjectHandle handle = runtime.load(resolveVirtualPath(path));
         remember(handle.internalName(), handle.instance());
         info("Loaded " + handle.internalName());
     }
@@ -253,7 +253,7 @@ public final class AdminCli {
             objectNames.remove(previous);
         }
 
-        LpcObjectHandle handle = runtime.reload(resolveVirtualPath(path));
+        LPCObjectHandle handle = runtime.reload(resolveVirtualPath(path));
         remember(handle.internalName(), handle.instance());
         info("Reloaded " + handle.internalName());
     }
@@ -316,7 +316,7 @@ public final class AdminCli {
             return;
         }
         handles.forEach((name, object) -> {
-            LpcObjectInspection inspection = runtime.inspectObject(object);
+            LPCObjectInspection inspection = runtime.inspectObject(object);
             out.println(name + " : " + nullText(inspection.objectId()));
         });
     }
@@ -329,7 +329,7 @@ public final class AdminCli {
 
     private void inspect(String handle) {
         ensureBooted();
-        LpcObjectInspection inspection = runtime.inspectObject(object(handle));
+        LPCObjectInspection inspection = runtime.inspectObject(object(handle));
         out.println(handle + " : " + nullText(inspection.objectId()));
         out.println("  runtime id: " + nullText(inspection.objectId()));
         out.println("  environment: " + nullText(inspection.environmentId()));
@@ -405,7 +405,7 @@ public final class AdminCli {
         if (name != null) {
             return name;
         }
-        LpcObjectInspection inspection = runtime.inspectObject(object);
+        LPCObjectInspection inspection = runtime.inspectObject(object);
         return inspection.objectId() == null ? object.toString() : inspection.objectId();
     }
 

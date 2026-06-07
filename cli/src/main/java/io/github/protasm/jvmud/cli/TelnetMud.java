@@ -1,8 +1,8 @@
 package io.github.protasm.jvmud.cli;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntimeConfig;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.runtime.Capability;
 import io.github.protasm.jvmud.runtime.Entity;
 import io.github.protasm.jvmud.runtime.Location;
@@ -16,7 +16,7 @@ import java.util.Objects;
 
 /** Shared runtime state for a persistent Telnet mud process. */
 final class TelnetMud {
-    private final LpcRuntime runtime;
+    private final LPCRuntime runtime;
     private final WorldRuntime worldRuntime;
     private final Path mudlibRoot;
     private final String startingRoomPath;
@@ -26,7 +26,7 @@ final class TelnetMud {
     private int nextPersonaId = 1;
 
     private TelnetMud(
-            LpcRuntime runtime,
+            LPCRuntime runtime,
             WorldRuntime worldRuntime,
             Path mudlibRoot,
             String startingRoomPath,
@@ -44,7 +44,7 @@ final class TelnetMud {
 
     static TelnetMud boot(Path mudlibRoot, String configObjectPath) {
         Path normalizedRoot = mudlibRoot.toAbsolutePath().normalize();
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder()
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(normalizedRoot)
                 .build());
         EngineEfuns.registerCore(runtime);

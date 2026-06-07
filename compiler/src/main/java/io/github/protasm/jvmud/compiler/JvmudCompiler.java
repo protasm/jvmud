@@ -1,7 +1,7 @@
 package io.github.protasm.jvmud.compiler;
 
-import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntimeConfig;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
@@ -13,18 +13,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-public final class JvmudCompiler {
-    public static LpcRuntime createRuntime(LpcRuntimeConfig config) {
-        return new LpcRuntime(config);
+public final class JVMudCompiler {
+    public static LPCRuntime createRuntime(LPCRuntimeConfig config) {
+        return new LPCRuntime(config);
     }
 
-    public static LpcRuntime createRuntime(Path baseIncludePath) {
-        return new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(baseIncludePath).build());
+    public static LPCRuntime createRuntime(Path baseIncludePath) {
+        return new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(baseIncludePath).build());
     }
 
     public static void main(String[] args) {
         if ((args.length == 0) || (args.length > 2)) {
-            System.err.println("Usage: JvmudCompiler <source-file> [output-dir]");
+            System.err.println("Usage: JVMudCompiler <source-file> [output-dir]");
             System.err.println("Compiles an LPC source file into a JVM class file.");
             System.exit(64);
         }

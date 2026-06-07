@@ -51,7 +51,7 @@ public class Symbol {
             this.lpcType = resolved;
     }
 
-    public void setLpcType(LPCType lpcType) {
+    public void setLPCType(LPCType lpcType) {
         if (lpcType != null)
             this.lpcType = lpcType;
     }

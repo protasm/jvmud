@@ -35,7 +35,7 @@ public final class ASTExprTernary extends ASTExpression {
         return lpcType != null ? lpcType : LPCType.LPCMIXED;
     }
 
-    public void setLpcType(LPCType lpcType) {
+    public void setLPCType(LPCType lpcType) {
         this.lpcType = lpcType;
     }
 }

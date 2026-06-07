@@ -1,7 +1,7 @@
 /**
  * Entry point utilities that tie together scanning, parsing, and compilation for LPC source.
  *
- * <p>The {@link io.github.protasm.jvmud.compiler.JvmudCompiler} facade offers simple static helpers for running the
+ * <p>The {@link io.github.protasm.jvmud.compiler.JVMudCompiler} facade offers simple static helpers for running the
  * compiler pipeline against strings, handling diagnostic printing, and applying a default Java
  * superclass when emitting bytecode.</p>
  *

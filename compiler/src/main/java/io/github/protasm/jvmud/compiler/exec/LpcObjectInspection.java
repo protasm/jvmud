@@ -3,7 +3,7 @@ package io.github.protasm.jvmud.compiler.exec;
 import java.util.List;
 
 /** Snapshot of host-visible state for a loaded LPC object. */
-public record LpcObjectInspection(
+public record LPCObjectInspection(
         String objectId,
         String className,
         String environmentId,
@@ -11,7 +11,7 @@ public record LpcObjectInspection(
         List<FieldValue> fields,
         List<MethodSignature> methods) {
 
-    public LpcObjectInspection {
+    public LPCObjectInspection {
         inventoryIds = List.copyOf(inventoryIds);
         fields = List.copyOf(fields);
         methods = List.copyOf(methods);

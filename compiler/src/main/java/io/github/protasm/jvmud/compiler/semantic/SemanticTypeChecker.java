@@ -250,7 +250,7 @@ public final class SemanticTypeChecker {
             elseType = coerceZeroLiteralNull(thenType, expr.elseBranch(), elseType);
 
         LPCType resolved = resolveTernaryType(thenType, elseType);
-        expr.setLpcType(resolved);
+        expr.setLPCType(resolved);
         return resolved;
     }
 
@@ -504,7 +504,7 @@ public final class SemanticTypeChecker {
 
     private LPCType promoteStringSymbolToArray(Symbol symbol) {
         if (symbol != null)
-            symbol.setLpcType(LPCType.LPCARRAY);
+            symbol.setLPCType(LPCType.LPCARRAY);
         return LPCType.LPCARRAY;
     }
 
@@ -588,7 +588,7 @@ public final class SemanticTypeChecker {
             return;
 
         if (existing == null || existing == LPCType.LPCMIXED)
-            symbol.setLpcType(candidate);
+            symbol.setLPCType(candidate);
     }
 
     private final class MethodContext {
@@ -627,7 +627,7 @@ public final class SemanticTypeChecker {
         void finalizeReturn() {
             LPCType declared = method.symbol().lpcType();
             if ((declared == null || declared == LPCType.LPCMIXED) && inferredReturn != null)
-                method.symbol().setLpcType(inferredReturn);
+                method.symbol().setLPCType(inferredReturn);
         }
 
         private LPCType mergeReturn(LPCType existing, LPCType candidate) {

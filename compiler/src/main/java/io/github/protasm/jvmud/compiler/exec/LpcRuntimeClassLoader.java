@@ -3,10 +3,10 @@ package io.github.protasm.jvmud.compiler.exec;
 import java.util.HashMap;
 import java.util.Map;
 
-final class LpcRuntimeClassLoader extends ClassLoader {
+final class LPCRuntimeClassLoader extends ClassLoader {
     private final Map<String, Class<?>> definedClasses = new HashMap<>();
 
-    LpcRuntimeClassLoader(ClassLoader parent) {
+    LPCRuntimeClassLoader(ClassLoader parent) {
         super(parent);
     }
 

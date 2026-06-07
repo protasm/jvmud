@@ -6,28 +6,28 @@ import java.util.Optional;
 /**
  * Result wrapper for loading LPC objects, allowing callers to handle failures gracefully.
  */
-public final class LpcLoadResult {
-    private final LpcObjectHandle handle;
+public final class LPCLoadResult {
+    private final LPCObjectHandle handle;
     private final Throwable error;
 
-    private LpcLoadResult(LpcObjectHandle handle, Throwable error) {
+    private LPCLoadResult(LPCObjectHandle handle, Throwable error) {
         this.handle = handle;
         this.error = error;
     }
 
-    public static LpcLoadResult success(LpcObjectHandle handle) {
-        return new LpcLoadResult(Objects.requireNonNull(handle, "handle"), null);
+    public static LPCLoadResult success(LPCObjectHandle handle) {
+        return new LPCLoadResult(Objects.requireNonNull(handle, "handle"), null);
     }
 
-    public static LpcLoadResult failure(Throwable error) {
-        return new LpcLoadResult(null, Objects.requireNonNull(error, "error"));
+    public static LPCLoadResult failure(Throwable error) {
+        return new LPCLoadResult(null, Objects.requireNonNull(error, "error"));
     }
 
     public boolean succeeded() {
         return handle != null;
     }
 
-    public Optional<LpcObjectHandle> handle() {
+    public Optional<LPCObjectHandle> handle() {
         return Optional.ofNullable(handle);
     }
 

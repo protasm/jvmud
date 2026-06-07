@@ -1,8 +1,8 @@
 package io.github.protasm.jvmud.cli;
 
-import io.github.protasm.jvmud.compiler.exec.LpcLoadResult;
-import io.github.protasm.jvmud.compiler.exec.LpcObjectHandle;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
+import io.github.protasm.jvmud.compiler.exec.LPCLoadResult;
+import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.runtime.Capability;
 import io.github.protasm.jvmud.runtime.Entity;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
@@ -25,20 +25,20 @@ final class MudlibBoot {
     static final String DEFAULT_STARTING_ROOM = "room/village/vill_green";
     static final String LOCAL_ACTOR_HANDLE = "local/player";
 
-    private final LpcRuntime runtime;
+    private final LPCRuntime runtime;
     private final Path mudlibRoot;
     private final String configPath;
     private final boolean createInitialActor;
 
-    MudlibBoot(LpcRuntime runtime, Path mudlibRoot) {
+    MudlibBoot(LPCRuntime runtime, Path mudlibRoot) {
         this(runtime, mudlibRoot, DEFAULT_CONFIG_PATH);
     }
 
-    MudlibBoot(LpcRuntime runtime, Path mudlibRoot, String configPath) {
+    MudlibBoot(LPCRuntime runtime, Path mudlibRoot, String configPath) {
         this(runtime, mudlibRoot, configPath, true);
     }
 
-    MudlibBoot(LpcRuntime runtime, Path mudlibRoot, String configPath, boolean createInitialActor) {
+    MudlibBoot(LPCRuntime runtime, Path mudlibRoot, String configPath, boolean createInitialActor) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         this.configPath = Objects.requireNonNullElse(configPath, DEFAULT_CONFIG_PATH);
@@ -113,7 +113,7 @@ final class MudlibBoot {
         }
 
         try {
-            LpcObjectHandle handle = runtime.load(DEFAULT_BOUNDARY_OBJECT);
+            LPCObjectHandle handle = runtime.load(DEFAULT_BOUNDARY_OBJECT);
             MudlibBoundary boundary = readBoundaryDeclaration(handle.instance());
             registerBoundary(worldRuntime, boundary);
             preloadedObjects.add(handle.internalName());
@@ -208,9 +208,9 @@ final class MudlibBoot {
     }
 
     private void preloadObject(String sourcePath, List<String> preloadedObjects, List<String> skippedPreloads) {
-        LpcLoadResult result = runtime.tryLoad(sourcePath);
+        LPCLoadResult result = runtime.tryLoad(sourcePath);
         if (result.succeeded()) {
-            LpcObjectHandle handle = result.handle().orElseThrow();
+            LPCObjectHandle handle = result.handle().orElseThrow();
             preloadedObjects.add(handle.internalName());
         } else {
             skippedPreloads.add(sourcePath);

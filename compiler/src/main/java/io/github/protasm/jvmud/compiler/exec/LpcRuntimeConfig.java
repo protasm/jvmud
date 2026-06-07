@@ -14,7 +14,7 @@ import java.util.Objects;
  * search paths and custom resolvers control preprocessor and inherited-source lookup. Class loading
  * options control the JVM parent visible to generated LPC classes.</p>
  */
-public final class LpcRuntimeConfig {
+public final class LPCRuntimeConfig {
     private final Path baseIncludePath;
     private final List<Path> includeSearchPaths;
     private final String parentInternalName;
@@ -22,7 +22,7 @@ public final class LpcRuntimeConfig {
     private final IncludeResolver includeResolver;
     private final CompilationObserver compilationObserver;
 
-    private LpcRuntimeConfig(Builder builder) {
+    private LPCRuntimeConfig(Builder builder) {
         this.baseIncludePath = (builder.baseIncludePath != null)
                 ? builder.baseIncludePath.toAbsolutePath().normalize()
                 : null;
@@ -80,7 +80,7 @@ public final class LpcRuntimeConfig {
         private Path baseIncludePath = Path.of(".");
         private List<Path> includeSearchPaths = List.of();
         private String parentInternalName = "java/lang/Object";
-        private ClassLoader parentClassLoader = LpcRuntimeConfig.class.getClassLoader();
+        private ClassLoader parentClassLoader = LPCRuntimeConfig.class.getClassLoader();
         private IncludeResolver includeResolver;
         private CompilationObserver compilationObserver = CompilationObserver.NONE;
 
@@ -127,8 +127,8 @@ public final class LpcRuntimeConfig {
         }
 
         /** Builds an immutable runtime configuration. */
-        public LpcRuntimeConfig build() {
-            return new LpcRuntimeConfig(this);
+        public LPCRuntimeConfig build() {
+            return new LPCRuntimeConfig(this);
         }
     }
 }

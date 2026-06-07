@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
-import io.github.protasm.jvmud.compiler.exec.LpcObjectHandle;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntimeConfig;
+import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
@@ -57,8 +57,8 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeSupportsWhileLoopsAndArrayConcatAssignment() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.loadSource("smoke/array_loop.c", """
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/array_loop.c", """
                 mixed value() {
                     mixed* source;
                     mixed* result;
@@ -81,8 +81,8 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeCoercesMixedNumericOperandsBeforeJvmIntegerOpcodes() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.loadSource("smoke/mixed_numeric.c", """
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_numeric.c", """
                 int total;
 
                 int adjust(mixed i) {
@@ -106,8 +106,8 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeSupportsLpcStringIndexingAndCharacterLiterals() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.loadSource("smoke/string_index.c", """
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/string_index.c", """
                 int slash_code() {
                     return '/';
                 }
@@ -132,8 +132,8 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeSupportsCommaSeparatedForInitializerAndUpdateExpressions() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.loadSource("smoke/for_comma.c", """
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/for_comma.c", """
                 int value() {
                     int i;
                     int a;
@@ -150,8 +150,8 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeSupportsContinueInForAndWhileLoops() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.loadSource("smoke/continue.c", """
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/continue.c", """
                 int value() {
                     int i;
                     int sum;
@@ -178,8 +178,8 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeSupportsIntegerBitwiseOperatorsAndCompoundAssignments() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.loadSource("smoke/bitwise.c", """
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/bitwise.c", """
                 int value() {
                     int scar;
 
@@ -202,9 +202,9 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeSupportsAllocateAndLegacyStringDeclaredArrays() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
-        LpcObjectHandle object = runtime.loadSource("smoke/allocate.c", """
+        LPCObjectHandle object = runtime.loadSource("smoke/allocate.c", """
                 string values;
 
                 mixed value() {
@@ -232,16 +232,16 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.load("obj/playerish");
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.load("obj/playerish");
 
         assertEquals(42, object.invoke("value"));
     }
 
     @Test
     void runtimeLoadsInstantiatesAndInvokesCompiledSource() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.loadSource("smoke/object.c", """
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/object.c", """
                 int counter = 7;
 
                 int value() {
@@ -267,8 +267,8 @@ final class CompilerSmokeTest {
                 }
                 """;
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.loadSource("smoke/static.c", source);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/static.c", source);
 
         assertEquals(42, object.invoke("value"));
 
@@ -282,8 +282,8 @@ final class CompilerSmokeTest {
 
     @Test
     void preprocessorRecognizesIndentedConditionalsInsideFunctionBodies() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle object = runtime.loadSource("smoke/indented_conditional.c", """
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/indented_conditional.c", """
                 #define ENABLED
 
                 int value() {
@@ -299,7 +299,7 @@ final class CompilerSmokeTest {
 
     @Test
     void untypedMethodsProduceHardSemanticErrors() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
         RuntimeException error = assertThrows(RuntimeException.class, () -> runtime.loadSource("smoke/untyped.c", """
                 reset(arg) {
@@ -316,7 +316,7 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeStoresNativeMudlibBoundaryDeclaration() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         MudlibBoundary boundary = MudlibBoundary.builder()
                 .boundaryObjectPath("jvmud/boundary")
                 .mfunObjectPath("jvmud/functions")
@@ -330,12 +330,12 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeUsesConfiguredObjectLoadedLifecycleMethod() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "on_loaded")
                 .build());
 
-        LpcObjectHandle object = runtime.loadSource("smoke/lifecycle.c", """
+        LPCObjectHandle object = runtime.loadSource("smoke/lifecycle.c", """
                 int counter = 0;
 
                 void reset(mixed arg) {
@@ -368,12 +368,12 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/functions")
                 .build());
 
-        LpcObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
 
         assertEquals(42, caller.invoke("value"));
     }
@@ -406,12 +406,12 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/functions")
                 .build());
 
-        LpcObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
 
         assertEquals(3, caller.invoke("value"));
     }
@@ -457,9 +457,9 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeRoutesPersonaSessionOutputAndPresenceQueries() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
-        LpcObjectHandle first = runtime.loadSource("smoke/first_player.c", """
+        LPCObjectHandle first = runtime.loadSource("smoke/first_player.c", """
                 void write_self() {
                     jvmud_write("first-only");
                 }
@@ -480,12 +480,12 @@ final class CompilerSmokeTest {
                     return jvmud_size(jvmud_users());
                 }
                 """);
-        LpcObjectHandle second = runtime.loadSource("smoke/second_player.c", """
+        LPCObjectHandle second = runtime.loadSource("smoke/second_player.c", """
                 int value() {
                     return 0;
                 }
                 """);
-        LpcObjectHandle unconnected = runtime.loadSource("smoke/unconnected.c", """
+        LPCObjectHandle unconnected = runtime.loadSource("smoke/unconnected.c", """
                 int value() {
                     return 0;
                 }
@@ -513,9 +513,9 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeCapturesNextSessionInputForPersona() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
-        LpcObjectHandle player = runtime.loadSource("smoke/input_player.c", """
+        LPCObjectHandle player = runtime.loadSource("smoke/input_player.c", """
                 string response;
 
                 void ask() {
@@ -550,9 +550,9 @@ final class CompilerSmokeTest {
     void runtimeReadsMudlibRootedTextForCompatibilityShims() throws Exception {
         Files.writeString(tempDir.resolve("WELCOME"), "Welcome to JVMud.\n");
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
-        LpcObjectHandle reader = runtime.loadSource("smoke/text_reader.c", """
+        LPCObjectHandle reader = runtime.loadSource("smoke/text_reader.c", """
                 mixed welcome() {
                     return jvmud_read_mudlib_text("/WELCOME");
                 }
@@ -618,13 +618,13 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
 
-        LpcObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
 
         assertEquals(1, caller.invoke("show_welcome"));
         assertEquals("Welcome through mfun.\n", runtime.outputTranscript());
@@ -645,13 +645,13 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/functions")
                 .build());
 
-        LpcObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
 
         assertEquals("mfun:shadowed", caller.invoke("value"));
         assertEquals("", runtime.outputTranscript());
@@ -672,8 +672,8 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle child = runtime.load(tempDir.resolve("child.c"));
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle child = runtime.load(tempDir.resolve("child.c"));
 
         assertEquals(42, child.invoke("child_value"));
     }
@@ -695,17 +695,17 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        LpcObjectHandle child = runtime.load(tempDir.resolve("room/village/vill_green.c"));
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle child = runtime.load(tempDir.resolve("room/village/vill_green.c"));
 
         assertEquals(42, child.invoke("child_value"));
     }
 
     @Test
     void arrowInvokeOnExpressionUsesNativeDynamicDispatch() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
-        LpcObjectHandle object = runtime.loadSource("smoke/arrow.c", """
+        LPCObjectHandle object = runtime.loadSource("smoke/arrow.c", """
                 int value() {
                     return 42;
                 }
@@ -720,9 +720,9 @@ final class CompilerSmokeTest {
 
     @Test
     void localsDefaultToZeroAcrossControlFlowBranches() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
-        LpcObjectHandle object = runtime.loadSource("smoke/default_local.c", """
+        LPCObjectHandle object = runtime.loadSource("smoke/default_local.c", """
                 int value(mixed flag) {
                     int i;
                     if (flag)
@@ -738,9 +738,9 @@ final class CompilerSmokeTest {
 
     @Test
     void primitiveArgumentsAreBoxedForExplicitMixedMethodParameters() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
-        LpcObjectHandle object = runtime.loadSource("smoke/untyped_arg.c", """
+        LPCObjectHandle object = runtime.loadSource("smoke/untyped_arg.c", """
                 mixed identity(mixed value) {
                     return value;
                 }
@@ -782,10 +782,10 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeDispatchesCoreEngineFunctionsWithCurrentObjectContext() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
 
-        LpcObjectHandle object = runtime.loadSource("engine_function/caller.c", """
+        LPCObjectHandle object = runtime.loadSource("engine_function/caller.c", """
                 int value() {
                     return 42;
                 }
@@ -800,10 +800,10 @@ final class CompilerSmokeTest {
 
     @Test
     void writeEngineFunctionCapturesOutputForCliAndTests() {
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
 
-        LpcObjectHandle object = runtime.loadSource("engine_function/writer.c", """
+        LPCObjectHandle object = runtime.loadSource("engine_function/writer.c", """
                 void describe() {
                     jvmud_write("hello ");
                     jvmud_write("mud");
@@ -834,10 +834,10 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
 
-        LpcObjectHandle room = runtime.load(tempDir.resolve("room.c"));
+        LPCObjectHandle room = runtime.load(tempDir.resolve("room.c"));
         Object thing = runtime.cloneObject("thing");
 
         runtime.moveObject(thing, room.instance());
@@ -856,7 +856,7 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
 
         Object parent = runtime.cloneObject("thing");
@@ -882,9 +882,9 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
-        LpcObjectHandle controller = runtime.loadSource("controller.c", """
+        LPCObjectHandle controller = runtime.loadSource("controller.c", """
                 void setup() {
                     object thing;
                     thing = jvmud_spawn_entity("thing");

@@ -2,7 +2,7 @@ package io.github.protasm.jvmud.compiler.engine;
 
 import io.github.protasm.jvmud.compiler.efun.Efun;
 import io.github.protasm.jvmud.compiler.efun.EfunSignature;
-import io.github.protasm.jvmud.compiler.exec.LpcRuntime;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
@@ -33,7 +33,7 @@ public final class EngineEfuns {
     }
 
     /** Registers the core efun set into a host-facing LPC runtime. */
-    public static void registerCore(LpcRuntime runtime) {
+    public static void registerCore(LPCRuntime runtime) {
         Objects.requireNonNull(runtime, "runtime");
 
         for (Efun efun : coreEfuns()) {
