@@ -49,7 +49,7 @@ public final class AdminCli {
     public static void main(String[] args) throws IOException {
         PrintWriter out = new PrintWriter(System.out, true);
         AdminCli cli = new AdminCli(out);
-        Path mudlib = (args.length > 0) ? Path.of(args[0]) : Path.of("mudlib");
+        Path mudlib = (args.length > 0) ? Path.of(args[0]) : Path.of("mudlibs", "lp245");
         String configObjectPath = (args.length > 1) ? args[1] : MudlibBoot.DEFAULT_CONFIG_PATH;
         cli.boot(mudlib, configObjectPath);
         cli.run(new BufferedReader(new InputStreamReader(System.in)));
@@ -90,7 +90,7 @@ public final class AdminCli {
             switch (canonicalName) {
             case "help" -> help();
             case "boot" -> boot(
-                    command.pathArgument(0, Path.of("mudlib")),
+                    command.pathArgument(0, Path.of("mudlibs", "lp245")),
                     command.optional(1, MudlibBoot.DEFAULT_CONFIG_PATH));
             case "pwd" -> pwd();
             case "cd" -> cd(command.optional(0, "/"));
@@ -515,7 +515,7 @@ public final class AdminCli {
 
     private void ensureBooted() {
         if (runtime == null) {
-            boot(Path.of("mudlib"));
+            boot(Path.of("mudlibs", "lp245"));
         }
     }
 

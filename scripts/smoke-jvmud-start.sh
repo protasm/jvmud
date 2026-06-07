@@ -34,7 +34,7 @@ cleanup() {
 trap 'status=$?; cleanup "$status"; exit "$status"' EXIT
 
 ./jvmud-start \
-  -mudlib-dir mudlib \
+  -mudlib-dir mudlibs/lp245 \
   -port "$PORT" \
   -host 127.0.0.1 \
   -config jvmud/config \

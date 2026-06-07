@@ -126,7 +126,7 @@ pipeline and provides a minimal API for loading LPC objects from source code.</p
 <p>Usage example:</p>
 
 <pre><code>LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
-        .baseIncludePath(Path.of("mudlib"))
+        .baseIncludePath(Path.of("mudlibs", "lp245"))
         .build());
 LPCObjectHandle orc = runtime.load("/obj/orc.c");
 runtime.withRuntimeContext(() -&gt; {

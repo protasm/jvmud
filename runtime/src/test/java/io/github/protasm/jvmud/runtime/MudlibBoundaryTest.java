@@ -28,14 +28,14 @@ final class MudlibBoundaryTest {
     @Test
     void boundaryNormalizesMudlibObjectPaths() {
         MudlibBoundary boundary = MudlibBoundary.builder()
-                .boundaryObjectPath("/jvmud/boundary.c")
+                .boundaryObjectPath("/jvmud/mudlib.c")
                 .mfunObjectPath(" /jvmud/functions.c ")
                 .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "reset")
                 .handle(MudlibLifecycleEvent.SCHEDULED_TICK)
                 .build();
 
         assertTrue(boundary.declared());
-        assertEquals("jvmud/boundary", boundary.boundaryObjectPath().orElseThrow());
+        assertEquals("jvmud/mudlib", boundary.boundaryObjectPath().orElseThrow());
         assertEquals("jvmud/functions", boundary.mfunObjectPath().orElseThrow());
         assertTrue(boundary.handles(MudlibLifecycleEvent.OBJECT_LOADED));
         assertEquals("reset", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED).orElseThrow());

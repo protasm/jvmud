@@ -33,7 +33,7 @@ final class TelnetServerTest {
     void telnetServerLaunchOptionsDefaultToLocalMudlibStart() {
         TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[0]);
 
-        assertEquals(Path.of("mudlib"), options.mudlibRoot());
+        assertEquals(Path.of("mudlibs", "lp245"), options.mudlibRoot());
         assertEquals(4000, options.port());
         assertEquals("localhost", options.bindAddress());
         assertEquals(MudlibBoot.DEFAULT_CONFIG_PATH, options.configObjectPath());
@@ -43,13 +43,13 @@ final class TelnetServerTest {
     @Test
     void telnetServerLaunchOptionsAcceptNamedFlags() {
         TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {
-                "-mudlib-dir", "mudlib",
+                "-mudlib-dir", "mudlibs/lp245",
                 "-port", "4303",
                 "-host", "127.0.0.1",
                 "-config", "jvmud/config"
         });
 
-        assertEquals(Path.of("mudlib"), options.mudlibRoot());
+        assertEquals(Path.of("mudlibs", "lp245"), options.mudlibRoot());
         assertEquals(4303, options.port());
         assertEquals("127.0.0.1", options.bindAddress());
         assertEquals("jvmud/config", options.configObjectPath());
@@ -597,9 +597,9 @@ final class TelnetServerTest {
     }
 
     @Test
-    void bootDiscoversDedicatedMudlibBoundaryDeclarationObject() throws Exception {
+    void bootDiscoversDedicatedMudlibDeclarationObject() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
-        Files.writeString(tempDir.resolve("jvmud/boundary.c"), """
+        Files.writeString(tempDir.resolve("jvmud/mudlib.c"), """
                 string mfun_object() {
                     return "/jvmud/functions.c";
                 }
@@ -617,12 +617,12 @@ final class TelnetServerTest {
         MudlibBootResult result = new MudlibBoot(runtime, tempDir).boot();
         MudlibBoundary boundary = result.worldRuntime().mudlibBoundary();
 
-        assertEquals("jvmud/boundary", boundary.boundaryObjectPath().orElseThrow());
+        assertEquals("jvmud/mudlib", boundary.boundaryObjectPath().orElseThrow());
         assertEquals("jvmud/functions", boundary.mfunObjectPath().orElseThrow());
         assertTrue(boundary.handles(MudlibLifecycleEvent.OBJECT_LOADED));
         assertTrue(boundary.handles(MudlibLifecycleEvent.SCHEDULED_TICK));
         assertEquals(boundary, runtime.mudlibBoundary());
-        assertTrue(result.preloadedObjects().contains("jvmud/boundary"));
+        assertTrue(result.preloadedObjects().contains("jvmud/mudlib"));
     }
 
     @Test
@@ -711,7 +711,7 @@ final class TelnetServerTest {
                 lifecycle.object_loaded = reset
                 lifecycle.interaction_scope_started = init
                 """);
-        Files.writeString(mudlibRoot.resolve("jvmud/boundary.c"), """
+        Files.writeString(mudlibRoot.resolve("jvmud/mudlib.c"), """
                 string mfun_object() {
                     return "jvmud/mfuns";
                 }

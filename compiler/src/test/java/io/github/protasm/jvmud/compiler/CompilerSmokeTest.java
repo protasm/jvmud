@@ -395,7 +395,7 @@ final class CompilerSmokeTest {
     void runtimeStoresNativeMudlibBoundaryDeclaration() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         MudlibBoundary boundary = MudlibBoundary.builder()
-                .boundaryObjectPath("jvmud/boundary")
+                .boundaryObjectPath("jvmud/mudlib")
                 .mfunObjectPath("jvmud/functions")
                 .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "on_loaded")
                 .build();

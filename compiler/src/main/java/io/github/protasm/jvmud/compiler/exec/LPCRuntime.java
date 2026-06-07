@@ -37,7 +37,7 @@ import java.util.function.Supplier;
  *
  * <pre>{@code
  * LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
- *         .baseIncludePath(Path.of("mudlib"))
+ *         .baseIncludePath(Path.of("mudlibs", "lp245"))
  *         .build());
  * LPCObjectHandle orc = runtime.load("/obj/orc.c");
  * runtime.withRuntimeContext(() -> {

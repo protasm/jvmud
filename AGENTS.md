@@ -12,7 +12,7 @@ static docs.
 - `runtime/`: JVMud runtime/server code. Do not assume this directory is
   the same thing as `compiler/src/main/java/io/github/protasm/jvmud/compiler/runtime/`,
   which contains compiler helper classes used by generated code.
-- `mudlib/`: LPC mudlib source. `obj/` contains reusable object definitions and
+- `mudlibs/lp245/`: LPC mudlib source. `obj/` contains reusable object definitions and
   `room/` contains world/room content, headers, and startup-oriented files.
   Treat upstream vanilla mudlib files as read-only unless the user explicitly
   requests style or formatting changes. Add JVMud compatibility through
@@ -35,8 +35,8 @@ the baseline test suite unless the task calls for a narrower command.
 - Inspect the relevant tree before changing it; this repo is still being shaped
   after migration.
 - Keep compiler changes under `compiler/` unless the task is explicitly about
-  runtime, mudlib, or docs.
-- Treat `mudlib/` as LPC source/content, not Java module source. Preserve
+  runtime, mudlibs/lp245, or docs.
+- Treat `mudlibs/lp245/` as LPC source/content, not Java module source. Preserve
   upstream mudlib files by default; compatibility belongs in dedicated shim
   objects and focused compiler/runtime support.
 - Keep runtime/server concepts separate from compiler execution helpers.
