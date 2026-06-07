@@ -66,16 +66,16 @@
               <td>Writes text to the active output sink.</td>
             </tr>
             <tr>
-              <td><code>void jvmud_say(mixed message)</code></td>
-              <td>Currently captured like direct output until room/session routing is richer.</td>
+              <td><code>void jvmud_send_to_entity(object target, mixed message)</code></td>
+              <td>Delivers text to a target entity through runtime output routing.</td>
             </tr>
             <tr>
-              <td><code>void jvmud_tell_object(object target, mixed message)</code></td>
-              <td>Delivers text to a target object through runtime output routing.</td>
+              <td><code>void jvmud_emit_perceivable(mixed emitter, mixed message)</code></td>
+              <td>Emits a perceivable message from an entity to suitably perceptive entities at its location.</td>
             </tr>
             <tr>
-              <td><code>void jvmud_tell_room(mixed room, mixed message)</code></td>
-              <td>Currently writes the message to the observable output sink.</td>
+              <td><code>void jvmud_emit_perceivable_at(mixed location, mixed message)</code></td>
+              <td>Emits a perceivable message at an explicit location for compatibility shims.</td>
             </tr>
           </tbody>
         </table>
@@ -92,7 +92,7 @@
           </thead>
           <tbody>
             <tr>
-              <td><code>object jvmud_current_object()</code></td>
+              <td><code>object jvmud_current_entity()</code></td>
               <td>Returns the current LPC object in the active runtime context.</td>
             </tr>
             <tr>
@@ -124,7 +124,7 @@
       </div>
 
       <div class="efun-group">
-        <h3>Objects, Movement, And Inventory</h3>
+        <h3>Entities, Locations, And Containment</h3>
         <table class="efun-table">
           <thead>
             <tr>
@@ -134,52 +134,52 @@
           </thead>
           <tbody>
             <tr>
-              <td><code>string jvmud_object_name(mixed object)</code></td>
-              <td>Returns the registered runtime object id.</td>
+              <td><code>string jvmud_entity_id(mixed entity)</code></td>
+              <td>Returns the registered runtime entity id.</td>
             </tr>
             <tr>
-              <td><code>mixed jvmud_invoke_object(mixed target, string method)</code></td>
-              <td>Invokes a method on an object or path-resolved shared object.</td>
+              <td><code>mixed jvmud_invoke_entity(mixed target, string method)</code></td>
+              <td>Invokes a method on an entity or path-resolved shared entity.</td>
             </tr>
             <tr>
-              <td><code>mixed jvmud_invoke_object(mixed target, string method, mixed arg)</code></td>
-              <td>Invokes a method with one argument on an object or path-resolved shared object.</td>
+              <td><code>mixed jvmud_invoke_entity(mixed target, string method, mixed arg)</code></td>
+              <td>Invokes a method with one argument on an entity or path-resolved shared entity.</td>
             </tr>
             <tr>
-              <td><code>object jvmud_clone_object(string path)</code></td>
+              <td><code>object jvmud_spawn_entity(string path)</code></td>
               <td>Compiles if needed and creates a new runtime clone.</td>
             </tr>
             <tr>
-              <td><code>void jvmud_move_object(mixed object, mixed destination)</code></td>
-              <td>Moves an object into another object or path-resolved destination.</td>
+              <td><code>void jvmud_move_entity(mixed entity, mixed destination)</code></td>
+              <td>Moves an entity into a location, container entity, or path-resolved destination.</td>
             </tr>
             <tr>
-              <td><code>object jvmud_present(string id)</code></td>
-              <td>Finds a present object by identifier using the current context.</td>
+              <td><code>object jvmud_find_entity(string id)</code></td>
+              <td>Finds an entity by identifier using the current context.</td>
             </tr>
             <tr>
-              <td><code>object jvmud_present(mixed id, mixed container)</code></td>
-              <td>Finds a present object by identifier in a supplied container.</td>
+              <td><code>object jvmud_find_entity(mixed id, mixed location)</code></td>
+              <td>Finds an entity by identifier in a supplied location or container.</td>
             </tr>
             <tr>
-              <td><code>object jvmud_first_inventory(mixed container)</code></td>
-              <td>Starts inventory traversal for a container.</td>
+              <td><code>object jvmud_first_entity_at(mixed location)</code></td>
+              <td>Starts entity traversal for a location or container.</td>
             </tr>
             <tr>
-              <td><code>object jvmud_next_inventory(mixed object)</code></td>
-              <td>Continues inventory traversal from a previous object.</td>
+              <td><code>object jvmud_next_entity_at(mixed entity)</code></td>
+              <td>Continues traversal from a previous entity at the same location.</td>
             </tr>
             <tr>
-              <td><code>object jvmud_environment()</code></td>
-              <td>Returns the current object's immediate environment.</td>
+              <td><code>object jvmud_entity_location()</code></td>
+              <td>Returns the current entity's immediate location.</td>
             </tr>
             <tr>
-              <td><code>object jvmud_environment(mixed object)</code></td>
-              <td>Returns the supplied object's immediate environment.</td>
+              <td><code>object jvmud_entity_location(mixed entity)</code></td>
+              <td>Returns the supplied entity's immediate location.</td>
             </tr>
             <tr>
-              <td><code>void jvmud_destruct(object object)</code></td>
-              <td>Destructs an object and removes it from runtime indexes.</td>
+              <td><code>void jvmud_destroy_entity(object entity)</code></td>
+              <td>Destroys an entity and removes it from runtime indexes.</td>
             </tr>
           </tbody>
         </table>

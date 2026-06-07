@@ -1012,7 +1012,7 @@ final class AdminCliTest {
                 }
 
                 void tell_object(object target, mixed value) {
-                    jvmud_tell_object(target, value);
+                    jvmud_send_to_entity(target, value);
                 }
 
                 int sizeof(mixed value) {
@@ -1056,11 +1056,11 @@ final class AdminCliTest {
                 }
 
                 mixed call_other(mixed target, string method) {
-                    return jvmud_invoke_object(target, method);
+                    return jvmud_invoke_entity(target, method);
                 }
 
                 mixed call_other(mixed target, string method, mixed arg) {
-                    return jvmud_invoke_object(target, method, arg);
+                    return jvmud_invoke_entity(target, method, arg);
                 }
 
                 int cat(string path) {
@@ -1083,15 +1083,15 @@ final class AdminCliTest {
                 }
 
                 object environment() {
-                    return jvmud_environment();
+                    return jvmud_entity_location();
                 }
 
                 object environment(mixed ob) {
-                    return jvmud_environment(ob);
+                    return jvmud_entity_location(ob);
                 }
 
                 void move_object(mixed ob, mixed destination) {
-                    jvmud_move_object(ob, destination);
+                    jvmud_move_entity(ob, destination);
                 }
 
                 string lower_case(mixed value) {
@@ -1103,7 +1103,7 @@ final class AdminCliTest {
                 }
 
                 object this_object() {
-                    return jvmud_current_object();
+                    return jvmud_current_entity();
                 }
                 """);
     }

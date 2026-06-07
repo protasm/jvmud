@@ -17,11 +17,11 @@ void add_verb(string verb) {
 }
 
 mixed call_other(mixed target, string method) {
-  return jvmud_invoke_object(target, method);
+  return jvmud_invoke_entity(target, method);
 }
 
 mixed call_other(mixed target, string method, mixed arg) {
-  return jvmud_invoke_object(target, method, arg);
+  return jvmud_invoke_entity(target, method, arg);
 }
 
 void call_out(string method, int delay) {
@@ -48,7 +48,7 @@ int cat(string path, int line, int count) {
 }
 
 object clone_object(string path) {
-  return jvmud_clone_object(path);
+  return jvmud_spawn_entity(path);
 }
 
 string capitalize(mixed value) {
@@ -94,7 +94,7 @@ mixed creator(mixed ob) {
 }
 
 void destruct(object ob) {
-  jvmud_destruct(ob);
+  jvmud_destroy_entity(ob);
 }
 
 void enable_commands() {
@@ -110,19 +110,19 @@ void input_to(string method, int noecho) {
 }
 
 object environment() {
-  return jvmud_environment();
+  return jvmud_entity_location();
 }
 
 object environment(mixed ob) {
-  return jvmud_environment(ob);
+  return jvmud_entity_location(ob);
 }
 
 string file_name(mixed ob) {
-  return jvmud_object_name(ob);
+  return jvmud_entity_id(ob);
 }
 
 object first_inventory(mixed container) {
-  return jvmud_first_inventory(container);
+  return jvmud_first_entity_at(container);
 }
 
 string jvmud_mfun_status() {
@@ -138,11 +138,11 @@ string lower_case(mixed value) {
 }
 
 void move_object(mixed ob, mixed destination) {
-  jvmud_move_object(ob, destination);
+  jvmud_move_entity(ob, destination);
 }
 
 object next_inventory(mixed ob) {
-  return jvmud_next_inventory(ob);
+  return jvmud_next_entity_at(ob);
 }
 
 status pointerp(mixed value) {
@@ -150,11 +150,11 @@ status pointerp(mixed value) {
 }
 
 object present(string id) {
-  return jvmud_present(id);
+  return jvmud_find_entity(id);
 }
 
 object present(mixed id, mixed container) {
-  return jvmud_present(id, container);
+  return jvmud_find_entity(id, container);
 }
 
 string query_verb() {
@@ -174,7 +174,11 @@ int remove_call_out(string method) {
 }
 
 void say(mixed value) {
-  jvmud_say(value);
+  jvmud_emit_perceivable(jvmud_current_actor(), value);
+}
+
+void say(mixed value, object excluded) {
+  jvmud_emit_perceivable(jvmud_current_actor(), value);
 }
 
 void set_heart_beat(int enabled) {
@@ -207,15 +211,15 @@ status stringp(mixed value) {
 }
 
 void tell_object(object target, mixed value) {
-  jvmud_tell_object(target, value);
+  jvmud_send_to_entity(target, value);
 }
 
 void tell_room(mixed room, mixed value) {
-  jvmud_tell_room(room, value);
+  jvmud_emit_perceivable_at(room, value);
 }
 
 object this_object() {
-  return jvmud_current_object();
+  return jvmud_current_entity();
 }
 
 object this_player() {

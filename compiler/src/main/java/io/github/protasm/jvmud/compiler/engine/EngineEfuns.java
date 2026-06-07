@@ -16,10 +16,9 @@ import java.util.Objects;
 /**
  * Registers the core LPC-facing engine functions needed by compiled mudlib objects.
  *
- * <p>The functions in this class are compatibility entry points. Some names are intentionally
- * legacy-shaped or shim-facing, but their implementations delegate into JVMud runtime context
- * operations such as output delivery, object identity, containment, command dispatch, and
- * scheduling.</p>
+ * <p>The functions in this class use JVMud engine vocabulary. Legacy LP driver names stay in
+ * mudlib-side compatibility objects, where they can delegate to engine operations such as output
+ * delivery, entity identity, location containment, command dispatch, and scheduling.</p>
  */
 public final class EngineEfuns {
     private EngineEfuns() {}
@@ -49,24 +48,16 @@ public final class EngineEfuns {
                     runtime.writeOutput(args[0]);
                     return null;
                 }));
-        efuns.add(efun("jvmud_say", LPCType.LPCVOID, List.of(LPCType.LPCMIXED),
-                (runtime, args) -> {
-                    // Until room/session routing exists, broadcasts are captured in the same sink
-                    // as direct writes so tests and the admin CLI can still observe output.
-                    runtime.writeOutput(args[0]);
-                    return null;
-                }));
-        efuns.add(efun("jvmud_tell_object", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT, LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_send_to_entity", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT, LPCType.LPCMIXED),
                 (runtime, args) -> {
                     runtime.tellObject(args[0], args[1]);
                     return null;
                 }));
-        efuns.add(efun("jvmud_tell_room", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
-                (runtime, args) -> {
-                    runtime.writeOutput(args[1]);
-                    return null;
-                }));
-        efuns.add(efun("jvmud_current_object", LPCType.LPCOBJECT, List.of(),
+        efuns.add(efun("jvmud_emit_perceivable", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
+                (runtime, args) -> emitPerceivable(runtime, args[0], args[1])));
+        efuns.add(efun("jvmud_emit_perceivable_at", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
+                (runtime, args) -> emitPerceivableAt(runtime, args[0], args[1])));
+        efuns.add(efun("jvmud_current_entity", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.currentObject()));
         efuns.add(efun("jvmud_current_actor", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.currentCommandActor() != null
@@ -76,7 +67,7 @@ public final class EngineEfuns {
                 (runtime, args) -> runtime.currentCommandVerb()));
         efuns.add(efun("jvmud_time", LPCType.LPCINT, List.of(),
                 (runtime, args) -> (int) (System.currentTimeMillis() / 1000L)));
-        efuns.add(efun("jvmud_object_name", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_entity_id", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.objectId(args[0])));
         efuns.add(efun("jvmud_size", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> sizeOf(args[0])));
@@ -106,26 +97,26 @@ public final class EngineEfuns {
         efuns.add(efun("allocate", LPCType.LPCARRAY, List.of(LPCType.LPCINT),
                 (runtime, args) -> new ArrayList<>(
                         Collections.nCopies(Math.max(0, ((Number) args[0]).intValue()), Integer.valueOf(0)))));
-        efuns.add(efun("jvmud_invoke_object", LPCType.LPCMIXED,
+        efuns.add(efun("jvmud_invoke_entity", LPCType.LPCMIXED,
                 List.of(LPCType.LPCMIXED, LPCType.LPCSTRING),
-                (runtime, args) -> callOther(runtime, args[0], String.valueOf(args[1]))));
-        efuns.add(efun("jvmud_invoke_object", LPCType.LPCMIXED,
+                (runtime, args) -> invokeEntity(runtime, args[0], String.valueOf(args[1]))));
+        efuns.add(efun("jvmud_invoke_entity", LPCType.LPCMIXED,
                 List.of(LPCType.LPCMIXED, LPCType.LPCSTRING, LPCType.LPCMIXED),
-                (runtime, args) -> callOther(runtime, args[0], String.valueOf(args[1]), args[2])));
-        efuns.add(efun("jvmud_clone_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> invokeEntity(runtime, args[0], String.valueOf(args[1]), args[2])));
+        efuns.add(efun("jvmud_spawn_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.cloneObject(String.valueOf(args[0]))));
-        efuns.add(efun("jvmud_move_object", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_move_entity", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> {
                     runtime.moveObject(args[0], args[1]);
                     return null;
                 }));
-        efuns.add(efun("jvmud_present", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
+        efuns.add(efun("jvmud_find_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.present(args[0], null)));
-        efuns.add(efun("jvmud_present", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_find_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> runtime.present(args[0], args[1])));
-        efuns.add(efun("jvmud_first_inventory", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_first_entity_at", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.firstInventory(args[0])));
-        efuns.add(efun("jvmud_next_inventory", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_next_entity_at", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.nextInventory(args[0])));
         efuns.add(efun("jvmud_set_light", LPCType.LPCINT, List.of(LPCType.LPCINT),
                 (runtime, args) -> runtime.setLight(((Number) args[0]).intValue())));
@@ -155,11 +146,11 @@ public final class EngineEfuns {
                     runtime.registerVerb(String.valueOf(args[0]));
                     return null;
                 }));
-        efuns.add(efun("jvmud_environment", LPCType.LPCOBJECT, List.of(),
+        efuns.add(efun("jvmud_entity_location", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.environment(null)));
-        efuns.add(efun("jvmud_environment", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_entity_location", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.environment(args[0])));
-        efuns.add(efun("jvmud_destruct", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT),
+        efuns.add(efun("jvmud_destroy_entity", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT),
                 (runtime, args) -> {
                     runtime.destructObject(args[0]);
                     return null;
@@ -193,11 +184,22 @@ public final class EngineEfuns {
         return value.substring(0, 1).toUpperCase() + value.substring(1);
     }
 
-    private static Object callOther(RuntimeContext runtime, Object target, String methodName) {
-        return callOther(runtime, target, methodName, null);
+    private static Object emitPerceivable(RuntimeContext runtime, Object emitter, Object message) {
+        return emitPerceivableAt(runtime, runtime.environment(emitter), message);
     }
 
-    private static Object callOther(RuntimeContext runtime, Object target, String methodName, Object argument) {
+    private static Object emitPerceivableAt(RuntimeContext runtime, Object location, Object message) {
+        // Until location/session routing exists, perceivable emissions are captured in the same sink
+        // as direct writes so tests and the admin CLI can still observe output.
+        runtime.writeOutput(message);
+        return null;
+    }
+
+    private static Object invokeEntity(RuntimeContext runtime, Object target, String methodName) {
+        return invokeEntity(runtime, target, methodName, null);
+    }
+
+    private static Object invokeEntity(RuntimeContext runtime, Object target, String methodName, Object argument) {
         Object resolvedTarget = resolveTarget(runtime, target);
         if (resolvedTarget == null) {
             return 0;

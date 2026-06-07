@@ -440,7 +440,7 @@ final class CompilerSmokeTest {
                 }
 
                 void tell(mixed target) {
-                    jvmud_tell_object(target, "second-only");
+                    jvmud_send_to_entity(target, "second-only");
                 }
 
                 mixed query_ip(mixed target) {
@@ -766,7 +766,7 @@ final class CompilerSmokeTest {
                 }
 
                 mixed reflected_value() {
-                    return jvmud_invoke_object(jvmud_current_object(), "value", 0);
+                    return jvmud_invoke_entity(jvmud_current_entity(), "value", 0);
                 }
                 """);
 
@@ -862,9 +862,9 @@ final class CompilerSmokeTest {
         LpcObjectHandle controller = runtime.loadSource("controller.c", """
                 void setup() {
                     object thing;
-                    thing = jvmud_clone_object("thing");
-                    jvmud_move_object(thing, jvmud_current_object());
-                    jvmud_write(jvmud_invoke_object(jvmud_first_inventory(jvmud_current_object()), "short", 0));
+                    thing = jvmud_spawn_entity("thing");
+                    jvmud_move_entity(thing, jvmud_current_entity());
+                    jvmud_write(jvmud_invoke_entity(jvmud_first_entity_at(jvmud_current_entity()), "short", 0));
                 }
                 """);
 
