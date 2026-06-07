@@ -173,6 +173,27 @@ with connect_with_retry() as sock:
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"orc valley movement reported an error:\n{transcript}")
 
+    sock.sendall(b"north\n")
+    transcript = read_until(sock, "> ")
+    if "This is the local strong point of the orcs." not in transcript:
+        raise AssertionError(f"north from orc valley did not move to the orc fortress:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"orc fortress movement reported an error:\n{transcript}")
+
+    sock.sendall(b"look\n")
+    transcript = read_until(sock, "> ")
+    if "This is the local strong point of the orcs." not in transcript:
+        raise AssertionError(f"look in the orc fortress did not render the room:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"orc fortress look reported an error:\n{transcript}")
+
+    sock.sendall(b"south\n")
+    transcript = read_until(sock, "> ")
+    if "You are in the orc valley. This place is inhabited by orcs." not in transcript:
+        raise AssertionError(f"south from orc fortress did not return to the orc valley:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"orc fortress exit reported an error:\n{transcript}")
+
     sock.sendall(b"east\n")
     transcript = read_until(sock, "> ")
     if "The forest gets light here, and slopes down to the west." not in transcript:

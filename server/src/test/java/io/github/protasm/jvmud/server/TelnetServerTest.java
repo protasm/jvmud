@@ -138,6 +138,35 @@ final class TelnetServerTest {
     }
 
     @Test
+    void telnetLookFallbackAcceptsNoArgumentRoomLong() throws Exception {
+        installMfunShim();
+        Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
+                void long() {
+                    write("A no-argument long room.\\n");
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                readUntilPrompt(socket);
+
+                socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String look = readUntilPrompt(socket);
+                assertTrue(look.contains("A no-argument long room."), look);
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
     void telnetSessionCanAttachConfiguredMudlibPlayerObject() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/config"), """
@@ -177,6 +206,16 @@ final class TelnetServerTest {
 
                 int id(mixed str) {
                     return str == "player";
+                }
+
+                void init() {
+                    add_action("look");
+                    add_verb("look");
+                }
+
+                int look(mixed str) {
+                    call_other(environment(this_object()), "long", 0);
+                    return 1;
                 }
 
                 int move_player(mixed dir_dest) {

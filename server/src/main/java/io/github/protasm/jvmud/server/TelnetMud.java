@@ -171,7 +171,7 @@ final class TelnetMud {
             runtime.clearOutputTranscript();
             Object environment = runtime.environment(persona.actor());
             if (environment != null) {
-                lookAt(environment);
+                lookAt(environment, out);
                 result = 1;
             }
             printRuntimeOutput(out);
@@ -181,11 +181,21 @@ final class TelnetMud {
         return result;
     }
 
-    private void lookAt(Object object) {
+    private void lookAt(Object object, PrintWriter out) {
         try {
-            runtime.invokeObject(object, "long", new Object[] {null});
+            printReturnedDescription(runtime.invokeObject(object, "long", new Object[] {null}), out);
         } catch (RuntimeException e) {
-            runtime.invokeObject(object, "short");
+            try {
+                printReturnedDescription(runtime.invokeObject(object, "long"), out);
+            } catch (RuntimeException ignored) {
+                printReturnedDescription(runtime.invokeObject(object, "short"), out);
+            }
+        }
+    }
+
+    private void printReturnedDescription(Object description, PrintWriter out) {
+        if (description instanceof String text && !text.isEmpty()) {
+            out.println(text);
         }
     }
 
