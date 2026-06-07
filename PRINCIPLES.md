@@ -514,6 +514,25 @@ The engine should provide foundational reality.
 
 The mudlib should define what exists within that reality.
 
+Bridge-Light Mudlibs
+--------------------
+
+JVMud should support mudlibs whose core gameplay is expressed primarily through
+ordinary world objects.
+
+Mudlib authors should be able to spend most of their attention on rooms,
+entities, objects, NPCs, puzzles, mechanics, and world behavior rather than on
+driver negotiation objects.
+
+Boundary objects should configure vocabulary and policy, not become a second
+engine the mudlib author must master before building a world.
+
+The engine should own general world services.
+
+The mudlib should own world meaning.
+
+The bridge should translate, not dominate.
+
 Architectural Principles
 ------------------------
 
