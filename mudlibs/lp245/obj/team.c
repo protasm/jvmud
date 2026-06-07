@@ -12,7 +12,7 @@ object members, pot_members, leader_ob;
 * The arrays is extended if needed. The leader adds to the potential
 * members array.
 */
-add(item) {
+status add(string item) {
   int i;
   object vec2;
 
@@ -43,11 +43,11 @@ add(item) {
   vec2[i] = item;
   return vec2;
 }
-drop() { return 1; }
+status drop() { return 1; }
 
-get() { return 1; }
+status get() { return 1; }
 
-catch_tell(str) {
+void catch_tell(string str) {
   string dir;
 
   if (sscanf(str, leader_name + " " + mout + " %s.", dir) != 1)
@@ -62,7 +62,7 @@ catch_tell(str) {
   call_out("move", 0);
 }
 
-disband(str) {
+status disband(string str) {
   object ob;
   int i;
 
@@ -101,11 +101,11 @@ disband(str) {
   return 1;
 }
 
-id(str) {
+status id(string str) {
   return str == "team object";
 }
 
-init() {
+void init() {
   if (leader_ob == 0) {
     leader_ob = this_player();
     leader_name = call_other(environment(), "query_name");
@@ -116,7 +116,7 @@ init() {
   add_action("disband", "disband");
 }
 
-join(str) {
+status join(string str) {
   object ob;
 
   if (!str)
@@ -145,7 +145,7 @@ join(str) {
   return 1;
 }
 
-long() {
+void long() {
   int i;
 
   write("Leader " + leader_name + ": ");
@@ -166,7 +166,7 @@ long() {
   write("\n");
 }
 
-move() {
+status move() {
   int i;
 
   if (!pointerp(members)){
@@ -198,6 +198,6 @@ move() {
   last_room = 0;
 }
 
-msg(str) {
+void msg(string str) {
   tell_object(environment(), str);
 }

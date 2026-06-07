@@ -709,6 +709,66 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void mfunLivingNameCompatibilityRegistersCurrentObject() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                object find_living(mixed name) {
+                    return jvmud_find_entity_alias("living", name);
+                }
+
+                status living(mixed ob) {
+                    return jvmud_entity_commands_enabled(ob);
+                }
+
+                void set_living_name(mixed name) {
+                    jvmud_bind_entity_alias(jvmud_current_entity(), "living", name);
+                }
+
+                void enable_commands() {
+                    jvmud_enable_commands();
+                }
+
+                object this_object() {
+                    return jvmud_current_entity();
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                void setup() {
+                    set_living_name("Protasm");
+                }
+
+                void make_commandable() {
+                    enable_commands();
+                }
+
+                object lookup(mixed name) {
+                    return find_living(name);
+                }
+
+                status is_registered() {
+                    return living(this_object());
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+
+        player.invoke("setup");
+
+        assertEquals(player.instance(), player.invoke("lookup", "protasm"));
+        assertEquals(false, player.invoke("is_registered"));
+
+        player.invoke("make_commandable");
+
+        assertEquals(true, player.invoke("is_registered"));
+    }
+
+    @Test
     void mfunShadowsEngineFunctionWithSameNameAndArity() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/functions.c"), """

@@ -1,24 +1,24 @@
 #define MAX_WEIGTH  6
 int local_weight;
 
-add_weight(w) {
+status add_weight(int w) {
   if (local_weight + w > MAX_WEIGTH)
     return 0;
 
   local_weight += w;
   return 1;
 }
-can_put_and_get() { return 1; }
+status can_put_and_get() { return 1; }
 
-get() {
+status get() {
   return 1;
 }
 
-id(str) {
+status id(string str) {
   return str == "bag";
 }
 
-long() {
+void long() {
   write("A bag. ");
 
   if (first_inventory(this_object()))
@@ -28,7 +28,7 @@ long() {
     write("You can put things in it.\n");
 }
 
-prevent_insert() {
+status prevent_insert() {
   if (local_weight > 0) {
     write("You can't when there are things in the bag.\n");
 
@@ -38,21 +38,21 @@ prevent_insert() {
   return 0;
 }
 
-query_value() {
+int query_value() {
   return 12;
 }
 
-query_weight() {
+int query_weight() {
   return 1;
 }
 
-reset(arg) {
+void reset(string arg) {
   if (arg)
     return;
 
   local_weight = 0;
 }
 
-short() {
+string short() {
   return "bag";
 }

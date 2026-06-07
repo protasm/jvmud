@@ -6,17 +6,17 @@ string key_code;
 string key_type;
 object partner_door;
 
-query_dir() { return direction;}
-set_dir( str) { direction = str;}
-set_code( str) { key_code = str;}
-set_type( str) { key_type = str;}
-set_door( obj) { partner_door = obj;}
-both_door_sound( str) {
+string query_dir() { return direction;}
+void set_dir(string str) { direction = str;}
+void set_code(string str) { key_code = str;}
+void set_type(string str) { key_type = str;}
+void set_door(object obj) { partner_door = obj;}
+void both_door_sound(string str) {
   door_sound( str);
   call_other( partner_door, "door_sound", str);
 }
 
-close( str) {
+status close(string str) {
   int tmp;
 
   if ( !str)
@@ -38,7 +38,7 @@ close( str) {
     return 0;
 }
 
-close_door() {
+void close_door() {
   string str;
   int tmp;
 
@@ -60,12 +60,12 @@ close_door() {
   return;
 }
 
-door_sound( str) {
+void door_sound(string str) {
   tell_room( environment( this_object()),
   str + " is heard from the " + direction + " door.\n");
 }
 
-get_key(type) {
+object get_key(string type) {
   object ob;
   int num_key;
   int tmp_num;
@@ -95,7 +95,7 @@ get_key(type) {
   }
 }
 
-go( str) {
+status go(string str) {
   int tmp;
 
   if ( !str)
@@ -117,7 +117,7 @@ go( str) {
     return 0;
 }
 
-go_door() {
+status go_door() {
   string str;
 
   if ( is_closed ) {
@@ -143,7 +143,7 @@ go_door() {
 
 }
 
-id( strang) {
+status id(string strang) {
   if ( ( strang == "door" ) ||
     ( strang == direction + " door" ) ||
 
@@ -153,7 +153,7 @@ id( strang) {
   return 0;
 }
 
-init() {
+void init() {
   if ( direction ) {
     add_action( "go_door", direction);
   }
@@ -170,7 +170,7 @@ init() {
   }
 }
 
-lock( str) {
+status lock(string str) {
   object ob;
   int tmp;
   string type, door;
@@ -205,7 +205,7 @@ lock( str) {
   }
 }
 
-lock_door( key) {
+void lock_door(object key) {
   string str;
   int tmp;
 
@@ -230,7 +230,7 @@ lock_door( key) {
   return;
 }
 
-long() {
+void long() {
   string str;
   int rnd;
 
@@ -256,7 +256,7 @@ long() {
   }
 }
 
-number_of_doors() {
+int number_of_doors() {
   object ob;
   int num_door;
 
@@ -274,7 +274,7 @@ number_of_doors() {
   return num_door;
 }
 
-number_of_keys() {
+int number_of_keys() {
   object ob;
   int num_key;
 
@@ -292,7 +292,7 @@ number_of_keys() {
   return num_key;
 }
 
-open( str) {
+status open(string str) {
   int tmp;
 
   if ( !str)
@@ -314,7 +314,7 @@ open( str) {
     return 0;
 }
 
-open_door() {
+void open_door() {
   string str;
   int tmp;
 
@@ -336,16 +336,16 @@ open_door() {
   return;
 }
 
-player_enters( str) {
+void player_enters(string str) {
   tell_room( environment( this_object()), str + " enters through the " +
   direction + " door.\n");
 }
 
-query_room() {
+string query_room() {
   return door_room;
 }
 
-set_all( str) {
+status set_all(string str) {
   if (!str)
     return 0;
 
@@ -362,8 +362,8 @@ set_all( str) {
 
   return 0;
 }
-set_can_lock( val) { can_lock = val; }
-set_both_status() {
+void set_can_lock(int val) { can_lock = val; }
+void set_both_status() {
   call_other( partner_door, "set_closed", is_closed);
   call_other( partner_door, "set_locked", is_locked);
   call_other( partner_door, "set_can_lock", can_lock);
@@ -372,7 +372,7 @@ set_both_status() {
   call_other( partner_door, "set_door_long", door_long);
 }
 
-set_closed( val) {
+void set_closed(int val) {
   if ( is_closed != val ) {
     tell_room( environment( this_object()), "The " + direction + " door ");
 
@@ -386,18 +386,18 @@ set_closed( val) {
   is_closed = val;
 }
 
-set_door_long( str) {
+void set_door_long(string str) {
   door_long = str;
 }
 
-set_locked( val) {
+void set_locked(int val) {
   if ( is_locked != val )
     door_sound("Klick!");
 
   is_locked = val;
 }
 
-short() {
+string short() {
   string str;
 
   if ( is_closed ) str = " ( closed )";
@@ -415,7 +415,7 @@ player that this has occurred.
 
 */
 
-this_door( str) {
+status this_door(string str) {
   string type;
 
   if ( !str)
@@ -438,7 +438,7 @@ this_door( str) {
   return 0;
 }
 
-this_key( str) {
+status this_key(string str) {
   string type;
 
   if ( !str)
@@ -471,7 +471,7 @@ this_key( str) {
   return 0;
 }
 
-unlock( str) {
+status unlock(string str) {
   object ob;
   int tmp;
   string type, door;
@@ -506,7 +506,7 @@ unlock( str) {
   }
 }
 
-unlock_door( key) {
+void unlock_door(object key) {
   string str;
 
   if ( ! is_locked ){
@@ -530,7 +530,7 @@ unlock_door( key) {
   return;
 }
 
-which_door() {
+object which_door() {
   object ob;
   int num_door;
   int tmp_num;
@@ -561,7 +561,7 @@ which_door() {
   }
 }
 
-which_key() {
+object which_key() {
   object ob;
   int num_key;
   int tmp_num;

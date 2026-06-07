@@ -118,6 +118,18 @@ public final class EngineEfuns {
                 (runtime, args) -> runtime.present(args[0], null)));
         efuns.add(efun("jvmud_find_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> runtime.present(args[0], args[1])));
+        efuns.add(efun("jvmud_bind_entity_alias", LPCType.LPCVOID,
+                List.of(LPCType.LPCOBJECT, LPCType.LPCSTRING, LPCType.LPCMIXED),
+                (runtime, args) -> {
+                    runtime.bindEntityAlias(args[0], args[1], args[2]);
+                    return null;
+                }));
+        efuns.add(efun("jvmud_find_entity_alias", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING, LPCType.LPCMIXED),
+                (runtime, args) -> runtime.findEntityAlias(args[0], args[1])));
+        efuns.add(efun("jvmud_entity_has_alias", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED, LPCType.LPCSTRING),
+                (runtime, args) -> runtime.entityHasAlias(args[0], args[1])));
+        efuns.add(efun("jvmud_entity_commands_enabled", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.entityCommandsEnabled(args[0])));
         efuns.add(efun("jvmud_first_entity_at", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.firstInventory(args[0])));
         efuns.add(efun("jvmud_next_entity_at", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
@@ -139,7 +151,10 @@ public final class EngineEfuns {
         efuns.add(efun("jvmud_remove_call_out", LPCType.LPCINT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> -1));
         efuns.add(efun("jvmud_enable_commands", LPCType.LPCVOID, List.of(),
-                (runtime, args) -> null));
+                (runtime, args) -> {
+                    runtime.enableEntityCommands(runtime.currentObject());
+                    return null;
+                }));
         efuns.add(efun("jvmud_add_action", LPCType.LPCVOID, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> {
                     runtime.rememberActionMethod(String.valueOf(args[0]));

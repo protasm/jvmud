@@ -2,11 +2,11 @@ string messages, new_hd, new_body;
 int num_messages;
 object who;
 
-id(str) {
+status id(string str) {
     return str == "bulletin board" || str == "board" || str == "bulletinboard";
 }
 
-long() {
+void long() {
     write("You can set up new notes with the command 'note headline'.\n");
     write("Read a note with 'read num', and remove an old note with\n");
     write("'remove num'.\n");
@@ -24,28 +24,28 @@ long() {
     headers();
 }
 
-short() {
+string short() {
     return ("A bulletin board");
 }
 
-get() {
+status get() {
     write("It is secured to the ground.\n");
     return 0;
 }
 
-init() {
+void init() {
     add_action("new"); add_verb("note");
     add_action("read"); add_verb("read");
     add_action("remove"); add_verb("remove");
 }
 
-reset(arg) {
+void reset(string arg) {
     if (arg)
 	return;
     restore_object("wiz_bull");
 }
 
-headers() {
+status headers() {
     string hd, body, rest;
     int i, tmp;
 
@@ -62,7 +62,7 @@ headers() {
     }
 }
 
-new(hd) {
+status new(string hd) {
     if (!hd)
 	return 0;
     if (who && environment(who) == environment(this_object())) {
@@ -87,7 +87,7 @@ new(hd) {
     return 1;
 }
 
-get_body(str) {
+void get_body(string str) {
     if (str == "~q") {
 	say(who->query_name() + " gives up his note.\n");
 	write("Aborted.\n");
@@ -113,7 +113,7 @@ get_body(str) {
     input_to("get_body");
 }
 
-read(str) {
+status read(string str) {
     string hd, body, rest;
     int i, tmp;
 
@@ -143,7 +143,7 @@ read(str) {
     write("Hm. This should not happen.\n");
 }
 
-remove(str) {
+status remove(string str) {
     string hd, body, rest;
     int i, tmp;
 

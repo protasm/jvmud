@@ -140,12 +140,16 @@ object find_player(mixed name) {
   return 0;
 }
 
+object find_living(mixed name) {
+  return jvmud_find_entity_alias("living", name);
+}
+
 string jvmud_mfun_status() {
   return "ok";
 }
 
 status living(mixed ob) {
-  return 0;
+  return jvmud_entity_commands_enabled(ob);
 }
 
 string lower_case(mixed value) {
@@ -225,6 +229,10 @@ void set_heart_beat(int enabled, int interval_seconds) {
 
 int set_light(int delta) {
   return jvmud_set_light(delta);
+}
+
+void set_living_name(mixed name) {
+  jvmud_bind_entity_alias(jvmud_current_entity(), "living", name);
 }
 
 int sizeof(mixed value) {

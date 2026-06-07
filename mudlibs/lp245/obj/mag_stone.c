@@ -1,6 +1,6 @@
 int gived;
 
-cat_file(path) {
+status cat_file(string path) {
   if (!path)
     return 0;
 
@@ -8,10 +8,10 @@ cat_file(path) {
 
   return 1;
 }
-query_weight() { return 1; }
+int query_weight() { return 1; }
 
 /* Prevent giving away this object */
-drop() {
+status drop() {
   gived += 1;
 
   if (gived == 2)
@@ -21,7 +21,7 @@ drop() {
     return 0;
 }
 
-drop_object(str) {
+status drop_object(string str) {
   if (str == "all") {
     drop_object("black stone");
 
@@ -39,35 +39,35 @@ drop_object(str) {
   return 1;
 }
 
-id(str) {
+status id(string str) {
   return str == "stone" || str == "black stone";
 }
-get() { return 1; }
+status get() { return 1; }
 
-init() {
+void init() {
   add_action("list_peoples", "people");
   add_action("list_files", "ls");
   add_action("cat_file", "cat");
   add_action("drop_object", "drop");
 }
 
-list_files(path) {
+status list_files(string path) {
   ls(path);
 
   return 1;
 }
 
-list_peoples() {
+status list_peoples() {
   people();
 
   return 1;
 }
 
-long() {
+void long() {
   write("The stone is completely black, and feels warm to the touch.\n");
   write("There seems to be somthing magic with it.\n");
 }
 
-short() {
+string short() {
   return "A black stone";
 }

@@ -2,18 +2,18 @@ string match, fun, ob_str, type;
 object next;
 string super;
 
-collaps() {
+void collaps() {
   if(next)
     call_other(next, "collaps");
 
   destruct(this_object());
 }
 
-link(ob) {
+void link(object ob) {
   next = ob;
 }
 
-remove_match(str) {
+object remove_match(string str) {
   if (str == match) {
     destruct(this_object());
 
@@ -29,32 +29,32 @@ remove_match(str) {
 /*
 * The function to call.
 */
-set_function(f) {
+void set_function(string f) {
   fun = f;
 }
 
 /*
 * The string to match.
 */
-set_match(str) {
+void set_match(string str) {
   match = str;
 }
 
 /*
 * The object to call.
 */
-set_object(ob) {  /* NOTE: a string */
+void set_object(string ob) {  /* NOTE: a string */
   ob_str = ob;
 }
 
 /*
 * The function to call.
 */
-set_type(t) {
+void set_type(string t) {
   type = t;
 }
 
-test_match(str) {
+status test_match(string str) {
   string who,str1;
 
   if(sscanf(str,"%s " + type + " %s\n",who,str1) == 2){

@@ -1,34 +1,34 @@
 string code;
 string type;
 
-get() {
+status get() {
   return 1;
 }
 
-id( strang) {
+status id(string strang) {
   if ( ( strang == "key" )||( strang == type + " key")||( strang == "H_key") )
     return 1;
 
   return 0;
 }
-query_type() { return type; }
-query_code() { return code; }
+string query_type() { return type; }
+string query_code() { return code; }
 
-set_type( str) { type = str; }
-set_code( str) { code = str; }
+void set_type(string str) { type = str; }
+void set_code(string str) { code = str; }
 
-init() {
+void init() {
 }
 
-long() {
+void long() {
   write("\nThis a " + type + " key, wonder where it fits?\n");
 }
 
-query_value() {
+int query_value() {
   return 10;
 }
 
-reset( arg) {
+void reset(string arg) {
   if(arg)
     return;
 
@@ -36,13 +36,13 @@ reset( arg) {
   code = 0;
 }
 
-set_key_data( str) {
+status set_key_data(string str) {
   if ( sscanf(str, "%s %s", type, code) == 2)
     return 1;
 
   return 2;
 }
 
-short() {
+string short() {
   return "A " + type + " key";
 }

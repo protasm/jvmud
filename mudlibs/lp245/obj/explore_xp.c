@@ -13,7 +13,7 @@ string SaveString;
 * Defaults are given, so if you only need one of such object, no
 * configuration is needed.
 */
-AddPlayerToList( str) {
+void AddPlayerToList(string str) {
   if ( str) {
     SaveString = SaveString+str+DELIMITER;
 
@@ -21,7 +21,7 @@ AddPlayerToList( str) {
   }
 }
 
-AmountOfPlayerXP() {
+int AmountOfPlayerXP() {
   int Amount, Level;
 
   if ( this_player()) {
@@ -39,7 +39,7 @@ AmountOfPlayerXP() {
   return 0;
 }
 
-PlayerHasVisited( str) {
+int PlayerHasVisited(string str) {
   if ( str)
     return sscanf( SaveString, "%s"+DELIMITER+str+DELIMITER, str);
 
@@ -47,11 +47,11 @@ PlayerHasVisited( str) {
     return 0;
 }
 
-id(str) {
+status id(string str) {
   return (str==DEFAULT_NAME)||(SaveName&&(str==SaveName));
 }
 
-init() {
+void init() {
   if ( this_player() && query_ip_number( this_player())) {
     if (! PlayerHasVisited( this_player()->query_name())) {
       if ( OKMessage)
@@ -70,11 +70,11 @@ init() {
   }
 }
 
-query_name() {
+string query_name() {
   return SaveName;
 }
 
-reset(arg) {
+void reset(string arg) {
   if(arg)
     return;
 
@@ -84,11 +84,11 @@ reset(arg) {
   set_name( SaveName);
 }
 
-set_fail_message( str) {
+void set_fail_message(string str) {
   FailMessage = str;
 }
 
-set_name(str) {
+void set_name(string str) {
   string TmpString;
 
   if (extract(file_name(previous_object()), 0, 4) != "/obj" &&
@@ -117,11 +117,11 @@ set_name(str) {
   }
 }
 
-set_ok_message( str) {
+void set_ok_message(string str) {
   OKMessage = str;
 }
 
-short() {
+string short() {
   if ( this_player() && this_player()->query_level() >= 20)
     return "A player logger, name: <"+SaveName+">";
 

@@ -8,7 +8,7 @@ static int curr_mess;    /* Current message number */
 static string new_message, new_subject, new_dest, new_cc;
 
 static int is_reading;
-delete() {
+void delete() {
   if (curr_mess > sizeof(arr_messages)/2 || curr_mess < 1) {
     write("Illegal message number " + curr_mess + "\n");
 
@@ -35,15 +35,15 @@ delete() {
     arr_messages = explode(messages, "\n**\n");
 }
 
-drop() {
+status drop() {
   return 1;
 }
 
-get() {
+status get() {
   return 1;
 }
 
-get_cc(cc) {
+status get_cc(string cc) {
   if (cc != "")
     new_cc = cc;
 
@@ -56,7 +56,7 @@ get_cc(cc) {
     loop();
 }
 
-get_cmd(str) {
+status get_cmd(string str) {
   int n, new_has_arrived;
   string tmp;
 
@@ -99,7 +99,7 @@ get_cmd(str) {
   loop();
 }
 
-get_subject(str) {
+status get_subject(string str) {
   if (str && str != "")
     new_subject = "Subj: " + str + "\n";
 
@@ -119,7 +119,7 @@ get_subject(str) {
   return;
 }
 
-headers() {
+status headers() {
   int i, n;
   string tmp_str, tmp_str2, rest_of_mess;
   string name;
@@ -159,7 +159,7 @@ headers() {
   return 1;
 }
 
-help_msg() {
+status help_msg() {
   write("x  Exit from mail reading mode.\n");
   write("d  Delete current message.\n");
   write("d <num>  Delete message number 'num'.\n");
@@ -175,21 +175,21 @@ help_msg() {
   return 1;
 }
 
-id(str) {
+status id(string str) {
   return str == "mailread";
 }
 
-init() {
+void init() {
   add_action("read", "read");
   add_action("mail_to", "mail");
   add_action("headers", "from");
 }
 
-invalidate() {
+void invalidate() {
   loaded = 0;
 }
 
-load_player() {
+void load_player() {
   loaded = 1;
 
   if (!restore_object(NAME + this_player()->query_real_name()) ||
@@ -208,7 +208,7 @@ load_player() {
   arr_messages = explode(messages, "\n**\n");
 }
 
-loop() {
+void loop() {
   string tmp;
 
   if (!loaded)
@@ -231,7 +231,7 @@ loop() {
   input_to("get_cmd");
 }
 
-mail_to(str) {
+status mail_to(string str) {
   if (!str || str == "") {
     write("No destination.\n");
 
@@ -249,7 +249,7 @@ mail_to(str) {
   return 1;
 }
 
-mail_to_continue(str) {
+status mail_to_continue(string str) {
   str = lower_case(str);
 
   if (!restore_object("players/" + str)) {
@@ -273,7 +273,7 @@ mail_to_continue(str) {
   return 1;
 }
 
-more_mail(str) {
+status more_mail(string str) {
   if (str == "~q") {
     write("Aborted.\n");
 
@@ -296,7 +296,7 @@ more_mail(str) {
   input_to("more_mail");
 }
 
-notify_new_mail(dest, subj, name) {
+void notify_new_mail(string dest, string subj, string name) {
   object ob;
 
   if (ob = find_player(dest)) {
@@ -312,7 +312,7 @@ notify_new_mail(dest, subj, name) {
   write("Sending mail to " + capitalize(dest) + ".\n");
 }
 
-print_message() {
+void print_message() {
   if (curr_mess > sizeof(arr_messages)/2 || curr_mess < 1) {
     write("Illegal message number " + curr_mess + "\n");
 
@@ -324,7 +324,7 @@ print_message() {
   write(arr_messages[curr_mess*2-1] + "\n");
 }
 
-read() {
+status read() {
   is_reading = 1;
 
   if (!loaded) {
@@ -342,7 +342,7 @@ read() {
   return 1;
 }
 
-reply_to_message() {
+void reply_to_message() {
   int n;
   string tmp_str, tmp_str2, rest_of_mess;
   string name;
@@ -363,7 +363,7 @@ reply_to_message() {
   mail_to_continue(name);
 }
 
-save_message() {
+void save_message() {
   string name;
 
   if (curr_mess > sizeof(arr_messages)/2 || curr_mess < 1) {
@@ -382,7 +382,7 @@ save_message() {
 * Send a complete mail. If the receiver is reading mail, be sure to
 * tell his mail reader that new mail has arrived.
 */
-send_mail(dest, subj, mess, cc) {
+void send_mail(string dest, string subj, string mess, string cc) {
   if (cc != "")
     cc = "Cc: " + cc + "\n";
 

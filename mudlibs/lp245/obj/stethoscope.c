@@ -1,6 +1,6 @@
 object listen_ob, player_ob;
 
-apply(str) {
+status apply(string str) {
   string what;
   object ob;
 
@@ -41,14 +41,14 @@ apply(str) {
   return 0;
 }
 
-get() {
+status get() {
   return 1;
 }
 
 /*
 * Detect if the playe leaves the object.
 */
-heart_beat() {
+void heart_beat() {
   if (!present(listen_ob,environment(player_ob)) ||
     environment() != player_ob) {
 
@@ -62,38 +62,38 @@ heart_beat() {
     tell_object(player_ob, "Dunk dunk\n");
 }
 
-id(str) {
+status id(string str) {
   return str == "stethoscope";
 }
 
-init() {
+void init() {
   add_action("apply", "apply");
   add_action("apply", "use");
   add_action("listen", "listen");
 }
 
-listen(str) {
+status listen(string str) {
   write("You must apply stethoscope to something.\n");
 
   return 1;
 }
 
-long() {
+void long() {
   write("A stethoscope.\n");
 }
 
-query_listening() {
+int query_listening() {
   return listen_ob;
 }
 
-query_value() {
+int query_value() {
   return 15;
 }
 
-query_weight() {
+int query_weight() {
   return 1;
 }
 
-short() {
+string short() {
   return "A stethoscope";
 }

@@ -25,7 +25,7 @@ also known as Anders Ripa email: ripa@cd.chalmers.se
 
 static
 static
-add(str) {
+status add(string str) {
   if(is_debug) {
     write("add(");
     write(str);
@@ -39,7 +39,7 @@ add(str) {
   file_text = file_text + str;
 }
 static
-add_line(str) {
+void add_line(string str) {
   if(is_debug) {
     write("add_line(");
     write(str);
@@ -53,7 +53,7 @@ add_line(str) {
   file_text = file_text + str + "\n";
 }
 static
-change_dir(str) {
+status change_dir(string str) {
   if(str && str != "") {
     dir_array[edit_dir_num +1] = str;
   }
@@ -64,7 +64,7 @@ change_dir(str) {
   return 1;
 }
 static
-change_room(str) {
+status change_room(string str) {
   if(str && str != "") {
     dir_array[edit_dir_num] = str;
   }
@@ -74,7 +74,7 @@ change_room(str) {
   return 1;
 }
 static
-check_file_ok(str) {
+status check_file_ok(string str) {
   object  ob, temp_dir;
   int  i;
 
@@ -159,7 +159,7 @@ check_file_ok(str) {
   }
 }
 static
-do_edit(str) {
+status do_edit(int str) {
   int  sel;
 
   if(strlen(str) >= 1) {
@@ -203,7 +203,7 @@ do_edit(str) {
   return 0;
 }
 static
-do_file() {
+status do_file() {
   int  i;
   object  longs, ob;
   string  slask;
@@ -327,7 +327,7 @@ do_file() {
   write("Ok.\n");
 }
 static
-edit_dirs(str) {
+status edit_dirs(int str) {
   int  num, sel;
 
   if(str && str != "") {
@@ -427,7 +427,7 @@ edit_dirs(str) {
 /* the main edit menu */
 
 static
-edit_room(str) {
+status edit_room(int str) {
   int  sel;
   int  match;
 
@@ -480,11 +480,11 @@ edit_room(str) {
   return 1;
 }
 
-get() {
+status get() {
   return 1;
 }
 static
-help(arg) {
+status help(string arg) {
   if(!id(arg)) {
     return 0;
   }
@@ -507,7 +507,7 @@ help(arg) {
   return 1;
 }
 static
-help_dirs() {
+void help_dirs() {
   write("direction editor\n");
   write("m    - return to main edit menu\n");
   write("c#   - change direction and room number #\n");
@@ -518,11 +518,11 @@ help_dirs() {
   return;
 }
 
-id(str) {
+status id(string str) {
   return (str == "roommaker" || str == "room maker" || str == "room_maker" || str == "maker");
 }
 
-init() {
+void init() {
   if(
     this_player()
 
@@ -539,7 +539,7 @@ init() {
   }
 }
 
-long() {
+status long() {
   write("A portable room maker, for lazy wizards...\n");
   write("usage: make roomfilename\n");
   write("Do \"help room maker\n for more information.\n");
@@ -547,7 +547,7 @@ long() {
   return 1;
 }
 
-make(str) {
+status make(string str) {
   string  temp1, temp2;
 
   if(!str) {
@@ -585,15 +585,15 @@ make(str) {
   return 1;
 }
 
-query_info() {
+string query_info() {
   return "a powerful magical/technological creation utility. (wiz use only!)";
 }
 
-query_name() {
+string query_name() {
   return "room_maker";
 }
 static
-set_dir_cmd(str) {
+status set_dir_cmd(string str) {
   if(str && str == "~q") {
     write("aborted.\n");
 
@@ -629,7 +629,7 @@ set_dir_cmd(str) {
   }
 }
 static
-set_dir_file(str) {
+status set_dir_file(string str) {
   if(str && str == "~q") {
     write("aborted.\n");
 
@@ -673,7 +673,7 @@ set_dir_file(str) {
   }
 }
 static
-set_light_level(str) {
+status set_light_level(string str) {
   int  level;
 
   if(str && str == "~q") {
@@ -702,7 +702,7 @@ set_light_level(str) {
   return 1;
 }
 static
-set_long(str) {
+status set_long(string str) {
   int     long_ok;
   int  i;
 
@@ -768,7 +768,7 @@ set_long(str) {
   return 1;
 }
 static
-set_short(str) {
+status set_short(string str) {
   if(!str || str == "") {
     str = short_string;
   }
@@ -796,11 +796,11 @@ set_short(str) {
   return 1;
 }
 
-short() {
+string short() {
   return "A room maker";
 }
 static
-show_dirs(arg) {
+void show_dirs(string arg) {
   int  i;
 
   i = 0;
@@ -816,7 +816,7 @@ show_dirs(arg) {
   }
 }
 static
-show_help() {
+void show_help() {
   write("edit menu of room maker\n");
   write("q     - exit from room maker without writing file\n");
   write("w     - write file and exit\n");
@@ -831,7 +831,7 @@ show_help() {
   return;
 }
 static
-show_room() {
+status show_room() {
   write("\n---file name---\n");
   write(out_file_name_c + "\n");
   write("---short description---\n");
@@ -847,7 +847,7 @@ show_room() {
   return 1;
 }
 
-version(str) {
+status version(string str) {
   if(!str || !id(str)) {
     return 0;
   }

@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -37,7 +38,11 @@ public final class RuntimeContext {
     private final Map<Object, String> objectIds = new IdentityHashMap<>();
     private final Map<Object, Object> environments = new IdentityHashMap<>();
     private final Map<Object, List<Object>> inventories = new IdentityHashMap<>();
+    private final Map<String, Map<String, Object>> entityAliases = new LinkedHashMap<>();
+    private final Map<Object, Map<String, String>> aliasesByEntity = new IdentityHashMap<>();
     private final Map<Object, Integer> lightLevels = new IdentityHashMap<>();
+    private final Set<Object> commandEnabledEntities =
+            Collections.newSetFromMap(new IdentityHashMap<>());
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
     private final Map<Object, ScheduledTask> recurringTickTasks = new IdentityHashMap<>();
     private final Map<String, SessionBinding> sessions = new LinkedHashMap<>();
@@ -470,6 +475,69 @@ public final class RuntimeContext {
         return null;
     }
 
+    public void bindEntityAlias(Object object, Object namespace, Object alias) {
+        if (object == null) {
+            return;
+        }
+
+        String normalizedNamespace = normalizeRegistryText(namespace);
+        if (normalizedNamespace == null) {
+            return;
+        }
+
+        Map<String, String> aliases = aliasesByEntity.computeIfAbsent(object, ignored -> new LinkedHashMap<>());
+        String existing = aliases.remove(normalizedNamespace);
+        if (existing != null) {
+            Map<String, Object> namespaceAliases = entityAliases.get(normalizedNamespace);
+            if (namespaceAliases != null) {
+                namespaceAliases.remove(existing);
+                if (namespaceAliases.isEmpty()) {
+                    entityAliases.remove(normalizedNamespace);
+                }
+            }
+        }
+
+        String normalizedAlias = normalizeRegistryText(alias);
+        if (normalizedAlias == null) {
+            if (aliases.isEmpty()) {
+                aliasesByEntity.remove(object);
+            }
+            return;
+        }
+
+        aliases.put(normalizedNamespace, normalizedAlias);
+        entityAliases
+                .computeIfAbsent(normalizedNamespace, ignored -> new LinkedHashMap<>())
+                .put(normalizedAlias, object);
+    }
+
+    public Object findEntityAlias(Object namespace, Object alias) {
+        String normalizedNamespace = normalizeRegistryText(namespace);
+        String normalizedAlias = normalizeRegistryText(alias);
+        if (normalizedNamespace == null || normalizedAlias == null) {
+            return null;
+        }
+        return entityAliases.getOrDefault(normalizedNamespace, Map.of()).get(normalizedAlias);
+    }
+
+    public int entityHasAlias(Object object, Object namespace) {
+        String normalizedNamespace = normalizeRegistryText(namespace);
+        if (object == null || normalizedNamespace == null) {
+            return 0;
+        }
+        return aliasesByEntity.getOrDefault(object, Map.of()).containsKey(normalizedNamespace) ? 1 : 0;
+    }
+
+    public void enableEntityCommands(Object object) {
+        if (object != null) {
+            commandEnabledEntities.add(object);
+        }
+    }
+
+    public int entityCommandsEnabled(Object object) {
+        return commandEnabledEntities.contains(object) ? 1 : 0;
+    }
+
     public Object firstInventory(Object container) {
         List<Object> inventory = inventoryFor(container);
         return inventory.isEmpty() ? null : inventory.get(0);
@@ -503,6 +571,8 @@ public final class RuntimeContext {
         moveObject(object, null);
         inventories.remove(object);
         lightLevels.remove(object);
+        removeEntityAliases(object);
+        commandEnabledEntities.remove(object);
         commandActions.remove(object);
         pendingInputsByPersona.remove(object);
         removeCommandHandler(object);
@@ -825,6 +895,31 @@ public final class RuntimeContext {
             return null;
         }
         String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private void removeEntityAliases(Object object) {
+        Map<String, String> aliases = aliasesByEntity.remove(object);
+        if (aliases == null) {
+            return;
+        }
+        for (Map.Entry<String, String> alias : aliases.entrySet()) {
+            Map<String, Object> namespaceAliases = entityAliases.get(alias.getKey());
+            if (namespaceAliases == null) {
+                continue;
+            }
+            namespaceAliases.remove(alias.getValue());
+            if (namespaceAliases.isEmpty()) {
+                entityAliases.remove(alias.getKey());
+            }
+        }
+    }
+
+    private String normalizeRegistryText(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.toString().trim().toLowerCase();
         return normalized.isEmpty() ? null : normalized;
     }
 

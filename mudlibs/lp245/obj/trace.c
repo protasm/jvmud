@@ -6,7 +6,7 @@ string vars;
 * It can be used to find objects, list info about them,
 * and walk up and down the inventory lists.
 */
-Call(str) {
+status Call(string str) {
   string with, what, item;
   int iwhat;
   object ob;
@@ -55,7 +55,7 @@ Call(str) {
   return 1;
 }
 
-Clean(str) {
+status Clean(string str) {
   object ob, o, n;
 
   if (!str)
@@ -80,7 +80,7 @@ Clean(str) {
   return 1;
 }
 
-Destruct(str) {
+status Destruct(string str) {
   object ob;
 
   ob = parse_list(str);
@@ -94,7 +94,7 @@ Destruct(str) {
   return 1;
 }
 
-Dump(str) {
+status Dump(string str) {
   int tmp, i;
   object ob;
   string flag, path;
@@ -194,7 +194,7 @@ Dump(str) {
   return 1;
 }
 
-Goto(str) {
+status Goto(string str) {
   object mark;
 
   if (!str)
@@ -218,7 +218,7 @@ Goto(str) {
   return 1;
 }
 
-In(str) {
+status In(string str) {
   string path, cmd;
   object ob, old_ob;
 
@@ -242,7 +242,7 @@ In(str) {
   return 1;
 }
 
-Set(str) {
+status Set(string str) {
   object ob;
   string item, var;
 
@@ -262,7 +262,7 @@ Set(str) {
   return 1;
 }
 
-Tell(str) {
+status Tell(string str) {
   string item, what;
   object ob;
 
@@ -289,7 +289,7 @@ Tell(str) {
   return 1;
 }
 
-Trans(str) {
+status Trans(string str) {
   object mark;
 
   if (!str)
@@ -314,7 +314,7 @@ Trans(str) {
   return 1;
 }
 
-assign(var, val) {
+void assign(string var, int val) {
   int i;
 
   while(i<sizeof(vars)) {
@@ -333,17 +333,17 @@ assign(var, val) {
   }
 }
 
-static disp(ob) {
+static void disp(object ob) {
   write(file_name(ob) + "\n");
 }
 
-drop() {
+status drop() {
   /* Can't be dropped. Disappears at quit */
 
   return 1;
 }
 
-static find_item(prev, str) {
+static object find_item(object prev, string str) {
   object ob;
   string tmp;
 
@@ -425,14 +425,14 @@ static find_item(prev, str) {
   return present(str, prev);
 }
 
-get() {
+status get() {
   if (this_player() && this_player()->query_level() < 20)
     call_out("self_destruct", 2);
 
   return 1;
 }
 
-help(str) {
+status help(string str) {
   if (str == "tracer") {
     write("Do 'help tracer item' for information what an item can be.\n");
     write("Commands available:\n\n");
@@ -470,14 +470,14 @@ help(str) {
   return 0;
 }
 
-id(str) {
+status id(string str) {
   return str == "tracer" || str == "trace";
 }
 
 /*
 * This will not work because command() only works for command_giver.
 */
-in(str) {
+status in(string str) {
   object mark, here;
   string path, cmd;
 
@@ -502,7 +502,7 @@ in(str) {
   return 1;
 }
 
-init() {
+void init() {
   if (call_other(this_player(), "query_level") >= 20) {
     add_action("help", "help");
     add_action("Dump", "Dump");
@@ -521,7 +521,7 @@ init() {
 /*
 * This function will be called by all clones.
 */
-init_query() {
+string *init_query(){
   if (query_list)
     return query_list;
 
@@ -542,12 +542,12 @@ init_query() {
   return query_list;
 }
 
-long() {
+void long() {
   write("Genral purpose object information retriever.\n");
   write("Do 'help tracer' for more information.\n");
 }
 
-man(str) {
+status man(string str) {
   int i;
   string manuals;
 
@@ -593,7 +593,7 @@ man(str) {
   return 1;
 }
 
-parse_list(str) {
+object parse_list(string str) {
   string tmp, rest;
   object prev;
 
@@ -620,11 +620,11 @@ parse_list(str) {
   return prev;
 }
 
-query_value() {
+int query_value() {
   return 10;
 }
 
-reset(arg) {
+void reset(string arg) {
   if (arg)
     return;
 
@@ -633,20 +633,20 @@ reset(arg) {
   query_list = init_query();
 }
 
-self_destruct() {
+void self_destruct() {
   tell_object(environment(this_object()),
   "The tracer object suddenly gets warm.\n");
 
   call_out("self_destruct2", 2);
 }
 
-self_destruct2() {
+void self_destruct2() {
   tell_object(environment(this_object()),
   "The tracer object dissapear in a flash of light.\n");
 
   destruct(this_object());
 }
 
-short() {
+string short() {
   return "General purpose object tracer";
 }

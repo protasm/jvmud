@@ -12,20 +12,20 @@ string new_head, new_text, tmp_head, tmp_text;
 static string  messages, headers;
 static int line, looked_at;
 static object curr_writer;
-error_log(str) {
+void error_log(string str) {
   tell_room(environment(this_object()), "Board says '" + str + "'.\n");
   log_file(ERROR_LOG, "Board : " + str);
 
   return;
 }
 
-get() {
+status get() {
   write("It is firmly secured to the ground.\n");
 
   return 0;
 }
 
-get_msg(str) {
+status get_msg(string str) {
   if (str == "~q") {
     say(curr_writer->query_name() + " aborts writing a note.\n");
     write("Note aborted.\n");
@@ -72,11 +72,11 @@ get_msg(str) {
   input_to("get_msg");
 }
 
-id(str) {
+status id(string str) {
   return str == "board" || str == "bulletin board" || str == "bulletinboard";
 }
 
-init() {
+void init() {
   add_action("new_msg", "note");
   add_action("read_msg", "read");
   add_action("remove_msg", "remove");
@@ -116,7 +116,7 @@ init() {
   }
 }
 
-long() {
+void long() {
   int ind;
 
   write("This is a bulletin board.\n");
@@ -149,7 +149,7 @@ long() {
   }
 }
 
-new_msg(msg_head) {
+status new_msg(string msg_head) {
   line = 1;
 
   if (!msg_head)
@@ -188,7 +188,7 @@ new_msg(msg_head) {
   return 1;
 }
 
-read_msg(what_msg) {
+status read_msg(string what_msg) {
   int note;
 
   if (!sscanf(what_msg, "%d", note))
@@ -213,7 +213,7 @@ read_msg(what_msg) {
   return 1;
 }
 
-remove_msg(what_msg) {
+status remove_msg(string what_msg) {
   string player, title, date;
   int note, ind;
 
@@ -270,7 +270,7 @@ remove_msg(what_msg) {
   return 1;
 }
 
-reset(arg) {
+void reset(string arg) {
   if (arg)
     if (!random(5)) {
     say("A small gnome appears and secures some " +
@@ -280,7 +280,7 @@ reset(arg) {
   }
 }
 
-save_board() {
+status save_board() {
   int ind;
 
   ind = 1;
@@ -294,11 +294,11 @@ save_board() {
   return 1;
 }
 
-short() {
+string short() {
   return "A bulletin board";
 }
 
-store_msg(str) {
+status store_msg(string str) {
   int note;
   string file;
 

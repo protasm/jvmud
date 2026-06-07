@@ -3,30 +3,30 @@ string read_msg;
 string short_desc, long_desc;
 int value, max_weight, local_weight;
 
-query_weight() { return local_weight; }
+int query_weight() { return local_weight; }
 
-query_max_weight() { return max_weight; }
-add_weight(w) {
+int query_max_weight() { return max_weight; }
+status add_weight(int w) {
   if (local_weight + w > max_weight)
     return 0;
 
   local_weight += w;
   return 1;
 }
-short() { return short_desc; }
+string short() { return short_desc; }
 
-id(str) {
+status id(string str) {
   return str == name_of_container || str == alt_name || str == alias_name;
 }
 
-init() {
+void init() {
   if (!read_msg)
     return;
 
   add_action("read", "read");
 }
 
-long() {
+void long() {
   write(long_desc);
 
   if (first_inventory(this_object()))
@@ -35,13 +35,13 @@ long() {
   else
     write("You can put things in it.\n");
 }
-query_value() { return value; }
+int query_value() { return value; }
 
-can_put_and_get() { return 1; }
+status can_put_and_get() { return 1; }
 
-get() { return 1; }
+status get() { return 1; }
 
-prevent_insert() {
+status prevent_insert() {
   if (local_weight > 0) {
     write("You can't when there are things in the " + name_of_container + ".\n");
 
@@ -51,7 +51,7 @@ prevent_insert() {
   return 0;
 }
 
-read(str) {
+status read(string str) {
   if (str != name_of_container &&  str != alt_name && str != alias_name)
     return 0;
 
@@ -60,32 +60,32 @@ read(str) {
   return 1;
 }
 
-reset(arg) {
+void reset(string arg) {
   if (arg)
     return;
 
   local_weight = 0;
 }
-set_weight(w) { local_weight = w; }
+void set_weight(int w) { local_weight = w; }
 
-set_max_weight(w) { max_weight = w; }
+void set_max_weight(int w) { max_weight = w; }
 
-set_value(v) { value = v; }
+void set_value(int v) { value = v; }
 
-set_name(n) {
+void set_name(string n) {
   name_of_container = n;
   cap_name = capitalize(n);
   short_desc = cap_name;
   long_desc = cap_name +"\n";
 }
-set_alt_name(n) { alt_name = n; }
+void set_alt_name(string n) { alt_name = n; }
 
-set_alias(n) { alias_name = n; }
+void set_alias(string n) { alias_name = n; }
 
-set_short(sh) { short_desc = sh; long_desc = short_desc + "\n"; }
+void set_short(string sh) { short_desc = sh; long_desc = short_desc + "\n"; }
 
-set_long(lo) { long_desc = lo; }
+void set_long(string lo) { long_desc = lo; }
 
-set_read(str) {
+void set_read(string str) {
   read_msg = str;
 }

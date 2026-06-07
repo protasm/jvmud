@@ -2,15 +2,15 @@
 string file;
 int line;
 
-id(str) {
+status id(string str) {
   return str == "less" || str == "lesser";
 }
 
-init() {
+void init() {
   add_action("less", "less");
 }
 
-input(str) {
+status input(string str) {
   if (str == "" || str == "d")
     line += CHUNK;
 
@@ -36,7 +36,7 @@ input(str) {
   input_to("input");
 }
 
-less(str) {
+status less(string str) {
   file = str;
   line = 1;
 
@@ -52,12 +52,12 @@ less(str) {
   return 1;
 }
 
-short() {
+string short() {
   if (!file)
     return "Lesser object";
 
   return "Less " + file;
 }
-get() { return 1; }
+status get() { return 1; }
 
-query_value() { return 20; }
+int query_value() { return 20; }

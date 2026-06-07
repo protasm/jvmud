@@ -8,7 +8,7 @@ int transport_offer;
 * argument.
 * Don't clone this object.
 */
-catch_tell(str) {
+void catch_tell(string str) {
   string who, what;
   object ob;
 
@@ -21,7 +21,7 @@ catch_tell(str) {
   this_player()->move_player("X#room/village/shop");
 }
 
-cont_shutting(seconds) {
+void cont_shutting(string seconds) {
   string delay;
   int new_delay;
 
@@ -56,7 +56,7 @@ cont_shutting(seconds) {
   shout(cap_name + " shouts: Game reboot in " + delay + ".\n");
 }
 
-reset(arg) {
+void reset(string arg) {
   ::reset(arg);
 
   if (arg)
@@ -75,7 +75,7 @@ reset(arg) {
   move_player("X#room/village/church");
 }
 
-shut(seconds) {
+status shut(int seconds) {
   int i;
 
   if (!intp(seconds)) {

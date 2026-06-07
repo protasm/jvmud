@@ -55,7 +55,7 @@ For an example of the use of this object, please read:
 
 string name, short_desc, long_desc, drinking_mess,
 drinker_mess, alias, alt_name, empty_container;
-drink(str) {
+status drink(string str) {
   object tp;
   string p_name;
 
@@ -93,11 +93,11 @@ drink(str) {
   return 1;
 }
 
-get() {
+status get() {
   return 1;
 }
 
-id(str) {
+status id(string str) {
   if (full)
     return  str == name || str == alt_name || str == alias;
 
@@ -105,11 +105,11 @@ id(str) {
     return str == empty_container;
 }
 
-init() {
+void init() {
   add_action("drink", "drink");
 }
 
-long() {
+void long() {
   if (full) {
     if (!long_desc)
       write(short() + ".\n");
@@ -122,11 +122,11 @@ long() {
     write(short() + "\n");
 }
 
-min_cost() {
+int min_cost() {
   return 4 * strength + (strength * strength) / 10;
 }
 
-prevent_insert() {
+status prevent_insert() {
   if (empty_container)
     return 0;
 
@@ -143,7 +143,7 @@ prevent_insert() {
 * Things that other objects might want to know.
 */
 
-query_value() {
+int query_value() {
   if (full) {
     if (value)
       return value;
@@ -156,11 +156,11 @@ query_value() {
     return 10;
 }
 
-query_weight() {
+int query_weight() {
   return weight;
 }
 
-reset(arg) {
+void reset(string arg) {
   if (arg)
     return;
 
@@ -170,51 +170,51 @@ reset(arg) {
   empty_container = "bottle";
 }
 
-set_alias(a) {
+void set_alias(string a) {
   alias = a;
 }
 
-set_alt_name(an) {
+void set_alt_name(string an) {
   alt_name = an;
 }
 
-set_drinker_mess(dm) {
+void set_drinker_mess(string dm) {
   drinker_mess = dm;
 }
 
-set_drinking_mess(dm) {
+void set_drinking_mess(string dm) {
   drinking_mess = dm;
 }
 
-set_empty_container(ec) {
+void set_empty_container(string ec) {
   empty_container = ec;
 }
 
-set_long(l) {
+void set_long(string l) {
   long_desc = l;
 }
 
-set_name(n) {
+void set_name(string n) {
   name = n;
 }
 
-set_short(s) {
+void set_short(string s) {
   short_desc = s;
 }
 
-set_strength(s) {
+void set_strength(int s) {
   strength = s;
 }
 
-set_value(v) {
+void set_value(int v) {
   value = v;
 }
 
-set_weight(w) {
+void set_weight(int w) {
   weight = w;
 }
 
-short() {
+string short() {
   if (full) {
     if (!short_desc)
       return name;

@@ -260,14 +260,15 @@ final class MudlibCompatibilityScanTest {
         case "clone_object" -> support("Partial", "Delegates to the runtime object factory; behavior depends on loaded source/object lifecycle.");
         case "crypt" -> support("Stubbed", "Mudlib mfun returns deterministic placeholder text for development login flow.");
         case "destruct" -> support("Partial", "Removes objects and inventory links from RuntimeContext.");
-        case "enable_commands" -> support("Stubbed", "Engine accepts the call but does not change interactive command state.");
+        case "enable_commands" -> support("Partial", "Marks the current entity as command-enabled for mudlib compatibility checks.");
         case "environment" -> support("Implemented", "RuntimeContext tracks object environments.");
         case "file_name" -> support("Implemented", "Returns the runtime object id for loaded objects.");
         case "first_inventory" -> support("Implemented", "RuntimeContext can walk the first child in an inventory.");
+        case "find_living" -> support("Partial", "Looks up objects registered through set_living_name.");
         case "find_player" -> support("Stubbed", "Mudlib mfun currently returns 0; real connected-player lookup remains future work.");
         case "input_to" -> support("Partial", "Captures the next line of bound session input for a persona; no-echo handling remains transport work.");
         case "next_inventory" -> support("Implemented", "RuntimeContext can walk sibling inventory links.");
-        case "living" -> support("Stubbed", "Mudlib mfun currently returns 0 for every value.");
+        case "living" -> support("Partial", "Returns true for objects that have called enable_commands.");
         case "lower_case" -> support("Implemented", "Mudlib mfun delegates to JVMud text lowercasing.");
         case "log_file" -> support("Stubbed", "Mudlib mfun accepts the call and discards text until log policy exists.");
         case "move_object" -> support("Implemented", "RuntimeContext moves objects between inventories with cycle checks.");
@@ -282,6 +283,7 @@ final class MudlibCompatibilityScanTest {
         case "say" -> support("Partial", "Writes to the shared output sink; no room/session broadcast routing yet.");
         case "set_heart_beat" -> support("Implemented", "Schedules or cancels a recurring temporal tick for the current object.");
         case "set_light" -> support("Implemented", "RuntimeContext tracks per-object light deltas.");
+        case "set_living_name" -> support("Implemented", "Registers the current object in the mudlib living-name alias namespace.");
         case "sizeof" -> support("Implemented", "Typed and runtime-checked for arrays, mappings, strings, and dynamic mixed values.");
         case "strlen" -> support("Implemented", "Mudlib mfun delegates to JVMud size handling for strings.");
         case "tell_object" -> support("Partial", "Routes to a bound target session, with shared-output fallback for unbound objects.");
@@ -297,7 +299,6 @@ final class MudlibCompatibilityScanTest {
                 "extract",
                 "file_size",
                 "filter_objects",
-                "find_living",
                 "find_object",
                 "intp",
                 "localcmd",
@@ -307,7 +308,6 @@ final class MudlibCompatibilityScanTest {
                 "previous_object",
                 "rm",
                 "rmdir",
-                "set_living_name",
                 "shout",
                 "shutdown",
                 "snoop",

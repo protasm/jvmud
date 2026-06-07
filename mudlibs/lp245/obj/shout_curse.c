@@ -3,7 +3,7 @@ int start_time;
 * This is a curse that the player can't get rid of.
 * It prevents you from shouting.
 */
-do_shout() {
+status do_shout() {
   if (time() < start_time + 3600) {
     write("You can't shout with a sore throat !\n");
 
@@ -18,32 +18,32 @@ do_shout() {
   }
 }
 
-extra_look() {
+string extra_look() {
   return "the throat seems to be sore";
 }
 
-id(str) {
+status id(string str) {
   return str == "shout_curse";
 }
-drop() { return 1; }
+status drop() { return 1; }
 
-init() {
+void init() {
   add_action("do_shout", "shout");
 }
 
-init_arg(str) {
+void init_arg(string str) {
   sscanf(str, "%d", start_time);
 }
 
-long() {
+void long() {
   write("How can you look at a curse ?\n");
 }
 
-query_auto_load() {
+string query_auto_load() {
   return "obj/shout_curse:" + start_time;
 }
 
-start(ob) {
+void start(object ob) {
   move_object(this_object(), ob);
 
   start_time = time();

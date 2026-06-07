@@ -1,16 +1,16 @@
-id(str) {
+status id(string str) {
   return str == "newspaper" || str == "paper" || str == "news";
 }
 
-init() {
+void init() {
   add_action("read", "read");
 }
 
-long() {
+void long() {
   cat("/NEWSPAPER");
 }
 
-read(str) {
+status read(string str) {
   if (!id(str))
     return 0;
 
@@ -20,11 +20,11 @@ read(str) {
   return 1;
 }
 
-short() {
+string short() {
   return "A newspaper" ;
 }
-query_weight() { return 1; }
+int query_weight() { return 1; }
 
-get() { return 1; }
+status get() { return 1; }
 
-query_value() { return 5; }
+int query_value() { return 5; }

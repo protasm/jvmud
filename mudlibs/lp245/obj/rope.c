@@ -1,8 +1,8 @@
 string tied_to;
 object tied_to_ob;
 
-query_value() { return 15; }
-get() {
+int query_value() { return 15; }
+status get() {
   if (tied_to) {
     write("The rope is tied to " + tied_to + ".\n");
 
@@ -12,31 +12,31 @@ get() {
   return 1;
 }
 
-id(str) {
+status id(string str) {
   return str == "rope";
 }
 
-init() {
+void init() {
   add_action("tie", "tie");
   add_action("untie", "untie");
 }
 
-long() {
+void long() {
   write("You see nothing special about the rope.\n");
 }
 
-query_weight() {
+int query_weight() {
   return 1;
 }
 
-short() {
+string short() {
   if (tied_to)
     return "A rope tied to " + tied_to;
 
   return "A rope";
 }
 
-tie(str) {
+status tie(string str) {
   string t1, t2;
   object ob;
 
@@ -99,7 +99,7 @@ tie(str) {
   return 1;
 }
 
-untie(str) {
+status untie(string str) {
   if (!id(str))
     return 0;
 

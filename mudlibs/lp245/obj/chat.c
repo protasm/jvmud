@@ -5,7 +5,7 @@ object next;
 short() { return chat_str; }
 
 */
-chat(nr) {
+status chat(int nr) {
   object room;
 
   if (nr == 0){
@@ -24,22 +24,22 @@ chat(nr) {
     return 0;
 }
 
-collaps() {
+void collaps() {
   if(next)
     call_other(next, "collaps");
 
   destruct(this_object());
 }
 
-link(ob) {
+void link(object ob) {
   next = ob;
 }
 
-load_chat(str) {
+void load_chat(string str) {
   chat_str = str;
 }
 
-remove_chat(str) {
+object remove_chat(string str) {
   if (str == chat_str) {
     destruct(this_object());
 
@@ -52,7 +52,7 @@ remove_chat(str) {
   return this_object();
 }
 
-set_monster(m) {
+void set_monster(object m) {
   monster = m;
 }
-drop() { return 1; }
+status drop() { return 1; }

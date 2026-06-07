@@ -8,8 +8,8 @@ string next_out;
 * The purpose is to converse with players and give them portable castles.
 */
 
-short() { return "Leo the Archwizard"; }
-castle() {
+string short() { return "Leo the Archwizard"; }
+void castle() {
   write(
   "You are now ready to take the step into true wizardhood. But, to do this,\n");
   write(
@@ -22,7 +22,7 @@ castle() {
   input_to("castle2");
 }
 
-castle2(back_up_wiz) {
+void castle2(string back_up_wiz) {
   string castle_name;
   string player_name;
   string save_name;
@@ -75,7 +75,7 @@ castle2(back_up_wiz) {
   call_other(this_player(), "set_title", " the wizard");
 }
 
-catch_tell(str) {
+void catch_tell(string str) {
   object from;
   string a;
   string b;
@@ -146,7 +146,7 @@ catch_tell(str) {
 * Always let the heart_beat do the talking, to simulate delay.
 */
 
-heart_beat() {
+void heart_beat() {
   age += 1;
 
   if (attacker_ob) {
@@ -175,12 +175,12 @@ heart_beat() {
     set_heart_beat(0);
 }
 
-long() {
+void long() {
   write(short() + ".\n");
 }
-id(str) { return str == name; }
+status id(string str) { return str == name; }
 
-reset(arg) {
+void reset(string arg) {
   if (arg)
     return;
 
