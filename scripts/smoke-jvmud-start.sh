@@ -121,11 +121,64 @@ with connect_with_retry() as sock:
     transcript = read_until(sock, "> ")
     if "You are at an open green place south of the village church." not in transcript:
         raise AssertionError(f"south did not move to the village green:\n{transcript}")
+    if "You can't do that." in transcript:
+        raise AssertionError(f"south moved but was reported as unhandled:\n{transcript}")
 
     sock.sendall(b"west\n")
     transcript = read_until(sock, "> ")
     if "An old humpbacked bridge." not in transcript:
         raise AssertionError(f"west did not move to the humpbacked bridge:\n{transcript}")
+    if "You can't do that." in transcript:
+        raise AssertionError(f"west moved but was reported as unhandled:\n{transcript}")
+
+    sock.sendall(b"west\n")
+    transcript = read_until(sock, "> ")
+    if "You are in the wilderness outside the village." not in transcript:
+        raise AssertionError(f"west from bridge did not move to the wilderness:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"wilderness movement reported an error:\n{transcript}")
+
+    sock.sendall(b"west\n")
+    transcript = read_until(sock, "> ")
+    if "You are in a big forest." not in transcript:
+        raise AssertionError(f"west from wilderness did not move to the forest:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"forest movement reported an error:\n{transcript}")
+
+    sock.sendall(b"west\n")
+    transcript = read_until(sock, "> ")
+    if "A small clearing. There are trees all around you." not in transcript:
+        raise AssertionError(f"west from forest did not move to the clearing:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"clearing movement reported an error:\n{transcript}")
+
+    sock.sendall(b"west\n")
+    transcript = read_until(sock, "> ")
+    if "You are in a big forest." not in transcript:
+        raise AssertionError(f"west from clearing did not move to the next forest room:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"second forest movement reported an error:\n{transcript}")
+
+    sock.sendall(b"west\n")
+    transcript = read_until(sock, "> ")
+    if "The forest gets light here, and slopes down to the west." not in transcript:
+        raise AssertionError(f"west from second forest did not move to the mountain slope:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"mountain slope movement reported an error:\n{transcript}")
+
+    sock.sendall(b"west\n")
+    transcript = read_until(sock, "> ")
+    if "You are in the orc valley. This place is inhabited by orcs." not in transcript:
+        raise AssertionError(f"west from mountain slope did not move to the orc valley:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"orc valley movement reported an error:\n{transcript}")
+
+    sock.sendall(b"east\n")
+    transcript = read_until(sock, "> ")
+    if "The forest gets light here, and slopes down to the west." not in transcript:
+        raise AssertionError(f"east from orc valley did not return to the mountain slope:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"orc valley exit reported an error:\n{transcript}")
 
     sock.sendall(b"/quit\n")
 

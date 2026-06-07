@@ -1,6 +1,7 @@
 package io.github.protasm.jvmud.compiler;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
@@ -114,6 +115,66 @@ final class MudlibCompatibilityScanTest {
         LPCObjectHandle player = runtime.load(stripExtension(PLAYER_SOURCE));
 
         assertNotNull(player, "`obj/player.c` must define, verify, and instantiate through the JVM.");
+    }
+
+    @Test
+    void vanillaForestMovementDispatchesWithoutRuntimeCastFailure() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LPCObjectHandle player = runtime.load("obj/player");
+        LPCObjectHandle wild = runtime.load("room/forest/wild1");
+        Object forest = runtime.load("room/forest/forest1").instance();
+        runtime.moveObject(player.instance(), wild.instance());
+
+        runtime.refreshCommandActions(player.instance());
+
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "west"));
+        assertEquals(forest, runtime.environment(player.instance()));
+    }
+
+    @Test
+    void vanillaClearingMovementDispatchesWithoutRuntimeCastFailure() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LPCObjectHandle player = runtime.load("obj/player");
+        LPCObjectHandle clearing = runtime.load("room/forest/clearing");
+        runtime.moveObject(player.instance(), clearing.instance());
+
+        runtime.refreshCommandActions(player.instance());
+
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "west"));
+        assertEquals("room/forest/forest2", runtime.objectId(runtime.environment(player.instance())));
+    }
+
+    @Test
+    void vanillaSlopeMovementDispatchesMultiArgumentCallOther() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LPCObjectHandle player = runtime.load("obj/player");
+        LPCObjectHandle slope = runtime.load("room/mountain/slope");
+        runtime.moveObject(player.instance(), slope.instance());
+
+        runtime.refreshCommandActions(player.instance());
+
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "west"));
+        assertEquals("room/orc/orc_vall", runtime.objectId(runtime.environment(player.instance())));
+
+        runtime.clearOutputTranscript();
+        runtime.invokeObject(runtime.environment(player.instance()), "long", 0);
+        assertTrue(runtime.outputTranscript().contains("You are in the orc valley. This place is inhabited by orcs."));
+
+        runtime.refreshCommandActions(player.instance());
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "east"));
+        assertEquals("room/mountain/slope", runtime.objectId(runtime.environment(player.instance())));
     }
 
     private static void writeReport(MudlibBoundary boundary, Map<String, CompilationResult> results) throws IOException {
@@ -258,6 +319,7 @@ final class MudlibCompatibilityScanTest {
         case "capitalize" -> support("Implemented", "Mudlib mfun delegates to JVMud text capitalization.");
         case "cat" -> support("Partial", "Mudlib mfun reads and writes mudlib-rooted text; line-range paging remains compatibility work.");
         case "clone_object" -> support("Partial", "Delegates to the runtime object factory; behavior depends on loaded source/object lifecycle.");
+        case "command" -> support("Partial", "Dispatches a command line against an entity's registered command actions.");
         case "crypt" -> support("Stubbed", "Mudlib mfun returns deterministic placeholder text for development login flow.");
         case "destruct" -> support("Partial", "Removes objects and inventory links from RuntimeContext.");
         case "enable_commands" -> support("Partial", "Marks the current entity as command-enabled for mudlib compatibility checks.");
@@ -290,10 +352,10 @@ final class MudlibCompatibilityScanTest {
         case "this_object" -> support("Implemented", "Backed by RuntimeContext current-object stack.");
         case "this_player" -> support("Partial", "Uses command actor when present, otherwise current object; real telnet persona binding still pending.");
         case "time" -> support("Implemented", "Returns current Unix time in seconds.");
+        case "transfer" -> support("Partial", "Moves an entity to a destination and returns LP-style success code 0; weight and failure policy remain future work.");
         case "users" -> support("Implemented", "Returns connected persona objects from the session/persona registry.");
         case "write" -> support("Partial", "Routes to the active persona session when bound, with shared-output fallback.");
         case "add_worth",
-                "command",
                 "creator",
                 "ed",
                 "extract",
@@ -313,7 +375,6 @@ final class MudlibCompatibilityScanTest {
                 "snoop",
                 "sscanf",
                 "tail",
-                "transfer",
                 "wizlist" -> support("Missing", "Resolved through the mfun boundary but no JVMud mfun/efun implementation exists yet.");
         default -> support("Unknown", "No audit classification has been assigned yet.");
         };

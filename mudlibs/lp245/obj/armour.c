@@ -1,5 +1,6 @@
 string info;
-string name, alias, short_desc, long_desc, value, weight;
+string name, alias, short_desc, long_desc;
+mixed value, weight;
 object next;
 string type;
 int worn, ac;

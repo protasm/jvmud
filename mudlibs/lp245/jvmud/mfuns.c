@@ -28,6 +28,18 @@ mixed call_other(mixed target, string method, mixed arg) {
   return jvmud_invoke_entity(target, method, arg);
 }
 
+mixed call_other(mixed target, string method, mixed arg1, mixed arg2) {
+  return jvmud_invoke_entity(target, method, arg1, arg2);
+}
+
+mixed call_other(mixed target, string method, mixed arg1, mixed arg2, mixed arg3) {
+  return jvmud_invoke_entity(target, method, arg1, arg2, arg3);
+}
+
+mixed call_other(mixed target, string method, mixed arg1, mixed arg2, mixed arg3, mixed arg4) {
+  return jvmud_invoke_entity(target, method, arg1, arg2, arg3, arg4);
+}
+
 void call_out(string method, int delay) {
   jvmud_call_out(method, delay);
 }
@@ -102,6 +114,14 @@ string crypt(mixed value, mixed salt) {
 
 mixed creator(mixed ob) {
   return 0;
+}
+
+mixed command(string command_line) {
+  return jvmud_dispatch_entity_command(jvmud_current_actor(), command_line);
+}
+
+mixed command(string command_line, mixed actor) {
+  return jvmud_dispatch_entity_command(actor, command_line);
 }
 
 void destruct(object ob) {
@@ -266,6 +286,11 @@ void tell_object(object target, mixed value) {
 
 void tell_room(mixed room, mixed value) {
   jvmud_emit_perceivable_at(room, value);
+}
+
+int transfer(mixed ob, mixed destination) {
+  jvmud_move_entity(ob, destination);
+  return 0;
 }
 
 object this_object() {

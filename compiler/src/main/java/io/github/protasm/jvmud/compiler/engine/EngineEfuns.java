@@ -66,6 +66,9 @@ public final class EngineEfuns {
                         : runtime.currentObject()));
         efuns.add(efun("jvmud_current_verb", LPCType.LPCSTRING, List.of(),
                 (runtime, args) -> runtime.currentCommandVerb()));
+        efuns.add(efun("jvmud_dispatch_entity_command", LPCType.LPCMIXED,
+                List.of(LPCType.LPCMIXED, LPCType.LPCSTRING),
+                (runtime, args) -> dispatchEntityCommand(runtime, args[0], String.valueOf(args[1]))));
         efuns.add(efun("jvmud_time", LPCType.LPCINT, List.of(),
                 (runtime, args) -> (int) (System.currentTimeMillis() / 1000L)));
         efuns.add(efun("jvmud_entity_id", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
@@ -101,12 +104,9 @@ public final class EngineEfuns {
         efuns.add(efun("allocate", LPCType.LPCARRAY, List.of(LPCType.LPCINT),
                 (runtime, args) -> new ArrayList<>(
                         Collections.nCopies(Math.max(0, ((Number) args[0]).intValue()), Integer.valueOf(0)))));
-        efuns.add(efun("jvmud_invoke_entity", LPCType.LPCMIXED,
-                List.of(LPCType.LPCMIXED, LPCType.LPCSTRING),
-                (runtime, args) -> invokeEntity(runtime, args[0], String.valueOf(args[1]))));
-        efuns.add(efun("jvmud_invoke_entity", LPCType.LPCMIXED,
-                List.of(LPCType.LPCMIXED, LPCType.LPCSTRING, LPCType.LPCMIXED),
-                (runtime, args) -> invokeEntity(runtime, args[0], String.valueOf(args[1]), args[2])));
+        for (int arity = 2; arity <= 6; arity++) {
+            efuns.add(invokeEntityEfun(arity));
+        }
         efuns.add(efun("jvmud_spawn_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.cloneObject(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_move_entity", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
@@ -220,24 +220,56 @@ public final class EngineEfuns {
         return null;
     }
 
-    private static Object invokeEntity(RuntimeContext runtime, Object target, String methodName) {
-        return invokeEntity(runtime, target, methodName, null);
+    private static Object dispatchEntityCommand(RuntimeContext runtime, Object actor, String commandLine) {
+        Object resolvedActor = resolveTarget(runtime, actor);
+        if (resolvedActor == null) {
+            return 0;
+        }
+        return runtime.withCommandActor(resolvedActor, () -> runtime.dispatchCommand(resolvedActor, commandLine));
     }
 
-    private static Object invokeEntity(RuntimeContext runtime, Object target, String methodName, Object argument) {
+    private static Efun invokeEntityEfun(int arity) {
+        List<LPCType> parameters = new ArrayList<>();
+        parameters.add(LPCType.LPCMIXED);
+        parameters.add(LPCType.LPCSTRING);
+        for (int i = 2; i < arity; i++) {
+            parameters.add(LPCType.LPCMIXED);
+        }
+        return efun("jvmud_invoke_entity", LPCType.LPCMIXED, parameters,
+                (runtime, args) -> invokeEntity(runtime, args));
+    }
+
+    private static Object invokeEntity(RuntimeContext runtime, Object[] args) {
+        Object[] invocationArgs = new Object[Math.max(0, args.length - 2)];
+        System.arraycopy(args, 2, invocationArgs, 0, invocationArgs.length);
+        return invokeEntity(runtime, args[0], String.valueOf(args[1]), invocationArgs);
+    }
+
+    private static Object invokeEntity(RuntimeContext runtime, Object target, String methodName, Object... arguments) {
         Object resolvedTarget = resolveTarget(runtime, target);
         if (resolvedTarget == null) {
             return 0;
         }
 
-        if (isNoArgumentSentinel(argument)) {
-            try {
+        if (arguments.length == 0) {
+            return runtime.invokeObject(resolvedTarget, methodName);
+        }
+
+        if (arguments.length == 1 && isNoArgumentSentinel(arguments[0])) {
+            if (hasMethod(resolvedTarget, methodName, 0) && !hasMethod(resolvedTarget, methodName, 1)) {
                 return runtime.invokeObject(resolvedTarget, methodName);
-            } catch (IllegalArgumentException e) {
-                return runtime.invokeObject(resolvedTarget, methodName, new Object[] {null});
             }
         }
-        return runtime.invokeObject(resolvedTarget, methodName, argument);
+        return runtime.invokeObject(resolvedTarget, methodName, arguments);
+    }
+
+    private static boolean hasMethod(Object target, String methodName, int arity) {
+        for (var method : target.getClass().getMethods()) {
+            if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static Object resolveTarget(RuntimeContext runtime, Object target) {

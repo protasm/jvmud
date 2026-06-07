@@ -745,9 +745,13 @@ public final class RuntimeContext {
         commandVerbStack.get().push(verb);
         try {
             for (CommandAction action : actions) {
+                Object environmentBefore = environment(actor);
                 Object result = invokeCommandAction(action, argument);
                 if (Truth.isTruthy(result)) {
                     return result;
+                }
+                if (environment(actor) != environmentBefore) {
+                    return 1;
                 }
             }
         } finally {
