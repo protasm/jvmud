@@ -1,9 +1,8 @@
-#include "room/room.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET extra_reset();
+inherit "room/room";
+
 object octopus;
 
-extra_reset() {
+void extra_reset() {
   if (!octopus || !living(octopus)) {
     object chest;
     object money;
@@ -37,6 +36,16 @@ extra_reset() {
     move_object(money, chest);
   }
 }
-ONE_EXIT("room/shore/sea", "up",
-"Sea bottom",
-"You are at the bottom of the sea.\n", 1)
+
+void reset(mixed arg) {
+  if (!arg) {
+    set_light(1);
+    short_desc = "Sea bottom";
+    long_desc = "You are at the bottom of the sea.\n";
+    dest_dir = ({
+      "room/shore/sea", "up"
+    });
+  }
+
+  extra_reset();
+}

@@ -3,21 +3,21 @@ string hint_string, name;
 * This is a standard quest object.
 * Configure it to make it look the way you want.
 */
-long() {
+void long() {
   write("This is the quest '" + name + "':\n");
   write(hint_string);
 }
 
-set_hint(h) {
+void set_hint(mixed h) {
   hint_string = h;
 }
 
-set_name(n) {
+void set_name(mixed n) {
   name = n;
 }
-id(str) { return str == name || str == "quest"; }
+status id(mixed str) { return str == name || str == "quest"; }
 
-short() {
+string short() {
   return name;
 }
-hint() { return hint_string; }
+string hint() { return hint_string; }

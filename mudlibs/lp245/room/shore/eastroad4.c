@@ -1,6 +1,14 @@
-#include "room/room.h"
-TWO_EXIT("room/shore/eastroad5","north",
-"room/shore/eastroad3","south",
-"East road",
-"East road runs north-south.\n",
-1)
+inherit "room/room";
+
+void reset(mixed arg) {
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "East road";
+  long_desc = "East road runs north-south.\n";
+  dest_dir = ({
+    "room/shore/eastroad5", "north",
+    "room/shore/eastroad3", "south"
+  });
+}

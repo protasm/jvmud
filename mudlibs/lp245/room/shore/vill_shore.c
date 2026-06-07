@@ -1,6 +1,6 @@
 inherit "room/room";
 
-reset(arg) {
+void reset(mixed arg) {
   if (!arg) {
     set_light(1);
     short_desc = "Road";
