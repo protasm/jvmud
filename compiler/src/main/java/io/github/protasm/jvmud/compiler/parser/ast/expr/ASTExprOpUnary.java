@@ -28,7 +28,7 @@ public final class ASTExprOpUnary extends ASTExpression {
         return switch (operator) {
         case UOP_NOT -> LPCType.LPCSTATUS;
         case UOP_BIT_NOT -> LPCType.LPCINT;
-        case UOP_NEGATE -> right.lpcType();
+        case UOP_NEGATE -> right.lpcType() == LPCType.LPCFLOAT ? LPCType.LPCFLOAT : LPCType.LPCINT;
         };
     }
 }

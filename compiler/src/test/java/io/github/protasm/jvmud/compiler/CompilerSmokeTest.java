@@ -15,6 +15,7 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
+import io.github.protasm.jvmud.runtime.MudlibBoundaryConfigReader;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 final class CompilerSmokeTest {
+    private static final Path REPO_ROOT = Path.of("..").toAbsolutePath().normalize();
+
     @TempDir
     Path tempDir;
 
@@ -77,6 +80,43 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(3, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeCoercesMixedNumericOperandsBeforeJvmIntegerOpcodes() {
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LpcObjectHandle object = runtime.loadSource("smoke/mixed_numeric.c", """
+                int total;
+
+                int adjust(mixed i) {
+                    if (i < 0) {
+                        if (-i > total / 10)
+                            i = -total / 10;
+                    }
+
+                    total += i;
+
+                    if (total < 0)
+                        total = 0;
+
+                    return total + i;
+                }
+                """);
+
+        assertEquals(14, object.invoke("adjust", 7));
+        assertEquals(7, object.invoke("adjust", -2));
+    }
+
+    @Test
+    void runtimeLoadsVanillaMudlibPlayerThroughJvmVerification() throws Exception {
+        Path mudlibRoot = REPO_ROOT.resolve("mudlib");
+        LpcRuntime runtime = new LpcRuntime(LpcRuntimeConfig.builder().baseIncludePath(mudlibRoot).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundaryConfigReader.read(mudlibRoot, "jvmud/config"));
+
+        LpcObjectHandle player = runtime.load("obj/player");
+
+        assertNotNull(player);
     }
 
     @Test

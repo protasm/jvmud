@@ -456,6 +456,9 @@ public final class BytecodeCompiler {
             mv.visitInsn(IXOR);
             break;
         case UOP_NEGATE:
+            coerceValue(mv, unary.operand().type(), unary.type().kind() == RuntimeValueKind.FLOAT
+                    ? RuntimeTypes.FLOAT
+                    : RuntimeTypes.INT);
             switch (unary.type().kind()) {
             case FLOAT -> mv.visitInsn(FNEG);
             default -> mv.visitInsn(INEG);

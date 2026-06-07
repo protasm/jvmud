@@ -280,7 +280,7 @@ public final class SemanticTypeChecker {
         }
 
         ensureAssignable(LPCType.LPCINT, operandType, expr.line(), "Unary operator expects numeric operand");
-        return operandType != null ? operandType : LPCType.LPCINT;
+        return operandType == LPCType.LPCFLOAT ? LPCType.LPCFLOAT : LPCType.LPCINT;
     }
 
     private LPCType inferBinaryType(ASTExprOpBinary expr, MethodContext context) {
