@@ -138,6 +138,102 @@ final class AdminCliTest {
     }
 
     @Test
+    void telnetSessionCanAttachConfiguredMudlibPlayerObject() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/config"), """
+                mfun_object = jvmud/mfuns
+                player_object = obj/test_player
+                initial_place = room/village/vill_green
+                lifecycle.object_loaded = reset
+                lifecycle.interaction_scope_started = init
+                """);
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.writeString(tempDir.resolve("obj/test_player.c"), """
+                string name;
+
+                void reset(mixed arg) {
+                    name = "mudlib player";
+                }
+
+                string query_name() {
+                    return name;
+                }
+
+                string query_real_name() {
+                    return name;
+                }
+
+                int query_level() {
+                    return 0;
+                }
+
+                int query_invis() {
+                    return 0;
+                }
+
+                int remove_ghost() {
+                    return 1;
+                }
+
+                int id(mixed str) {
+                    return str == "player";
+                }
+
+                int move_player(mixed dir_dest) {
+                    if (dir_dest != "north#room/village/church")
+                        return 0;
+
+                    move_object(this_object(), "room/village/church");
+                    call_other(environment(this_object()), "long", 0);
+                    return 1;
+                }
+                """);
+        Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
+                void init() {
+                    add_action("north");
+                    add_verb("north");
+                }
+
+                void long(mixed str) {
+                    write("You are on the green.\\n");
+                }
+
+                int north(mixed str) {
+                    call_other(this_player(), "move_player", "north#room/village/church");
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/village/church.c"), """
+                void long(mixed str) {
+                    write("You are in the church.\\n");
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilPrompt(socket).contains("Attached player 1 as obj/test_player#clone"));
+
+                socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilPrompt(socket).contains("You are on the green."));
+
+                socket.getOutputStream().write("north\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String north = readUntilPrompt(socket);
+                assertTrue(north.contains("You are in the church."), north);
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
     void telnetConnectionsShareOneBootedMudRuntime() throws Exception {
         installMfunShim();
         Files.createDirectories(tempDir.resolve("room/village"));
@@ -789,6 +885,26 @@ final class AdminCliTest {
 
                 mixed call_other(mixed target, string method, mixed arg) {
                     return jvmud_invoke_object(target, method, arg);
+                }
+
+                mixed creator(mixed ob) {
+                    return 0;
+                }
+
+                object environment() {
+                    return jvmud_environment();
+                }
+
+                object environment(mixed ob) {
+                    return jvmud_environment(ob);
+                }
+
+                void move_object(mixed ob, mixed destination) {
+                    jvmud_move_object(ob, destination);
+                }
+
+                object this_object() {
+                    return jvmud_current_object();
                 }
                 """);
     }

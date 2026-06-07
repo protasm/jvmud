@@ -24,6 +24,7 @@ public final class MudlibBoundaryConfigReader {
         addString(builder::gameId, firstValue(values, "game_id"));
         addString(builder::gameName, firstValue(values, "game_name"));
         addString(builder::mfunObjectPath, firstValue(values, "mfun_object"));
+        addString(builder::playerObjectPath, firstValue(values, "player_object"));
         addString(builder::initialPlacePath, firstValue(values, "initial_place"));
         String initialPresence = firstValue(values, "initial_presence_id");
         if (initialPresence == null) {

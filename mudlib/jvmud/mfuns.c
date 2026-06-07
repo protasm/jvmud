@@ -70,6 +70,10 @@ string convert_number(int n) {
   return "lot of";
 }
 
+mixed creator(mixed ob) {
+  return 0;
+}
+
 void destruct(object ob) {
   jvmud_destruct(ob);
 }

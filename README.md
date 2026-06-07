@@ -172,6 +172,13 @@ listener: mudlib-defined player login, session-to-session messaging, output
 isolation between participants, and production networking policy belong to the
 later server slices.
 
+To run the startup smoke test that launches `jvmud-start`, connects over TCP,
+and verifies `look` plus `north`:
+
+```text
+scripts/smoke-jvmud-start.sh
+```
+
 ## Development Notes
 
 - Keep changes scoped to the relevant top-level area (`compiler/`, `runtime/`,

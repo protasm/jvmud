@@ -21,6 +21,7 @@ public final class MudlibBoundary {
     private final String gameName;
     private final String boundaryObjectPath;
     private final String mfunObjectPath;
+    private final String playerObjectPath;
     private final String initialPlacePath;
     private final String initialPresenceId;
     private final String preloadFilePath;
@@ -35,6 +36,7 @@ public final class MudlibBoundary {
         this.gameName = normalizeOptionalText(builder.gameName);
         this.boundaryObjectPath = normalizeOptionalPath(builder.boundaryObjectPath);
         this.mfunObjectPath = normalizeOptionalPath(builder.mfunObjectPath);
+        this.playerObjectPath = normalizeOptionalPath(builder.playerObjectPath);
         this.initialPlacePath = normalizeOptionalPath(builder.initialPlacePath);
         this.initialPresenceId = normalizeOptionalText(builder.initialPresenceId);
         this.preloadFilePath = normalizeOptionalPath(builder.preloadFilePath);
@@ -67,6 +69,10 @@ public final class MudlibBoundary {
 
     public Optional<String> mfunObjectPath() {
         return Optional.ofNullable(mfunObjectPath);
+    }
+
+    public Optional<String> playerObjectPath() {
+        return Optional.ofNullable(playerObjectPath);
     }
 
     public Optional<String> initialPlacePath() {
@@ -115,6 +121,7 @@ public final class MudlibBoundary {
                 || gameId != null
                 || gameName != null
                 || mfunObjectPath != null
+                || playerObjectPath != null
                 || initialPlacePath != null
                 || initialPresenceId != null
                 || preloadFilePath != null
@@ -181,6 +188,7 @@ public final class MudlibBoundary {
         private String gameName;
         private String boundaryObjectPath;
         private String mfunObjectPath;
+        private String playerObjectPath;
         private String initialPlacePath;
         private String initialPresenceId;
         private String preloadFilePath;
@@ -212,6 +220,11 @@ public final class MudlibBoundary {
 
         public Builder mfunObjectPath(String mfunObjectPath) {
             this.mfunObjectPath = mfunObjectPath;
+            return this;
+        }
+
+        public Builder playerObjectPath(String playerObjectPath) {
+            this.playerObjectPath = playerObjectPath;
             return this;
         }
 

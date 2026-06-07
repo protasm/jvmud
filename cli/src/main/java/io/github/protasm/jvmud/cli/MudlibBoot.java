@@ -83,6 +83,7 @@ final class MudlibBoot {
 
         return new MudlibBootResult(
                 worldRuntime,
+                boundary,
                 preloadedObjects,
                 skippedPreloads,
                 initialPlace,

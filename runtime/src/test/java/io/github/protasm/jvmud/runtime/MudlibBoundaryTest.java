@@ -93,6 +93,7 @@ final class MudlibBoundaryTest {
                 game_id = vanilla-lpmud-245
                 game_name = Vanilla LPMUD 2.4.5
                 mfun_object = /jvmud/mfuns.c
+                player_object = /obj/player.c
                 initial_place = room/village/vill_green
                 initial_presence_id = local/player
                 preload_file = room/init_file
@@ -112,6 +113,7 @@ final class MudlibBoundaryTest {
         assertEquals("vanilla-lpmud-245", boundary.gameId().orElseThrow());
         assertEquals("Vanilla LPMUD 2.4.5", boundary.gameName().orElseThrow());
         assertEquals("jvmud/mfuns", boundary.mfunObjectPath().orElseThrow());
+        assertEquals("obj/player", boundary.playerObjectPath().orElseThrow());
         assertEquals("room/village/vill_green", boundary.initialPlacePath().orElseThrow());
         assertEquals("local/player", boundary.initialPresenceId().orElseThrow());
         assertEquals("room/init_file", boundary.preloadFilePath().orElseThrow());

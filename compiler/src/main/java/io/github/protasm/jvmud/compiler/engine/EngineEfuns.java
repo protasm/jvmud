@@ -174,8 +174,14 @@ public final class EngineEfuns {
             return 0;
         }
 
-        Object[] args = isNoArgumentSentinel(argument) ? new Object[0] : new Object[] {argument};
-        return runtime.invokeObject(resolvedTarget, methodName, args);
+        if (isNoArgumentSentinel(argument)) {
+            try {
+                return runtime.invokeObject(resolvedTarget, methodName);
+            } catch (IllegalArgumentException e) {
+                return runtime.invokeObject(resolvedTarget, methodName, new Object[] {null});
+            }
+        }
+        return runtime.invokeObject(resolvedTarget, methodName, argument);
     }
 
     private static Object resolveTarget(RuntimeContext runtime, Object target) {

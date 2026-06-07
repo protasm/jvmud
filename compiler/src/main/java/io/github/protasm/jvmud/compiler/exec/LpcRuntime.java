@@ -208,6 +208,9 @@ public final class LpcRuntime {
     }
 
     public void moveObject(Object object, Object destination) {
+        if (destination instanceof String path) {
+            destination = loadOrGetObject(path);
+        }
         runtimeContext.moveObject(object, destination);
     }
 
@@ -233,6 +236,10 @@ public final class LpcRuntime {
 
     public void registerHostObject(String objectId, Object object) {
         runtimeContext.registerObject(normalizeInternalName(objectId), object);
+    }
+
+    public String objectId(Object object) {
+        return runtimeContext.objectId(object);
     }
 
     public MudlibBoundary mudlibBoundary() {

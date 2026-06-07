@@ -19,6 +19,7 @@ final class TelnetMud {
     private final Path mudlibRoot;
     private final String startingRoomPath;
     private final Object startingRoomObject;
+    private final String playerObjectPath;
     private int nextPersonaId = 1;
 
     private TelnetMud(
@@ -26,12 +27,14 @@ final class TelnetMud {
             WorldRuntime worldRuntime,
             Path mudlibRoot,
             String startingRoomPath,
-            Object startingRoomObject) {
+            Object startingRoomObject,
+            String playerObjectPath) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         this.startingRoomPath = Objects.requireNonNull(startingRoomPath, "startingRoomPath");
         this.startingRoomObject = Objects.requireNonNull(startingRoomObject, "startingRoomObject");
+        this.playerObjectPath = playerObjectPath;
     }
 
     static TelnetMud boot(Path mudlibRoot, String configObjectPath) {
@@ -54,7 +57,8 @@ final class TelnetMud {
                 result.worldRuntime(),
                 normalizedRoot,
                 result.startingRoom(),
-                startingRoomObject);
+                startingRoomObject,
+                result.mudlibBoundary().playerObjectPath().orElse(null));
     }
 
     Path mudlibRoot() {
@@ -67,6 +71,47 @@ final class TelnetMud {
 
     synchronized Persona attachPersona(PrintWriter out, String remoteAddress) {
         int id = nextPersonaId++;
+        Persona persona = attachMudlibPlayer(id, out, remoteAddress);
+        if (persona != null) {
+            return persona;
+        }
+        return attachHostPersona(id, out, remoteAddress);
+    }
+
+    private Persona attachMudlibPlayer(int id, PrintWriter out, String remoteAddress) {
+        if (playerObjectPath == null) {
+            return null;
+        }
+
+        try {
+            Object actor = runtime.cloneObject(playerObjectPath);
+            String objectId = Objects.requireNonNullElse(runtime.objectId(actor), playerObjectPath + "#" + id);
+            String sessionId = "telnet/" + id;
+            String name = "player " + id;
+            Place startingPlace = placeFor(startingRoomPath);
+            worldRuntime.createEntity(
+                    objectId,
+                    name,
+                    startingPlace,
+                    Capability.ACTOR,
+                    Capability.PERCEPTIVE);
+            runtime.moveObject(actor, startingRoomObject);
+            runtime.bindSession(sessionId, actor, remoteAddress, text -> {
+                out.print(text);
+                out.flush();
+            });
+            runtime.clearOutputTranscript();
+            out.println("Attached " + name + " as " + objectId + " in " + startingRoomPath + ".");
+            return new Persona(sessionId, objectId, name, actor);
+        } catch (RuntimeException | LinkageError e) {
+            System.err.println("Could not attach mudlib player object " + playerObjectPath
+                    + "; falling back to host persona: " + e.getMessage());
+            runtime.clearOutputTranscript();
+            return null;
+        }
+    }
+
+    private Persona attachHostPersona(int id, PrintWriter out, String remoteAddress) {
         String objectId = "persona/" + id;
         String sessionId = "telnet/" + id;
         String name = "player " + id;
