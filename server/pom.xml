@@ -10,18 +10,18 @@
     <relativePath>..</relativePath>
   </parent>
 
-  <artifactId>jvmud-cli</artifactId>
-  <name>JVMud Admin CLI</name>
+  <artifactId>jvmud-server</artifactId>
+  <name>JVMud Game Server</name>
 
   <dependencies>
     <dependency>
       <groupId>io.github.protasm.jvmud</groupId>
-      <artifactId>jvmud-compiler</artifactId>
+      <artifactId>jvmud-runtime</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>io.github.protasm.jvmud</groupId>
-      <artifactId>jvmud-server</artifactId>
+      <artifactId>jvmud-compiler</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -47,12 +47,12 @@
         <version>3.5.0</version>
         <executions>
           <execution>
-            <id>admin-cli</id>
+            <id>start-mudlib</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>io.github.protasm.jvmud.cli.AdminCli</mainClass>
+              <mainClass>io.github.protasm.jvmud.server.TelnetServer</mainClass>
               <skip>false</skip>
             </configuration>
           </execution>

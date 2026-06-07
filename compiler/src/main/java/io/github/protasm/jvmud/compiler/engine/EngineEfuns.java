@@ -227,7 +227,11 @@ public final class EngineEfuns {
 
     private static Object resolveTarget(RuntimeContext runtime, Object target) {
         if (target instanceof String path) {
-            return runtime.loadOrGetObject(stripLeadingSlash(path));
+            try {
+                return runtime.loadOrGetObject(stripLeadingSlash(path));
+            } catch (RuntimeException e) {
+                return null;
+            }
         }
         return target;
     }

@@ -1,186 +1,304 @@
-# JVMud Full-Stack Roadmap
+# JVMud Roadmap
 
-JVMud is being built as a readable, inspectable Java LPC/LPMud stack. The project
-should advance through small vertical slices that leave behind working code,
-clear tests, and plain-language notes about what is supported next.
+Last reset: 2026-06-07
+
+JVMud is an LPC/LPMud text-world engine for the JVM. The goal is a readable,
+inspectable stack where LPC-authored game objects can be compiled, loaded,
+reloaded, and driven through a real JVMud world runtime.
+
+This roadmap is a reset point after several useful detours. It should describe
+the current baseline, the lessons from those detours, and the shortest useful
+path back to a playable vertical slice.
 
 ## Development Posture
 
-`PRINCIPLES.md` is now the controlling design document for the engine. The
-engine should be developed to support JVMud's core concepts: Game, Text,
-Multiplayer, Interactive, World (Linked Places, Entities, Movement),
-Persistence, Temporality, and Presence.
+`PRINCIPLES.md` remains the controlling design document for the engine, and
+`docs/ENGINE_MUDLIB_CONTRACT.md` describes the engine-mudlib boundary.
 
-JVMud has one mudlib and language target: LPC for LPMud-style worlds. The
-mudlib is no longer the authority that the engine must blindly emulate, but LPC
-compatibility is the chosen target rather than one option among many. When old
-mudlib code conflicts with the engine model, the preferred move is to add
-dedicated mudlib-side compatibility shims and focused engine/compiler support
-rather than rewriting upstream mudlib files or adding accidental legacy LPC
-engine behavior to the engine.
-
-"LPMud" means that the game world is LPC code compiled into live game objects
-that can be rewritten, recompiled, and reloaded without rebooting the whole
-game. It does not mean importing legacy driver concepts such as room,
-heartbeat, apply, call_out, or master object into JVMud's engine model.
-
-The engine-mudlib boundary is documented in `docs/ENGINE_MUDLIB_CONTRACT.md`.
-Engine-facing concepts should use JVMud-native terms; legacy LPC names belong in
-compatibility shims and adapters.
+JVMud has one mudlib and language target: LPC for LPMud-style worlds. That means
+compatibility work should deepen this target rather than broaden JVMud into a
+generic MUD framework. "LPMud" means LPC code compiled into live game objects
+that can be rewritten, recompiled, and reloaded without rebooting the game. It
+does not mean importing legacy driver concepts such as rooms, heartbeats,
+applies, `call_out`, or master objects into the engine ontology.
 
 In practice:
 
-- engine concepts should be named and designed from `PRINCIPLES.md`, not from
-  legacy LPC mudlib quirks;
-- compiler and runtime work should assume the sole LPC/LPMud target and avoid
-  generic multi-language mudlib architecture;
-- live reload of LPC-authored game objects is part of the target, while legacy
-  driver vocabulary remains compatibility vocabulary rather than ontology;
-- upstream mudlib files should be treated as read-only unless an explicit style
-  or formatting change is requested;
-- compatibility shims should live in dedicated independent mudlib-side objects,
-  such as mfun objects, shadow, or adapter objects;
-- engine-side APIs should describe JVMud operations rather than preserving
-  legacy LP engine method names for their own sake;
-- compatibility scans should identify useful evidence, not dictate engine
-  architecture;
-- runtime/server work should preserve the distinction between JVMud world
-  reality and generated-code helper APIs.
+- engine concepts should be named and designed from `PRINCIPLES.md`;
+- compiler and runtime work should assume the sole LPC/LPMud target;
+- runtime/server concepts belong under `runtime/` and `cli/`, while generated
+  bytecode helpers remain under `compiler/src/main/java/.../compiler/runtime/`;
+- upstream vanilla mudlib files should stay read-only by default;
+- compatibility belongs in dedicated mudlib-side shim objects and focused
+  compiler/runtime support;
+- legacy LPC names are acceptable as compatibility entry points, not as the
+  engine's vocabulary;
+- every meaningful slice should leave behind tests or a real entrypoint smoke.
 
-## Current Baseline
+## Current Verified Baseline
 
-The top-level `runtime` module now contains the first engine-owned JVMud world
-model. It defines `World`, `Place`, `Link`, `Entity`, `Location`, `Capability`,
-and `WorldRuntime`. `WorldRuntime` owns single containment, requires every
-created entity to have an immediate location, rejects containment cycles, and
-models navigable links between places. Links are place-to-place topology only;
-entities participate through containment, not as link endpoints.
+As of this reset, `mvn test` is green for the root reactor:
 
-The first baseline is a buildable compiler module. `mvn test` now compiles the
-compiler with ASM and runs smoke tests for the current LPC-to-bytecode path.
+- `runtime`: world model, containment, movement, links, scheduler, and mudlib
+  boundary config tests.
+- `compiler`: scanner/parser/semantic/IR/bytecode smoke tests, formatter tests,
+  runtime helper tests, and the non-failing mudlib compatibility scan.
+- `cli`: admin shell and boot/config behavior tests.
 
-The baseline proves:
+The real process smoke also passes through `scripts/smoke-jvmud-start.sh`. That
+script launches `./jvmud-start`, connects over TCP, verifies the player-facing
+session, runs `look`, runs `north`, and quits cleanly. Treat this as the
+entrypoint smoke for Telnet and startup changes.
 
-- simple LPC source can compile to bytecode;
-- generated classes can be loaded, instantiated, and invoked from Java;
-- inherited source files can be resolved and compiled;
-- registered engine functions can be called from generated LPC bytecode;
-- early engine functions provide testable output and shared object invocation;
-- a mudlib compatibility scan can report current gaps without failing the build.
+The top-level `runtime` module owns the first engine model:
 
-The current mudlib function slice includes output delivery, current
-execution context lookup, shared object invocation, object creation/destruction,
-movement, inventory traversal, local perception, and early time scheduling.
-Several of those are still exposed through legacy LPC names in the current
-compiler helper layer; the next boundary work should translate them toward
-JVMud-native engine operations.
+- `World`
+- `Place`
+- `Link`
+- `Entity`
+- `Location`
+- `Capability`
+- `WorldRuntime`
+- `WorldScheduler`
+- `MudlibBoundary`
 
-The first object runtime slice adds real clone/load bridging, environment
-tracking, inventories, `present`, inventory traversal, and destruct cleanup. It
-is intentionally identity-based and small until the top-level runtime module
-takes over broader server lifecycle responsibilities.
+`WorldRuntime` owns single containment, requires every entity to have an
+immediate location, rejects containment cycles, and models navigable links
+between places. Links are place-to-place topology only; entities participate
+through containment and capabilities.
 
-The first admin CLI slice adds a separate `cli` Maven module with a local shell
-for one admin user. It can boot a runtime, load and clone LPC objects, call
-methods, move objects, inspect environments, list handles, reload compiled
-objects, destruct objects, and quit. It also has a mudlib-rooted virtual
-filesystem with `pwd`, `cd`, `ls`, and `cat`, so an admin can navigate content
-using LPC-style root-relative paths. The shell is admin-only: plain input is an
-admin command, and player/world input belongs to interactive sessions. It also supports
-`verbosity quiet`, `verbosity normal`, and `verbosity watch`; watch mode displays
-coarse compiler stage progress for compilation-backed commands.
+The compiler can compile LPC source to bytecode, load generated classes,
+instantiate objects, resolve inherited source files, invoke registered engine
+functions, lower common expressions and statements, and run a compatibility scan
+over the bundled mudlib without failing the build.
 
-The first command-system slice now exists behind Telnet. The runtime tracks a
-current command actor, supports minimal `enable_commands`, `add_action`, and
-`add_verb` engine functions, refreshes nearby `init` registrations, and
-dispatches line input through object-defined verb handlers. The admin CLI no
-longer simulates a selected player or command actor.
+The host-facing object runtime has real load/clone identity, object ids,
+environment tracking, inventories, `present`, inventory traversal, destruct
+cleanup, command registration, command dispatch, session binding, captured
+session input, output sinks, and early temporal scheduling hooks.
 
-The first mudlib boot slice interprets `room/init_file` as a startup preload
-list, tolerates currently unsupported preload entries, loads a default starting
-room when present, and creates a host-owned local session actor situated in that
-room through `WorldRuntime`. This actor is not an LPC player object; it is a
-small JVMud session entity that lets LPC-defined room exits move the local
-Player through the existing command path while the compiler runtime acts as
-an adapter.
+JVMud currently has two development entrypoints:
 
-The first Telnet slice now owns the interactive command/session path over a
-line-oriented socket listener. The listener boots one shared development runtime
-and world for the process; each connection attaches a fresh host-owned persona
-in the configured starting room. It accepts player commands plus a small set of
-slash-prefixed session controls and performs basic Telnet option refusal. It
-deliberately stops short of mudlib-defined player login, session-to-session
-messaging, output routing between Players, and production server policy.
+- `./jvmud-admin` for local admin inspection and mutation.
+- `./jvmud-start` for the persistent game server and Telnet listener.
+
+The CLI is a single-user, server-side command-line tool for navigating the
+mudlib filesystem and loading, inspecting, invoking, mutating, and reloading
+objects. Player/world input belongs to the server path.
+
+The server module boots one shared development runtime and world. Each
+connection attempts to attach a configured mudlib player object and falls back
+to a host-owned persona when that player path fails. Player input is routed
+through LPC `init`, `add_action`, and `add_verb` registrations. Slash commands
+remain session controls, not admin operations.
+
+The real `jvmud-start` smoke now exercises the configured vanilla player object
+through its `logon` lifecycle hook. It drives name, password, email, and gender
+prompts through `input_to`, then verifies `look` and movement after the Persona
+enters the world.
+
+The mudlib boundary is now manifest-driven by `mudlib/jvmud/config`. The current
+manifest declares:
+
+- game id and name;
+- `mfun_object = jvmud/mfuns`;
+- `player_object = obj/player`;
+- `initial_place = room/village/vill_green`;
+- `preload_file = room/init_file`;
+- lifecycle mappings for `reset` and `init`;
+- temporal tick method and interval metadata.
+
+## Off-Road Lessons
+
+Recent work produced useful guardrails:
+
+- Real process behavior matters. Keep `scripts/smoke-jvmud-start.sh` healthy
+  whenever Telnet, boot, movement, command dispatch, or config behavior changes.
+- The host-owned persona fallback is valuable. It keeps the listener playable
+  if configured player attachment regresses or a development mudlib omits
+  `player_object`.
+- `player_object` should stay config-driven. Do not hardcode `obj/player` in
+  Java entrypoints.
+- The configured vanilla player object now attaches through the real
+  `./jvmud-start` smoke. Keep that smoke strict enough to fail if the listener
+  falls back to a host-owned Persona unexpectedly.
+- The compatibility scan is evidence. It should guide parser, semantic,
+  bytecode, engine-function, runtime, and shim work, but it should not dictate
+  JVMud's architecture.
+- Temporal support has started, but old LPC names such as heartbeat and
+  `call_out` must remain compatibility vocabulary around JVMud-native time.
+
+## Reset Priorities
+
+1. **Keep The Baseline Honest**
+   Preserve `mvn test` and `scripts/smoke-jvmud-start.sh` as the default
+   verification pair. If a change intentionally breaks one, document the reason
+   in the change and restore the signal quickly.
+
+2. **Guard The Configured Player Path**
+   Keep `player_object = obj/player` attaching without falling back. The
+   `scripts/smoke-jvmud-start.sh` smoke must verify the configured mudlib player
+   object id, not only a generic attachment message. If a verifier or runtime
+   failure returns, reproduce it with the smallest compiler/runtime test before
+   changing Telnet fallback behavior.
+
+3. **Make Player Sessions Feel Real**
+   The configured player now attaches and runs the first vanilla login flow
+   through captured input. Next, route richer output, command context,
+   disconnect cleanup, persistence, and multi-session policy through the mudlib
+   player object. Host personas should remain a development fallback, not the
+   primary player model.
+
+4. **Tighten The Engine-Mudlib Boundary**
+   Move legacy LPC compatibility through `mudlib/jvmud/*` shims and manifest
+   declarations. Keep `runtime/` APIs in JVMud terms and keep compiler helper
+   APIs focused on generated-code needs.
+
+5. **Broaden Compatibility By Evidence**
+   Use the compatibility scan report and real startup failures to choose the
+   next parser, semantic, IR, bytecode, efun, runtime, or shim task. Favor small
+   vertical slices that improve current mudlib boot/play over broad legacy
+   emulation.
 
 ## Waypoints
 
-1. **Buildable Compiler Baseline**
-   Keep the Maven build green and expand tests around language features already
-   supported by the scanner, parser, semantic model, IR, and bytecode compiler.
+### 1. Buildable Compiler Baseline
 
-2. **Compiler Compatibility Harness**
-   Keep the compatibility scan as evidence for useful language and content
-   support, not as a mandate to emulate every legacy LPC engine behavior. Track
-   failures by stage so parser, semantic, engine function, runtime, or shim-object work can
-   be chosen deliberately.
+Keep the compiler module green while expanding tests around language features
+already supported by the scanner, preprocessor, parser, semantic model, IR, and
+bytecode compiler.
 
-3. **Minimal Object Runtime**
-   Build on the top-level runtime module as the engine-owned world model.
-   Compiler-side loaded-object identity, clones, destructed objects,
-   environments, and reflective method calls should increasingly act as adapters
-   into `WorldRuntime`. Keep generated-code helper classes separate from
-   server/runtime concepts.
+Near-term focus:
 
-4. **Essential Engine Functions**
-   Implement the first engine-compatible operations needed by current content:
-   text delivery, current actor/object lookup, location queries, movement,
-   object materialization, destruction, presence lookup, inventory traversal,
-   and object calls. Keep legacy engine function names as compatibility entry points rather
-   than as the engine's ontology.
+- reproduce and fix verifier failures from real mudlib objects;
+- improve source-position diagnostics for compatibility failures;
+- keep bytecode tests close to observed LPC patterns.
 
-5. **Single-Admin CLI**
-   Add a local command-line shell backed by the real runtime. Initial commands
-   should load, clone, call, move, inspect, reload, destruct, and list objects.
+### 2. Compiler Compatibility Harness
 
-6. **Command System And Player-Like Session**
-   Add `enable_commands`, `add_action`, `add_verb`, command dispatch, current
-   actor context, and enough built-in command behavior for an interactive Telnet
-   Player to look, move, get, and drop through LPC-defined objects. The
-   first Telnet player-facing input loop is in place; the next work is to make
-   common player commands feel natural with mudlib boot, starting rooms, and
-   movement support.
+Keep the mudlib scan non-failing and useful. Track failures by stage so work can
+be selected deliberately: preprocessing, scanning, parsing, semantic analysis,
+IR lowering, bytecode generation, engine functions, runtime behavior, or shim
+objects.
 
-7. **Mudlib Boot Slice**
-   Interpret `mudlib/room/init_file`, load startup objects, boot a starting room,
-   and place the local session into that room. The first slice is in place; the
-   next work is richer boot configuration and broader real-mudlib compatibility
-   through dedicated shim objects and focused runtime/compiler support.
+Near-term focus:
 
-8. **Scheduler And Interactive Input**
-   Implement deterministic recurring ticks, delayed callbacks, and interactive
-   input capture so old-school interactive mudlib objects can be tested and
-   driven from the CLI through compatibility shims.
+- summarize scan output by actionable category;
+- preserve examples for newly fixed categories;
+- avoid counting unsupported legacy behavior as engine design debt unless it
+  blocks the chosen playable slice.
 
-9. **Persistence And Filesystem Policy**
-   Add save/restore, logs, path normalization, mudlib root isolation, writable
-   data areas, and permission checks.
+### 3. Engine-Owned World Runtime
 
-10. **Telnet Server**
-    Reuse the CLI-proven command/session engine behind Telnet sessions. The
-    first persistent listener is in place; the next work is mudlib-defined
-    player login, output buffering, session isolation, and disconnect handling.
+Continue moving from compiler-side object bookkeeping toward adapters over
+`WorldRuntime`. The world runtime should own JVMud reality: places, entities,
+containment, movement, links, capabilities, presence, and time.
 
-11. **Multi-User World Runtime**
-    Support multiple sessions, shared rooms, messaging, command isolation, user
-    lookup, and admin operations for sessions and loaded objects.
+Near-term focus:
 
-12. **Production Hardening**
-    Add config, structured diagnostics, packaging, CI, backups, deployment, and
-    enough engine-aligned compatibility support for a long-lived playable server.
+- make player-object attachment and object movement agree on identity and
+  containment;
+- clarify ownership between LPC object ids and engine entity ids;
+- keep place/link semantics separate from legacy room vocabulary.
+
+### 4. Essential Compatibility Functions
+
+Support the LPC operations needed by current content through compatibility
+entry points and JVMud-native runtime operations.
+
+Current supported or partial areas include output delivery, current object and
+command Persona lookup, shared object calls, object creation/destruction,
+movement, environment lookup, inventory traversal, local perception, command
+registration, captured input, and temporal hooks.
+
+Near-term focus:
+
+- make common player-object methods compile and run;
+- keep the vanilla player login smoke exercising `logon` and `input_to`;
+- route output to the right session or perceivable scope;
+- turn stubbed time functions into deterministic scheduler-backed behavior
+  where current content needs it.
+
+### 5. Admin CLI
+
+Keep the admin shell as the local inspection and mutation tool. It should remain
+admin-only: player/world input belongs to interactive sessions.
+
+Near-term focus:
+
+- preserve load, clone, call, move, inspect, reload, destruct, object listing,
+  virtual filesystem navigation, and verbosity modes;
+- add focused diagnostics that help explain boot and compatibility failures;
+- avoid turning the admin shell into a player simulator.
+
+### 6. Interactive Command System
+
+Keep command dispatch centered on a Persona/session context and LPC-defined
+registrations from nearby or carried objects.
+
+Near-term focus:
+
+- improve `look`, movement, get/drop, and simple inventory play through real
+  mudlib objects;
+- ensure `init` refresh behavior remains predictable;
+- separate command failure output from successful silent no-ops.
+
+### 7. Mudlib Boot And Boundary Config
+
+Use `mudlib/jvmud/config` as the source of mudlib integration declarations.
+Boot should preload configured objects, interpret `room/init_file`, create the
+initial place, attach lifecycle behavior, and provide clear skipped-preload
+evidence.
+
+Near-term focus:
+
+- keep `player_object`, lifecycle mappings, temporal metadata, and initial
+  place config-driven;
+- add boundary fields only when they unlock a concrete runtime behavior;
+- prefer dedicated mudlib shim objects over edits to vanilla mudlib files.
+
+### 8. Telnet Server
+
+Keep `./jvmud-start` as the real player-facing development entrypoint. It should
+boot one shared world and attach each session to a Persona.
+
+Near-term focus:
+
+- make configured mudlib player attachment the normal path;
+- preserve host persona fallback as a resilience path, not as the expected
+  configured mudlib path;
+- add session isolation, disconnect cleanup, output buffering, and lifecycle
+  hooks;
+- keep slash-prefixed commands limited to session controls.
+
+### 9. Time, Persistence, And Policy
+
+Add durable game services only after the interactive slice is stable enough to
+exercise them.
+
+Near-term focus:
+
+- deterministic ticks and delayed callbacks;
+- save/restore for LPC objects that need it;
+- mudlib-root path isolation, writable data areas, logs, and permission checks;
+- production config and structured diagnostics.
+
+### 10. Multi-User Play
+
+Once one configured mudlib player can connect and act reliably, make the shared
+world genuinely multi-user.
+
+Near-term focus:
+
+- multiple sessions in the same places;
+- output routing between participants;
+- command isolation by Persona;
+- user lookup and admin operations for live sessions;
+- packaging, CI, deployment, backups, and long-lived server hardening.
 
 ## Readability Standard
 
 JVMud should be approachable to a human reader. Prefer names and structure that
-explain intent. Add comments where legacy LPC engine semantics, bytecode behavior, or
+explain intent. Add comments where legacy LPC behavior, bytecode generation, or
 runtime lifecycle rules are non-obvious. Tests should read like executable
 documentation for the supported LPC subset.

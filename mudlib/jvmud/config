@@ -18,6 +18,7 @@ preload_objects =
 
 lifecycle.object_loaded = reset
 lifecycle.interaction_scope_started = init
+lifecycle.player_session_connected = logon
 
 temporal_tick_method = heart_beat
 temporal_tick_interval = 1

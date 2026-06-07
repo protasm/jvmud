@@ -123,22 +123,9 @@ public final class LPCRuntime {
     /** Loads, compiles, instantiates, registers, and initializes one source file. */
     public LPCObjectHandle load(Path sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
+        CompilationResult result = compile(sourcePath);
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
-        String source;
-
-        try {
-            if (!Files.exists(normalized)) {
-                throw new LPCRuntimeException("Source file not found: " + normalized);
-            }
-            source = Files.readString(normalized);
-        } catch (IOException e) {
-            throw new LPCRuntimeException("Failed to read source file: " + normalized, e);
-        }
-
         String sourceName = deriveSourceName(normalized, baseIncludePath);
-        String displayPath = "/" + sourceName;
-        CompilationResult result =
-                pipeline.run(normalized, source, sourceName, displayPath, ParserOptions.defaults());
 
         if (!result.getProblems().isEmpty()) {
             throw new LPCRuntimeException(formatProblems(result.getProblems()), result.getProblems());
@@ -163,6 +150,26 @@ public final class LPCRuntime {
         resetIfPresent(instance);
 
         return new LPCObjectHandle(this, internalName, compiledClass, instance);
+    }
+
+    /** Compiles one source file using this runtime's include, efun, and mudlib boundary context. */
+    public CompilationResult compile(Path sourcePath) {
+        Objects.requireNonNull(sourcePath, "sourcePath");
+        Path normalized = resolveSourcePathWithExtensions(sourcePath);
+        String source;
+
+        try {
+            if (!Files.exists(normalized)) {
+                throw new LPCRuntimeException("Source file not found: " + normalized);
+            }
+            source = Files.readString(normalized);
+        } catch (IOException e) {
+            throw new LPCRuntimeException("Failed to read source file: " + normalized, e);
+        }
+
+        String sourceName = deriveSourceName(normalized, baseIncludePath);
+        String displayPath = "/" + sourceName;
+        return pipeline.run(normalized, source, sourceName, displayPath, ParserOptions.defaults());
     }
 
     /** Attempts to load source and captures runtime failures as a result object. */
@@ -318,9 +325,9 @@ public final class LPCRuntime {
     }
 
     /**
-     * Rebuilds command actions for an actor from nearby mudlib objects.
+     * Rebuilds command actions for a Persona from nearby mudlib objects.
      *
-     * <p>This invokes the configured interaction-scope lifecycle method on the actor, its
+     * <p>This invokes the configured interaction-scope lifecycle method on the Persona, its
      * environment, and immediately nearby inventory objects so LPC {@code init}/{@code add_action}
      * style registrations can be refreshed.</p>
      */
@@ -346,7 +353,7 @@ public final class LPCRuntime {
         }));
     }
 
-    /** Dispatches one player command line through the actor's registered command actions. */
+    /** Dispatches one player command line through the Persona's registered command actions. */
     public Object dispatchCommand(Object actor, String commandLine) {
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(commandLine, "commandLine");

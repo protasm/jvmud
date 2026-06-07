@@ -121,6 +121,11 @@ Location for Presence to exist. A Persona may be located in a Place or in
 another Entity if the game supports containment, vehicles, possession, carried
 objects, or similar structures.
 
+A Persona is a specific role for an Entity: it is linked to a Player through a
+Session. A Persona is usually also an Actor because Player commands can cause it
+to act, but Actor is a broader capability that also includes NPCs, traps,
+schedulers, scripted effects, and other Entities that initiate change.
+
 ### Player Object
 
 The LPC-authored mudlib object that gives a Persona its behavior.
@@ -157,6 +162,10 @@ The capability to receive information about the World.
 ### Actor
 
 The capability to initiate change within the World.
+
+Actor describes what an Entity can do, not whose perspective it represents. A
+Persona may have the Actor capability when the linked Player can cause it to act
+through command input, but not every Actor is a Persona.
 
 ## LPC/LPMud Target
 

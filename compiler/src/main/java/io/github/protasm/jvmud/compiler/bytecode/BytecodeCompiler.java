@@ -5,6 +5,9 @@ import static org.objectweb.asm.Opcodes.*;
 import io.github.protasm.jvmud.compiler.ir.*;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeCoercions;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeEquality;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeIndex;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeTypes;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeValueKind;
@@ -522,6 +525,9 @@ public final class BytecodeCompiler {
         else
             mv.visitJumpInsn(IFEQ, falseLabel);
 
+        if (binary.operator() == BinaryOpType.BOP_OR)
+            mv.visitJumpInsn(GOTO, falseLabel);
+
         mv.visitLabel(trueLabel);
         mv.visitInsn(ICONST_1);
         mv.visitJumpInsn(GOTO, end);
@@ -549,7 +555,12 @@ public final class BytecodeCompiler {
         boxIfNeeded(mv, binary.left().type());
         emitExpression(mv, internalName, method, binary.right());
         boxIfNeeded(mv, binary.right().type());
-        mv.visitMethodInsn(INVOKESTATIC, "java/util/Objects", "equals", "(Ljava/lang/Object;Ljava/lang/Object;)Z", false);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeEquality.class),
+                "equals",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Z",
+                false);
 
         if (binary.operator() == BinaryOpType.BOP_NE) {
             emitBooleanInvert(mv);
@@ -929,6 +940,17 @@ public final class BytecodeCompiler {
 
     private void emitArrayGet(MethodVisitor mv, String internalName, IRMethod method, IRArrayGet arrayGet) {
         emitExpression(mv, internalName, method, arrayGet.array());
+        if (arrayGet.array().type() != null && arrayGet.array().type().kind() == RuntimeValueKind.MIXED) {
+            emitExpression(mv, internalName, method, arrayGet.index());
+            coerceValue(mv, arrayGet.index().type(), RuntimeTypes.INT);
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Type.getInternalName(RuntimeIndex.class),
+                    "get",
+                    "(Ljava/lang/Object;I)Ljava/lang/Object;",
+                    false);
+            return;
+        }
         mv.visitTypeInsn(CHECKCAST, "java/util/List");
         emitExpression(mv, internalName, method, arrayGet.index());
         coerceValue(mv, arrayGet.index().type(), RuntimeTypes.INT);
@@ -1058,6 +1080,15 @@ public final class BytecodeCompiler {
         default:
             if (source != null && !source.isReferenceLike())
                 boxIfNeeded(mv, source);
+
+            if (target.kind() != RuntimeValueKind.MIXED) {
+                mv.visitMethodInsn(
+                        INVOKESTATIC,
+                        Type.getInternalName(RuntimeCoercions.class),
+                        "zeroToNullReference",
+                        "(Ljava/lang/Object;)Ljava/lang/Object;",
+                        false);
+            }
 
             if (target.objectInternalName() != null)
                 mv.visitTypeInsn(CHECKCAST, target.objectInternalName());

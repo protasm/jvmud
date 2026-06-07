@@ -252,31 +252,38 @@ final class MudlibCompatibilityScanTest {
 
     private static SupportEntry supportForGlobalCall(String call) {
         return switch (call) {
-        case "add_action" -> support("Partial", "Registers handler methods and explicit verbs; player command lifecycle still needs session attachment.");
+        case "add_action" -> support("Partial", "Registers handler methods and explicit verbs, including the legacy third flag argument.");
         case "call_other" -> support("Partial", "Reflective invoke exists for zero/one argument calls; broader arity and error behavior remain compatibility work.");
         case "call_out" -> support("Stubbed", "Engine accepts the call but does not schedule anything.");
         case "capitalize" -> support("Implemented", "Mudlib mfun delegates to JVMud text capitalization.");
         case "cat" -> support("Partial", "Mudlib mfun reads and writes mudlib-rooted text; line-range paging remains compatibility work.");
         case "clone_object" -> support("Partial", "Delegates to the runtime object factory; behavior depends on loaded source/object lifecycle.");
+        case "crypt" -> support("Stubbed", "Mudlib mfun returns deterministic placeholder text for development login flow.");
         case "destruct" -> support("Partial", "Removes objects and inventory links from RuntimeContext.");
         case "enable_commands" -> support("Stubbed", "Engine accepts the call but does not change interactive command state.");
         case "environment" -> support("Implemented", "RuntimeContext tracks object environments.");
         case "file_name" -> support("Implemented", "Returns the runtime object id for loaded objects.");
         case "first_inventory" -> support("Implemented", "RuntimeContext can walk the first child in an inventory.");
+        case "find_player" -> support("Stubbed", "Mudlib mfun currently returns 0; real connected-player lookup remains future work.");
         case "input_to" -> support("Partial", "Captures the next line of bound session input for a persona; no-echo handling remains transport work.");
         case "next_inventory" -> support("Implemented", "RuntimeContext can walk sibling inventory links.");
         case "living" -> support("Stubbed", "Mudlib mfun currently returns 0 for every value.");
         case "lower_case" -> support("Implemented", "Mudlib mfun delegates to JVMud text lowercasing.");
+        case "log_file" -> support("Stubbed", "Mudlib mfun accepts the call and discards text until log policy exists.");
         case "move_object" -> support("Implemented", "RuntimeContext moves objects between inventories with cycle checks.");
         case "present" -> support("Partial", "RuntimeContext searches inventory by identity or id method.");
         case "query_idle" -> support("Implemented", "Reads idle time from the bound session/persona record.");
         case "query_ip_number" -> support("Implemented", "Reads the remote address from the bound session/persona record.");
         case "query_verb" -> support("Implemented", "Backed by the active command dispatch verb.");
+        case "random" -> support("Stubbed", "Mudlib mfun currently returns 0 for deterministic development behavior.");
         case "remove_call_out" -> support("Stubbed", "Engine always returns -1.");
+        case "restore_object" -> support("Stubbed", "Mudlib mfun currently returns 0 until persistence policy exists.");
+        case "save_object" -> support("Stubbed", "Mudlib mfun currently returns 1 without durable storage.");
         case "say" -> support("Partial", "Writes to the shared output sink; no room/session broadcast routing yet.");
         case "set_heart_beat" -> support("Implemented", "Schedules or cancels a recurring temporal tick for the current object.");
         case "set_light" -> support("Implemented", "RuntimeContext tracks per-object light deltas.");
         case "sizeof" -> support("Implemented", "Typed and runtime-checked for arrays, mappings, strings, and dynamic mixed values.");
+        case "strlen" -> support("Implemented", "Mudlib mfun delegates to JVMud size handling for strings.");
         case "tell_object" -> support("Partial", "Routes to a bound target session, with shared-output fallback for unbound objects.");
         case "this_object" -> support("Implemented", "Backed by RuntimeContext current-object stack.");
         case "this_player" -> support("Partial", "Uses command actor when present, otherwise current object; real telnet persona binding still pending.");
@@ -286,32 +293,25 @@ final class MudlibCompatibilityScanTest {
         case "add_worth",
                 "command",
                 "creator",
-                "crypt",
                 "ed",
                 "extract",
                 "file_size",
                 "filter_objects",
                 "find_living",
                 "find_object",
-                "find_player",
                 "intp",
                 "localcmd",
-                "log_file",
                 "ls",
                 "mkdir",
                 "move_player",
                 "previous_object",
-                "random",
-                "restore_object",
                 "rm",
                 "rmdir",
-                "save_object",
                 "set_living_name",
                 "shout",
                 "shutdown",
                 "snoop",
                 "sscanf",
-                "strlen",
                 "tail",
                 "transfer",
                 "wizlist" -> support("Missing", "Resolved through the mfun boundary but no JVMud mfun/efun implementation exists yet.");

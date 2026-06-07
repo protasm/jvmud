@@ -12,6 +12,10 @@ void add_action(string method, string verb) {
   jvmud_add_action(method, verb);
 }
 
+void add_action(string method, string verb, int flag) {
+  jvmud_add_action(method, verb);
+}
+
 void add_verb(string verb) {
   jvmud_add_verb(verb);
 }
@@ -55,6 +59,9 @@ string capitalize(mixed value) {
   return jvmud_capitalize_text(value);
 }
 
+void add_worth(mixed value) {
+}
+
 string convert_number(int n) {
   if (n == 0)
     return "no";
@@ -87,6 +94,10 @@ string convert_number(int n) {
     return "nine";
 
   return "lot of";
+}
+
+string crypt(mixed value, mixed salt) {
+  return "" + value;
 }
 
 mixed creator(mixed ob) {
@@ -125,6 +136,10 @@ object first_inventory(mixed container) {
   return jvmud_first_entity_at(container);
 }
 
+object find_player(mixed name) {
+  return 0;
+}
+
 string jvmud_mfun_status() {
   return "ok";
 }
@@ -135,6 +150,9 @@ status living(mixed ob) {
 
 string lower_case(mixed value) {
   return jvmud_lowercase_text(value);
+}
+
+void log_file(mixed file, mixed text) {
 }
 
 void move_object(mixed ob, mixed destination) {
@@ -169,8 +187,24 @@ mixed query_ip_number(mixed player) {
   return jvmud_query_ip_number(player);
 }
 
+mixed query_ip_number() {
+  return jvmud_query_ip_number(jvmud_current_actor());
+}
+
+int random(int max) {
+  return 0;
+}
+
 int remove_call_out(string method) {
   return jvmud_remove_call_out(method);
+}
+
+int restore_object(string path) {
+  return 0;
+}
+
+int save_object(string path) {
+  return 1;
 }
 
 void say(mixed value) {
@@ -194,6 +228,10 @@ int set_light(int delta) {
 }
 
 int sizeof(mixed value) {
+  return jvmud_size(value);
+}
+
+int strlen(mixed value) {
   return jvmud_size(value);
 }
 
@@ -228,6 +266,23 @@ object this_object() {
 
 object this_player() {
   return jvmud_current_actor();
+}
+
+string version() {
+  return "JVMud";
+}
+
+int valid_name(mixed name) {
+  string lowered;
+
+  if (!stringp(name))
+    return 0;
+
+  lowered = lower_case(name);
+  if (strlen(lowered) < 2)
+    return 0;
+
+  return lowered == name;
 }
 
 int time() {

@@ -151,6 +151,13 @@ The Eight Core Concepts
    A Persona is the Entity currently associated with a Session
    as that Session's in-world perspective.
 
+   A Persona is a specific kind of Entity relationship, not a
+   synonym for Actor. Actor is a capability: an Entity capable of
+   initiating change. A Persona is usually also an Actor because
+   the linked Player can cause the Persona to act through command
+   input, but NPCs, traps, clocks, scripted events, and other
+   systems may be Actors without being Personas.
+
 Core Philosophy
 ---------------
 
@@ -329,6 +336,10 @@ Actor
 
     An Actor can perform actions that affect entities, places,
     state, or events.
+
+    Actor is broader than Persona. A Persona is the player-linked
+    Entity through which Presence occurs; it is an Actor only when
+    the linked Player can cause it to initiate change.
 
 Perceptive and Actor are independent capabilities.
 

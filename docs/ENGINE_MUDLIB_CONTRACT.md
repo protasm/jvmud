@@ -80,9 +80,9 @@ The currently defined JVMud lifecycle events are:
 | `player_object_bound` | Reserved | Player object | persona id, session id | JVMud has associated a live player object entity with a connected session. |
 | `player_entered_world` | Reserved | Player object | starting place | JVMud has placed the player object into the world and interaction can begin. |
 | `player_session_disconnected` | Reserved | Player object or boundary object | persona id, session id | The transport has disconnected and JVMud is about to save, unbind, or clean up session control. |
-| `interaction_scope_started` | Implemented, optional mapping | Actor, actor location, carried objects, and nearby objects | none currently | An interactive actor's local command/perception scope is being refreshed; mudlib objects may register text commands or interaction affordances. |
-| `command_dispatch_started` | Reserved | Command actor or boundary object | command text, verb | JVMud is about to dispatch Player text to mudlib behavior. |
-| `command_dispatch_finished` | Reserved | Command actor or boundary object | command text, verb, handled status | JVMud has finished dispatching Player text. |
+| `interaction_scope_started` | Implemented, optional mapping | Persona, Persona location, carried objects, and nearby objects | none currently | An interactive Persona's local command/perception scope is being refreshed; mudlib objects may register text commands or interaction affordances. |
+| `command_dispatch_started` | Reserved | Persona or boundary object | command text, verb | JVMud is about to dispatch Player text to mudlib behavior. |
+| `command_dispatch_finished` | Reserved | Persona or boundary object | command text, verb, handled status | JVMud has finished dispatching Player text. |
 | `scheduled_tick` | Implemented, optional temporal mapping | Scheduled object | none currently | The engine scheduler is delivering deterministic recurring time to an object. The mudlib config chooses the method name and default interval. |
 | `deferred_callback` | Reserved | Scheduled object | callback payload | A previously requested one-shot deferred callback is due. |
 
@@ -166,7 +166,7 @@ entry points, not the conceptual boundary.
 | Move an entity | Change an entity's single immediate location. | `move_object`, `move_player` |
 | Query location | Ask where an entity currently is. | `environment` |
 | Query contents | Ask what entities are contained by a place or entity. | `all_inventory`, `first_inventory`, `next_inventory` |
-| Query current execution context | Ask which object, actor, verb, or command is active. | `this_object`, `this_player`, `query_verb` |
+| Query current execution context | Ask which object, Persona, verb, or command is active. | `this_object`, `this_player`, `query_verb` |
 | Register interaction commands | Make an object respond to Player text in its interaction scope. | `enable_commands`, `add_action`, `add_verb` |
 | Send text | Deliver text to one Player, nearby Players, or a place. | `write`, `say`, `tell_object`, `tell_room` |
 | Schedule time | Request recurring or delayed work. | `set_heart_beat`, `call_out`, `remove_call_out` |

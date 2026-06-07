@@ -7,7 +7,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
  * Runtime implementation of one LPC-facing engine function.
  *
  * <p>Efuns are registered by name and arity. Generated LPC bytecode invokes them through
- * {@link RuntimeContext}, which supplies current object, command actor, output, object identity, and
+ * {@link RuntimeContext}, which supplies current object, command Persona, output, object identity, and
  * other execution state.</p>
  */
 public interface Efun {

@@ -106,6 +106,22 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeEvaluatesLogicalOrFalseWhenBothOperandsAreFalse() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/logical_or.c", """
+                int blank(mixed str) {
+                    if (!str || str == "")
+                        return 1;
+                    return 0;
+                }
+                """);
+
+        assertEquals(1, object.invoke("blank", (Object) null));
+        assertEquals(1, object.invoke("blank", ""));
+        assertEquals(0, object.invoke("blank", "smoketest"));
+    }
+
+    @Test
     void runtimeSupportsLpcStringIndexingAndCharacterLiterals() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/string_index.c", """
@@ -129,6 +145,66 @@ final class CompilerSmokeTest {
         assertEquals(47, object.invoke("slash_code"));
         assertEquals(97, object.invoke("second_char"));
         assertEquals(1, object.invoke("has_slash_at_start"));
+    }
+
+    @Test
+    void runtimeIndexesMixedStringValuesAsCharacterCodes() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_string_index.c", """
+                int first(mixed value) {
+                    return value[0];
+                }
+                """);
+
+        assertEquals(97, object.invoke("first", "abc"));
+    }
+
+    @Test
+    void runtimeTreatsNullReferenceAndZeroAsEqualForLpcCompatibility() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/null_zero.c", """
+                string password;
+
+                int unset_is_zero() {
+                    return password == 0;
+                }
+
+                int set_is_not_zero() {
+                    password = "secret";
+                    return password != 0;
+                }
+                """);
+
+        assertEquals(1, object.invoke("unset_is_zero"));
+        assertEquals(1, object.invoke("set_is_not_zero"));
+    }
+
+    @Test
+    void runtimeReturnsZeroForDynamicCallToMissingStringTarget() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/missing_call_other.c", """
+                mixed optional_call() {
+                    return jvmud_invoke_entity("room/missing", "advance", 0);
+                }
+                """);
+
+        assertEquals(0, object.invoke("optional_call"));
+    }
+
+    @Test
+    void runtimeCoercesZeroAssignedToStringFieldAsNull() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/string_zero.c", """
+                string saved;
+
+                int store_zero(mixed value) {
+                    saved = value;
+                    return saved == 0;
+                }
+                """);
+
+        assertEquals(1, object.invoke("store_zero", 0));
     }
 
     @Test

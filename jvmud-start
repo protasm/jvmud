@@ -4,8 +4,8 @@ set -eu
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$ROOT_DIR"
 
-mvn -q -pl cli -am compile dependency:build-classpath \
-  -Dmdep.outputFile=target/jvmud-runtime-classpath.txt >/dev/null
+mvn -q -pl server -am compile dependency:build-classpath \
+  -Dmdep.outputFile=target/jvmud-server-classpath.txt >/dev/null
 
-CP="cli/target/classes:$(cat cli/target/jvmud-runtime-classpath.txt)"
-exec java -cp "$CP" io.github.protasm.jvmud.cli.TelnetServer "$@"
+CP="server/target/classes:compiler/target/classes:runtime/target/classes:$(cat server/target/jvmud-server-classpath.txt)"
+exec java -cp "$CP" io.github.protasm.jvmud.server.TelnetServer "$@"

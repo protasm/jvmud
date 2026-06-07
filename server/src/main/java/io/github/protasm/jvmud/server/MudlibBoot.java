@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.cli;
+package io.github.protasm.jvmud.server;
 
 import io.github.protasm.jvmud.compiler.exec.LPCLoadResult;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
@@ -19,8 +19,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-final class MudlibBoot {
-    static final String DEFAULT_CONFIG_PATH = "jvmud/config";
+public final class MudlibBoot {
+    public static final String DEFAULT_CONFIG_PATH = "jvmud/config";
     static final String DEFAULT_BOUNDARY_OBJECT = "jvmud/boundary";
     static final String DEFAULT_STARTING_ROOM = "room/village/vill_green";
     static final String LOCAL_ACTOR_HANDLE = "local/player";
@@ -29,23 +29,34 @@ final class MudlibBoot {
     private final Path mudlibRoot;
     private final String configPath;
     private final boolean createInitialActor;
+    private final boolean loadInitialPlace;
 
-    MudlibBoot(LPCRuntime runtime, Path mudlibRoot) {
+    public MudlibBoot(LPCRuntime runtime, Path mudlibRoot) {
         this(runtime, mudlibRoot, DEFAULT_CONFIG_PATH);
     }
 
-    MudlibBoot(LPCRuntime runtime, Path mudlibRoot, String configPath) {
+    public MudlibBoot(LPCRuntime runtime, Path mudlibRoot, String configPath) {
         this(runtime, mudlibRoot, configPath, true);
     }
 
-    MudlibBoot(LPCRuntime runtime, Path mudlibRoot, String configPath, boolean createInitialActor) {
+    public MudlibBoot(LPCRuntime runtime, Path mudlibRoot, String configPath, boolean createInitialActor) {
+        this(runtime, mudlibRoot, configPath, createInitialActor, true);
+    }
+
+    public MudlibBoot(
+            LPCRuntime runtime,
+            Path mudlibRoot,
+            String configPath,
+            boolean createInitialActor,
+            boolean loadInitialPlace) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         this.configPath = Objects.requireNonNullElse(configPath, DEFAULT_CONFIG_PATH);
         this.createInitialActor = createInitialActor;
+        this.loadInitialPlace = loadInitialPlace;
     }
 
-    MudlibBootResult boot() {
+    public MudlibBootResult boot() {
         WorldRuntime worldRuntime = new WorldRuntime(new World("jvmud", "JVMud"));
         runtime.setScheduler(worldRuntime.scheduler());
         List<String> preloadedObjects = new ArrayList<>();
@@ -59,7 +70,7 @@ final class MudlibBoot {
         String initialPlace = null;
         String initialPlacePath = boundary.initialPlacePath().orElse(DEFAULT_STARTING_ROOM);
         String initialPresenceId = boundary.initialPresenceId().orElse(LOCAL_ACTOR_HANDLE);
-        if (mudlibFileExists(initialPlacePath)) {
+        if (loadInitialPlace && mudlibFileExists(initialPlacePath)) {
             try {
                 Object placeObject = runtime.loadOrGetObject(initialPlacePath);
                 Place startingPlace = worldRuntime.createPlace(initialPlacePath, initialPlacePath);

@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.cli;
+package io.github.protasm.jvmud.server;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;

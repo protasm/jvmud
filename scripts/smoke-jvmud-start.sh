@@ -80,8 +80,37 @@ with connect_with_retry() as sock:
     transcript = read_until(sock, "> ")
     if "JVMud telnet." not in transcript:
         raise AssertionError(f"missing telnet greeting:\n{transcript}")
-    if "Attached player" not in transcript:
-        raise AssertionError(f"missing player attachment:\n{transcript}")
+    if "Attached player 1 as obj/player#clone" not in transcript:
+        raise AssertionError(f"did not attach configured mudlib player object:\n{transcript}")
+    if "What is your name: " not in transcript:
+        raise AssertionError(f"vanilla player logon did not capture initial input:\n{transcript}")
+
+    sock.sendall(b"smoketest\n")
+    transcript = read_until(sock, "> ")
+    if "New character." not in transcript:
+        raise AssertionError(f"logon name input did not reach obj/player.logon2:\n{transcript}")
+    if "Password: " not in transcript:
+        raise AssertionError(f"logon name input did not request a password:\n{transcript}")
+
+    sock.sendall(b"secret1\n")
+    transcript = read_until(sock, "> ")
+    if "Password: (again) " not in transcript:
+        raise AssertionError(f"first password input did not request confirmation:\n{transcript}")
+
+    sock.sendall(b"secret1\n")
+    transcript = read_until(sock, "> ")
+    if "Please enter your email address" not in transcript:
+        raise AssertionError(f"password confirmation did not request email:\n{transcript}")
+
+    sock.sendall(b"none\n")
+    transcript = read_until(sock, "> ")
+    if "Are you, male, female or other" not in transcript:
+        raise AssertionError(f"email input did not request gender:\n{transcript}")
+
+    sock.sendall(b"o\n")
+    transcript = read_until(sock, "> ")
+    if "Welcome, Creature!" not in transcript:
+        raise AssertionError(f"gender input did not complete login:\n{transcript}")
 
     sock.sendall(b"look\n")
     transcript = read_until(sock, "> ")

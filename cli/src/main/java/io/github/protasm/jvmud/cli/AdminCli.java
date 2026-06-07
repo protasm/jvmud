@@ -5,10 +5,19 @@ import io.github.protasm.jvmud.compiler.exec.LPCObjectInspection;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
+import io.github.protasm.jvmud.compiler.ir.TypedIR;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationObserver;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
+import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationStage;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationUnit;
+import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
+import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
+import io.github.protasm.jvmud.compiler.scanner.Scanner;
+import io.github.protasm.jvmud.compiler.token.Token;
+import io.github.protasm.jvmud.compiler.token.TokenList;
+import io.github.protasm.jvmud.server.MudlibBoot;
+import io.github.protasm.jvmud.server.MudlibBootResult;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -16,6 +25,7 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -87,6 +97,10 @@ public final class AdminCli {
             case "ls" -> ls(command.optional(0, "."));
             case "cat" -> cat(command.required(0));
             case "verbosity" -> verbosity(command.optional(0, ""));
+            case "preprocess" -> preprocess(command.required(0));
+            case "scan" -> scan(command.required(0));
+            case "ir" -> ir(command.required(0));
+            case "compile" -> compile(command.required(0));
             case "load" -> load(command.required(0));
             case "reload" -> reload(command.required(0));
             case "clone" -> clone(command.required(0));
@@ -131,7 +145,7 @@ public final class AdminCli {
         suppressCompilationFailures = true;
         MudlibBootResult bootResult;
         try {
-            bootResult = new MudlibBoot(runtime, this.mudlibRoot, configObjectPath, false).boot();
+            bootResult = new MudlibBoot(runtime, this.mudlibRoot, configObjectPath, false, false).boot();
         } finally {
             suppressCompilationFailures = false;
         }
@@ -152,13 +166,17 @@ public final class AdminCli {
     private void help() {
         out.println("Admin commands:");
         helpLine("h", "help", "Show this command reference.");
-        helpLine("b", "boot [mudlib] [config]", "Start a fresh runtime with an optional mudlib config object.");
+        helpLine("b", "boot [mudlib] [config]", "Start a fresh mudlib sandbox without a player session.");
         helpLine("", "call <handle> <method> [args...]", "Invoke a method on a loaded object handle.");
         helpLine("", "cat <path>", "Print a file from the virtual mudlib filesystem.");
         helpLine("", "cd [path]", "Change the current virtual mudlib directory.");
         helpLine("n", "clone <path>", "Compile if needed and create a new LPC object instance.");
         helpLine("x", "destruct <handle>", "Remove an object from the runtime.");
         helpLine("i", "inspect <handle>", "Show object state, inventory, environment, and methods.");
+        helpLine("pp", "preprocess <path>", "Expand includes, macros, and preprocessor directives.");
+        helpLine("", "scan <path>", "Preprocess and print scanner tokens for an LPC source file.");
+        helpLine("", "ir <path>", "Compile through lowering and print the typed IR.");
+        helpLine("", "compile <path>", "Compile an LPC source file to bytecode without loading it.");
         helpLine("l", "load <path>", "Compile, load, and register an LPC object.");
         helpLine("k", "look <handle>", "Call long() or short() and display object text.");
         helpLine("", "ls [path]", "List a virtual mudlib directory or file.");
@@ -236,6 +254,71 @@ public final class AdminCli {
         } catch (IOException e) {
             throw new IllegalArgumentException("Could not read: " + path, e);
         }
+    }
+
+    private void preprocess(String path) {
+        SourceInput input = readSourceInput(path);
+        Preprocessor preprocessor = new Preprocessor(includeResolver());
+        out.print(preprocessor.preprocessWithMapping(input.sourcePath(), input.source(), input.displayPath()).source());
+    }
+
+    private void scan(String path) {
+        SourceInput input = readSourceInput(path);
+        Scanner scanner = new Scanner(new Preprocessor(includeResolver()));
+        TokenList tokens = scanner.scan(input.sourcePath(), input.source(), input.displayPath());
+        for (int i = 0; i < tokens.size(); i++) {
+            Token<?> token = tokens.get(i);
+            out.printf("%4d  %-24s %-20s line %d%n",
+                    i,
+                    token.type(),
+                    token.lexeme() == null ? "" : token.lexeme(),
+                    token.line());
+        }
+    }
+
+    private void compile(String path) {
+        SourceInput input = readSourceInput(path);
+        CompilationResult result = compileSource(input);
+
+        if (!result.getProblems().isEmpty()) {
+            reportProblems(result.getProblems());
+            return;
+        }
+
+        byte[] bytecode = result.getBytecode();
+        if (bytecode == null) {
+            out.println("Compilation did not produce bytecode.");
+            return;
+        }
+
+        String internalName = result.getAstObject() != null
+                ? result.getAstObject().name()
+                : input.sourceName();
+        out.println("Compiled " + input.sourceName() + " as " + internalName + " (" + bytecode.length + " bytes).");
+    }
+
+    private void ir(String path) {
+        SourceInput input = readSourceInput(path);
+        CompilationResult result = compileSource(input);
+
+        if (result.getTypedIr() == null) {
+            reportProblems(result.getProblems());
+            if (result.getProblems().isEmpty()) {
+                out.println("Compilation did not produce typed IR.");
+            }
+            return;
+        }
+
+        TypedIR typedIr = result.getTypedIr();
+        out.println(typedIr);
+        if (!result.getProblems().isEmpty()) {
+            reportProblems(result.getProblems());
+        }
+    }
+
+    private CompilationResult compileSource(SourceInput input) {
+        ensureBooted();
+        return runtime.compile(input.sourcePath());
     }
 
     private void load(String path) {
@@ -441,6 +524,7 @@ public final class AdminCli {
         case "h" -> "help";
         case "b" -> "boot";
         case "v" -> "verbosity";
+        case "pp" -> "preprocess";
         case "l" -> "load";
         case "r" -> "reload";
         case "n" -> "clone";
@@ -463,15 +547,19 @@ public final class AdminCli {
         case "cat" -> "cat <path>";
         case "cd" -> "cd [path]";
         case "clone" -> "clone <path>";
+        case "compile" -> "compile <path>";
         case "destruct" -> "destruct <handle>";
         case "inspect" -> "inspect <handle>";
+        case "ir" -> "ir <path>";
         case "load" -> "load <path>";
         case "look" -> "look <handle>";
         case "ls" -> "ls [path]";
         case "move" -> "move <handle> <dest>";
         case "objects" -> "objects";
+        case "preprocess" -> "preprocess <path>";
         case "pwd" -> "pwd";
         case "reload" -> "reload <path>";
+        case "scan" -> "scan <path>";
         case "verbosity" -> "verbosity [quiet|normal|watch]";
         case "where" -> "where <handle>";
         case "quit", "exit" -> "quit";
@@ -504,6 +592,52 @@ public final class AdminCli {
         return stripExtension(relative);
     }
 
+    private SourceInput readSourceInput(String path) {
+        ensureBooted();
+        Path sourcePath = resolveSourceFile(path);
+        try {
+            String source = Files.readString(sourcePath);
+            String sourceName = stripExtension(mudlibRoot.relativize(sourcePath).toString().replace('\\', '/'));
+            String displayPath = "/" + sourceName;
+            return new SourceInput(sourcePath, sourceName, displayPath, source);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Could not read source file: " + path, e);
+        }
+    }
+
+    private Path resolveSourceFile(String path) {
+        Path resolved = resolveVirtualPath(path);
+        if (Files.isRegularFile(resolved)) {
+            return resolved;
+        }
+
+        Path withExtension = resolved.resolveSibling(resolved.getFileName() + ".c");
+        if (Files.isRegularFile(withExtension)) {
+            return withExtension;
+        }
+
+        throw new IllegalArgumentException("No such source file: " + path);
+    }
+
+    private SearchPathIncludeResolver includeResolver() {
+        return new SearchPathIncludeResolver(mudlibRoot, List.of());
+    }
+
+    private void reportProblems(List<CompilationProblem> problems) {
+        for (CompilationProblem problem : problems) {
+            StringBuilder message = new StringBuilder();
+            message.append(problem.getStage()).append(": ").append(problem.getMessage());
+            if (problem.getLine() != null) {
+                message.append(" (line ").append(problem.getLine()).append(")");
+            }
+            Throwable throwable = problem.getThrowable();
+            if (throwable != null && throwable.getMessage() != null) {
+                message.append(" - ").append(throwable.getMessage());
+            }
+            out.println(message);
+        }
+    }
+
     private String stripLeadingSlash(String path) {
         String stripped = path;
         while (stripped.startsWith("/") || stripped.startsWith("\\")) {
@@ -524,6 +658,9 @@ public final class AdminCli {
 
     private String nullText(String value) {
         return value == null ? "(none)" : value;
+    }
+
+    private record SourceInput(Path sourcePath, String sourceName, String displayPath, String source) {
     }
 
     private enum Verbosity {

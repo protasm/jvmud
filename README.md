@@ -25,6 +25,8 @@ call_outs, or master objects as engine ontology.
 | --- | --- |
 | `runtime/` | JVMud engine runtime source. It currently contains the first world ontology slice: world, place, link, entity, location, capability, and containment rules. |
 | `compiler/` | JVMud compiler Java source. It currently contains the LPC scanner, preprocessor, parser, semantic analysis, IR, bytecode compiler, engine function interfaces, and host-facing runtime loader classes. |
+| `server/` | JVMud game-server source. It boots a mudlib, manages shared runtime/world state, and accepts Telnet player sessions. |
+| `cli/` | JVMud local admin CLI source. It is a single-user command-line tool for filesystem navigation, object loading, inspection, invocation, and mutation. |
 | `mudlib/` | Vanilla LPMUD 2.4.5 mudlib content. Treat upstream files as read-only unless an explicit style or formatting change is requested; add compatibility through dedicated independent shim objects. |
 | `docs/` | Static project site published from simple HTML. |
 
@@ -79,8 +81,8 @@ JvmudCompiler <source-file> [output-dir]
 
 ## Build Notes
 
-The repository now has Maven build wiring for `runtime`, `compiler`, and `cli`.
-Run the current baseline with:
+The repository now has Maven build wiring for `runtime`, `compiler`, `server`,
+and `cli`. Run the current baseline with:
 
 ```text
 mvn test
@@ -126,11 +128,10 @@ When a conflict appears, prefer:
   translated by compatibility shims;
 - small bridge APIs only where they keep current LPC content usable.
 
-## Admin CLI And Telnet
+## Admin CLI And Game Server
 
-The `cli` module provides a local shell and early Telnet listener backed by the
-real runtime.
-After building, run it with:
+The `cli` module provides a local, single-user admin shell backed by the real
+object runtime. After building, run it with:
 
 ```text
 ./jvmud-admin
@@ -154,8 +155,8 @@ output. `watch` prints compiler stage progress for commands such as `load` and
 `clone`, which is useful when inspecting parser, analyzer, lowering, or bytecode
 failures.
 
-The same command/session path is available by starting a mudlib as a persistent
-Telnet target:
+The `server` module provides the player-facing game server path. Start a mudlib
+as a persistent Telnet target with:
 
 ```text
 ./jvmud-start [-mudlib-dir mudlib] [-port 4000] [-host localhost] [-config jvmud/config]
@@ -163,17 +164,19 @@ Telnet target:
 
 All flags are optional. By default it serves `mudlib` on `localhost:4000` using
 `jvmud/config`. Starting this process boots one shared runtime and world; each
-Telnet connection attaches to a host-owned persona entity in the configured
-starting place. Player/world input is routed through LPC `init`, `add_action`,
-and `add_verb` registrations on nearby or carried objects. Telnet slash commands
-are limited to session controls such as `/help` and `/quit`; admin inspection
-and object mutation stay in the admin CLI. This is still an early development
-listener: mudlib-defined player login, session-to-session messaging, output
-isolation between participants, and production networking policy belong to the
-later server slices.
+Telnet connection attempts to attach a configured mudlib player object and falls
+back to a host-owned persona if that path fails. Player/world input is routed
+through LPC `init`, `add_action`, and `add_verb` registrations on nearby or
+carried objects. Telnet slash commands are limited to session controls such as
+`/help` and `/quit`; admin inspection and object mutation stay in the admin CLI.
+This is still an early development listener: session-to-session messaging,
+output isolation between participants, and production networking policy belong
+to later server slices.
 
 To run the startup smoke test that launches `jvmud-start`, connects over TCP,
-and verifies `look` plus `north`:
+verifies that the configured `obj/player` mudlib player object attaches, drives
+the vanilla login prompts through captured input, and checks `look` plus
+`north`:
 
 ```text
 scripts/smoke-jvmud-start.sh

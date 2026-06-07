@@ -15,5 +15,5 @@ if [ ! -f "$ASM_JAR" ]; then
 fi
 
 exec java \
-  -cp "cli/target/classes:runtime/target/classes:compiler/target/classes:${ASM_JAR}" \
+  -cp "cli/target/classes:server/target/classes:runtime/target/classes:compiler/target/classes:${ASM_JAR}" \
   io.github.protasm.jvmud.cli.AdminCli "$@"

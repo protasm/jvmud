@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.cli;
+package io.github.protasm.jvmud.server;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
