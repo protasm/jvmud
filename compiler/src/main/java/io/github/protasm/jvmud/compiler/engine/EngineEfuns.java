@@ -6,6 +6,7 @@ import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -94,6 +95,9 @@ public final class EngineEfuns {
                 (runtime, args) -> args[0] instanceof String ? 1 : 0));
         efuns.add(efun("jvmud_is_array", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof List<?> ? 1 : 0));
+        for (int arity = 3; arity <= 8; arity++) {
+            efuns.add(sscanfEfun(arity));
+        }
         efuns.add(efun("allocate", LPCType.LPCARRAY, List.of(LPCType.LPCINT),
                 (runtime, args) -> new ArrayList<>(
                         Collections.nCopies(Math.max(0, ((Number) args[0]).intValue()), Integer.valueOf(0)))));
@@ -120,8 +124,14 @@ public final class EngineEfuns {
                 (runtime, args) -> runtime.nextInventory(args[0])));
         efuns.add(efun("jvmud_set_light", LPCType.LPCINT, List.of(LPCType.LPCINT),
                 (runtime, args) -> runtime.setLight(((Number) args[0]).intValue())));
-        efuns.add(efun("jvmud_set_heart_beat", LPCType.LPCVOID, List.of(LPCType.LPCINT),
-                (runtime, args) -> null));
+        efuns.add(efun("jvmud_schedule_recurring_tick", LPCType.LPCVOID,
+                List.of(LPCType.LPCINT, LPCType.LPCINT),
+                (runtime, args) -> {
+                    runtime.scheduleRecurringTick(
+                            ((Number) args[0]).intValue(),
+                            ((Number) args[1]).intValue());
+                    return null;
+                }));
         efuns.add(efun("jvmud_call_out", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> null));
         efuns.add(efun("jvmud_call_out", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED),
@@ -224,6 +234,11 @@ public final class EngineEfuns {
 
     private static boolean isNoArgumentSentinel(Object argument) {
         return argument == null || Integer.valueOf(0).equals(argument);
+    }
+
+    private static Efun sscanfEfun(int arity) {
+        return efun("sscanf", LPCType.LPCINT, Collections.nCopies(arity, LPCType.LPCMIXED),
+                (runtime, args) -> RuntimeScanf.scan(args[0], args[1], args.length - 2)[0]);
     }
 
     private static String stripLeadingSlash(String path) {

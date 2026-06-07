@@ -182,7 +182,11 @@ void say(mixed value, object excluded) {
 }
 
 void set_heart_beat(int enabled) {
-  jvmud_set_heart_beat(enabled);
+  jvmud_schedule_recurring_tick(enabled, 0);
+}
+
+void set_heart_beat(int enabled, int interval_seconds) {
+  jvmud_schedule_recurring_tick(enabled, interval_seconds);
 }
 
 int set_light(int delta) {

@@ -7,6 +7,9 @@ import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.preproc.IncludeResolver;
 import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
+import io.github.protasm.jvmud.runtime.MudlibBoundary;
+import io.github.protasm.jvmud.runtime.ScheduledTask;
+import io.github.protasm.jvmud.runtime.WorldScheduler;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -36,6 +39,7 @@ public final class RuntimeContext {
     private final Map<Object, List<Object>> inventories = new IdentityHashMap<>();
     private final Map<Object, Integer> lightLevels = new IdentityHashMap<>();
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
+    private final Map<Object, ScheduledTask> recurringTickTasks = new IdentityHashMap<>();
     private final Map<String, SessionBinding> sessions = new LinkedHashMap<>();
     private final Map<Object, SessionBinding> sessionsByPersona = new IdentityHashMap<>();
     private final Map<Object, PendingSessionInput> pendingInputsByPersona = new IdentityHashMap<>();
@@ -52,6 +56,8 @@ public final class RuntimeContext {
     private Function<String, Object> objectFactory = path -> null;
     private Function<String, Object> objectLoader = path -> null;
     private Function<String, Object> mudlibTextReader = path -> 0;
+    private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
+    private WorldScheduler scheduler = new WorldScheduler();
     private String mfunObjectPath;
 
     public RuntimeContext(IncludeResolver includeResolver) {
@@ -93,6 +99,14 @@ public final class RuntimeContext {
 
     public void setMfunObjectPath(String mfunObjectPath) {
         this.mfunObjectPath = normalizeMudlibPath(mfunObjectPath);
+    }
+
+    public void setMudlibBoundary(MudlibBoundary mudlibBoundary) {
+        this.mudlibBoundary = mudlibBoundary != null ? mudlibBoundary : MudlibBoundary.empty();
+    }
+
+    public void setScheduler(WorldScheduler scheduler) {
+        this.scheduler = scheduler != null ? scheduler : new WorldScheduler();
     }
 
     public void setOutputSink(Consumer<String> outputSink) {
@@ -372,13 +386,13 @@ public final class RuntimeContext {
 
         Object[] actualArgs = args == null ? new Object[0] : args;
         try {
-            Method method = findMethod(target.getClass(), methodName, actualArgs.length);
+            InvocationPlan invocation = findInvocation(target.getClass(), methodName, actualArgs);
             return withCurrentObject(target, () -> {
                 try {
-                    return method.invoke(target, actualArgs);
+                    return invocation.method().invoke(target, invocation.arguments());
                 } catch (ReflectiveOperationException e) {
                     throw new IllegalArgumentException(
-                            "Failed to call " + methodName + " on " + objectIdOrDescription(target)
+                            "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(target)
                                     + causeSummary(e),
                             e);
                 }
@@ -398,12 +412,12 @@ public final class RuntimeContext {
 
         Object[] actualArgs = args == null ? new Object[0] : args;
         try {
-            Method method = findMethod(target.getClass(), methodName, actualArgs.length);
+            InvocationPlan invocation = findInvocation(target.getClass(), methodName, actualArgs);
             try {
-                return method.invoke(target, actualArgs);
+                return invocation.method().invoke(target, invocation.arguments());
             } catch (ReflectiveOperationException e) {
                 throw new IllegalArgumentException(
-                        "Failed to call " + methodName + " on " + objectIdOrDescription(target)
+                        "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(target)
                                 + causeSummary(e),
                         e);
             }
@@ -417,6 +431,9 @@ public final class RuntimeContext {
 
     public void moveObject(Object object, Object destination) {
         Objects.requireNonNull(object, "object");
+        if (destination instanceof String path) {
+            destination = loadOrGetObject(path);
+        }
         if (destination != null && wouldCreateContainmentCycle(object, destination)) {
             throw new IllegalArgumentException(
                     "Cannot move " + objectIdOrDescription(object) + " into "
@@ -477,6 +494,7 @@ public final class RuntimeContext {
             return;
         }
 
+        cancelRecurringTick(object);
         List<Object> contents = new ArrayList<>(inventoryFor(object));
         for (Object child : contents) {
             moveObject(child, null);
@@ -491,6 +509,57 @@ public final class RuntimeContext {
         String id = objectIds.remove(object);
         if (id != null) {
             objects.remove(id);
+        }
+    }
+
+    public void scheduleRecurringTick(int enabled, int intervalSeconds) {
+        if (intervalSeconds < 0) {
+            throw new IllegalArgumentException("intervalSeconds cannot be negative.");
+        }
+
+        Object target = currentObject();
+        if (target == null) {
+            return;
+        }
+
+        cancelRecurringTick(target);
+        if (enabled == 0) {
+            return;
+        }
+
+        long intervalTicks = intervalSeconds > 0
+                ? intervalSeconds
+                : Math.max(1, mudlibBoundary.temporalTickIntervalSeconds());
+        ScheduledTask task = scheduler.scheduleRecurring(
+                intervalTicks,
+                intervalTicks,
+                () -> deliverRecurringTick(target));
+        recurringTickTasks.put(target, task);
+    }
+
+    private void cancelRecurringTick(Object target) {
+        ScheduledTask task = recurringTickTasks.remove(target);
+        if (task != null) {
+            task.cancel();
+        }
+    }
+
+    private void deliverRecurringTick(Object target) {
+        if (!recurringTickTasks.containsKey(target)) {
+            return;
+        }
+
+        String methodName = mudlibBoundary.temporalTickMethod().orElse(null);
+        if (methodName == null || !hasMethod(target.getClass(), methodName, 0)) {
+            return;
+        }
+
+        RuntimeContext previous = RuntimeContextHolder.current();
+        RuntimeContextHolder.setCurrent(this);
+        try {
+            invokeObject(target, methodName);
+        } finally {
+            RuntimeContextHolder.setCurrent(previous);
         }
     }
 
@@ -627,6 +696,16 @@ public final class RuntimeContext {
             light += delta;
             lightLevels.put(object, light);
         }
+        return visibleLight(object);
+    }
+
+    private int visibleLight(Object object) {
+        int light = 0;
+        Object current = object;
+        while (current != null) {
+            light += lightLevels.getOrDefault(current, 0);
+            current = environments.get(current);
+        }
         return light;
     }
 
@@ -661,6 +740,65 @@ public final class RuntimeContext {
         throw new NoSuchMethodException(targetClass.getName() + "." + methodName + "/" + arity);
     }
 
+    private InvocationPlan findInvocation(Class<?> targetClass, String methodName, Object[] args)
+            throws NoSuchMethodException {
+        try {
+            return new InvocationPlan(findMethod(targetClass, methodName, args.length), args);
+        } catch (NoSuchMethodException exactMiss) {
+            Method best = null;
+            for (Method method : targetClass.getMethods()) {
+                if (!method.getName().equals(methodName) || method.getParameterCount() < args.length) {
+                    continue;
+                }
+                if (best == null || method.getParameterCount() < best.getParameterCount()) {
+                    best = method;
+                }
+            }
+            if (best == null) {
+                throw exactMiss;
+            }
+            return new InvocationPlan(best, padMissingArguments(best, args));
+        }
+    }
+
+    private Object[] padMissingArguments(Method method, Object[] args) {
+        Object[] padded = new Object[method.getParameterCount()];
+        System.arraycopy(args, 0, padded, 0, args.length);
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        for (int i = args.length; i < padded.length; i++) {
+            padded[i] = defaultArgumentValue(parameterTypes[i]);
+        }
+        return padded;
+    }
+
+    private Object defaultArgumentValue(Class<?> parameterType) {
+        if (!parameterType.isPrimitive()) {
+            return null;
+        }
+        if (parameterType == boolean.class) {
+            return false;
+        }
+        if (parameterType == float.class) {
+            return 0.0f;
+        }
+        if (parameterType == double.class) {
+            return 0.0d;
+        }
+        if (parameterType == long.class) {
+            return 0L;
+        }
+        if (parameterType == byte.class) {
+            return (byte) 0;
+        }
+        if (parameterType == short.class) {
+            return (short) 0;
+        }
+        if (parameterType == char.class) {
+            return (char) 0;
+        }
+        return 0;
+    }
+
     private boolean hasMethod(Class<?> targetClass, String methodName, int arity) {
         for (Method method : targetClass.getMethods()) {
             if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
@@ -674,6 +812,8 @@ public final class RuntimeContext {
         String id = objectId(object);
         return id != null ? id : String.valueOf(object);
     }
+
+    private record InvocationPlan(Method method, Object[] arguments) {}
 
     private Object outputTarget() {
         Object actor = currentCommandActor();

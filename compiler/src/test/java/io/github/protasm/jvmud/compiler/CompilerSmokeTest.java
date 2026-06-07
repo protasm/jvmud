@@ -16,6 +16,7 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.WorldScheduler;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -719,6 +720,270 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void dynamicDispatchPadsTrailingOmittedArguments() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+
+        LPCObjectHandle object = runtime.loadSource("smoke/optional_dispatch.c", """
+                mixed optional(mixed first, mixed second) {
+                    if (second)
+                        return first + second;
+                    return first + "#missing";
+                }
+
+                mixed reflected_value(mixed target) {
+                    return target->optional("north");
+                }
+                """);
+
+        assertEquals("north#missing", object.invoke("reflected_value", object.instance()));
+    }
+
+    @Test
+    void sscanfAssignsCapturedOutputLocals() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/sscanf.c", """
+                mixed parse(mixed value) {
+                    string dir, dest;
+                    if (sscanf(value, "%s#%s", dir, dest) != 2)
+                        return "bad";
+                    return dir + ":" + dest;
+                }
+                """);
+
+        assertEquals("north:room/village/church", object.invoke("parse", "north#room/village/church"));
+    }
+
+    @Test
+    void currentObjectSeesEnvironmentLight() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+
+        LPCObjectHandle room = runtime.loadSource("smoke/lit_room.c", """
+                void light() {
+                    jvmud_set_light(1);
+                }
+                """);
+        LPCObjectHandle actor = runtime.loadSource("smoke/light_actor.c", """
+                int visible_light() {
+                    return jvmud_set_light(0);
+                }
+                """);
+        LPCObjectHandle mover = runtime.loadSource("smoke/light_mover.c", """
+                void move_actor(mixed actor) {
+                    jvmud_move_entity(actor, "smoke/lit_room");
+                }
+                """);
+
+        room.invoke("light");
+        mover.invoke("move_actor", actor.instance());
+
+        assertEquals(1, actor.invoke("visible_light"));
+    }
+
+    @Test
+    void setHeartBeatSchedulesCurrentObjectAtDefaultInterval() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 2);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/default_tick.c", """
+                int ticks;
+
+                void start() {
+                    set_heart_beat(1);
+                }
+
+                void heart_beat() {
+                    ticks += 1;
+                }
+
+                int query_ticks() {
+                    return ticks;
+                }
+                """);
+
+        object.invoke("start");
+        scheduler.advanceTo(1);
+        assertEquals(0, object.invoke("query_ticks"));
+
+        scheduler.advanceTo(2);
+        assertEquals(1, object.invoke("query_ticks"));
+
+        scheduler.advanceTo(4);
+        assertEquals(2, object.invoke("query_ticks"));
+    }
+
+    @Test
+    void setHeartBeatOverloadSchedulesCurrentObjectAtExplicitInterval() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/explicit_tick.c", """
+                int ticks;
+
+                void start() {
+                    set_heart_beat(1, 5);
+                }
+
+                void heart_beat() {
+                    ticks += 1;
+                }
+
+                int query_ticks() {
+                    return ticks;
+                }
+                """);
+
+        object.invoke("start");
+        scheduler.advanceTo(4);
+        assertEquals(0, object.invoke("query_ticks"));
+
+        scheduler.advanceTo(5);
+        assertEquals(1, object.invoke("query_ticks"));
+
+        scheduler.advanceTo(10);
+        assertEquals(2, object.invoke("query_ticks"));
+    }
+
+    @Test
+    void objectsCanTickAtDifferentRates() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle fast = runtime.loadSource("smoke/fast_tick.c", tickingObjectSource(2));
+        LPCObjectHandle slow = runtime.loadSource("smoke/slow_tick.c", tickingObjectSource(5));
+
+        fast.invoke("start");
+        slow.invoke("start");
+        scheduler.advanceTo(10);
+
+        assertEquals(5, fast.invoke("query_ticks"));
+        assertEquals(2, slow.invoke("query_ticks"));
+    }
+
+    @Test
+    void reschedulingReplacesPreviousRecurringTick() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/rescheduled_tick.c", """
+                int ticks;
+
+                void start_slow() {
+                    set_heart_beat(1, 5);
+                }
+
+                void start_fast() {
+                    set_heart_beat(1, 2);
+                }
+
+                void heart_beat() {
+                    ticks += 1;
+                }
+
+                int query_ticks() {
+                    return ticks;
+                }
+                """);
+
+        object.invoke("start_slow");
+        scheduler.advanceTo(4);
+        object.invoke("start_fast");
+
+        scheduler.advanceTo(5);
+        assertEquals(0, object.invoke("query_ticks"));
+
+        scheduler.advanceTo(6);
+        assertEquals(1, object.invoke("query_ticks"));
+
+        scheduler.advanceTo(8);
+        assertEquals(2, object.invoke("query_ticks"));
+    }
+
+    @Test
+    void setHeartBeatZeroCancelsRecurringTick() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/cancelled_tick.c", """
+                int ticks;
+
+                void start() {
+                    set_heart_beat(1, 2);
+                }
+
+                void stop() {
+                    set_heart_beat(0);
+                }
+
+                void heart_beat() {
+                    ticks += 1;
+                }
+
+                int query_ticks() {
+                    return ticks;
+                }
+                """);
+
+        object.invoke("start");
+        scheduler.advanceTo(2);
+        assertEquals(1, object.invoke("query_ticks"));
+
+        object.invoke("stop");
+        scheduler.advanceTo(8);
+        assertEquals(1, object.invoke("query_ticks"));
+    }
+
+    @Test
+    void destructCancelsRecurringTick() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/destructed_tick.c", """
+                int ticks;
+
+                void start() {
+                    set_heart_beat(1, 2);
+                }
+
+                void heart_beat() {
+                    ticks += 1;
+                }
+
+                int query_ticks() {
+                    return ticks;
+                }
+                """);
+
+        object.invoke("start");
+        scheduler.advanceTo(2);
+        assertEquals(1, object.invoke("query_ticks"));
+
+        runtime.destructObject(object.instance());
+        scheduler.advanceTo(8);
+        assertEquals(1, object.invoke("query_ticks"));
+    }
+
+    @Test
+    void recurringTickRejectsNegativeIntervals() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/bad_tick.c", """
+                void start() {
+                    set_heart_beat(1, -1);
+                }
+
+                void heart_beat() {
+                }
+                """);
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> object.invoke("start"));
+        assertTrue(exception.getMessage().contains("InvocationTargetException"));
+    }
+
+    @Test
     void localsDefaultToZeroAcrossControlFlowBranches() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
@@ -897,5 +1162,44 @@ final class CompilerSmokeTest {
 
         assertEquals("a small thing", runtime.outputTranscript());
         assertEquals(controller.instance(), runtime.environment(runtime.firstInventory(controller.instance())));
+    }
+
+    private LPCRuntime temporalRuntime(WorldScheduler scheduler, int defaultIntervalSeconds) {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.setScheduler(scheduler);
+        runtime.loadSource("jvmud/mfuns.c", """
+                void set_heart_beat(int enabled) {
+                    jvmud_schedule_recurring_tick(enabled, 0);
+                }
+
+                void set_heart_beat(int enabled, int interval_seconds) {
+                    jvmud_schedule_recurring_tick(enabled, interval_seconds);
+                }
+                """);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .temporalTickMethod("heart_beat")
+                .temporalTickIntervalSeconds(defaultIntervalSeconds)
+                .build());
+        return runtime;
+    }
+
+    private String tickingObjectSource(int intervalSeconds) {
+        return """
+                int ticks;
+
+                void start() {
+                    set_heart_beat(1, %d);
+                }
+
+                void heart_beat() {
+                    ticks += 1;
+                }
+
+                int query_ticks() {
+                    return ticks;
+                }
+                """.formatted(intervalSeconds);
     }
 }

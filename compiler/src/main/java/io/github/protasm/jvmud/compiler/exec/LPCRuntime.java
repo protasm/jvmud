@@ -11,6 +11,7 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.WorldScheduler;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -302,7 +303,13 @@ public final class LPCRuntime {
     /** Registers mudlib boundary metadata and updates generated-code helper configuration. */
     public void registerMudlibBoundary(MudlibBoundary mudlibBoundary) {
         this.mudlibBoundary = Objects.requireNonNull(mudlibBoundary, "mudlibBoundary");
+        runtimeContext.setMudlibBoundary(mudlibBoundary);
         runtimeContext.setMfunObjectPath(mudlibBoundary.mfunObjectPath().orElse(null));
+    }
+
+    /** Connects this LPC runtime to the deterministic scheduler for its owning world. */
+    public void setScheduler(WorldScheduler scheduler) {
+        runtimeContext.setScheduler(scheduler);
     }
 
     /** Invokes a public LPC method with this runtime installed as the current generated-code context. */

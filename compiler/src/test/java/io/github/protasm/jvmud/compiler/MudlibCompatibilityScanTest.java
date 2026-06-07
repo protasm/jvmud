@@ -274,7 +274,7 @@ final class MudlibCompatibilityScanTest {
         case "query_verb" -> support("Implemented", "Backed by the active command dispatch verb.");
         case "remove_call_out" -> support("Stubbed", "Engine always returns -1.");
         case "say" -> support("Partial", "Writes to the shared output sink; no room/session broadcast routing yet.");
-        case "set_heart_beat" -> support("Stubbed", "Accepted but ignored.");
+        case "set_heart_beat" -> support("Implemented", "Schedules or cancels a recurring temporal tick for the current object.");
         case "set_light" -> support("Implemented", "RuntimeContext tracks per-object light deltas.");
         case "sizeof" -> support("Implemented", "Typed and runtime-checked for arrays, mappings, strings, and dynamic mixed values.");
         case "tell_object" -> support("Partial", "Routes to a bound target session, with shared-output fallback for unbound objects.");

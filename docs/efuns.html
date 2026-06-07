@@ -234,8 +234,8 @@
               <td>Updates runtime light state and returns the current light value.</td>
             </tr>
             <tr>
-              <td><code>void jvmud_set_heart_beat(int enabled)</code></td>
-              <td>Compatibility placeholder for legacy heartbeat requests.</td>
+              <td><code>void jvmud_schedule_recurring_tick(int enabled, int interval_seconds)</code></td>
+              <td>Schedules or cancels recurring temporal work for the current mudlib object.</td>
             </tr>
             <tr>
               <td><code>void jvmud_call_out(string method, int delay)</code></td>

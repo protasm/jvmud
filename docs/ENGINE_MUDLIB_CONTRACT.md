@@ -83,7 +83,7 @@ The currently defined JVMud lifecycle events are:
 | `interaction_scope_started` | Implemented, optional mapping | Actor, actor location, carried objects, and nearby objects | none currently | An interactive actor's local command/perception scope is being refreshed; mudlib objects may register text commands or interaction affordances. |
 | `command_dispatch_started` | Reserved | Command actor or boundary object | command text, verb | JVMud is about to dispatch Player text to mudlib behavior. |
 | `command_dispatch_finished` | Reserved | Command actor or boundary object | command text, verb, handled status | JVMud has finished dispatching Player text. |
-| `scheduled_tick` | Reserved | Scheduled object | scheduler context | The engine scheduler is delivering deterministic recurring time to an object. |
+| `scheduled_tick` | Implemented, optional temporal mapping | Scheduled object | none currently | The engine scheduler is delivering deterministic recurring time to an object. The mudlib config chooses the method name and default interval. |
 | `deferred_callback` | Reserved | Scheduled object | callback payload | A previously requested one-shot deferred callback is due. |
 
 No lifecycle hook is globally required today. The minimum runnable mudlib

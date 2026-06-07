@@ -19,5 +19,5 @@ preload_objects =
 lifecycle.object_loaded = reset
 lifecycle.interaction_scope_started = init
 
-temporal_tick_method =
-temporal_tick_interval = 0
+temporal_tick_method = heart_beat
+temporal_tick_interval = 1

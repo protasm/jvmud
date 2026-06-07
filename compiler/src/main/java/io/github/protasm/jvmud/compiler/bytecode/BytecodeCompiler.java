@@ -8,6 +8,7 @@ import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeTypes;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeValueKind;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
 import java.util.HashMap;
 import java.util.List;
@@ -561,6 +562,11 @@ public final class BytecodeCompiler {
     }
 
     private void emitEfunCall(MethodVisitor mv, String internalName, IRMethod method, IREfunCall efunCall) {
+        if ("sscanf".equals(efunCall.name()) && efunCall.arguments().size() >= 2) {
+            emitSscanfCall(mv, internalName, method, efunCall);
+            return;
+        }
+
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 "io/github/protasm/jvmud/compiler/runtime/RuntimeContextHolder",
@@ -584,6 +590,66 @@ public final class BytecodeCompiler {
         }
 
         emitCoerceToRuntimeTypeIfNeeded(mv, RuntimeTypes.MIXED, efunCall.type());
+    }
+
+    private void emitSscanfCall(MethodVisitor mv, String internalName, IRMethod method, IREfunCall efunCall) {
+        List<IRExpression> args = efunCall.arguments();
+        int captureCount = args.size() - 2;
+        int resultSlot = scratchObjectSlot(method);
+
+        emitExpression(mv, internalName, method, args.get(0));
+        boxIfNeeded(mv, args.get(0).type());
+        emitExpression(mv, internalName, method, args.get(1));
+        boxIfNeeded(mv, args.get(1).type());
+        pushInt(mv, captureCount);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeScanf.class),
+                "scan",
+                "(Ljava/lang/Object;Ljava/lang/Object;I)[Ljava/lang/Object;",
+                false);
+        mv.visitVarInsn(ASTORE, resultSlot);
+
+        for (int i = 0; i < captureCount; i++) {
+            emitSscanfCaptureStore(mv, args.get(i + 2), resultSlot, i + 1);
+        }
+
+        mv.visitVarInsn(ALOAD, resultSlot);
+        pushInt(mv, 0);
+        mv.visitInsn(AALOAD);
+        coerceValue(mv, RuntimeTypes.MIXED, RuntimeTypes.INT);
+        emitCoerceToRuntimeTypeIfNeeded(mv, RuntimeTypes.INT, efunCall.type());
+    }
+
+    private void emitSscanfCaptureStore(MethodVisitor mv, IRExpression target, int resultSlot, int captureIndex) {
+        if (target instanceof IRLocalLoad localLoad) {
+            mv.visitVarInsn(ALOAD, resultSlot);
+            pushInt(mv, captureIndex);
+            mv.visitInsn(AALOAD);
+            coerceValue(mv, RuntimeTypes.MIXED, localLoad.local().type());
+            switch (kindToOpcode(localLoad.local().type(), false)) {
+            case ISTORE -> mv.visitVarInsn(ISTORE, localLoad.local().slot());
+            case FSTORE -> mv.visitVarInsn(FSTORE, localLoad.local().slot());
+            default -> mv.visitVarInsn(ASTORE, localLoad.local().slot());
+            }
+            return;
+        }
+
+        if (target instanceof IRFieldLoad fieldLoad) {
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitVarInsn(ALOAD, resultSlot);
+            pushInt(mv, captureIndex);
+            mv.visitInsn(AALOAD);
+            coerceValue(mv, RuntimeTypes.MIXED, fieldLoad.field().type());
+            mv.visitFieldInsn(
+                    PUTFIELD,
+                    fieldLoad.field().ownerInternalName(),
+                    fieldLoad.field().name(),
+                    descriptor(fieldLoad.field().type()));
+            return;
+        }
+
+        throw new BytecodeCompileException("sscanf output argument must be a local or field.");
     }
 
     private void emitInstanceCall(MethodVisitor mv, String internalName, IRMethod method, IRInstanceCall call) {
@@ -1016,6 +1082,17 @@ public final class BytecodeCompiler {
             mv.visitInsn(DUP);
         else
             mv.visitInsn(DUP);
+    }
+
+    private int scratchObjectSlot(IRMethod method) {
+        int slot = 1;
+        for (IRParameter parameter : method.parameters()) {
+            slot = Math.max(slot, parameter.local().slot() + 1);
+        }
+        for (IRLocal local : method.locals()) {
+            slot = Math.max(slot, local.slot() + 1);
+        }
+        return slot;
     }
 
     private int kindToOpcode(RuntimeType type, boolean load) {

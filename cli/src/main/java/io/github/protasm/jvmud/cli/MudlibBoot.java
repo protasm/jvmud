@@ -47,6 +47,7 @@ final class MudlibBoot {
 
     MudlibBootResult boot() {
         WorldRuntime worldRuntime = new WorldRuntime(new World("jvmud", "JVMud"));
+        runtime.setScheduler(worldRuntime.scheduler());
         List<String> preloadedObjects = new ArrayList<>();
         List<String> skippedPreloads = new ArrayList<>();
 
