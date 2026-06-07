@@ -133,6 +133,8 @@ h1 {
 
 .hero-logo-heading {
   max-width: min(740px, 78vw);
+  margin-bottom: 22px;
+  padding: 8px 0 4px;
 }
 
 .hero-logo {
