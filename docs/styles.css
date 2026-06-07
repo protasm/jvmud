@@ -62,17 +62,14 @@ a {
 
 .side-nav .brand {
   margin-bottom: 24px;
-  padding: 0 0 20px;
+  padding: 0 0 18px;
   color: var(--text);
   border-bottom: 1px solid var(--line);
   border-left: 0;
-}
-
-.side-nav .brand img {
-  display: block;
-  width: min(100%, 170px);
-  height: auto;
-  filter: drop-shadow(0 0 14px rgba(155, 221, 88, 0.1));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 main {
@@ -88,7 +85,7 @@ main {
   border-bottom: 1px solid var(--line);
 }
 
-.hero img {
+.hero-backdrop {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -132,6 +129,20 @@ h1 {
   font-size: clamp(3.4rem, 9vw, 7.6rem);
   line-height: 0.9;
   letter-spacing: 0;
+}
+
+.hero-logo-heading {
+  max-width: min(740px, 78vw);
+}
+
+.hero-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 190px;
+  object-fit: contain;
+  object-position: left center;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.45));
 }
 
 h2 {
@@ -327,12 +338,6 @@ code {
     padding: 0 12px 0 0;
     border-bottom: 0;
     border-right: 1px solid var(--line);
-  }
-
-  .side-nav .brand img {
-    width: 118px;
-    max-height: 40px;
-    object-fit: contain;
   }
 
   main {
