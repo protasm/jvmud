@@ -28,25 +28,25 @@ void init() {
 }
 
 status move1() {
-  call_other(this_player(), "move_player", "south#room/planes/plane4");
+  call_other(this_player(), "move_player", "south#room/plains/plain4");
 
   return 1;
 }
 
 status move2() {
-  call_other(this_player(), "move_player", "north#room/planes/plane8");
+  call_other(this_player(), "move_player", "north#room/plains/plain8");
 
   return 1;
 }
 
 status move3() {
-  call_other(this_player(), "move_player", "east#room/planes/plane9");
+  call_other(this_player(), "move_player", "east#room/plains/plain9");
 
   return 1;
 }
 
 status move4() {
-  call_other(this_player(), "move_player", "west#room/planes/plane3");
+  call_other(this_player(), "move_player", "west#room/plains/plain3");
 
   return 1;
 }

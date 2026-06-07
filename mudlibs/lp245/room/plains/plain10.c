@@ -8,7 +8,8 @@ void reset(mixed arg) {
   short_desc = "A large open plain";
   long_desc = "A large open plain.\n";
   dest_dir = ({
-    "room/planes/ruin", "north",
-    "room/planes/plane2", "west"
+    "room/plains/plain12", "north",
+    "room/plains/plain6", "east",
+    "room/plains/plain7", "south"
   });
 }

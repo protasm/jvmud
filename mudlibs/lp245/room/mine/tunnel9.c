@@ -1,19 +1,52 @@
-#include "../std.h"
-#undef EXTRA_INIT
-#define EXTRA_INIT\
-#undef EXTRA_LONG
-#define EXTRA_LONG\
-string rope;
-add_action("go_up"); add_verb("up");
+mixed rope;
 
-if (call_other("room/mine/tunnel3", "query_rope"))\
-  write("There is a rope hanging down through the hole.\n");
+void reset(mixed arg) {
+  if (arg)
+    return;
 
-TWO_EXIT("room/mine/tunnel10", "west",
-"room/mine/tunnel14", "east",
-"Hole in ceiling",
-"There is a big hole in the ceiling.\n", 0)
-go_up() {
+  set_light(0);
+}
+
+string short() {
+  if (set_light(0))
+    return "Hole in ceiling";
+
+  return "dark room";
+}
+
+void init() {
+  add_action("move1", "west");
+  add_action("move2", "east");
+  add_action("go_up"); add_verb("up");
+}
+
+status move1() {
+  call_other(this_player(), "move_player", "west#room/mine/tunnel10");
+
+  return 1;
+}
+
+status move2() {
+  call_other(this_player(), "move_player", "east#room/mine/tunnel14");
+
+  return 1;
+}
+
+void long(mixed str) {
+  if (set_light(0) == 0) {
+    write("It is dark.\n");
+
+    return;
+  }
+
+  if (call_other("room/mine/tunnel3", "query_rope"))
+    write("There is a rope hanging down through the hole.\n");
+
+  write("There is a big hole in the ceiling.\n");
+  write("There are two obvious exits, west and east.\n");
+}
+
+status go_up() {
   if (!call_other("room/mine/tunnel3","query_rope")) {
     write("You can't go stright up with some kind of support.\n");
 
@@ -25,11 +58,11 @@ go_up() {
   return 1;
 }
 
-id(str) {
+status id(mixed str) {
   return str == "ring" || str == "rings";
 }
 
-tie(str) {
+status tie(mixed str) {
   if (str != "ring" && str != "rings")
     return 0;
 
@@ -37,7 +70,7 @@ tie(str) {
   return 1;
 }
 
-untie(str) {
+status untie(mixed str) {
   rope = 0;
   return 1;
 }

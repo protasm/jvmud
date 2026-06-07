@@ -1,9 +1,8 @@
-#include "room/room.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET fix_shaman();
+inherit "room/room";
+
 object gold_stick, orc_slayer, shaman;
 
-fix_shaman() {
+void fix_shaman() {
   if (!shaman || !living(shaman)) {
     gold_stick = clone_object("obj/treasure");
 
@@ -54,11 +53,22 @@ fix_shaman() {
     move_object(orc_slayer, shaman);
   }
 }
-ONE_EXIT("room/orc/fortress", "south",
-"The orc treasury",
-"You are in the orc treasury. It is normally heavily guarded.\n", 1)
 
-weapon_hit(attacker) {
+void reset(mixed arg) {
+  fix_shaman();
+
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "The orc treasury";
+  long_desc = "You are in the orc treasury. It is normally heavily guarded.\n";
+  dest_dir = ({
+    "room/orc/fortress", "south"
+  });
+}
+
+int weapon_hit(mixed attacker) {
   string alig;
 
   if(call_other(attacker,"id","orc")){

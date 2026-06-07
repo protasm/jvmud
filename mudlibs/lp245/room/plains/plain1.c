@@ -16,7 +16,7 @@ void reset(mixed arg) {
     call_other(wolf, "set_wc", 7);
     call_other(wolf, "set_move_at_reset");
     call_other(wolf, "set_whimpy");
-    move_object(wolf, "room/planes/ruin");
+    move_object(wolf, "room/plains/ruin");
   }
 
   if (arg)
@@ -27,6 +27,6 @@ void reset(mixed arg) {
   long_desc = "A large open plain, extending to north and south.\n";
   dest_dir = ({
     "room/forest/clearing", "south",
-    "room/planes/plane2", "north"
+    "room/plains/plain2", "north"
   });
 }

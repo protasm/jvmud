@@ -1,7 +1,7 @@
 inherit "room/room";
 #define WRITE(x) tell_object(players[j], x)
 #define SPEAK(x) tell_object(players[j], "Death says: " + x)
-int players;
+mixed *players;
 /* death_room.c */
 /* Mrpr 901119 */
 
@@ -9,14 +9,15 @@ int players;
 * Function name: add_player
 * Description:   Adds a player to the list
 */
-add_player(plobj) {
-  int i, j, oldlist;
+void add_player(mixed plobj) {
+  int i, j;
+  mixed *oldlist;
 
   oldlist = players;
 
   i = 0;
 
-  if (players) {
+  if (pointerp(players) && sizeof(players) > 0) {
     i = sizeof(players);
     players = allocate(i + 2);
 
@@ -39,7 +40,7 @@ add_player(plobj) {
 * Function name: create_death
 * Description:   Create death.
 */
-create_death() {
+void create_death() {
   object death;
 
   death = clone_object("/room/death/death");
@@ -51,10 +52,10 @@ create_death() {
 * Function name: do_remove
 * Description:   Removes players that's finished
 */
-do_remove() {
+void do_remove() {
   int j, nr;
 
-  if (!players)
+  if (!pointerp(players) || sizeof(players) == 0)
     return;
 
   nr = sizeof(players);
@@ -78,7 +79,7 @@ do_remove() {
 * Function name: exit
 * Description:   Remove players if they leave the room prematurly
 */
-exit(ob) {
+void exit(mixed ob) {
   remove_player(ob);
 
 }
@@ -87,7 +88,7 @@ exit(ob) {
 * Function name: filter
 * Description:   Filter out relevant commands.
 */
-filter(str) {
+status filter(mixed str) {
   string verb;
 
   verb = query_verb();
@@ -114,10 +115,10 @@ filter(str) {
 * Function name: heart_beat
 * Description:   Let the actions be governed by time.
 */
-heart_beat() {
+void heart_beat() {
   int align, j, nr;
 
-  if (!players) {
+  if (!pointerp(players) || sizeof(players) == 0) {
     set_heart_beat(0);
 
     return;
@@ -128,7 +129,7 @@ heart_beat() {
   for (j = 0 ; j < nr ; j += 2)
     {
 
-    players[j + 1]++;
+    players[j + 1] = players[j + 1] + 1;
 
     if (players[j + 1] == 5) {
       SPEAK("IT IS TIME\n");
@@ -299,7 +300,7 @@ heart_beat() {
 
 }
 
-init() {
+void init() {
   object death;
 
   ::init();
@@ -322,7 +323,7 @@ init() {
 
 }
 
-long(str) {
+void long(mixed str) {
   int i;
 
   ::long(str);
@@ -348,7 +349,7 @@ long(str) {
 * Function name: remove_death_obj
 * Description:   Remove the "death_mark"-object.
 */
-remove_death_obj(player) {
+void remove_death_obj(mixed player) {
   object plobj;
 
   plobj = present("death_mark", player);
@@ -361,17 +362,18 @@ remove_death_obj(player) {
 * Function name: remove_player
 * Description:   Removes a player from the list
 */
-remove_player(plobj) {
-  int i, j, x, oldlist;
+void remove_player(mixed plobj) {
+  int i, j, x;
+  mixed *oldlist;
 
-  if(!players)
+  if(!pointerp(players) || sizeof(players) == 0)
     return;
 
   i = sizeof(players);
 
   if (i == 2) {
     if (players[0] == plobj) {
-      players = 0;
+      players = ({});
 
       set_heart_beat(0);
 
@@ -401,13 +403,13 @@ remove_player(plobj) {
 * Function name: reset
 * Description:   Reset the room
 */
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
   create_death();
 
-  players = 0;
+  players = ({});
 
   set_light(1);
 

@@ -10,12 +10,12 @@ inherit "obj/monster";
 * Function name: id
 * Description:   Identifies death and his belongings.
 */
-id(str) {
+status id(mixed str) {
   return str == "death" || str == "moot" || str == "scythe" || str == "robe";
 
 }
 
-init() {
+void init() {
   ::init();
 
   add_action("take_it", "take");
@@ -26,7 +26,11 @@ init() {
 * Function name: long
 * Description:   Long description
 */
-long(str) {
+void long() {
+  mixed str;
+
+  str = "death";
+
   if (str == "death" || str == "moot") {
     write("Death seems to have taken Jane Fonda's exercise and diet program much too\n" +
     "seriously. A clear case of Anorexia Neurosa. Except for a wicked looking scythe\n" +
@@ -34,7 +38,7 @@ long(str) {
     "something about his eyes as well, or maybe the lack of eyes, that you \n" +
     "feel you'd better not investigate too closely.\n");
 
-    return 1;
+    return;
   }
 
   if (str == "scythe") {
@@ -43,7 +47,7 @@ long(str) {
     "blade. It does strange things with light as well as unlucky photons split into\n" +
     "their sub-components when they hit the blade.\n");
 
-    return 1;
+    return;
   }
 
   if (str == "robe") {
@@ -51,10 +55,10 @@ long(str) {
     "well however. It seems to have been tailored for a very lean customer.\n" +
     "VERY lean actually...\n");
 
-    return 1;
+    return;
   }
 
-  return 0;
+  return;
 
 }
 
@@ -62,7 +66,7 @@ long(str) {
 * Function name: reset
 * Description:   Reset Death
 */
-reset(arg) {
+void reset(mixed arg) {
   ::reset(arg);
 
   if (arg)
@@ -83,7 +87,7 @@ reset(arg) {
 * Function name: take_it
 * Description:   Try to take something from death.
 */
-take_it(str) {
+status take_it(mixed str) {
   string name;
   int extra;
 

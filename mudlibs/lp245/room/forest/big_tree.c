@@ -24,7 +24,7 @@ void init() {
 }
 
 status move1() {
-  call_other(this_player(), "move_player", "east#room/planes/plane7");
+  call_other(this_player(), "move_player", "east#room/plains/plain7");
 
   return 1;
 }

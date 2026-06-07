@@ -1,15 +1,52 @@
-#include "../std.h"
-#undef EXTRA_LONG
-#define EXTRA_LONG\
-if (str == "table" || str == "stone table") {\
-  write("You see nothing special about it.\n");\
-  return;\
+void reset(mixed arg) {
+  if (arg)
+    return;
+
+  set_light(0);
 }
-TWO_EXIT("room/mine/tunnel4", "south",
-"room/mine/tunnel_room", "north",
-"Stone table",
-"In the tunnel into the mines.\n" +
-"There is a big stone table here.\n", 0)
-id(str) {
+
+string short() {
+  if (set_light(0))
+    return "Stone table";
+
+  return "dark room";
+}
+
+void init() {
+  add_action("move1", "south");
+  add_action("move2", "north");
+}
+
+status move1() {
+  call_other(this_player(), "move_player", "south#room/mine/tunnel4");
+
+  return 1;
+}
+
+status move2() {
+  call_other(this_player(), "move_player", "north#room/mine/tunnel_room");
+
+  return 1;
+}
+
+void long(mixed str) {
+  if (set_light(0) == 0) {
+    write("It is dark.\n");
+
+    return;
+  }
+
+  if (str == "table" || str == "stone table") {
+    write("You see nothing special about it.\n");
+
+    return;
+  }
+
+  write("In the tunnel into the mines.\n" +
+  "There is a big stone table here.\n");
+  write("There are two obvious exits, south and north.\n");
+}
+
+status id(mixed str) {
   return str == "table" || str == "stone table";
 }

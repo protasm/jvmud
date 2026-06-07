@@ -1,27 +1,36 @@
-#include "../room.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET\
+inherit "room/room";
+
 object hobgoblin;
-if (!hobgoblin || !living(hobgoblin)) {\
-  object money;\
-  hobgoblin = clone_object("obj/monster");\
 
-  call_other(hobgoblin, "set_name", "hobgoblin");\
-  call_other(hobgoblin, "set_level", 5);\
-  call_other(hobgoblin, "set_wc", 9);\
-  call_other(hobgoblin, "set_short", "a hobgoblin");\
+void reset(mixed arg) {
+  if (!hobgoblin || !living(hobgoblin)) {
+    object money;
 
-  call_other(hobgoblin, "set_long",\
-  "This hobgoblin looks really nasty.\n");\
+    hobgoblin = clone_object("obj/monster");
 
-  move_object(hobgoblin, this_object());\
+    call_other(hobgoblin, "set_name", "hobgoblin");
+    call_other(hobgoblin, "set_level", 5);
+    call_other(hobgoblin, "set_wc", 9);
+    call_other(hobgoblin, "set_short", "a hobgoblin");
 
-  money = clone_object("obj/money");\
+    call_other(hobgoblin, "set_long",
+    "This hobgoblin looks really nasty.\n");
 
-  call_other(money, "set_money", random(50));\
-  move_object(money, hobgoblin);\
+    move_object(hobgoblin, this_object());
+
+    money = clone_object("obj/money");
+
+    call_other(money, "set_money", random(50));
+    move_object(money, hobgoblin);
+  }
+
+  if (arg)
+    return;
+
+  set_light(0);
+  short_desc = "small room";
+  long_desc = "A small room with rough cut walls.\n";
+  dest_dir = ({
+    "room/mine/tunnel5", "south"
+  });
 }
-
-ONE_EXIT("room/mine/tunnel5", "south",
-"small room",
-"A small room with rough cut walls.\n", 0)

@@ -1,9 +1,8 @@
-#include "room/room.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET extra_reset();
+inherit "room/room";
+
 string chats;
 
-extra_reset() {
+void extra_reset() {
   object orc, weapon;
   int n,i,class,value,weight;
   string w_name,alt_name;
@@ -65,7 +64,7 @@ extra_reset() {
   }
 }
 
-get_chats() {
+mixed get_chats() {
   if (!chats) {
     chats = allocate(7);
     chats[0] = "Orc says: Kill him!\n";
@@ -79,8 +78,19 @@ get_chats() {
 
   return chats;
 }
-TWO_EXIT("room/mountain/slope", "east",
-"room/orc/fortress", "north",
-"The orc valley",
-"You are in the orc valley. This place is inhabited by orcs.\n" +
-"There is a fortress to the north, with lot of signs of orcs.\n", 1)
+
+void reset(mixed arg) {
+  extra_reset();
+
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "The orc valley";
+  long_desc = "You are in the orc valley. This place is inhabited by orcs.\n" +
+  "There is a fortress to the north, with lot of signs of orcs.\n";
+  dest_dir = ({
+    "room/mountain/slope", "east",
+    "room/orc/fortress", "north"
+  });
+}

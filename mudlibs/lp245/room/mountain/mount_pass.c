@@ -1,13 +1,49 @@
-#include "room/std.h"
-#undef EXTRA_INIT
-#define EXTRA_INIT add_action("up", "up");\
-add_action("up", "climb");
-TWO_EXIT("room/planes/plane11", "south",
-"room/mine/tunnel", "north",
-"Mountain pass",
-"You are in a pass going into the mountain with a steep slope\nupwards to the north.\nHowever, the path is barred.\nThere is a tunnel entrance to the north.\n"+
-"It might be possible to climb up, though\n", 1)
-up() {
+void reset(mixed arg) {
+  if (arg)
+    return;
+
+  set_light(1);
+}
+
+string short() {
+  if (set_light(0))
+    return "Mountain pass";
+
+  return "dark room";
+}
+
+void init() {
+  add_action("move1", "south");
+  add_action("move2", "north");
+  add_action("up", "up");
+  add_action("up", "climb");
+}
+
+status move1() {
+  call_other(this_player(), "move_player", "south#room/plains/plain11");
+
+  return 1;
+}
+
+status move2() {
+  call_other(this_player(), "move_player", "north#room/mine/tunnel");
+
+  return 1;
+}
+
+void long(mixed str) {
+  if (set_light(0) == 0) {
+    write("It is dark.\n");
+
+    return;
+  }
+
+  write("You are in a pass going into the mountain with a steep slope\nupwards to the north.\nHowever, the path is barred.\nThere is a tunnel entrance to the north.\n"+
+  "It might be possible to climb up, though\n");
+  write("There are two obvious exits, south and north.\n");
+}
+
+status up() {
   call_other(this_player(),"move_player", "up#room/mountain/ravine");
 
   return 1;

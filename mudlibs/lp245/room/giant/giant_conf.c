@@ -1,7 +1,8 @@
-#include "room/room.h"
+inherit "room/room";
+
 object giant1, giant2, giant3;
 
-extra_reset() {
+void extra_reset() {
   object weapon;
 
   if (!giant2 || !living(giant2)) {
@@ -76,11 +77,18 @@ extra_reset() {
     move_object(weapon, giant1);
   }
 }
-#undef EXTRA_RESET
-#define EXTRA_RESET\
-extra_reset();
 
-ONE_EXIT("room/giant/giant_lair", "east",
-"Giants conference of human bashing",
-"You are at the yearly conference of human bashing,\n" +
-"organized by the giants.\n", 1)
+void reset(mixed arg) {
+  extra_reset();
+
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "Giants conference of human bashing";
+  long_desc = "You are at the yearly conference of human bashing,\n" +
+  "organized by the giants.\n";
+  dest_dir = ({
+    "room/giant/giant_lair", "east"
+  });
+}

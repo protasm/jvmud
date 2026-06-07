@@ -1,28 +1,61 @@
-#include "../std.h"
-#undef EXTRA_MOVE1
-#define EXTRA_MOVE1\
-#undef EXTRA_RESET
-#define EXTRA_RESET\
 object dwarf;
-if (dwarf && present(dwarf)) {\
-  write("The dwarf bars the way !\n");\
 
-  return 1;\
+void reset(mixed arg) {
+  if (!dwarf || !living(dwarf)) {
+    dwarf = clone_object("obj/monster");
+
+    call_other(dwarf, "set_name", "dwarf");
+    call_other(dwarf, "set_level", 10);
+    call_other(dwarf, "set_al", -100);
+    call_other(dwarf, "set_short", "A short and sturdy dwarf");
+    call_other(dwarf, "set_wc", 10);
+    call_other(dwarf, "set_ac", 1);
+    move_object(dwarf, this_object());
+  }
+
+  if (arg)
+    return;
+
+  set_light(0);
 }
 
-if (!dwarf || !living(dwarf)) {\
-  dwarf = clone_object("obj/monster");\
+string short() {
+  if (set_light(0))
+    return "Tunnel";
 
-  call_other(dwarf, "set_name", "dwarf");\
-  call_other(dwarf, "set_level", 10);\
-  call_other(dwarf, "set_al", -100);\
-  call_other(dwarf, "set_short", "A short and sturdy dwarf");\
-  call_other(dwarf, "set_wc", 10);\
-  call_other(dwarf, "set_ac", 1);\
-  move_object(dwarf, this_object());\
+  return "dark room";
 }
 
-TWO_EXIT("room/mine/tunnel17", "north",
-"room/mine/tunnel15", "west",
-"Tunnel",
-"In the tunnel into the mines.\n", 0)
+void init() {
+  add_action("move1", "north");
+  add_action("move2", "west");
+}
+
+status move1() {
+  if (dwarf && present(dwarf)) {
+    write("The dwarf bars the way !\n");
+
+    return 1;
+  }
+
+  call_other(this_player(), "move_player", "north#room/mine/tunnel17");
+
+  return 1;
+}
+
+status move2() {
+  call_other(this_player(), "move_player", "west#room/mine/tunnel15");
+
+  return 1;
+}
+
+void long(mixed str) {
+  if (set_light(0) == 0) {
+    write("It is dark.\n");
+
+    return;
+  }
+
+  write("In the tunnel into the mines.\n");
+  write("There are two obvious exits, north and west.\n");
+}

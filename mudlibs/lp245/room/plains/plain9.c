@@ -41,6 +41,6 @@ void reset(mixed arg) {
   short_desc = "A large open plain";
   long_desc = "A large open plain. There is a river to the east,\nand some kind of building to the west\n";
   dest_dir = ({
-    "room/planes/ruin", "west"
+    "room/plains/ruin", "west"
   });
 }

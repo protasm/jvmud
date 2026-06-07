@@ -8,6 +8,6 @@ void reset(mixed arg) {
   short_desc = "Deep forest";
   long_desc = "In the deep forest. The wood lights up to the east.\n";
   dest_dir = ({
-    "room/planes/plane12", "east"
+    "room/plains/plain12", "east"
   });
 }

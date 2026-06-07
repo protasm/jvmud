@@ -11,6 +11,6 @@ void reset(mixed arg) {
   dest_dir = ({
     "room/forest/forest1", "east",
     "room/forest/forest2", "west",
-    "room/planes/plane1", "north"
+    "room/plains/plain1", "north"
   });
 }

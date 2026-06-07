@@ -1,5 +1,14 @@
-#include "../room.h"
-TWO_EXIT("room/mine/tunnel", "south",
-"room/mine/tunnel3", "north",
-"Tunnel",
-"In the tunnel into the mines.\n", 0)
+inherit "room/room";
+
+void reset(mixed arg) {
+  if (arg)
+    return;
+
+  set_light(0);
+  short_desc = "Tunnel";
+  long_desc = "In the tunnel into the mines.\n";
+  dest_dir = ({
+    "room/mine/tunnel", "south",
+    "room/mine/tunnel3", "north"
+  });
+}
