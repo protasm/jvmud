@@ -1,9 +1,8 @@
-#include "room/room.h"
-#undef EXTRA_RESET
-#define EXTRA_RESET\
+inherit "room/room";
+
 object troll;
-extra_reset();
-extra_reset() {
+
+void extra_reset() {
   object money;
 
   if (!troll || !living(troll)) {
@@ -35,7 +34,17 @@ extra_reset() {
     move_object(money, troll);
   }
 }
-TWO_EXIT("room/forest/clearing", "east",
-"room/mountain/slope", "west",
-"In a forest",
-"You are in a big forest.\n", 1)
+
+void reset(mixed arg) {
+  if (!arg) {
+    set_light(1);
+    short_desc = "In a forest";
+    long_desc = "You are in a big forest.\n";
+    dest_dir = ({
+      "room/forest/clearing", "east",
+      "room/mountain/slope", "west"
+    });
+  }
+
+  extra_reset();
+}

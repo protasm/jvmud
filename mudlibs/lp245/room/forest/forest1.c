@@ -1,6 +1,6 @@
 inherit "room/room";
 
-reset(arg) {
+void reset(mixed arg) {
   if (!arg) {
     set_light(1);
     short_desc = "In a forest";
@@ -14,7 +14,7 @@ reset(arg) {
   fix_jacket();
 }
 
-fix_jacket() {
+void fix_jacket() {
   object leather_jacket;
 
   leather_jacket = present("leather jacket");

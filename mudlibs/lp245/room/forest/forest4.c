@@ -1,7 +1,16 @@
-#include "room/room.h"
-FOUR_EXIT("room/forest/forest3", "north",
-"room/forest/forest5", "west",
-"room/forest/forest6", "east",
-"room/forest/forest7", "south",
-"Deep forest",
-"You are in the deep forest.\n", 1)
+inherit "room/room";
+
+void reset(mixed arg) {
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "Deep forest";
+  long_desc = "You are in the deep forest.\n";
+  dest_dir = ({
+    "room/forest/forest3", "north",
+    "room/forest/forest5", "west",
+    "room/forest/forest6", "east",
+    "room/forest/forest7", "south"
+  });
+}

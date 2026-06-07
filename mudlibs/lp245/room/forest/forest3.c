@@ -1,5 +1,14 @@
-#include "room/room.h"
-TWO_EXIT("room/mountain/slope", "north",
-"room/forest/forest4", "south",
-"Deep forest",
-"You are in the deep forest.\n", 1)
+inherit "room/room";
+
+void reset(mixed arg) {
+  if (arg)
+    return;
+
+  set_light(1);
+  short_desc = "Deep forest";
+  long_desc = "You are in the deep forest.\n";
+  dest_dir = ({
+    "room/mountain/slope", "north",
+    "room/forest/forest4", "south"
+  });
+}
