@@ -141,27 +141,31 @@ final class AdminCliTest {
         assertTrue(output.contains("Start a fresh mudlib sandbox without a player session."));
         assertTrue(output.contains("v  verbosity [quiet|normal|watch]"));
         assertTrue(output.contains("Show or change compiler/shell output detail."));
+        assertTrue(output.contains("c  compile <path>"));
+        assertTrue(output.contains("ir ir <path>"));
+        assertTrue(output.contains("p  parse <path>"));
         assertTrue(output.contains("pp preprocess <path>"));
-        assertTrue(output.contains("scan <path>"));
-        assertTrue(output.contains("parse <path>"));
-        assertTrue(output.contains("ir <path>"));
+        assertTrue(output.contains("s  scan <path>"));
         assertTrue(output.contains("compile <path>"));
         assertTrue(output.indexOf("h  help") < output.indexOf("b  boot"));
         assertTrue(output.indexOf("b  boot") < output.indexOf("call"));
         assertTrue(output.indexOf("call") < output.indexOf("cat"));
         assertTrue(output.indexOf("cat") < output.indexOf("cd"));
-        assertTrue(output.indexOf("cd") < output.indexOf("n  clone"));
-        assertTrue(output.indexOf("n  clone") < output.indexOf("x  destruct"));
+        assertTrue(output.indexOf("cd") < output.indexOf("clone <path>"));
+        assertTrue(output.indexOf("clone <path>") < output.indexOf("c  compile"));
+        assertTrue(output.indexOf("c  compile") < output.indexOf("x  destruct"));
         assertTrue(output.indexOf("x  destruct") < output.indexOf("i  inspect"));
-        assertTrue(output.indexOf("i  inspect") < output.indexOf("pp preprocess"));
-        assertTrue(output.indexOf("pp preprocess") < output.indexOf("scan"));
-        assertTrue(output.indexOf("     scan <path>") < output.indexOf("     parse <path>"));
-        assertTrue(output.indexOf("     parse <path>") < output.indexOf("     ir <path>"));
-        assertTrue(output.indexOf("     ir <path>") < output.indexOf("     compile <path>"));
-        assertTrue(output.indexOf("     compile <path>") < output.indexOf("l  load"));
+        assertTrue(output.indexOf("i  inspect") < output.indexOf("ir ir"));
+        assertTrue(output.indexOf("ir ir") < output.indexOf("l  load"));
         assertTrue(output.indexOf("l  load") < output.indexOf("k  look"));
         assertTrue(output.indexOf("ls") < output.indexOf("m  move"));
+        assertTrue(output.indexOf("m  move") < output.indexOf("o  objects"));
+        assertTrue(output.indexOf("o  objects") < output.indexOf("p  parse"));
+        assertTrue(output.indexOf("p  parse") < output.indexOf("pp preprocess"));
+        assertTrue(output.indexOf("pp preprocess") < output.indexOf("pwd"));
         assertTrue(output.indexOf("pwd") < output.indexOf("r  reload"));
+        assertTrue(output.indexOf("r  reload") < output.indexOf("s  scan"));
+        assertTrue(output.indexOf("s  scan") < output.indexOf("v  verbosity"));
         assertTrue(output.indexOf("w  where") < output.indexOf("q  quit"));
     }
 
@@ -235,22 +239,20 @@ final class AdminCliTest {
     }
 
     @Test
-    void removedSingleCharacterAliasesAreNotCommands() {
+    void unassignedSingleCharacterAliasesAreNotCommands() {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
         cli.execute("a room/item short");
         cli.execute("t README.txt");
         cli.execute("d room");
-        cli.execute("s");
-        cli.execute("p");
+        cli.execute("n room/item");
 
         String output = transcript.toString();
         assertTrue(output.contains("Unknown command: a"));
         assertTrue(output.contains("Unknown command: t"));
         assertTrue(output.contains("Unknown command: d"));
-        assertTrue(output.contains("Unknown command: s"));
-        assertTrue(output.contains("Unknown command: p"));
+        assertTrue(output.contains("Unknown command: n"));
         assertTrue(output.contains("Usage: help"));
     }
 
@@ -328,10 +330,10 @@ final class AdminCliTest {
 
         cli.execute("boot " + tempDir);
         cli.execute("pp tool");
-        cli.execute("scan tool");
-        cli.execute("parse tool");
+        cli.execute("s tool");
+        cli.execute("p tool");
         cli.execute("ir tool");
-        cli.execute("compile tool");
+        cli.execute("c tool");
         cli.execute("objects");
 
         String output = transcript.toString();
