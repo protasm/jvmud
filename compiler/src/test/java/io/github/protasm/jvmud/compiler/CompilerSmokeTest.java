@@ -832,6 +832,155 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void commandDispatchSupportsPrefixActions() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void add_action(string method, string verb, int flag) {
+                    jvmud_add_action(method, verb, flag);
+                }
+
+                void write(mixed value) {
+                    jvmud_write(value);
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                int value;
+
+                void init() {
+                    add_action("examine", "exa", 1);
+                }
+
+                int examine(mixed str) {
+                    write("examined " + str + "\\n");
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                string short() {
+                    return "start";
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+        LPCObjectHandle start = runtime.load(tempDir.resolve("room/start.c"));
+        runtime.moveObject(player.instance(), start.instance());
+
+        runtime.refreshCommandActions(player.instance());
+
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "examine book"));
+        assertEquals("examined book\n", runtime.outputTranscript());
+    }
+
+    @Test
+    void commandDispatchKeepsPersistentActorActionsAcrossRefresh() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void add_action(string method, string verb) {
+                    jvmud_add_action(method, verb);
+                }
+
+                void write(mixed value) {
+                    jvmud_write(value);
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                void setup() {
+                    add_action("examine", "exa");
+                }
+
+                int examine(mixed str) {
+                    write("examined " + str + "\\n");
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void init() {
+                    add_action("wave", "wave");
+                }
+
+                int wave(mixed str) {
+                    write("waved\\n");
+                    return 1;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+        LPCObjectHandle start = runtime.load(tempDir.resolve("room/start.c"));
+        runtime.moveObject(player.instance(), start.instance());
+        runtime.withCommandActor(player.instance(), () -> player.invoke("setup"));
+
+        runtime.refreshCommandActions(player.instance());
+        runtime.clearOutputTranscript();
+
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "exa book"));
+        assertEquals("examined book\n", runtime.outputTranscript());
+
+        runtime.clearOutputTranscript();
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "wave"));
+        assertEquals("waved\n", runtime.outputTranscript());
+    }
+
+    @Test
+    void moveEntityResolvesStringSourcePaths() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void move_object(mixed ob, mixed destination) {
+                    jvmud_move_entity(ob, destination);
+                }
+
+                object present(mixed id, mixed container) {
+                    return jvmud_find_entity(id, container);
+                }
+
+                object this_object() {
+                    return jvmud_current_entity();
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/book.c"), """
+                int id(mixed str) {
+                    return str == "book";
+                }
+                """);
+        Files.writeString(tempDir.resolve("room.c"), """
+                void setup() {
+                    move_object("obj/book", this_object());
+                }
+
+                object find_book() {
+                    return present("book", this_object());
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .build());
+
+        LPCObjectHandle room = runtime.load(tempDir.resolve("room.c"));
+        room.invoke("setup");
+
+        assertNotNull(room.invoke("find_book"));
+    }
+
+    @Test
     void stringConcatCoercesMixedArrayElementsWithoutCasting() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
@@ -928,6 +1077,74 @@ final class CompilerSmokeTest {
         LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
 
         assertEquals("50:chat", caller.invoke("combine", target.instance()));
+    }
+
+    @Test
+    void callOtherReturnsZeroForMissingMethod() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                mixed call_other(mixed target, string method, mixed arg) {
+                    return jvmud_invoke_entity(target, method, arg);
+                }
+                """);
+        Files.writeString(tempDir.resolve("target.c"), """
+                string short() {
+                    return "target";
+                }
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                mixed missing(object target) {
+                    return call_other(target, "can_put_and_get", "book");
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .build());
+
+        LPCObjectHandle target = runtime.load(tempDir.resolve("target.c"));
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+
+        assertEquals(0, caller.invoke("missing", target.instance()));
+    }
+
+    @Test
+    void callOtherTrimsExtraArgumentsForOptionalInvocation() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                mixed call_other(mixed target, string method, mixed arg) {
+                    return jvmud_invoke_entity(target, method, arg);
+                }
+
+                void write(mixed value) {
+                    jvmud_write(value);
+                }
+                """);
+        Files.writeString(tempDir.resolve("target.c"), """
+                void long() {
+                    write("target long\\n");
+                }
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                void examine(object target) {
+                    call_other(target, "long", "target");
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .build());
+
+        LPCObjectHandle target = runtime.load(tempDir.resolve("target.c"));
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+
+        caller.invoke("examine", target.instance());
+
+        assertEquals("target long\n", runtime.outputTranscript());
     }
 
     @Test
@@ -1073,6 +1290,19 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals("north#missing", object.invoke("reflected_value", object.instance()));
+    }
+
+    @Test
+    void dynamicDispatchReturnsZeroForMissingMethod() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+
+        LPCObjectHandle object = runtime.loadSource("smoke/missing_dynamic.c", """
+                mixed reflected_value(mixed target) {
+                    return target->missing_method();
+                }
+                """);
+
+        assertEquals(0, object.invoke("reflected_value", object.instance()));
     }
 
     @Test

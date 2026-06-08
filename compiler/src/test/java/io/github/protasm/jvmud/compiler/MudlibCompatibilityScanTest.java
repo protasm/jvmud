@@ -40,6 +40,7 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationStage;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
+import io.github.protasm.jvmud.compiler.runtime.Truth;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibBoundaryConfigReader;
 import java.io.IOException;
@@ -145,11 +146,25 @@ final class MudlibCompatibilityScanTest {
         LPCObjectHandle player = runtime.load("obj/player");
         LPCObjectHandle clearing = runtime.load("room/forest/clearing");
         runtime.moveObject(player.instance(), clearing.instance());
+        runtime.withCommandActor(player.instance(), () -> player.invoke("add_standard_commands"));
 
         runtime.refreshCommandActions(player.instance());
 
         assertEquals(1, runtime.dispatchCommand(player.instance(), "west"));
         assertEquals("room/forest/forest2", runtime.objectId(runtime.environment(player.instance())));
+
+        runtime.refreshCommandActions(player.instance());
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "exa troll"));
+
+        runtime.refreshCommandActions(player.instance());
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "kill troll"));
+
+        runtime.refreshCommandActions(player.instance());
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "kill troll"));
+
+        runtime.refreshCommandActions(player.instance());
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "east"));
+        assertEquals("room/forest/clearing", runtime.objectId(runtime.environment(player.instance())));
     }
 
     @Test
@@ -175,6 +190,25 @@ final class MudlibCompatibilityScanTest {
         runtime.refreshCommandActions(player.instance());
         assertEquals(1, runtime.dispatchCommand(player.instance(), "east"));
         assertEquals("room/mountain/slope", runtime.objectId(runtime.environment(player.instance())));
+    }
+
+    @Test
+    void vanillaAdventurersGuildCostCommandQuotesCosts() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LPCObjectHandle player = runtime.load("obj/player");
+        LPCObjectHandle guild = runtime.load("room/village/adv_guild");
+        runtime.moveObject(player.instance(), guild.instance());
+
+        runtime.refreshCommandActions(player.instance());
+        runtime.clearOutputTranscript();
+
+        assertTrue(Truth.isTruthy(runtime.dispatchCommand(player.instance(), "cost")));
+        assertTrue(runtime.outputTranscript().contains("Str: "));
+        assertTrue(runtime.outputTranscript().contains("gold coins to advance to level"));
     }
 
     private static void writeReport(MudlibBoundary boundary, Map<String, CompilationResult> results) throws IOException {

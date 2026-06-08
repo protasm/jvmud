@@ -124,12 +124,89 @@ with connect_with_retry() as sock:
     if "You can't do that." in transcript:
         raise AssertionError(f"south moved but was reported as unhandled:\n{transcript}")
 
+    sock.sendall(b"east\n")
+    transcript = read_until(sock, "> ")
+    if "A track going into the village." not in transcript:
+        raise AssertionError(f"east from village green did not move to the village track:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"village track movement reported an error:\n{transcript}")
+
+    sock.sendall(b"east\n")
+    transcript = read_until(sock, "> ")
+    if "A long road going east through the village." not in transcript:
+        raise AssertionError(f"east from village track did not move to the first village road:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"first village road movement reported an error:\n{transcript}")
+
+    sock.sendall(b"east\n")
+    transcript = read_until(sock, "> ")
+    if "south is the adventurers guild" not in transcript:
+        raise AssertionError(f"east on village road did not move to the guild road:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"guild road movement reported an error:\n{transcript}")
+
+    sock.sendall(b"south\n")
+    transcript = read_until(sock, "> ")
+    if "You have to come here when you want to advance your level." not in transcript:
+        raise AssertionError(f"south from village road did not move to the adventurers guild:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"adventurers guild movement reported an error:\n{transcript}")
+
+    sock.sendall(b"cost\n")
+    transcript = read_until(sock, "> ")
+    if "Str: " not in transcript or "gold coins to advance to level" not in transcript:
+        raise AssertionError(f"cost in the adventurers guild did not quote advancement costs:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"adventurers guild cost reported an error:\n{transcript}")
+
+    sock.sendall(b"exa book\n")
+    transcript = read_until(sock, "> ")
+    if "There is a book hanging in a chain from the wall." not in transcript:
+        raise AssertionError(f"exa book did not examine the guild book:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"exa book reported an error:\n{transcript}")
+
+    sock.sendall(b"north\n")
+    transcript = read_until(sock, "> ")
+    if "south is the adventurers guild" not in transcript:
+        raise AssertionError(f"north from guild did not return to the guild road:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"guild exit reported an error:\n{transcript}")
+
+    sock.sendall(b"west\n")
+    transcript = read_until(sock, "> ")
+    if "A long road going east through the village." not in transcript:
+        raise AssertionError(f"west from guild road did not return to the first village road:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"guild road return reported an error:\n{transcript}")
+
+    sock.sendall(b"west\n")
+    transcript = read_until(sock, "> ")
+    if "A track going into the village." not in transcript:
+        raise AssertionError(f"west from first village road did not return to the village track:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"village road return reported an error:\n{transcript}")
+
+    sock.sendall(b"west\n")
+    transcript = read_until(sock, "> ")
+    if "You are at an open green place south of the village church." not in transcript:
+        raise AssertionError(f"west from village track did not return to the village green:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"village green return reported an error:\n{transcript}")
+
     sock.sendall(b"west\n")
     transcript = read_until(sock, "> ")
     if "An old humpbacked bridge." not in transcript:
         raise AssertionError(f"west did not move to the humpbacked bridge:\n{transcript}")
     if "You can't do that." in transcript:
         raise AssertionError(f"west moved but was reported as unhandled:\n{transcript}")
+
+    sock.sendall(b"exa stick\n")
+    transcript = read_until(sock, "> ")
+    if "stick" not in transcript:
+        raise AssertionError(f"exa stick did not examine the bridge stick:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"exa stick reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
     transcript = read_until(sock, "> ")
@@ -158,6 +235,13 @@ with connect_with_retry() as sock:
         raise AssertionError(f"west from clearing did not move to the next forest room:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"second forest movement reported an error:\n{transcript}")
+
+    sock.sendall(b"exa troll\n")
+    transcript = read_until(sock, "> ")
+    if "It is a nasty troll that look very aggressive." not in transcript:
+        raise AssertionError(f"exa troll did not examine the forest troll:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"exa troll reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
     transcript = read_until(sock, "> ")

@@ -7,6 +7,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
+import io.github.protasm.jvmud.compiler.runtime.Truth;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -111,7 +112,7 @@ public final class EngineEfuns {
                 (runtime, args) -> runtime.cloneObject(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_move_entity", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> {
-                    runtime.moveObject(args[0], args[1]);
+                    runtime.moveObject(resolveTarget(runtime, args[0]), resolveTarget(runtime, args[1]));
                     return null;
                 }));
         efuns.add(efun("jvmud_find_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
@@ -164,6 +165,13 @@ public final class EngineEfuns {
                 (runtime, args) -> {
                     runtime.rememberActionMethod(String.valueOf(args[0]));
                     runtime.registerVerb(String.valueOf(args[1]));
+                    return null;
+                }));
+        efuns.add(efun("jvmud_add_action", LPCType.LPCVOID,
+                List.of(LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCSTATUS),
+                (runtime, args) -> {
+                    runtime.rememberActionMethod(String.valueOf(args[0]));
+                    runtime.registerVerb(String.valueOf(args[1]), Truth.isTruthy(args[2]));
                     return null;
                 }));
         efuns.add(efun("jvmud_add_verb", LPCType.LPCVOID, List.of(LPCType.LPCSTRING),
@@ -252,15 +260,15 @@ public final class EngineEfuns {
         }
 
         if (arguments.length == 0) {
-            return runtime.invokeObject(resolvedTarget, methodName);
+            return runtime.invokeOptionalObject(resolvedTarget, methodName);
         }
 
         if (arguments.length == 1 && isNoArgumentSentinel(arguments[0])) {
             if (hasMethod(resolvedTarget, methodName, 0) && !hasMethod(resolvedTarget, methodName, 1)) {
-                return runtime.invokeObject(resolvedTarget, methodName);
+                return runtime.invokeOptionalObject(resolvedTarget, methodName);
             }
         }
-        return runtime.invokeObject(resolvedTarget, methodName, arguments);
+        return runtime.invokeOptionalObject(resolvedTarget, methodName, arguments);
     }
 
     private static boolean hasMethod(Object target, String methodName, int arity) {

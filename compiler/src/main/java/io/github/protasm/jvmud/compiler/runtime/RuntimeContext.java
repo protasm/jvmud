@@ -57,6 +57,8 @@ public final class RuntimeContext {
             ThreadLocal.withInitial(ArrayDeque::new);
     private final ThreadLocal<Deque<String>> pendingActionStack =
             ThreadLocal.withInitial(ArrayDeque::new);
+    private final ThreadLocal<Integer> scopedCommandRegistrationDepth =
+            ThreadLocal.withInitial(() -> 0);
     private Consumer<String> outputSink = ignored -> {};
     private Function<String, Object> objectFactory = path -> null;
     private Function<String, Object> objectLoader = path -> null;
@@ -410,6 +412,29 @@ public final class RuntimeContext {
         }
     }
 
+    public Object invokeOptionalObject(Object target, String methodName, Object... args) {
+        if (target == null) {
+            return 0;
+        }
+
+        Object[] actualArgs = args == null ? new Object[0] : args;
+        try {
+            InvocationPlan invocation = findOptionalInvocation(target.getClass(), methodName, actualArgs);
+            return withCurrentObject(target, () -> {
+                try {
+                    return invocation.method().invoke(target, invocation.arguments());
+                } catch (ReflectiveOperationException e) {
+                    throw new IllegalArgumentException(
+                            "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(target)
+                                    + causeSummary(e),
+                            e);
+                }
+            });
+        } catch (NoSuchMethodException e) {
+            return 0;
+        }
+    }
+
     private Object invokeObjectPreservingCurrentObject(Object target, String methodName, Object... args) {
         if (target == null) {
             return 0;
@@ -692,6 +717,10 @@ public final class RuntimeContext {
     }
 
     public void registerVerb(String verb) {
+        registerVerb(verb, false);
+    }
+
+    public void registerVerb(String verb, boolean prefixMatch) {
         Objects.requireNonNull(verb, "verb");
         Deque<String> pendingActions = pendingActionStack.get();
         if (pendingActions.isEmpty()) {
@@ -708,15 +737,35 @@ public final class RuntimeContext {
         commandActions
                 .computeIfAbsent(actor, ignored -> new LinkedHashMap<>())
                 .computeIfAbsent(verb, ignored -> new ArrayList<>())
-                .add(new CommandAction(handler, methodName));
+                .add(new CommandAction(handler, methodName, prefixMatch, scopedCommandRegistrationDepth.get() == 0));
     }
 
     public void clearCommandActions(Object actor) {
-        commandActions.remove(actor);
+        Map<String, List<CommandAction>> actionsByVerb = commandActions.get(actor);
+        if (actionsByVerb == null) {
+            return;
+        }
+        for (List<CommandAction> actions : actionsByVerb.values()) {
+            actions.removeIf(action -> !action.persistent());
+        }
+        actionsByVerb.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+        if (actionsByVerb.isEmpty()) {
+            commandActions.remove(actor);
+        }
     }
 
     public void clearPendingActionMethods() {
         pendingActionStack.get().clear();
+    }
+
+    public <T> T withScopedCommandRegistration(Supplier<T> action) {
+        Objects.requireNonNull(action, "action");
+        scopedCommandRegistrationDepth.set(scopedCommandRegistrationDepth.get() + 1);
+        try {
+            return action.get();
+        } finally {
+            scopedCommandRegistrationDepth.set(scopedCommandRegistrationDepth.get() - 1);
+        }
     }
 
     public Object dispatchCommand(Object actor, String commandLine) {
@@ -739,9 +788,7 @@ public final class RuntimeContext {
             }
         }
 
-        List<CommandAction> actions = commandActions
-                .getOrDefault(actor, Map.of())
-                .getOrDefault(verb, List.of());
+        List<CommandAction> actions = commandActionsFor(actor, verb);
         commandVerbStack.get().push(verb);
         try {
             for (CommandAction action : actions) {
@@ -758,6 +805,22 @@ public final class RuntimeContext {
             commandVerbStack.get().pop();
         }
         return 0;
+    }
+
+    private List<CommandAction> commandActionsFor(Object actor, String verb) {
+        Map<String, List<CommandAction>> actionsByVerb = commandActions.getOrDefault(actor, Map.of());
+        List<CommandAction> actions = new ArrayList<>(actionsByVerb.getOrDefault(verb, List.of()));
+        for (Map.Entry<String, List<CommandAction>> entry : actionsByVerb.entrySet()) {
+            if (entry.getKey().equals(verb) || !verb.startsWith(entry.getKey())) {
+                continue;
+            }
+            for (CommandAction action : entry.getValue()) {
+                if (action.prefixMatch()) {
+                    actions.add(action);
+                }
+            }
+        }
+        return actions;
     }
 
     public int setLight(int delta) {
@@ -832,6 +895,29 @@ public final class RuntimeContext {
                 throw exactMiss;
             }
             return new InvocationPlan(best, padMissingArguments(best, args));
+        }
+    }
+
+    private InvocationPlan findOptionalInvocation(Class<?> targetClass, String methodName, Object[] args)
+            throws NoSuchMethodException {
+        try {
+            return findInvocation(targetClass, methodName, args);
+        } catch (NoSuchMethodException exactMiss) {
+            Method best = null;
+            for (Method method : targetClass.getMethods()) {
+                if (!method.getName().equals(methodName) || method.getParameterCount() > args.length) {
+                    continue;
+                }
+                if (best == null || method.getParameterCount() > best.getParameterCount()) {
+                    best = method;
+                }
+            }
+            if (best == null) {
+                throw exactMiss;
+            }
+            Object[] trimmed = new Object[best.getParameterCount()];
+            System.arraycopy(args, 0, trimmed, 0, trimmed.length);
+            return new InvocationPlan(best, trimmed);
         }
     }
 
@@ -965,7 +1051,7 @@ public final class RuntimeContext {
         return identifier.toString().equals(objectId(object));
     }
 
-    private record CommandAction(Object handler, String methodName) {}
+    private record CommandAction(Object handler, String methodName, boolean prefixMatch, boolean persistent) {}
 
     private record PendingSessionInput(Object handler, String methodName, boolean noEcho) {}
 

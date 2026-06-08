@@ -13,7 +13,7 @@ void add_action(string method, string verb) {
 }
 
 void add_action(string method, string verb, int flag) {
-  jvmud_add_action(method, verb);
+  jvmud_add_action(method, verb, flag);
 }
 
 void add_verb(string verb) {
@@ -191,7 +191,7 @@ status pointerp(mixed value) {
   return jvmud_is_array(value);
 }
 
-object present(string id) {
+object present(mixed id) {
   return jvmud_find_entity(id);
 }
 

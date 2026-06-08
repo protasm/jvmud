@@ -702,24 +702,20 @@ public final class BytecodeCompiler {
 
     private void emitDynamicInvoke(
             MethodVisitor mv, String internalName, IRMethod method, IRDynamicInvoke dynamicInvoke) {
-        emitLocalLoad(mv, dynamicInvoke.targetLocal());
-        mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Object", "getClass", "()Ljava/lang/Class;", false);
-        mv.visitLdcInsn(dynamicInvoke.methodName());
-        emitParamTypesArray(mv, internalName, method, dynamicInvoke.arguments());
         mv.visitMethodInsn(
-                INVOKEVIRTUAL,
-                "java/lang/Class",
-                "getMethod",
-                "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;",
+                INVOKESTATIC,
+                "io/github/protasm/jvmud/compiler/runtime/RuntimeContextHolder",
+                "requireCurrent",
+                "()Lio/github/protasm/jvmud/compiler/runtime/RuntimeContext;",
                 false);
-        mv.visitInsn(SWAP);
+        emitLocalLoad(mv, dynamicInvoke.targetLocal());
+        mv.visitLdcInsn(dynamicInvoke.methodName());
         emitArgumentsArray(mv, internalName, method, dynamicInvoke.arguments());
         mv.visitMethodInsn(
                 INVOKEVIRTUAL,
-                "java/lang/reflect/Method",
-                "invoke",
-                "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+                "io/github/protasm/jvmud/compiler/runtime/RuntimeContext",
+                "invokeOptionalObject",
+                "(Ljava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;",
                 false);
         if (dynamicInvoke.type() != null && dynamicInvoke.type().kind() == RuntimeValueKind.VOID) {
             mv.visitInsn(POP);
@@ -743,7 +739,7 @@ public final class BytecodeCompiler {
         mv.visitMethodInsn(
                 INVOKEVIRTUAL,
                 "io/github/protasm/jvmud/compiler/runtime/RuntimeContext",
-                "invokeObject",
+                "invokeOptionalObject",
                 "(Ljava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;",
                 false);
         if (dynamicInvoke.type() != null && dynamicInvoke.type().kind() == RuntimeValueKind.VOID) {
@@ -755,24 +751,20 @@ public final class BytecodeCompiler {
 
     private void emitDynamicInvokeField(
             MethodVisitor mv, String internalName, IRMethod method, IRDynamicInvokeField dynamicInvokeField) {
-        emitFieldLoad(mv, internalName, dynamicInvokeField.targetField());
-        mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Object", "getClass", "()Ljava/lang/Class;", false);
-        mv.visitLdcInsn(dynamicInvokeField.methodName());
-        emitParamTypesArray(mv, internalName, method, dynamicInvokeField.arguments());
         mv.visitMethodInsn(
-                INVOKEVIRTUAL,
-                "java/lang/Class",
-                "getMethod",
-                "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;",
+                INVOKESTATIC,
+                "io/github/protasm/jvmud/compiler/runtime/RuntimeContextHolder",
+                "requireCurrent",
+                "()Lio/github/protasm/jvmud/compiler/runtime/RuntimeContext;",
                 false);
-        mv.visitInsn(SWAP);
+        emitFieldLoad(mv, internalName, dynamicInvokeField.targetField());
+        mv.visitLdcInsn(dynamicInvokeField.methodName());
         emitArgumentsArray(mv, internalName, method, dynamicInvokeField.arguments());
         mv.visitMethodInsn(
                 INVOKEVIRTUAL,
-                "java/lang/reflect/Method",
-                "invoke",
-                "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+                "io/github/protasm/jvmud/compiler/runtime/RuntimeContext",
+                "invokeOptionalObject",
+                "(Ljava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;",
                 false);
         if (dynamicInvokeField.type() != null && dynamicInvokeField.type().kind() == RuntimeValueKind.VOID) {
             mv.visitInsn(POP);

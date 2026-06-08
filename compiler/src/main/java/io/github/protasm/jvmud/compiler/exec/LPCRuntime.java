@@ -337,6 +337,7 @@ public final class LPCRuntime {
             runtimeContext.clearCommandActions(actor);
             runtimeContext.clearPendingActionMethods();
             try {
+                return runtimeContext.withScopedCommandRegistration(() -> {
                 invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, actor);
                 Object environment = runtimeContext.environment(actor);
                 if (environment != null) {
@@ -346,10 +347,11 @@ public final class LPCRuntime {
                 }
                 forEachInventory(actor, object ->
                         invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, object));
+                    return null;
+                });
             } finally {
                 runtimeContext.clearPendingActionMethods();
             }
-            return null;
         }));
     }
 
@@ -359,6 +361,13 @@ public final class LPCRuntime {
         Objects.requireNonNull(commandLine, "commandLine");
         return withRuntimeContext(() -> runtimeContext.withCommandActor(actor, () ->
                 runtimeContext.dispatchCommand(actor, commandLine)));
+    }
+
+    /** Runs an operation with the supplied object as the active command actor. */
+    public <T> T withCommandActor(Object actor, Supplier<T> action) {
+        Objects.requireNonNull(actor, "actor");
+        Objects.requireNonNull(action, "action");
+        return withRuntimeContext(() -> runtimeContext.withCommandActor(actor, action));
     }
 
     /** Returns whether a persona is waiting for captured session input. */

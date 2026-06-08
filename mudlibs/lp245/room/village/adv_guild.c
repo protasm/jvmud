@@ -177,6 +177,9 @@ status cost_for_level() {
   player_ob = this_player();
   level = call_other(player_ob, "query_level", 0);
 
+  if (level < 0)
+    level = 0;
+
   cost = raise_cost(player_ob->query_str());
 
   if (cost)
@@ -491,17 +494,29 @@ void raise_con() {
 * Compute cost for raising a stat one level. 'base' is the level that
 * you have now, but never less than 1.
 */
+int raise_cost(int base) {
+  return raise_cost(base, 0);
+}
+
 int raise_cost(int base, int action) {
-  int cost, saldo;
+  int cost, saldo, current_level;
+
+  if (base < 1)
+    base = 1;
 
   if (base >= 20)
     return 0;
 
   cost = (get_next_exp(base) - get_next_exp(base - 1)) / STAT_COST;
 
+  current_level = this_player()->query_level();
+
+  if (current_level < 1)
+    current_level = 1;
+
   saldo = this_player()->query_exp() -
 
-  get_next_exp(this_player()->query_level()- 1);
+  get_next_exp(current_level - 1);
 
   if (action == 0)
     return cost;
