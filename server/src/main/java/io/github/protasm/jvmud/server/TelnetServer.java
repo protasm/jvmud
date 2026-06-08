@@ -1,10 +1,12 @@
 package io.github.protasm.jvmud.server;
 
+import io.github.protasm.jvmud.runtime.WorldClock;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,6 +25,7 @@ public final class TelnetServer implements AutoCloseable {
     private final String configObjectPath;
     private final ExecutorService sessions;
     private TelnetMud mud;
+    private WorldClock worldClock;
     private ServerSocket serverSocket;
     private Thread acceptThread;
     private volatile boolean running;
@@ -123,6 +126,7 @@ public final class TelnetServer implements AutoCloseable {
             return;
         }
         mud = TelnetMud.boot(mudlibRoot, configObjectPath);
+        startWorldClock();
         serverSocket = new ServerSocket(requestedPort, 50, InetAddress.getByName(bindAddress));
         running = true;
         acceptThread = new Thread(this::acceptLoop, "jvmud-start-accept");
@@ -153,6 +157,10 @@ public final class TelnetServer implements AutoCloseable {
     @Override
     public synchronized void close() {
         running = false;
+        if (worldClock != null) {
+            worldClock.close();
+            worldClock = null;
+        }
         if (serverSocket != null) {
             try {
                 serverSocket.close();
@@ -161,6 +169,15 @@ public final class TelnetServer implements AutoCloseable {
             }
         }
         sessions.shutdownNow();
+    }
+
+    private void startWorldClock() {
+        Duration tickInterval = mud.worldTickInterval();
+        if (tickInterval.isZero()) {
+            return;
+        }
+        worldClock = new WorldClock(mud::advanceWorldTick, tickInterval);
+        worldClock.start();
     }
 
     private void acceptLoop() {

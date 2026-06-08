@@ -138,6 +138,59 @@ final class TelnetServerTest {
     }
 
     @Test
+    void hostedMudlibWorldAdvancesConfiguredTemporalTicks() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve("jvmud/config"), """
+                mfun_object = jvmud/mfuns
+                player_object = obj/player
+                initial_place = room/village/vill_green
+                lifecycle.player_session_connected = logon
+                temporal_tick_method = heart_beat
+                temporal_tick_interval = 0.01
+                """);
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void write(mixed value) {
+                    jvmud_write(value);
+                }
+
+                void set_heart_beat(int enabled) {
+                    jvmud_schedule_recurring_tick(enabled, 0);
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
+                string short() {
+                    return "green";
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/player.c"), """
+                void logon() {
+                    set_heart_beat(1);
+                }
+
+                void heart_beat() {
+                    write("world tick delivered\\n");
+                    set_heart_beat(0);
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+
+                String tick = readUntilContains(socket, "world tick delivered");
+
+                assertTrue(tick.contains("JVMud telnet."));
+                assertTrue(tick.contains("world tick delivered"));
+            }
+        }
+    }
+
+    @Test
     void telnetLookFallbackAcceptsNoArgumentRoomLong() throws Exception {
         installMfunShim();
         Files.createDirectories(tempDir.resolve("room/village"));

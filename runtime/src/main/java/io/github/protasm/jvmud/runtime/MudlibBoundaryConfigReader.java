@@ -1,8 +1,11 @@
 package io.github.protasm.jvmud.runtime;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,7 +39,7 @@ public final class MudlibBoundaryConfigReader {
         addLifecycleEvents(builder, allValues(values, "handled_lifecycle_events"));
         addLifecycleMethods(builder, values);
         addString(builder::temporalTickMethod, firstValue(values, "temporal_tick_method"));
-        addPositiveInt(builder::temporalTickIntervalSeconds, firstValue(values, "temporal_tick_interval"));
+        addPositiveDuration(builder::temporalTickInterval, firstValue(values, "temporal_tick_interval"));
 
         return builder.build();
     }
@@ -125,14 +128,43 @@ public final class MudlibBoundaryConfigReader {
         }
     }
 
-    private static void addPositiveInt(java.util.function.IntConsumer setter, String value) {
+    private static void addPositiveDuration(java.util.function.Consumer<Duration> setter, String value) {
         if (value == null || value.isBlank()) {
             return;
         }
-        int parsed = Integer.parseInt(value.trim());
-        if (parsed > 0) {
+        Duration parsed = parseDuration(value.trim());
+        if (!parsed.isZero()) {
             setter.accept(parsed);
         }
+    }
+
+    private static Duration parseDuration(String value) {
+        String normalized = value.toLowerCase();
+        BigDecimal multiplier;
+        String amount;
+        if (normalized.endsWith("ms")) {
+            amount = normalized.substring(0, normalized.length() - 2).trim();
+            multiplier = BigDecimal.valueOf(1_000_000L);
+        } else if (normalized.endsWith("millisecond") || normalized.endsWith("milliseconds")) {
+            amount = normalized.replaceFirst("milliseconds?$", "").trim();
+            multiplier = BigDecimal.valueOf(1_000_000L);
+        } else if (normalized.endsWith("s")) {
+            amount = normalized.substring(0, normalized.length() - 1).trim();
+            multiplier = BigDecimal.valueOf(1_000_000_000L);
+        } else if (normalized.endsWith("second") || normalized.endsWith("seconds")) {
+            amount = normalized.replaceFirst("seconds?$", "").trim();
+            multiplier = BigDecimal.valueOf(1_000_000_000L);
+        } else {
+            amount = normalized;
+            multiplier = BigDecimal.valueOf(1_000_000_000L);
+        }
+
+        BigDecimal numeric = new BigDecimal(amount);
+        if (numeric.signum() < 0) {
+            throw new IllegalArgumentException("Temporal tick interval cannot be negative.");
+        }
+        long nanos = numeric.multiply(multiplier).setScale(0, RoundingMode.HALF_UP).longValueExact();
+        return Duration.ofNanos(nanos);
     }
 
     private static void addPreloadObjects(MudlibBoundary.Builder builder, List<String> declaredObjects) {

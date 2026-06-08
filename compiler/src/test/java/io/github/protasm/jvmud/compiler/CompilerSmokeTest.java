@@ -1350,7 +1350,7 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void setHeartBeatSchedulesCurrentObjectAtDefaultInterval() {
+    void setHeartBeatSchedulesCurrentObjectEveryWorldTickByDefault() {
         WorldScheduler scheduler = new WorldScheduler();
         LPCRuntime runtime = temporalRuntime(scheduler, 2);
 
@@ -1372,12 +1372,9 @@ final class CompilerSmokeTest {
 
         object.invoke("start");
         scheduler.advanceTo(1);
-        assertEquals(0, object.invoke("query_ticks"));
-
-        scheduler.advanceTo(2);
         assertEquals(1, object.invoke("query_ticks"));
 
-        scheduler.advanceTo(4);
+        scheduler.advanceTo(2);
         assertEquals(2, object.invoke("query_ticks"));
     }
 

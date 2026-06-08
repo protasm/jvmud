@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -104,7 +105,7 @@ final class MudlibBoundaryTest {
                 lifecycle.player_connected = player_connected
                 lifecycle.player-bound = player_bound
                 temporal_tick_method = heart_beat
-                temporal_tick_interval = 2
+                temporal_tick_interval = 0.25
                 """);
 
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/config");
@@ -125,6 +126,7 @@ final class MudlibBoundaryTest {
         assertEquals("player_connected", boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElseThrow());
         assertEquals("player_bound", boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_OBJECT_BOUND).orElseThrow());
         assertEquals("heart_beat", boundary.temporalTickMethod().orElseThrow());
-        assertEquals(2, boundary.temporalTickIntervalSeconds());
+        assertEquals(Duration.ofMillis(250), boundary.temporalTickInterval());
+        assertEquals(0, boundary.temporalTickIntervalSeconds());
     }
 }

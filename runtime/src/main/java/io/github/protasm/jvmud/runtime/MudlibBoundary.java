@@ -1,5 +1,6 @@
 package io.github.protasm.jvmud.runtime;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -27,7 +28,7 @@ public final class MudlibBoundary {
     private final String preloadFilePath;
     private final Set<String> preloadObjectPaths;
     private final String temporalTickMethod;
-    private final int temporalTickIntervalSeconds;
+    private final Duration temporalTickInterval;
     private final Set<MudlibLifecycleEvent> lifecycleEvents;
     private final Map<MudlibLifecycleEvent, String> lifecycleMethods;
 
@@ -42,7 +43,7 @@ public final class MudlibBoundary {
         this.preloadFilePath = normalizeOptionalPath(builder.preloadFilePath);
         this.preloadObjectPaths = normalizePathSet(builder.preloadObjectPaths);
         this.temporalTickMethod = normalizeOptionalText(builder.temporalTickMethod);
-        this.temporalTickIntervalSeconds = builder.temporalTickIntervalSeconds;
+        this.temporalTickInterval = builder.temporalTickInterval;
         this.lifecycleEvents = immutableCopy(builder.lifecycleEvents);
         this.lifecycleMethods = immutableCopy(builder.lifecycleMethods);
     }
@@ -107,9 +108,14 @@ public final class MudlibBoundary {
         return Optional.ofNullable(temporalTickMethod);
     }
 
-    /** Returns the configured temporal tick interval in seconds, or {@code 0} when disabled. */
+    /** Returns the configured wall-clock interval for one world tick, or {@link Duration#ZERO} when disabled. */
+    public Duration temporalTickInterval() {
+        return temporalTickInterval;
+    }
+
+    /** Returns the configured temporal tick interval in whole seconds, or {@code 0} when disabled. */
     public int temporalTickIntervalSeconds() {
-        return temporalTickIntervalSeconds;
+        return Math.toIntExact(temporalTickInterval.getSeconds());
     }
 
     /** Returns lifecycle events the mudlib has declared interest in handling. */
@@ -145,7 +151,7 @@ public final class MudlibBoundary {
                 || preloadFilePath != null
                 || !preloadObjectPaths.isEmpty()
                 || temporalTickMethod != null
-                || temporalTickIntervalSeconds > 0
+                || !temporalTickInterval.isZero()
                 || !lifecycleEvents.isEmpty()
                 || !lifecycleMethods.isEmpty();
     }
@@ -213,7 +219,7 @@ public final class MudlibBoundary {
         private final java.util.LinkedHashSet<String> preloadObjectPaths =
                 new java.util.LinkedHashSet<>();
         private String temporalTickMethod;
-        private int temporalTickIntervalSeconds;
+        private Duration temporalTickInterval = Duration.ZERO;
         private final EnumSet<MudlibLifecycleEvent> lifecycleEvents =
                 EnumSet.noneOf(MudlibLifecycleEvent.class);
         private final EnumMap<MudlibLifecycleEvent, String> lifecycleMethods =
@@ -281,13 +287,22 @@ public final class MudlibBoundary {
             return this;
         }
 
-        /** Sets the temporal tick interval in seconds. */
+        /** Sets the wall-clock interval for one world tick. */
+        public Builder temporalTickInterval(Duration temporalTickInterval) {
+            Objects.requireNonNull(temporalTickInterval, "temporalTickInterval");
+            if (temporalTickInterval.isNegative()) {
+                throw new IllegalArgumentException("Temporal tick interval cannot be negative.");
+            }
+            this.temporalTickInterval = temporalTickInterval;
+            return this;
+        }
+
+        /** Sets the wall-clock interval for one world tick in whole seconds. */
         public Builder temporalTickIntervalSeconds(int temporalTickIntervalSeconds) {
             if (temporalTickIntervalSeconds < 0) {
                 throw new IllegalArgumentException("Temporal tick interval cannot be negative.");
             }
-            this.temporalTickIntervalSeconds = temporalTickIntervalSeconds;
-            return this;
+            return temporalTickInterval(Duration.ofSeconds(temporalTickIntervalSeconds));
         }
 
         /** Declares interest in a lifecycle event without naming a specific method. */

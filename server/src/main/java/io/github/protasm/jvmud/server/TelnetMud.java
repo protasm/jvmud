@@ -12,6 +12,7 @@ import io.github.protasm.jvmud.runtime.Place;
 import io.github.protasm.jvmud.runtime.WorldRuntime;
 import java.io.PrintWriter;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Objects;
 
 /** Shared runtime state for a persistent Telnet mud process. */
@@ -70,6 +71,15 @@ final class TelnetMud {
 
     Path mudlibRoot() {
         return mudlibRoot;
+    }
+
+    Duration worldTickInterval() {
+        return runtime.mudlibBoundary().temporalTickInterval();
+    }
+
+    synchronized void advanceWorldTick() {
+        worldRuntime.scheduler().advanceBy(1);
+        runtime.clearOutputTranscript();
     }
 
     String startingRoomPath() {

@@ -19,7 +19,7 @@ public final class WorldScheduler {
     private long nextOrder = 1;
 
     /** Returns the current deterministic world tick. */
-    public long currentTick() {
+    public synchronized long currentTick() {
         return currentTick;
     }
 
@@ -28,7 +28,7 @@ public final class WorldScheduler {
      *
      * @return a handle that can cancel the scheduled action before it runs
      */
-    public ScheduledTask scheduleAfter(long delayTicks, Runnable action) {
+    public synchronized ScheduledTask scheduleAfter(long delayTicks, Runnable action) {
         requireNonNegative(delayTicks, "delayTicks");
         Objects.requireNonNull(action, "action");
         ScheduledTask task = new ScheduledTask(this, nextTaskId++);
@@ -43,7 +43,7 @@ public final class WorldScheduler {
      * @param intervalTicks positive interval between later runs
      * @return a handle that can cancel future occurrences
      */
-    public ScheduledTask scheduleRecurring(long initialDelayTicks, long intervalTicks, Runnable action) {
+    public synchronized ScheduledTask scheduleRecurring(long initialDelayTicks, long intervalTicks, Runnable action) {
         requireNonNegative(initialDelayTicks, "initialDelayTicks");
         if (intervalTicks <= 0) {
             throw new IllegalArgumentException("intervalTicks must be greater than zero.");
@@ -55,7 +55,7 @@ public final class WorldScheduler {
     }
 
     /** Advances world time by the supplied non-negative number of ticks. */
-    public void advanceBy(long ticks) {
+    public synchronized void advanceBy(long ticks) {
         requireNonNegative(ticks, "ticks");
         advanceTo(currentTick + ticks);
     }
@@ -65,7 +65,7 @@ public final class WorldScheduler {
      *
      * @throws IllegalArgumentException if the target would move time backward
      */
-    public void advanceTo(long targetTick) {
+    public synchronized void advanceTo(long targetTick) {
         if (targetTick < currentTick) {
             throw new IllegalArgumentException("targetTick cannot move world time backward.");
         }
@@ -85,7 +85,7 @@ public final class WorldScheduler {
         currentTick = targetTick;
     }
 
-    boolean cancel(ScheduledTask task) {
+    synchronized boolean cancel(ScheduledTask task) {
         Objects.requireNonNull(task, "task");
         if (task.cancelled()) {
             return false;

@@ -622,9 +622,7 @@ public final class RuntimeContext {
             return;
         }
 
-        long intervalTicks = intervalSeconds > 0
-                ? intervalSeconds
-                : Math.max(1, mudlibBoundary.temporalTickIntervalSeconds());
+        long intervalTicks = intervalSeconds > 0 ? intervalSeconds : 1;
         ScheduledTask task = scheduler.scheduleRecurring(
                 intervalTicks,
                 intervalTicks,
