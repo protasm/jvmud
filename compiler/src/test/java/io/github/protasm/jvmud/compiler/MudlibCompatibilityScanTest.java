@@ -355,9 +355,11 @@ final class MudlibCompatibilityScanTest {
         case "clone_object" -> support("Partial", "Delegates to the runtime object factory; behavior depends on loaded source/object lifecycle.");
         case "command" -> support("Partial", "Dispatches a command line against an entity's registered command actions.");
         case "crypt" -> support("Stubbed", "Mudlib mfun returns deterministic placeholder text for development login flow.");
+        case "ctime" -> support("Implemented", "Mudlib mfun formats Unix timestamps through JVMud time formatting.");
         case "destruct" -> support("Partial", "Removes objects and inventory links from RuntimeContext.");
         case "enable_commands" -> support("Partial", "Marks the current entity as command-enabled for mudlib compatibility checks.");
         case "environment" -> support("Implemented", "RuntimeContext tracks object environments.");
+        case "extract" -> support("Implemented", "Mudlib mfun delegates to JVMud inclusive text slicing.");
         case "file_name" -> support("Implemented", "Returns the runtime object id for loaded objects.");
         case "first_inventory" -> support("Implemented", "RuntimeContext can walk the first child in an inventory.");
         case "find_living" -> support("Partial", "Looks up objects registered through set_living_name.");
@@ -374,8 +376,8 @@ final class MudlibCompatibilityScanTest {
         case "query_verb" -> support("Implemented", "Backed by the active command dispatch verb.");
         case "random" -> support("Stubbed", "Mudlib mfun currently returns 0 for deterministic development behavior.");
         case "remove_call_out" -> support("Stubbed", "Engine always returns -1.");
-        case "restore_object" -> support("Stubbed", "Mudlib mfun currently returns 0 until persistence policy exists.");
-        case "save_object" -> support("Stubbed", "Mudlib mfun currently returns 1 without durable storage.");
+        case "restore_object" -> support("Partial", "Mudlib mfun restores scalar fields from mudlib-rooted LPC object state.");
+        case "save_object" -> support("Partial", "Mudlib mfun saves scalar fields to mudlib-rooted LPC object state.");
         case "say" -> support("Partial", "Writes to the shared output sink; no room/session broadcast routing yet.");
         case "set_heart_beat" -> support("Implemented", "Schedules or cancels a recurring temporal tick for the current object.");
         case "set_light" -> support("Implemented", "RuntimeContext tracks per-object light deltas.");
@@ -392,7 +394,6 @@ final class MudlibCompatibilityScanTest {
         case "add_worth",
                 "creator",
                 "ed",
-                "extract",
                 "file_size",
                 "filter_objects",
                 "find_object",

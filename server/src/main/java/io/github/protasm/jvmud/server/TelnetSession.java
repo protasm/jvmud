@@ -63,7 +63,7 @@ final class TelnetSession implements Runnable {
             // A telnet client dropping the socket is a normal session ending.
         } finally {
             if (session != null) {
-                mud.detachPersona(session.persona);
+                session.detach(mud);
             }
         }
     }
@@ -93,7 +93,10 @@ final class TelnetSession implements Runnable {
             out.println("  /help  Show this command reference.");
             out.println("  /quit  Disconnect this session.");
         }
-        case "quit", "exit", "q" -> session.running = false;
+        case "quit", "exit", "q" -> {
+            session.detach(mud);
+            session.running = false;
+        }
         default -> out.println("Unknown telnet command: /" + commandLine);
         }
     }
@@ -165,9 +168,18 @@ final class TelnetSession implements Runnable {
     private static final class SessionState {
         private final TelnetMud.Persona persona;
         private boolean running = true;
+        private boolean detached;
 
         private SessionState(TelnetMud.Persona persona) {
             this.persona = persona;
+        }
+
+        private void detach(TelnetMud mud) {
+            if (detached) {
+                return;
+            }
+            mud.detachPersona(persona);
+            detached = true;
         }
     }
 }

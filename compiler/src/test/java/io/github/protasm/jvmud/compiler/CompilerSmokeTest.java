@@ -645,12 +645,84 @@ final class CompilerSmokeTest {
                 string capitalized() {
                     return jvmud_capitalize_text("alice");
                 }
+
+                string epoch() {
+                    return jvmud_format_time(86400);
+                }
                 """);
 
         assertEquals("Welcome to JVMud.\n", reader.invoke("welcome"));
         assertEquals(0, reader.invoke("escaped"));
         assertEquals("mixed", reader.invoke("lower"));
         assertEquals("Alice", reader.invoke("capitalized"));
+        assertTrue(((String) reader.invoke("epoch")).contains("1970"));
+    }
+
+    @Test
+    void lpcObjectStatePersistenceWritesJsonAndRestoresLegacyProperties() throws Exception {
+        Files.createDirectories(tempDir.resolve("players"));
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        LPCObjectHandle stateful = runtime.loadSource("obj/stateful.c", """
+                string name;
+                int level;
+                mixed note;
+
+                void populate() {
+                    name = "alice";
+                    level = 7;
+                    note = "hello";
+                    jvmud_save_lpc_object_state("players/alice");
+                }
+
+                void clear() {
+                    name = "";
+                    level = 0;
+                    note = 0;
+                }
+
+                void restore() {
+                    jvmud_restore_lpc_object_state("players/alice");
+                }
+
+                string query_name() {
+                    return name;
+                }
+
+                int query_level() {
+                    return level;
+                }
+
+                mixed query_note() {
+                    return note;
+                }
+                """);
+
+        stateful.invoke("populate");
+        String json = Files.readString(tempDir.resolve("players/alice.o"));
+        assertTrue(json.contains("\"format\""), json);
+        assertTrue(json.contains("\"jvmud.lpc-object-state\""), json);
+        assertTrue(json.contains("\"obj.stateful.name\""), json);
+        assertTrue(json.contains("\"value\""), json);
+        assertTrue(json.contains("\"alice\""), json);
+
+        stateful.invoke("clear");
+        stateful.invoke("restore");
+        assertEquals("alice", stateful.invoke("query_name"));
+        assertEquals(7, stateful.invoke("query_level"));
+        assertEquals("hello", stateful.invoke("query_note"));
+
+        Files.writeString(tempDir.resolve("players/alice.o"), """
+                obj.stateful.name=string\\:legacy
+                obj.stateful.level=int\\:4
+                obj.stateful.note=null\\:
+                """);
+        stateful.invoke("clear");
+        stateful.invoke("restore");
+        assertEquals("legacy", stateful.invoke("query_name"));
+        assertEquals(4, stateful.invoke("query_level"));
+        assertNull(stateful.invoke("query_note"));
     }
 
     @Test
@@ -684,6 +756,18 @@ final class CompilerSmokeTest {
                 string capitalize(mixed value) {
                     return jvmud_capitalize_text(value);
                 }
+
+                string ctime(int timestamp) {
+                    return jvmud_format_time(timestamp);
+                }
+
+                string extract(mixed value, int from) {
+                    return jvmud_extract_text(value, from);
+                }
+
+                string extract(mixed value, int from, int to) {
+                    return jvmud_extract_text(value, from, to);
+                }
                 """);
         Files.writeString(tempDir.resolve("caller.c"), """
                 int show_welcome() {
@@ -692,6 +776,14 @@ final class CompilerSmokeTest {
 
                 string normalized() {
                     return capitalize(lower_case("ALICE"));
+                }
+
+                string epoch() {
+                    return ctime(86400);
+                }
+
+                string slice() {
+                    return extract("abcdef", 1, 3) + ":" + extract("abcdef", 3);
                 }
                 """);
 
@@ -706,6 +798,8 @@ final class CompilerSmokeTest {
         assertEquals(1, caller.invoke("show_welcome"));
         assertEquals("Welcome through mfun.\n", runtime.outputTranscript());
         assertEquals("Alice", caller.invoke("normalized"));
+        assertTrue(((String) caller.invoke("epoch")).contains("1970"));
+        assertEquals("bcd:def", caller.invoke("slice"));
     }
 
     @Test

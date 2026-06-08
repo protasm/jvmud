@@ -1,0 +1,16 @@
+JVMud LP245 help
+
+Common commands:
+  look, examine thing, exa thing
+  north, south, east, west
+  get thing, get all, drop thing
+  inventory, i, score, save, quit
+  say message, tell player message
+  kill creature, stop
+
+Objects can add their own commands when you carry them or stand near them.
+For example, a torch-like stick can usually be used with:
+  light stick
+  extinguish stick
+
+Type help topic for more detail when a topic exists.

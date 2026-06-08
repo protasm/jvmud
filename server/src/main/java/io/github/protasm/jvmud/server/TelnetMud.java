@@ -24,6 +24,7 @@ final class TelnetMud {
     private final Object startingRoomObject;
     private final String playerObjectPath;
     private final String playerSessionConnectedMethod;
+    private final String playerSessionDisconnectedMethod;
     private int nextPersonaId = 1;
 
     private TelnetMud(
@@ -33,7 +34,8 @@ final class TelnetMud {
             String startingRoomPath,
             Object startingRoomObject,
             String playerObjectPath,
-            String playerSessionConnectedMethod) {
+            String playerSessionConnectedMethod,
+            String playerSessionDisconnectedMethod) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
@@ -41,6 +43,7 @@ final class TelnetMud {
         this.startingRoomObject = Objects.requireNonNull(startingRoomObject, "startingRoomObject");
         this.playerObjectPath = playerObjectPath;
         this.playerSessionConnectedMethod = playerSessionConnectedMethod;
+        this.playerSessionDisconnectedMethod = playerSessionDisconnectedMethod;
     }
 
     static TelnetMud boot(Path mudlibRoot, String configObjectPath) {
@@ -66,7 +69,8 @@ final class TelnetMud {
                 result.startingRoom(),
                 startingRoomObject,
                 boundary.playerObjectPath().orElse(null),
-                boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null));
+                boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null),
+                boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_DISCONNECTED).orElse(null));
     }
 
     Path mudlibRoot() {
@@ -162,8 +166,17 @@ final class TelnetMud {
 
     synchronized void detachPersona(Persona persona) {
         if (persona != null) {
+            invokePlayerSessionDisconnected(persona.actor());
             runtime.unbindSession(persona.sessionId());
         }
+    }
+
+    private void invokePlayerSessionDisconnected(Object actor) {
+        if (playerSessionDisconnectedMethod == null) {
+            return;
+        }
+        runtime.invokeObject(actor, playerSessionDisconnectedMethod);
+        runtime.clearOutputTranscript();
     }
 
     synchronized Object dispatch(Persona persona, PrintWriter out, String commandLine) {

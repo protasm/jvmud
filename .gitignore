@@ -1,1 +1,2 @@
 target/
+mudlibs/lp245/players/*.o

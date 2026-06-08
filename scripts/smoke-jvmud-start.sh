@@ -17,6 +17,7 @@ PY
 TMP_BASE=${TMPDIR:-/tmp}
 TMP_BASE=${TMP_BASE%/}
 LOG_FILE=$(mktemp "$TMP_BASE/jvmud-start-smoke.XXXXXX")
+SMOKE_PLAYER_FILE="mudlibs/lp245/players/smoketest.o"
 SERVER_PID=
 
 cleanup() {
@@ -27,11 +28,14 @@ cleanup() {
   fi
   if [[ "$status" -eq 0 ]]; then
     rm -f "$LOG_FILE"
+    rm -f "$SMOKE_PLAYER_FILE"
   else
     echo "server log: $LOG_FILE" >&2
   fi
 }
 trap 'status=$?; cleanup "$status"; exit "$status"' EXIT
+
+rm -f "$SMOKE_PLAYER_FILE"
 
 ./jvmud-start \
   -mudlib-dir mudlibs/lp245 \
@@ -207,6 +211,27 @@ with connect_with_retry() as sock:
         raise AssertionError(f"exa stick did not examine the bridge stick:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"exa stick reported an error:\n{transcript}")
+
+    sock.sendall(b"get all\n")
+    transcript = read_until(sock, "> ")
+    if "stick: Ok." not in transcript or "10 gold coins: Ok." not in transcript:
+        raise AssertionError(f"get all did not pick up bridge items:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"get all reported an error:\n{transcript}")
+
+    sock.sendall(b"light stick\n")
+    transcript = read_until(sock, "> ")
+    if "Ok." not in transcript and "You can see again." not in transcript:
+        raise AssertionError(f"carried stick did not expose its light action:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"light stick reported an error:\n{transcript}")
+
+    sock.sendall(b"help\n")
+    transcript = read_until(sock, "> ")
+    if "JVMud LP245 help" not in transcript or "Common commands:" not in transcript:
+        raise AssertionError(f"help did not render mudlib help text:\n{transcript}")
+    if "Error:" in transcript or "You can't do that." in transcript:
+        raise AssertionError(f"help reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
     transcript = read_until(sock, "> ")

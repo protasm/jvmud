@@ -85,15 +85,28 @@ The Eight Core Concepts
 
 6. Persistence
 
-   The world and its state endure independently of any individual
-   player's session.
+   Persistence has two related meanings in JVMud.
+
+   World Continuity is the core MUD pillar: the World and its
+   state endure independently of any individual player's session.
 
    A player may disconnect and later return to a world whose
    state has continued to exist.
 
-   Persistence does not require eternal continuity. Periodic
+   World Continuity does not require eternal continuity. Periodic
    reboots and resets are compatible with persistence provided
    that the world endures independently of individual sessions.
+
+   Save/Restore State is the persistence mode for selected state
+   that is outside active World temporality until restored. Player
+   and account state are common examples, but mudlibs may also
+   save and restore concrete Entities such as stored weapons or
+   vault contents when their policy removes those Entities from
+   active World time.
+
+   Legacy LPC names such as save_object and restore_object are
+   compatibility vocabulary for saving and restoring LPC object
+   state. They do not make Object a JVMud engine concept.
 
 7. Temporality
 
@@ -465,8 +478,8 @@ One World
 
 One Persistence Model
 
-    Provides authoritative storage and recovery
-    of world state.
+    Provides authoritative World Continuity and
+    Save/Restore State.
 
 One Temporality Model
 

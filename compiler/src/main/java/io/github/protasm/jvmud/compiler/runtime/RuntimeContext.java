@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -63,6 +64,8 @@ public final class RuntimeContext {
     private Function<String, Object> objectFactory = path -> null;
     private Function<String, Object> objectLoader = path -> null;
     private Function<String, Object> mudlibTextReader = path -> 0;
+    private BiFunction<String, Object, Integer> lpcObjectStateSaver = (path, object) -> 0;
+    private BiFunction<String, Object, Integer> lpcObjectStateRestorer = (path, object) -> 0;
     private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
     private WorldScheduler scheduler = new WorldScheduler();
     private String mfunObjectPath;
@@ -102,6 +105,14 @@ public final class RuntimeContext {
 
     public void setMudlibTextReader(Function<String, Object> mudlibTextReader) {
         this.mudlibTextReader = (mudlibTextReader != null) ? mudlibTextReader : path -> 0;
+    }
+
+    public void setLPCObjectStateSaver(BiFunction<String, Object, Integer> lpcObjectStateSaver) {
+        this.lpcObjectStateSaver = (lpcObjectStateSaver != null) ? lpcObjectStateSaver : (path, object) -> 0;
+    }
+
+    public void setLPCObjectStateRestorer(BiFunction<String, Object, Integer> lpcObjectStateRestorer) {
+        this.lpcObjectStateRestorer = (lpcObjectStateRestorer != null) ? lpcObjectStateRestorer : (path, object) -> 0;
     }
 
     public void setMfunObjectPath(String mfunObjectPath) {
@@ -360,6 +371,16 @@ public final class RuntimeContext {
 
     public Object readMudlibText(String path) {
         return mudlibTextReader.apply(path);
+    }
+
+    public int saveCurrentLPCObjectState(String path) {
+        Object object = currentObject();
+        return object != null ? lpcObjectStateSaver.apply(path, object) : 0;
+    }
+
+    public int restoreCurrentLPCObjectState(String path) {
+        Object object = currentObject();
+        return object != null ? lpcObjectStateRestorer.apply(path, object) : 0;
     }
 
     public void touchPersona(Object persona) {

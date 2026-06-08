@@ -112,6 +112,10 @@ string crypt(mixed value, mixed salt) {
   return "" + value;
 }
 
+string ctime(int timestamp) {
+  return jvmud_format_time(timestamp);
+}
+
 mixed creator(mixed ob) {
   return 0;
 }
@@ -146,6 +150,14 @@ object environment() {
 
 object environment(mixed ob) {
   return jvmud_entity_location(ob);
+}
+
+string extract(mixed value, int from) {
+  return jvmud_extract_text(value, from);
+}
+
+string extract(mixed value, int from, int to) {
+  return jvmud_extract_text(value, from, to);
 }
 
 string file_name(mixed ob) {
@@ -224,11 +236,11 @@ int remove_call_out(string method) {
 }
 
 int restore_object(string path) {
-  return 0;
+  return jvmud_restore_lpc_object_state(path);
 }
 
 int save_object(string path) {
-  return 1;
+  return jvmud_save_lpc_object_state(path);
 }
 
 void say(mixed value) {

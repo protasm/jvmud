@@ -8,9 +8,13 @@ import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -72,6 +76,8 @@ public final class EngineEfuns {
                 (runtime, args) -> dispatchEntityCommand(runtime, args[0], String.valueOf(args[1]))));
         efuns.add(efun("jvmud_time", LPCType.LPCINT, List.of(),
                 (runtime, args) -> (int) (System.currentTimeMillis() / 1000L)));
+        efuns.add(efun("jvmud_format_time", LPCType.LPCSTRING, List.of(LPCType.LPCINT),
+                (runtime, args) -> formatTime(((Number) args[0]).longValue())));
         efuns.add(efun("jvmud_entity_id", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.objectId(args[0])));
         efuns.add(efun("jvmud_size", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
@@ -84,10 +90,25 @@ public final class EngineEfuns {
                 (runtime, args) -> runtime.queryIpNumber(args[0])));
         efuns.add(efun("jvmud_read_mudlib_text", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.readMudlibText(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_save_lpc_object_state", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.saveCurrentLPCObjectState(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_restore_lpc_object_state", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.restoreCurrentLPCObjectState(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_lowercase_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> String.valueOf(args[0]).toLowerCase()));
         efuns.add(efun("jvmud_capitalize_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> capitalizeText(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_extract_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
+                (runtime, args) -> extractText(
+                        String.valueOf(args[0]),
+                        ((Number) args[1]).intValue(),
+                        -1)));
+        efuns.add(efun("jvmud_extract_text", LPCType.LPCSTRING,
+                List.of(LPCType.LPCMIXED, LPCType.LPCINT, LPCType.LPCINT),
+                (runtime, args) -> extractText(
+                        String.valueOf(args[0]),
+                        ((Number) args[1]).intValue(),
+                        ((Number) args[2]).intValue())));
         efuns.add(efun("jvmud_capture_session_input", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> {
                     runtime.captureSessionInput(
@@ -215,6 +236,23 @@ public final class EngineEfuns {
             return value;
         }
         return value.substring(0, 1).toUpperCase() + value.substring(1);
+    }
+
+    private static String extractText(String value, int from, int to) {
+        int length = value.length();
+        int start = Math.max(0, from);
+        int end = to < 0 ? length - 1 : Math.min(to, length - 1);
+        if (start >= length || end < start) {
+            return "";
+        }
+        return value.substring(start, end + 1);
+    }
+
+    private static String formatTime(long epochSeconds) {
+        return DateTimeFormatter
+                .ofPattern("EEE MMM dd HH:mm:ss yyyy", Locale.US)
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.ofEpochSecond(epochSeconds));
     }
 
     private static Object emitPerceivable(RuntimeContext runtime, Object emitter, Object message) {

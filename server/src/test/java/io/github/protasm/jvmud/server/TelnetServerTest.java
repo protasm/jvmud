@@ -495,6 +495,160 @@ final class TelnetServerTest {
     }
 
     @Test
+    void telnetLoginRestoresSavedPlayerInsteadOfCreatingAgain() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/config"), """
+                mfun_object = jvmud/mfuns
+                player_object = obj/test_player
+                initial_place = room/start
+                lifecycle.object_loaded = reset
+                lifecycle.player_session_connected = logon
+                lifecycle.player_session_disconnected = quit
+                """);
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.writeString(tempDir.resolve("obj/test_player.c"), """
+                string name;
+                string password;
+                string mailaddr;
+                int gender;
+                int level;
+
+                void reset(mixed arg) {
+                    gender = -1;
+                    level = -1;
+                }
+
+                int logon() {
+                    write("Name: ");
+                    input_to("logon2");
+                    return 1;
+                }
+
+                void logon2(mixed str) {
+                    name = lower_case(str);
+                    if (!restore_object("players/" + name))
+                        write("New character.\\n");
+
+                    if (level != -1)
+                        input_to("check_password", 1);
+                    else
+                        input_to("new_password", 1);
+
+                    write("Password: ");
+                }
+
+                void new_password(mixed str) {
+                    if (!password) {
+                        password = str;
+                        input_to("new_password", 1);
+                        write("Password: (again) ");
+                        return;
+                    }
+
+                    password = str;
+                    level = 1;
+                    write("Email: ");
+                    input_to("getmailaddr");
+                }
+
+                void getmailaddr(mixed str) {
+                    mailaddr = str;
+                    write("Gender: ");
+                    input_to("getgender");
+                }
+
+                void getgender(mixed str) {
+                    gender = 1;
+                    enable_commands();
+                    write("Welcome new " + capitalize(name) + "\\n");
+                }
+
+                void check_password(mixed str) {
+                    if (str == password)
+                        write("Welcome back " + capitalize(name) + "\\n");
+                    else
+                        write("Wrong password!\\n");
+                }
+
+                int quit() {
+                    save_object("players/" + name);
+                    write("Saving " + capitalize(name) + ".\\n");
+                    return 1;
+                }
+                """);
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void long(mixed str) {
+                    write("Start room.\\n");
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilPrompt(socket).contains("Name: "));
+
+                socket.getOutputStream().write("alice\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String firstPassword = readUntilPrompt(socket);
+                assertTrue(firstPassword.contains("New character."), firstPassword);
+                assertTrue(firstPassword.contains("Password: "), firstPassword);
+
+                socket.getOutputStream().write("secret\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilPrompt(socket).contains("Password: (again) "));
+
+                socket.getOutputStream().write("secret\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilPrompt(socket).contains("Email: "));
+
+                socket.getOutputStream().write("alice@example.test\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilPrompt(socket).contains("Gender: "));
+
+                socket.getOutputStream().write("female\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilPrompt(socket).contains("Welcome new Alice"));
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                socket.shutdownOutput();
+                assertSavedPlayerJsonFile(tempDir.resolve("players/alice.o"));
+            }
+            String savedPlayer = Files.readString(tempDir.resolve("players/alice.o"));
+            assertTrue(savedPlayer.contains("\"format\""), savedPlayer);
+            assertTrue(savedPlayer.contains("\"jvmud.lpc-object-state\""), savedPlayer);
+            assertTrue(savedPlayer.contains("\"obj.test_player.name\""), savedPlayer);
+            assertTrue(savedPlayer.contains("\"value\""), savedPlayer);
+            assertTrue(savedPlayer.contains("\"alice\""), savedPlayer);
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilPrompt(socket).contains("Name: "));
+
+                socket.getOutputStream().write("alice\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String secondPassword = readUntilPrompt(socket);
+                assertFalse(secondPassword.contains("New character."), secondPassword);
+                assertTrue(secondPassword.contains("Password: "), secondPassword);
+
+                socket.getOutputStream().write("secret\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String welcomeBack = readUntilPrompt(socket);
+                assertTrue(welcomeBack.contains("Welcome back Alice"), welcomeBack);
+                assertFalse(welcomeBack.contains("Email: "), welcomeBack);
+                assertFalse(welcomeBack.contains("Gender: "), welcomeBack);
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
     void telnetConnectionsShareOneBootedMudRuntime() throws Exception {
         installMfunShim();
         Files.createDirectories(tempDir.resolve("room/village"));
@@ -793,6 +947,29 @@ final class TelnetServerTest {
         return output.toString();
     }
 
+    private void assertSavedPlayerFile(Path path) throws Exception {
+        long deadline = System.nanoTime() + 1_000_000_000L;
+        while (System.nanoTime() < deadline) {
+            if (Files.isRegularFile(path)) {
+                return;
+            }
+            Thread.sleep(10);
+        }
+        assertTrue(Files.isRegularFile(path));
+    }
+
+    private void assertSavedPlayerJsonFile(Path path) throws Exception {
+        long deadline = System.nanoTime() + 1_000_000_000L;
+        while (System.nanoTime() < deadline) {
+            if (Files.isRegularFile(path) && Files.readString(path).contains("\"format\"")) {
+                return;
+            }
+            Thread.sleep(10);
+        }
+        assertTrue(Files.isRegularFile(path));
+        assertTrue(Files.readString(path).contains("\"format\""));
+    }
+
     private void installMfunShim() throws Exception {
         installMfunShim(tempDir);
     }
@@ -832,6 +1009,22 @@ final class TelnetServerTest {
 
                 mixed query_ip_number(mixed player) {
                     return jvmud_query_ip_number(player);
+                }
+
+                int save_object(string path) {
+                    return jvmud_save_lpc_object_state(path);
+                }
+
+                int restore_object(string path) {
+                    return jvmud_restore_lpc_object_state(path);
+                }
+
+                string ctime(int timestamp) {
+                    return jvmud_format_time(timestamp);
+                }
+
+                void enable_commands() {
+                    jvmud_enable_commands();
                 }
 
                 void add_action(string method) {
@@ -891,6 +1084,14 @@ final class TelnetServerTest {
 
                 object environment(mixed ob) {
                     return jvmud_entity_location(ob);
+                }
+
+                string extract(mixed value, int from) {
+                    return jvmud_extract_text(value, from);
+                }
+
+                string extract(mixed value, int from, int to) {
+                    return jvmud_extract_text(value, from, to);
                 }
 
                 void move_object(mixed ob, mixed destination) {

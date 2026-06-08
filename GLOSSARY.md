@@ -33,6 +33,18 @@ Links, Entities, Locations, containment, and Movement.
 The property that the World and its state endure independently of any individual
 Session.
 
+Persistence includes two related modes:
+
+World Continuity is the core MUD pillar: the World remains live and coherent
+independently of any particular Player's connection.
+
+Save/Restore State is durable state for selected Player, account, Entity, or
+mudlib-defined data that is outside active World temporality until restored.
+
+Legacy LPC `save_object` and `restore_object` are compatibility vocabulary for
+saving and restoring LPC object state. `Object` is LPC/LPMud vocabulary, not a
+JVMud engine concept.
+
 ### Temporality
 
 The property that the World can change through time.
@@ -132,7 +144,8 @@ The LPC-authored mudlib object that gives a Persona its behavior.
 
 This is mudlib and compatibility vocabulary, especially for legacy LP mudlibs.
 It should not be confused with a JVMud Player, who is the human person outside
-the World. A player object is still an Entity when viewed by the engine.
+the World, or with the Persona, which is the Entity through which Presence
+occurs. A player object is an LPC implementation attached to a Persona.
 
 ### Player Connection Lifecycle
 

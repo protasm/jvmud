@@ -104,9 +104,9 @@ A connected player is represented by four related but distinct JVMud concepts:
   session's in-world perspective.
 
 The player object is the LPC-authored mudlib object that gives the persona
-entity its behavior. It is still an entity and therefore has a mechanical
-location. It creates player presence only while it is associated with an active
-session as that session's in-world perspective.
+entity its behavior. It is compatibility vocabulary, not a JVMud engine concept.
+The Persona is the Entity with mechanical location; the player object is the
+LPC implementation attached to that Persona.
 
 The minimal JVMud-native attach sequence is:
 
@@ -114,7 +114,7 @@ The minimal JVMud-native attach sequence is:
    transport address and idle timestamp.
 2. JVMud resolves, creates, loads, or restores the entity that will serve as
    the session's persona.
-3. JVMud ensures that entity has a live LPC player object implementation.
+3. JVMud ensures that Persona has a live LPC player object implementation.
 4. JVMud associates the session with that entity as its control context.
 5. JVMud gives the persona entity a location, using the configured initial place
    when no stronger restored location exists.
@@ -148,10 +148,15 @@ The first playable implementation should prefer the smallest coherent contract:
 - move the persona entity through world containment/location APIs rather than
   treating legacy rooms as engine concepts.
 
-`save_object` and `restore_object` are compatibility spellings for persistence
-requests. JVMud owns persistence timing and storage policy. Mudlib code may
-provide serialized fields or policy decisions, but player connection lifecycle
-should not depend on a legacy driver save file model.
+Persistence has two modes at this boundary. World Continuity is the MUD pillar:
+the World endures independently of individual sessions. Save/Restore State is
+durable state for selected Player, account, Entity, or mudlib-defined data that
+is outside active World temporality until restored.
+
+`save_object` and `restore_object` are compatibility spellings for saving and
+restoring LPC object state. JVMud owns storage policy and engine Persistence.
+Mudlib code may provide fields or policy decisions, but player connection
+lifecycle should not make legacy driver save files into engine ontology.
 
 ## Mudlib-To-Engine Requests
 
@@ -210,8 +215,8 @@ legacy method names as engine ontology.
 - Presence is situated; Players perceive from somewhere in the world.
 - Time is an engine concern; mudlibs can request timed behavior but do not own
   the scheduler.
-- Persistence is an engine concern; mudlibs can provide serialization behavior
-  or policy but do not define whether the world endures.
+- Persistence is an engine concern. Mudlibs can provide Save/Restore State
+  behavior or policy, but they do not define whether the World endures.
 - Live reload of LPC-authored objects is an LPMud target requirement, but legacy
   reload hooks and driver names are adapter details.
 - Vanilla upstream mudlib files are preserved by default.
