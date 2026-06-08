@@ -545,6 +545,18 @@ final class CompilerSmokeTest {
                     jvmud_send_to_entity(target, "second-only");
                 }
 
+                void say_to_place() {
+                    jvmud_emit_perceivable(jvmud_current_entity(), "place-only");
+                }
+
+                void say_to_place_except(mixed target) {
+                    jvmud_emit_perceivable_except(jvmud_current_entity(), "excepted", target);
+                }
+
+                void tell_place(mixed place) {
+                    jvmud_emit_perceivable_at(place, "all-here");
+                }
+
                 mixed query_ip(mixed target) {
                     return jvmud_query_ip_number(target);
                 }
@@ -578,6 +590,22 @@ final class CompilerSmokeTest {
 
         assertEquals("first-only", firstOutput.toString());
         assertEquals("second-only", secondOutput.toString());
+
+        runtime.moveObject(first.instance(), unconnected.instance());
+        runtime.moveObject(second.instance(), unconnected.instance());
+
+        first.invoke("say_to_place");
+        assertEquals("first-only", firstOutput.toString());
+        assertEquals("second-onlyplace-only", secondOutput.toString());
+
+        first.invoke("say_to_place_except", second.instance());
+        assertEquals("first-only", firstOutput.toString());
+        assertEquals("second-onlyplace-only", secondOutput.toString());
+
+        first.invoke("tell_place", unconnected.instance());
+        assertEquals("first-onlyall-here", firstOutput.toString());
+        assertEquals("second-onlyplace-onlyall-here", secondOutput.toString());
+
         assertEquals("127.0.0.1", first.invoke("query_ip", first.instance()));
         assertEquals(0, first.invoke("query_ip", unconnected.instance()));
         assertTrue((Integer) first.invoke("query_idle_for", first.instance()) >= 0);

@@ -275,7 +275,9 @@ final class TelnetServerTest {
                     if (dir_dest != "north#room/village/church")
                         return 0;
 
+                    say(query_name() + " leaves north.\\n");
                     move_object(this_object(), "room/village/church");
+                    say(query_name() + " arrives.\\n");
                     call_other(environment(this_object()), "long", 0);
                     return 1;
                 }
@@ -318,6 +320,8 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
                 String north = readUntilPrompt(socket);
                 assertTrue(north.contains("You are in the church."), north);
+                assertFalse(north.contains("mudlib player leaves north."), north);
+                assertFalse(north.contains("mudlib player arrives."), north);
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -993,6 +997,14 @@ final class TelnetServerTest {
 
                 void tell_object(object target, mixed value) {
                     jvmud_send_to_entity(target, value);
+                }
+
+                void say(mixed value) {
+                    jvmud_emit_perceivable(jvmud_current_actor(), value);
+                }
+
+                void say(mixed value, object excluded) {
+                    jvmud_emit_perceivable_except(jvmud_current_actor(), value, excluded);
                 }
 
                 int sizeof(mixed value) {

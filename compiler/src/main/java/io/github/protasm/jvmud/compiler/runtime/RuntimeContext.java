@@ -139,6 +139,39 @@ public final class RuntimeContext {
         writeOutputTo(target, value);
     }
 
+    public void emitPerceivable(Object emitter, Object value) {
+        emitPerceivableAtExcept(environment(emitter), value, emitter);
+    }
+
+    public void emitPerceivableExcept(Object emitter, Object value, Object excluded) {
+        emitPerceivableAtExcept(environment(emitter), value, emitter, excluded);
+    }
+
+    public void emitPerceivableAt(Object location, Object value) {
+        emitPerceivableAtExcept(location, value);
+    }
+
+    private void emitPerceivableAtExcept(Object location, Object value, Object... excluded) {
+        if (location == null) {
+            return;
+        }
+
+        for (Object target : List.copyOf(inventoryFor(location))) {
+            if (!isExcluded(target, excluded) && sessionsByPersona.containsKey(target)) {
+                writeOutputTo(target, value);
+            }
+        }
+    }
+
+    private boolean isExcluded(Object target, Object... excluded) {
+        for (Object object : excluded) {
+            if (target == object) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void writeOutputTo(Object target, Object value) {
         String text = String.valueOf(value).replace("\\n", "\n");
         outputTranscript.append(text);

@@ -61,6 +61,9 @@ public final class EngineEfuns {
                 }));
         efuns.add(efun("jvmud_emit_perceivable", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> emitPerceivable(runtime, args[0], args[1])));
+        efuns.add(efun("jvmud_emit_perceivable_except", LPCType.LPCVOID,
+                List.of(LPCType.LPCMIXED, LPCType.LPCMIXED, LPCType.LPCMIXED),
+                (runtime, args) -> emitPerceivableExcept(runtime, args[0], args[1], args[2])));
         efuns.add(efun("jvmud_emit_perceivable_at", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> emitPerceivableAt(runtime, args[0], args[1])));
         efuns.add(efun("jvmud_current_entity", LPCType.LPCOBJECT, List.of(),
@@ -256,13 +259,21 @@ public final class EngineEfuns {
     }
 
     private static Object emitPerceivable(RuntimeContext runtime, Object emitter, Object message) {
-        return emitPerceivableAt(runtime, runtime.environment(emitter), message);
+        runtime.emitPerceivable(resolveTarget(runtime, emitter), message);
+        return null;
+    }
+
+    private static Object emitPerceivableExcept(
+            RuntimeContext runtime, Object emitter, Object message, Object excluded) {
+        runtime.emitPerceivableExcept(
+                resolveTarget(runtime, emitter),
+                message,
+                resolveTarget(runtime, excluded));
+        return null;
     }
 
     private static Object emitPerceivableAt(RuntimeContext runtime, Object location, Object message) {
-        // Until location/session routing exists, perceivable emissions are captured in the same sink
-        // as direct writes so tests and the admin CLI can still observe output.
-        runtime.writeOutput(message);
+        runtime.emitPerceivableAt(resolveTarget(runtime, location), message);
         return null;
     }
 

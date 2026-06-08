@@ -248,7 +248,7 @@ void say(mixed value) {
 }
 
 void say(mixed value, object excluded) {
-  jvmud_emit_perceivable(jvmud_current_actor(), value);
+  jvmud_emit_perceivable_except(jvmud_current_actor(), value, excluded);
 }
 
 void set_heart_beat(int enabled) {
