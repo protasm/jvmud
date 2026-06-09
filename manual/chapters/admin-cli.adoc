@@ -1,0 +1,60 @@
+[[admin-cli]]
+== Admin CLI
+
+The admin CLI is a local shell for operator and development work. Every input line is parsed as an admin command.
+
+[[admin-cli-start]]
+=== Starting The Shell
+
+Run:
+
+[source,sh]
+----
+./jvmud-admin
+----
+
+The launcher compiles the CLI and compiler modules, then starts the shell with local build output.
+
+[[admin-cli-commands]]
+=== Common Commands
+
+The command surface includes:
+
+* `boot`
+* `call`
+* `cat`
+* `cd`
+* `clone`
+* `destruct`
+* `inspect`
+* `load`
+* `look`
+* `ls`
+* `move`
+* `objects`
+* `pwd`
+* `reload`
+* `verbosity`
+* `where`
+* `quit`
+
+Run `help` inside the shell for the current command list, aliases, and usage details.
+
+[[admin-cli-filesystem]]
+=== Mudlib Filesystem
+
+The shell exposes a mudlib-rooted virtual filesystem. If the mudlib root is `/Users/jonathan/Projects/jvmud/mudlibs/lp245`, then CLI path `/` maps to that real directory. Filesystem commands cannot navigate above the configured mudlib root.
+
+[[admin-cli-verbosity]]
+=== Verbosity
+
+Use:
+
+[source,text]
+----
+verbosity quiet
+verbosity normal
+verbosity watch
+----
+
+`watch` prints compiler stage progress for commands such as `load` and `clone`. It is the quickest way to separate parser, analyzer, lowering, bytecode, reset, and load failures while diagnosing mudlib objects.

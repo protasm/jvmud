@@ -1,0 +1,79 @@
+[[installing]]
+== Installing
+
+JVMud is built from the repository root with Maven and Java.
+
+[[installing-prerequisites]]
+=== Prerequisites
+
+Install:
+
+* Java 21 or newer.
+* Maven.
+* A terminal that can run the repository shell launchers.
+
+The repository includes launcher scripts for the admin CLI and Telnet server. Those scripts compile the required Maven modules before starting the selected entrypoint.
+
+[[installing-layout]]
+=== Repository Layout
+
+[cols="1,3",options="header"]
+|===
+| Path
+| Purpose
+
+| `runtime/`
+| JVMud engine runtime source.
+
+| `compiler/`
+| LPC compiler, generated-code helpers, efun contracts, and host-facing runtime loader APIs.
+
+| `server/`
+| Player-facing server source, including the Telnet entrypoint.
+
+| `cli/`
+| Local admin shell source.
+
+| `mudlibs/lp245/`
+| Bundled vanilla LPMUD 2.4.5 mudlib and JVMud compatibility shims.
+
+| `docs/`
+| Static project website, generated API docs, and generated manual output.
+
+| `manual/`
+| Source files for this user manual.
+|===
+
+[[installing-build]]
+=== Build And Test
+
+From the repository root, run:
+
+[source,sh]
+----
+mvn test
+----
+
+The test suite includes compiler/runtime smoke coverage and an informational mudlib compatibility scan. The scan writes:
+
+[source,text]
+----
+compiler/target/jvmud-mudlib-compatibility.md
+----
+
+That report is a readiness signal, not a failing test gate.
+
+[[installing-manual]]
+=== Build This Manual
+
+The manual is generated from AsciiDoc source:
+
+[source,sh]
+----
+mvn -Pmanual-docs process-resources
+----
+
+The generated outputs are:
+
+* `docs/manual/index.html`
+* `docs/manual/jvmud-user-manual.pdf`

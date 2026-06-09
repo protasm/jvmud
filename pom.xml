@@ -54,6 +54,11 @@
           <artifactId>maven-javadoc-plugin</artifactId>
           <version>3.11.2</version>
         </plugin>
+        <plugin>
+          <groupId>org.asciidoctor</groupId>
+          <artifactId>asciidoctor-maven-plugin</artifactId>
+          <version>3.1.1</version>
+        </plugin>
       </plugins>
     </pluginManagement>
   </build>
@@ -75,6 +80,75 @@
               <source>${maven.compiler.release}</source>
               <doclint>all,-missing</doclint>
             </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>manual-docs</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.asciidoctor</groupId>
+            <artifactId>asciidoctor-maven-plugin</artifactId>
+            <inherited>false</inherited>
+            <executions>
+              <execution>
+                <id>generate-manual-html</id>
+                <phase>process-resources</phase>
+                <goals>
+                  <goal>process-asciidoc</goal>
+                </goals>
+                <configuration>
+                  <sourceDirectory>${maven.multiModuleProjectDirectory}/manual</sourceDirectory>
+                  <sourceDocumentName>index.adoc</sourceDocumentName>
+                  <outputDirectory>${maven.multiModuleProjectDirectory}/docs/manual</outputDirectory>
+                  <outputFile>index.html</outputFile>
+                  <backend>html5</backend>
+                  <doctype>book</doctype>
+                  <attributes>
+                    <docinfo>shared</docinfo>
+                    <icons>font</icons>
+                    <sectanchors>true</sectanchors>
+                    <sectlinks>true</sectlinks>
+                    <source-highlighter>coderay</source-highlighter>
+                    <toc>left</toc>
+                    <toclevels>3</toclevels>
+                  </attributes>
+                </configuration>
+              </execution>
+              <execution>
+                <id>generate-manual-pdf</id>
+                <phase>process-resources</phase>
+                <goals>
+                  <goal>process-asciidoc</goal>
+                </goals>
+                <configuration>
+                  <sourceDirectory>${maven.multiModuleProjectDirectory}/manual</sourceDirectory>
+                  <sourceDocumentName>index.adoc</sourceDocumentName>
+                  <outputDirectory>${maven.multiModuleProjectDirectory}/docs/manual</outputDirectory>
+                  <outputFile>jvmud-user-manual.pdf</outputFile>
+                  <backend>pdf</backend>
+                  <doctype>book</doctype>
+                  <attributes>
+                    <icons>font</icons>
+                    <pagenums>true</pagenums>
+                    <pdf-theme>default</pdf-theme>
+                    <sectanchors>true</sectanchors>
+                    <source-highlighter>coderay</source-highlighter>
+                    <toc>true</toc>
+                    <toclevels>3</toclevels>
+                  </attributes>
+                </configuration>
+              </execution>
+            </executions>
+            <dependencies>
+              <dependency>
+                <groupId>org.asciidoctor</groupId>
+                <artifactId>asciidoctorj-pdf</artifactId>
+                <version>2.3.19</version>
+              </dependency>
+            </dependencies>
           </plugin>
         </plugins>
       </build>

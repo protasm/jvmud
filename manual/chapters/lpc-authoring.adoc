@@ -1,0 +1,45 @@
+[[lpc-authoring]]
+== LPC Authoring
+
+JVMud compiles LPC source to JVM classes and loads the resulting objects into the runtime.
+
+[[lpc-authoring-types]]
+=== Explicit Types
+
+JVMud does not accept untyped LPC method declarations or untyped method parameters. Add explicit LPC return and parameter types when mudlib source needs to compile.
+
+[source,c]
+----
+void reset(int arg) {
+  if (arg) {
+    return;
+  }
+}
+----
+
+[[lpc-authoring-compat]]
+=== Compatibility Shims
+
+When legacy LP245 behavior needs JVMud support, prefer one of these paths:
+
+* Add or update a dedicated mudlib-side shim under `mudlibs/lp245/jvmud/`.
+* Add focused compiler/runtime support for a real compatibility gap.
+* Keep the engine API named for JVMud concepts rather than legacy LPC driver concepts.
+
+[[lpc-authoring-compile]]
+=== Compile And Load Checks
+
+Use the admin CLI to compile or load focused objects:
+
+[source,text]
+----
+load /room/village/vill_green
+inspect /room/village/vill_green
+----
+
+Use `verbosity watch` when you need to see which compiler or runtime stage failed.
+
+[[lpc-authoring-api-docs]]
+=== Java API Docs
+
+Generated Java API docs are published separately under `docs/api`. Use them when authoring or diagnosing code that crosses into Java runtime, compiler, efun, or host-facing loader APIs.
