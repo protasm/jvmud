@@ -8,6 +8,7 @@ import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.preproc.IncludeResolver;
 import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
+import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.runtime.ScheduledTask;
 import io.github.protasm.jvmud.runtime.WorldScheduler;
 import java.lang.reflect.Method;
@@ -46,6 +47,7 @@ public final class RuntimeContext {
             Collections.newSetFromMap(new IdentityHashMap<>());
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
     private final Map<Object, ScheduledTask> recurringTickTasks = new IdentityHashMap<>();
+    private final Map<Object, Map<String, ScheduledTask>> callOutTasks = new IdentityHashMap<>();
     private final Map<String, SessionBinding> sessions = new LinkedHashMap<>();
     private final Map<Object, SessionBinding> sessionsByPersona = new IdentityHashMap<>();
     private final Map<Object, PendingSessionInput> pendingInputsByPersona = new IdentityHashMap<>();
@@ -532,6 +534,29 @@ public final class RuntimeContext {
         if (destination != null) {
             environments.put(object, destination);
             inventoryFor(destination).add(object);
+            invokeArrivalLifecycle(object, destination);
+        }
+    }
+
+    private void invokeArrivalLifecycle(Object object, Object destination) {
+        if (!sessionsByPersona.containsKey(destination)) {
+            return;
+        }
+
+        String methodName = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElse(null);
+        if (methodName == null || !hasMethod(object.getClass(), methodName, 0)) {
+            return;
+        }
+
+        RuntimeContext previous = RuntimeContextHolder.current();
+        RuntimeContextHolder.setCurrent(this);
+        try {
+            withCommandActor(destination, () -> withScopedCommandRegistration(() -> {
+                invokeObject(object, methodName);
+                return null;
+            }));
+        } finally {
+            RuntimeContextHolder.setCurrent(previous);
         }
     }
 
@@ -546,7 +571,23 @@ public final class RuntimeContext {
             return null;
         }
 
-        for (Object object : inventoryFor(targetContainer)) {
+        Object found = findPresent(identifier, targetContainer);
+        if (found != null) {
+            return found;
+        }
+
+        if (container == null) {
+            Object ambientContainer = environment(targetContainer);
+            if (ambientContainer != null && ambientContainer != targetContainer) {
+                return findPresent(identifier, ambientContainer);
+            }
+        }
+
+        return null;
+    }
+
+    private Object findPresent(Object identifier, Object container) {
+        for (Object object : inventoryFor(container)) {
             if (object == identifier || matchesIdentifier(object, identifier)) {
                 return object;
             }
@@ -642,6 +683,7 @@ public final class RuntimeContext {
         }
 
         cancelRecurringTick(object);
+        cancelCallOuts(object);
         List<Object> contents = new ArrayList<>(inventoryFor(object));
         for (Object child : contents) {
             moveObject(child, null);
@@ -659,6 +701,57 @@ public final class RuntimeContext {
         if (id != null) {
             objects.remove(id);
         }
+    }
+
+    public void scheduleCallOut(String methodName, int delaySeconds, Object... args) {
+        if (methodName == null || methodName.isBlank()) {
+            return;
+        }
+        if (delaySeconds < 0) {
+            throw new IllegalArgumentException("delaySeconds cannot be negative.");
+        }
+
+        Object target = currentObject();
+        if (target == null) {
+            return;
+        }
+
+        Map<String, ScheduledTask> tasks = callOutTasks.computeIfAbsent(target, ignored -> new LinkedHashMap<>());
+        ScheduledTask previous = tasks.remove(methodName);
+        if (previous != null) {
+            previous.cancel();
+        }
+
+        Object[] invocationArgs = args == null ? new Object[0] : args.clone();
+        ScheduledTask task = scheduler.scheduleAfter(delaySeconds, () -> deliverCallOut(target, methodName, invocationArgs));
+        tasks.put(methodName, task);
+    }
+
+    public int removeCallOut(String methodName) {
+        if (methodName == null) {
+            return -1;
+        }
+
+        Object target = currentObject();
+        if (target == null) {
+            return -1;
+        }
+
+        Map<String, ScheduledTask> tasks = callOutTasks.get(target);
+        if (tasks == null) {
+            return -1;
+        }
+
+        ScheduledTask task = tasks.remove(methodName);
+        if (task == null) {
+            return -1;
+        }
+
+        task.cancel();
+        if (tasks.isEmpty()) {
+            callOutTasks.remove(target);
+        }
+        return 0;
     }
 
     public void scheduleRecurringTick(int enabled, int intervalSeconds) {
@@ -691,6 +784,17 @@ public final class RuntimeContext {
         }
     }
 
+    private void cancelCallOuts(Object target) {
+        Map<String, ScheduledTask> tasks = callOutTasks.remove(target);
+        if (tasks == null) {
+            return;
+        }
+
+        for (ScheduledTask task : tasks.values()) {
+            task.cancel();
+        }
+    }
+
     private void deliverRecurringTick(Object target) {
         if (!recurringTickTasks.containsKey(target)) {
             return;
@@ -705,6 +809,28 @@ public final class RuntimeContext {
         RuntimeContextHolder.setCurrent(this);
         try {
             invokeObject(target, methodName);
+        } finally {
+            RuntimeContextHolder.setCurrent(previous);
+        }
+    }
+
+    private void deliverCallOut(Object target, String methodName, Object[] args) {
+        Map<String, ScheduledTask> tasks = callOutTasks.get(target);
+        if (tasks != null) {
+            tasks.remove(methodName);
+            if (tasks.isEmpty()) {
+                callOutTasks.remove(target);
+            }
+        }
+
+        if (!objectIds.containsKey(target) || !hasMethod(target.getClass(), methodName, args.length)) {
+            return;
+        }
+
+        RuntimeContext previous = RuntimeContextHolder.current();
+        RuntimeContextHolder.setCurrent(this);
+        try {
+            invokeObject(target, methodName, args);
         } finally {
             RuntimeContextHolder.setCurrent(previous);
         }

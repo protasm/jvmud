@@ -228,7 +228,7 @@ mixed query_ip_number() {
 }
 
 int random(int max) {
-  return 0;
+  return jvmud_random(max);
 }
 
 int remove_call_out(string method) {

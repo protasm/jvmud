@@ -949,7 +949,7 @@ public final class SemanticAnalyzer {
             if (local != null)
                 return buildLocalStore(unresolvedAssignment, local, resolvedValue);
 
-            ScopedSymbol scopedSymbol = resolveScopedSymbol(unresolvedAssignment.name());
+            ScopedSymbol scopedSymbol = resolveFieldSymbol(unresolvedAssignment.name());
             if (scopedSymbol != null && scopedSymbol.field() != null)
                 return buildFieldStore(unresolvedAssignment, scopedSymbol.field(), resolvedValue);
 
@@ -967,7 +967,7 @@ public final class SemanticAnalyzer {
             if (local != null)
                 return new ASTExprLocalAccess(unresolvedIdentifier.line(), local);
 
-            ScopedSymbol scopedSymbol = resolveScopedSymbol(unresolvedIdentifier.name());
+            ScopedSymbol scopedSymbol = resolveFieldSymbol(unresolvedIdentifier.name());
             if (scopedSymbol != null && scopedSymbol.field() != null)
                 return new ASTExprFieldAccess(unresolvedIdentifier.line(), scopedSymbol.field());
 
@@ -1033,6 +1033,16 @@ public final class SemanticAnalyzer {
                 return null;
 
             return objectScope.resolve(name);
+        }
+
+        private ScopedSymbol resolveFieldSymbol(String name) {
+            if (objectScope == null)
+                return null;
+
+            return objectScope.resolveAll(name).stream()
+                    .filter(symbol -> symbol.field() != null)
+                    .reduce((first, second) -> second)
+                    .orElse(null);
         }
 
         private ASTLocal resolveLocal(LocalResolutionContext context, String name) {

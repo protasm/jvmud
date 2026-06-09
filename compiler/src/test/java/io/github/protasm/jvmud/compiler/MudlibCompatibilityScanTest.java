@@ -66,6 +66,7 @@ final class MudlibCompatibilityScanTest {
     private static final List<String> COMPATIBILITY_SET =
             List.of(
                     "obj/beer.c",
+                    "obj/corpse.c",
                     "obj/money.c",
                     PLAYER_SOURCE,
                     "obj/torch.c",
@@ -349,7 +350,7 @@ final class MudlibCompatibilityScanTest {
         return switch (call) {
         case "add_action" -> support("Partial", "Registers handler methods and explicit verbs, including the legacy third flag argument.");
         case "call_other" -> support("Partial", "Reflective invoke exists for zero/one argument calls; broader arity and error behavior remain compatibility work.");
-        case "call_out" -> support("Stubbed", "Engine accepts the call but does not schedule anything.");
+        case "call_out" -> support("Implemented", "Schedules a one-shot method call on the current object.");
         case "capitalize" -> support("Implemented", "Mudlib mfun delegates to JVMud text capitalization.");
         case "cat" -> support("Partial", "Mudlib mfun reads and writes mudlib-rooted text; line-range paging remains compatibility work.");
         case "clone_object" -> support("Partial", "Delegates to the runtime object factory; behavior depends on loaded source/object lifecycle.");
@@ -374,8 +375,8 @@ final class MudlibCompatibilityScanTest {
         case "query_idle" -> support("Implemented", "Reads idle time from the bound session/persona record.");
         case "query_ip_number" -> support("Implemented", "Reads the remote address from the bound session/persona record.");
         case "query_verb" -> support("Implemented", "Backed by the active command dispatch verb.");
-        case "random" -> support("Stubbed", "Mudlib mfun currently returns 0 for deterministic development behavior.");
-        case "remove_call_out" -> support("Stubbed", "Engine always returns -1.");
+        case "random" -> support("Implemented", "Mudlib mfun delegates to JVMud bounded integer randomness.");
+        case "remove_call_out" -> support("Implemented", "Cancels a pending one-shot method call on the current object.");
         case "restore_object" -> support("Partial", "Mudlib mfun restores scalar fields from mudlib-rooted LPC object state.");
         case "save_object" -> support("Partial", "Mudlib mfun saves scalar fields to mudlib-rooted LPC object state.");
         case "say" -> support("Partial", "Writes to the shared output sink; no room/session broadcast routing yet.");

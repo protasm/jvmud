@@ -1622,6 +1622,99 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void callOutSchedulesCurrentObjectOnce() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/callout_once.c", """
+                int calls;
+
+                void start() {
+                    call_out("finish", 3);
+                }
+
+                void finish() {
+                    calls += 1;
+                }
+
+                int query_calls() {
+                    return calls;
+                }
+                """);
+
+        object.invoke("start");
+        scheduler.advanceTo(2);
+        assertEquals(0, object.invoke("query_calls"));
+
+        scheduler.advanceTo(3);
+        assertEquals(1, object.invoke("query_calls"));
+
+        scheduler.advanceTo(10);
+        assertEquals(1, object.invoke("query_calls"));
+    }
+
+    @Test
+    void callOutDeliversOneArgument() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/callout_arg.c", """
+                int value;
+
+                void start() {
+                    call_out("finish", 2, 7);
+                }
+
+                void finish(mixed arg) {
+                    value = arg;
+                }
+
+                int query_value() {
+                    return value;
+                }
+                """);
+
+        object.invoke("start");
+        scheduler.advanceTo(2);
+
+        assertEquals(7, object.invoke("query_value"));
+    }
+
+    @Test
+    void removeCallOutCancelsScheduledWork() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/callout_cancel.c", """
+                int calls;
+                int removed;
+
+                void start() {
+                    call_out("finish", 2);
+                    removed = remove_call_out("finish");
+                }
+
+                void finish() {
+                    calls += 1;
+                }
+
+                int query_calls() {
+                    return calls;
+                }
+
+                int query_removed() {
+                    return removed;
+                }
+                """);
+
+        object.invoke("start");
+        scheduler.advanceTo(5);
+
+        assertEquals(0, object.invoke("query_removed"));
+        assertEquals(0, object.invoke("query_calls"));
+    }
+
+    @Test
     void destructCancelsRecurringTick() {
         WorldScheduler scheduler = new WorldScheduler();
         LPCRuntime runtime = temporalRuntime(scheduler, 1);
@@ -1650,6 +1743,35 @@ final class CompilerSmokeTest {
         scheduler.advanceTo(8);
         assertEquals(1, object.invoke("query_ticks"));
     }
+
+    @Test
+    void destructCancelsCallOut() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/destructed_callout.c", """
+                int calls;
+
+                void start() {
+                    call_out("finish", 2);
+                }
+
+                void finish() {
+                    calls += 1;
+                }
+
+                int query_calls() {
+                    return calls;
+                }
+                """);
+
+        object.invoke("start");
+        runtime.destructObject(object.instance());
+        scheduler.advanceTo(2);
+
+        assertEquals(0, object.invoke("query_calls"));
+    }
+
 
     @Test
     void recurringTickRejectsNegativeIntervals() {
@@ -1800,6 +1922,162 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void fieldCanShareNameWithMethod() throws Exception {
+        Files.writeString(tempDir.resolve("corpse_shape.c"), """
+                int decay;
+
+                void reset() {
+                    decay = 2;
+                }
+
+                void decay() {
+                    decay -= 1;
+                }
+
+                string short() {
+                    if (decay < 2)
+                        return "decayed";
+
+                    return "fresh";
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.load(tempDir.resolve("corpse_shape.c"));
+
+        object.invoke("reset");
+        assertEquals("fresh", object.invoke("short"));
+
+        object.invoke("decay");
+
+        assertEquals("decayed", object.invoke("short"));
+    }
+
+    @Test
+    void randomShimDelegatesToEngineRandom() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                int random(int max) {
+                    return jvmud_random(max);
+                }
+                """);
+        Files.writeString(tempDir.resolve("roller.c"), """
+                int saw_nonzero() {
+                    int i;
+
+                    i = 0;
+                    while (i < 100) {
+                        if (random(2) == 1)
+                            return 1;
+                        i += 1;
+                    }
+                    return 0;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder().mfunObjectPath("jvmud/mfuns").build());
+
+        LPCObjectHandle roller = runtime.load(tempDir.resolve("roller.c"));
+
+        assertEquals(1, roller.invoke("saw_nonzero"));
+    }
+
+    @Test
+    void presentWithObjectIdentifierFindsSameRoomObjects() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                object present(mixed id) {
+                    return jvmud_find_entity(id);
+                }
+                """);
+        Files.writeString(tempDir.resolve("room.c"), """
+                """);
+        Files.writeString(tempDir.resolve("actor.c"), """
+                object seen;
+
+                void remember(object ob) {
+                    seen = present(ob);
+                }
+
+                object seen_object() {
+                    return seen;
+                }
+                """);
+        Files.writeString(tempDir.resolve("target.c"), """
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder().mfunObjectPath("jvmud/mfuns").build());
+        LPCObjectHandle room = runtime.load(tempDir.resolve("room.c"));
+        LPCObjectHandle actor = runtime.load(tempDir.resolve("actor.c"));
+        Object target = runtime.cloneObject("target");
+        runtime.moveObject(actor.instance(), room.instance());
+        runtime.moveObject(target, room.instance());
+
+        actor.invoke("remember", target);
+
+        assertEquals(target, actor.invoke("seen_object"));
+    }
+
+    @Test
+    void movingObjectIntoLivingInventoryInvokesInteractionLifecycle() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void enable_commands() {
+                    jvmud_enable_commands();
+                }
+
+                object environment(mixed ob) {
+                    return jvmud_entity_location(ob);
+                }
+
+                object this_object() {
+                    return jvmud_current_entity();
+                }
+
+                void move_object(mixed ob, mixed destination) {
+                    jvmud_move_entity(ob, destination);
+                }
+                """);
+        Files.writeString(tempDir.resolve("room.c"), """
+                """);
+        Files.writeString(tempDir.resolve("death_room.c"), """
+                """);
+        Files.writeString(tempDir.resolve("actor.c"), """
+                void setup() {
+                    enable_commands();
+                }
+                """);
+        Files.writeString(tempDir.resolve("death_mark.c"), """
+                void init() {
+                    move_object(environment(this_object()), "death_room");
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
+                .build());
+        LPCObjectHandle room = runtime.load(tempDir.resolve("room.c"));
+        LPCObjectHandle deathRoom = runtime.load(tempDir.resolve("death_room.c"));
+        LPCObjectHandle actor = runtime.load(tempDir.resolve("actor.c"));
+        Object deathMark = runtime.cloneObject("death_mark");
+        runtime.moveObject(actor.instance(), room.instance());
+        runtime.bindSession("test/session", actor.instance(), "127.0.0.1", ignored -> {});
+        actor.invoke("setup");
+
+        runtime.moveObject(deathMark, actor.instance());
+
+        assertEquals(deathRoom.instance(), runtime.environment(actor.instance()));
+    }
+
+    @Test
     void runtimeRejectsContainmentCycles() throws Exception {
         Files.writeString(tempDir.resolve("thing.c"), """
                 string short() {
@@ -1861,6 +2139,18 @@ final class CompilerSmokeTest {
 
                 void set_heart_beat(int enabled, int interval_seconds) {
                     jvmud_schedule_recurring_tick(enabled, interval_seconds);
+                }
+
+                void call_out(string method, int delay) {
+                    jvmud_call_out(method, delay);
+                }
+
+                void call_out(string method, int delay, mixed arg) {
+                    jvmud_call_out(method, delay, arg);
+                }
+
+                int remove_call_out(string method) {
+                    return jvmud_remove_call_out(method);
                 }
                 """);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()

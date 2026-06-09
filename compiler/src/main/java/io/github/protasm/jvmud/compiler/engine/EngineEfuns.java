@@ -18,6 +18,7 @@ import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Registers the core LPC-facing engine functions needed by compiled mudlib objects.
@@ -85,6 +86,8 @@ public final class EngineEfuns {
                 (runtime, args) -> runtime.objectId(args[0])));
         efuns.add(efun("jvmud_size", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> sizeOf(args[0])));
+        efuns.add(efun("jvmud_random", LPCType.LPCINT, List.of(LPCType.LPCINT),
+                (runtime, args) -> random(((Number) args[0]).intValue())));
         efuns.add(efun("jvmud_users", LPCType.LPCARRAY, List.of(),
                 (runtime, args) -> runtime.users()));
         efuns.add(efun("jvmud_query_idle", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
@@ -170,11 +173,17 @@ public final class EngineEfuns {
                     return null;
                 }));
         efuns.add(efun("jvmud_call_out", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
-                (runtime, args) -> null));
+                (runtime, args) -> {
+                    runtime.scheduleCallOut(String.valueOf(args[0]), ((Number) args[1]).intValue());
+                    return null;
+                }));
         efuns.add(efun("jvmud_call_out", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED),
-                (runtime, args) -> null));
+                (runtime, args) -> {
+                    runtime.scheduleCallOut(String.valueOf(args[0]), ((Number) args[1]).intValue(), args[2]);
+                    return null;
+                }));
         efuns.add(efun("jvmud_remove_call_out", LPCType.LPCINT, List.of(LPCType.LPCSTRING),
-                (runtime, args) -> -1));
+                (runtime, args) -> runtime.removeCallOut(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_enable_commands", LPCType.LPCVOID, List.of(),
                 (runtime, args) -> {
                     runtime.enableEntityCommands(runtime.currentObject());
@@ -282,7 +291,16 @@ public final class EngineEfuns {
         if (resolvedActor == null) {
             return 0;
         }
+
         return runtime.withCommandActor(resolvedActor, () -> runtime.dispatchCommand(resolvedActor, commandLine));
+    }
+
+    private static int random(int max) {
+        if (max <= 0) {
+            return 0;
+        }
+
+        return ThreadLocalRandom.current().nextInt(max);
     }
 
     private static Efun invokeEntityEfun(int arity) {
