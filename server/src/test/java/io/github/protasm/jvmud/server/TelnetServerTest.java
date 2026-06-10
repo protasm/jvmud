@@ -13,6 +13,7 @@ import io.github.protasm.jvmud.runtime.Entity;
 import io.github.protasm.jvmud.runtime.Link;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.MudlibProjectionRole;
 import io.github.protasm.jvmud.runtime.Place;
 import io.github.protasm.jvmud.runtime.World;
 import io.github.protasm.jvmud.runtime.WorldRuntime;
@@ -75,6 +76,19 @@ final class TelnetServerTest {
                 TelnetServer.parseLaunchOptions(new String[] {"-port", "70000"}));
         assertThrows(IllegalArgumentException.class, () ->
                 TelnetServer.parseLaunchOptions(new String[] {"-bogus", "value"}));
+    }
+
+    @Test
+    void legacyPlayerObjectAdapterMarksConfiguredPlayerAsCombinedProjection() {
+        Object playerObject = new Object();
+
+        var projection = new LegacyPlayerObjectAdapter("obj/player").combinedProjection(playerObject);
+
+        assertEquals("obj/player", projection.sourcePath());
+        assertEquals(playerObject, projection.object());
+        assertTrue(projection.hasRole(MudlibProjectionRole.PLAYER_PROFILE));
+        assertTrue(projection.hasRole(MudlibProjectionRole.PERSONA_BEHAVIOR));
+        assertTrue(projection.hasRole(MudlibProjectionRole.COMBINED_PLAYER_PERSONA));
     }
 
     @Test

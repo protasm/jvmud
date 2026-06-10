@@ -11,6 +11,7 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.MudlibProjection;
 import io.github.protasm.jvmud.runtime.PersonaId;
 import io.github.protasm.jvmud.runtime.PersonaRecord;
 import io.github.protasm.jvmud.runtime.PlayerId;
@@ -509,9 +510,24 @@ public final class LPCRuntime {
         runtimeContext.setOutputSink(outputSink);
     }
 
+    /** Binds a host session id to an engine Player before a Persona has been resolved. */
+    public void bindPlayerSession(String sessionId, String remoteAddress, Consumer<String> sessionOutputSink) {
+        runtimeContext.bindPlayerSession(sessionId, remoteAddress, sessionOutputSink);
+    }
+
     /** Binds a host session id to a persona and session-specific output sink. */
     public void bindSession(String sessionId, Object persona, String remoteAddress, Consumer<String> sessionOutputSink) {
         runtimeContext.bindSession(sessionId, persona, remoteAddress, sessionOutputSink);
+    }
+
+    /** Binds a host session id to a persona with an explicit mudlib compatibility projection. */
+    public void bindSession(
+            String sessionId,
+            Object persona,
+            String remoteAddress,
+            Consumer<String> sessionOutputSink,
+            MudlibProjection mudlibProjection) {
+        runtimeContext.bindSession(sessionId, persona, remoteAddress, sessionOutputSink, mudlibProjection);
     }
 
     /** Removes a host session binding. */

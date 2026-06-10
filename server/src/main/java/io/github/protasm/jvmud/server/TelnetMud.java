@@ -8,6 +8,7 @@ import io.github.protasm.jvmud.runtime.Entity;
 import io.github.protasm.jvmud.runtime.Location;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.MudlibProjection;
 import io.github.protasm.jvmud.runtime.Place;
 import io.github.protasm.jvmud.runtime.WorldRuntime;
 import java.io.PrintWriter;
@@ -123,10 +124,12 @@ final class TelnetMud {
                     Capability.ACTOR,
                     Capability.PERCEPTIVE);
             runtime.moveObject(actor, startingRoomObject);
+            MudlibProjection projection = new LegacyPlayerObjectAdapter(playerObjectPath)
+                    .combinedProjection(actor);
             runtime.bindSession(sessionId, actor, remoteAddress, text -> {
                 out.print(text);
                 out.flush();
-            });
+            }, projection);
             runtime.clearOutputTranscript();
             messagePlayerForSession(sessionId, CONNECTED_BANNER);
             messagePlayerForSession(sessionId, "Attached " + name + " as " + objectId

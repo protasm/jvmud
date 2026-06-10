@@ -86,4 +86,17 @@ final class PlayerSessionPersonaRecordTest {
         assertTrue(persona.controllingPlayerId().isEmpty());
         assertTrue(persona.mudlibBehaviorProjection().isEmpty());
     }
+
+    @Test
+    void mudlibProjectionCanDescribeCombinedLegacyPlayerObject() {
+        Object playerObject = new Object();
+
+        MudlibProjection projection = MudlibProjection.combinedPlayerPersona("obj/player", playerObject);
+
+        assertEquals("obj/player", projection.sourcePath());
+        assertEquals(playerObject, projection.object());
+        assertTrue(projection.hasRole(MudlibProjectionRole.PLAYER_PROFILE));
+        assertTrue(projection.hasRole(MudlibProjectionRole.PERSONA_BEHAVIOR));
+        assertTrue(projection.hasRole(MudlibProjectionRole.COMBINED_PLAYER_PERSONA));
+    }
 }

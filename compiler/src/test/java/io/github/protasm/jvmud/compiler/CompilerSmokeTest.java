@@ -17,6 +17,8 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.MudlibProjection;
+import io.github.protasm.jvmud.runtime.MudlibProjectionRole;
 import io.github.protasm.jvmud.runtime.WorldScheduler;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -666,6 +668,65 @@ final class CompilerSmokeTest {
         assertFalse(runtime.messageSession(firstSession.id(), "after-unbind"));
         assertFalse(runtime.messagePlayer(firstPlayer.id(), "after-unbind"));
         assertFalse(runtime.messagePersona(firstPersona.id(), "after-unbind"));
+    }
+
+    @Test
+    void runtimeMessagesPlayerBeforePersonaAttachmentThenPreservesPlayerOnAttach() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        StringBuilder output = new StringBuilder();
+
+        runtime.bindPlayerSession("s1", " 127.0.0.1 ", output::append);
+
+        var loginSession = runtime.sessionRecord("s1").orElseThrow();
+        var loginPlayer = runtime.playerRecordForSession("s1").orElseThrow();
+        assertEquals(loginPlayer.id(), loginSession.playerId());
+        assertTrue(loginSession.attachedPersonaId().isEmpty());
+        assertTrue(loginPlayer.activePersonaId().isEmpty());
+        assertEquals("127.0.0.1", loginSession.remoteAddress().orElseThrow());
+        assertTrue(runtime.messagePlayer(loginPlayer.id(), "login-control\\n"));
+        assertEquals("login-control\n", output.toString());
+
+        LPCObjectHandle player = runtime.loadSource("smoke/login_player.c", """
+                int value() {
+                    return 1;
+                }
+                """);
+        runtime.bindSession("s1", player.instance(), "127.0.0.1", output::append);
+
+        var attachedSession = runtime.sessionRecord("s1").orElseThrow();
+        var attachedPlayer = runtime.playerRecordForSession("s1").orElseThrow();
+        var persona = runtime.personaRecordForProjection(player.instance()).orElseThrow();
+        assertEquals(loginPlayer.id(), attachedPlayer.id());
+        assertEquals(loginSession.connectedAt(), attachedSession.connectedAt());
+        assertEquals(persona.id(), attachedSession.attachedPersonaId().orElseThrow());
+        assertEquals(persona.id(), attachedPlayer.activePersonaId().orElseThrow());
+        assertTrue(runtime.messagePersona(persona.id(), "persona-gameplay\\n"));
+        assertEquals("login-control\npersona-gameplay\n", output.toString());
+    }
+
+    @Test
+    void runtimeBindsCombinedMudlibProjectionToPlayerAndPersonaRecords() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle player = runtime.loadSource("obj/player.c", """
+                int value() {
+                    return 1;
+                }
+                """);
+        StringBuilder output = new StringBuilder();
+        MudlibProjection projection = MudlibProjection.combinedPlayerPersona("obj/player", player.instance());
+
+        runtime.bindSession("s1", player.instance(), "127.0.0.1", output::append, projection);
+
+        var playerRecord = runtime.playerRecordForSession("s1").orElseThrow();
+        var personaRecord = runtime.personaRecordForProjection(player.instance()).orElseThrow();
+        assertEquals(projection, playerRecord.mudlibProfileProjection().orElseThrow());
+        assertEquals(projection, personaRecord.mudlibBehaviorProjection().orElseThrow());
+        assertTrue(projection.hasRole(MudlibProjectionRole.PLAYER_PROFILE));
+        assertTrue(projection.hasRole(MudlibProjectionRole.PERSONA_BEHAVIOR));
+        assertTrue(projection.hasRole(MudlibProjectionRole.COMBINED_PLAYER_PERSONA));
+
+        assertTrue(runtime.messagePersona(personaRecord.id(), "projected-persona\\n"));
+        assertEquals("projected-persona\n", output.toString());
     }
 
     @Test
