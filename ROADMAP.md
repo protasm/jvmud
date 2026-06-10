@@ -104,7 +104,7 @@ manifest declares:
 - `mfun_object = jvmud/mfuns`;
 - `player_object = obj/player`;
 - `initial_place = room/village/vill_green`;
-- `preload_file = room/init_file`;
+- `preload_file = init_file`;
 - lifecycle mappings for `reset` and `init`;
 - temporal tick method and interval metadata.
 
@@ -246,7 +246,7 @@ Near-term focus:
 ### 7. Mudlib Boot And Boundary Config
 
 Use `mudlibs/lp245/jvmud/lp245.config` as the source of mudlib integration declarations.
-Boot should preload configured objects, interpret `room/init_file`, create the
+Boot should preload configured objects, interpret `init_file`, create the
 initial place, attach lifecycle behavior, and provide clear skipped-preload
 evidence.
 

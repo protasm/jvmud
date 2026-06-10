@@ -1558,6 +1558,45 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void sscanfDoesNotAssignMissingOutputLocalCaptures() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/sscanf_no_match.c", """
+                int parse(string value) {
+                    int number;
+                    number = 7;
+                    if (sscanf(value, "r %d", number) == 1)
+                        return number;
+                    return number;
+                }
+                """);
+
+        assertEquals(42, object.invoke("parse", "r 42"));
+        assertEquals(7, object.invoke("parse", "quit"));
+    }
+
+    @Test
+    void sscanfDoesNotAssignMissingOutputFieldCaptures() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/sscanf_no_field_match.c", """
+                int number;
+
+                int parse(string value) {
+                    number = 7;
+                    if (sscanf(value, "r %d", number) == 1)
+                        return number;
+                    return number;
+                }
+                """);
+
+        assertEquals(42, object.invoke("parse", "r 42"));
+        assertEquals(7, object.invoke("parse", "quit"));
+    }
+
+    @Test
     void currentObjectSeesEnvironmentLight() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);

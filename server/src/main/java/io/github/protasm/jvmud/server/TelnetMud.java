@@ -29,6 +29,7 @@ final class TelnetMud {
     private final String playerPrompt;
     private final String playerSessionConnectedMethod;
     private final String playerSessionDisconnectedMethod;
+    private final MudlibBootResult bootResult;
     private int nextPersonaId = 1;
 
     private TelnetMud(
@@ -40,7 +41,8 @@ final class TelnetMud {
             String playerObjectPath,
             String playerPrompt,
             String playerSessionConnectedMethod,
-            String playerSessionDisconnectedMethod) {
+            String playerSessionDisconnectedMethod,
+            MudlibBootResult bootResult) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
@@ -50,6 +52,7 @@ final class TelnetMud {
         this.playerPrompt = playerPrompt;
         this.playerSessionConnectedMethod = playerSessionConnectedMethod;
         this.playerSessionDisconnectedMethod = playerSessionDisconnectedMethod;
+        this.bootResult = Objects.requireNonNull(bootResult, "bootResult");
     }
 
     static TelnetMud boot(Path mudlibRoot, String configObjectPath) {
@@ -77,11 +80,16 @@ final class TelnetMud {
                 boundary.playerObjectPath().orElse(null),
                 boundary.playerPrompt().orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null),
-                boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_DISCONNECTED).orElse(null));
+                boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_DISCONNECTED).orElse(null),
+                result);
     }
 
     Path mudlibRoot() {
         return mudlibRoot;
+    }
+
+    MudlibBootResult bootResult() {
+        return bootResult;
     }
 
     Duration worldTickInterval() {
@@ -183,8 +191,11 @@ final class TelnetMud {
 
     synchronized void detachPersona(Persona persona) {
         if (persona != null) {
-            invokePlayerSessionDisconnected(persona.actor());
-            runtime.unbindSession(persona.sessionId());
+            if (isAttached(persona)) {
+                invokePlayerSessionDisconnected(persona.actor());
+                runtime.unbindSession(persona.sessionId());
+            }
+            removeWorldEntity(persona);
         }
     }
 
@@ -201,7 +212,11 @@ final class TelnetMud {
             runtime.clearOutputTranscript();
             Object result = runtime.deliverCapturedSessionInput(persona.actor(), commandLine);
             runtime.clearOutputTranscript();
-            return isAttached(persona) ? result : 1;
+            if (!isAttached(persona)) {
+                removeWorldEntity(persona);
+                return 1;
+            }
+            return result;
         }
 
         runtime.clearOutputTranscript();
@@ -231,6 +246,12 @@ final class TelnetMud {
 
     synchronized boolean isAttached(Persona persona) {
         return persona != null && runtime.sessionRecord(persona.sessionId()).isPresent();
+    }
+
+    private void removeWorldEntity(Persona persona) {
+        if (persona != null) {
+            worldRuntime.removeEntity(persona.objectId());
+        }
     }
 
     private void lookAt(Object object, PrintWriter out) {

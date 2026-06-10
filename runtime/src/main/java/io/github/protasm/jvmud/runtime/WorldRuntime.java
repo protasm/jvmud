@@ -125,6 +125,23 @@ public final class WorldRuntime {
         return entities.get(id);
     }
 
+    /**
+     * Removes a known entity from this world runtime.
+     *
+     * <p>Any entities contained by the removed entity are removed first so the world never retains
+     * locations whose container no longer exists.</p>
+     *
+     * @return {@code true} if an entity with the supplied id was present and removed
+     */
+    public boolean removeEntity(String id) {
+        Entity entity = entities.get(id);
+        if (entity == null) {
+            return false;
+        }
+        removeEntity(entity);
+        return true;
+    }
+
     /** Returns the immediate location of an entity, or {@code null} if it has not been located. */
     public Location locationOf(Entity entity) {
         return locations.get(Objects.requireNonNull(entity, "entity"));
@@ -237,6 +254,20 @@ public final class WorldRuntime {
 
         locations.put(entity, destination);
         contents.get(destination).add(entity);
+    }
+
+    private void removeEntity(Entity entity) {
+        List<Entity> containedEntities = new ArrayList<>(contents.getOrDefault(entity, List.of()));
+        for (Entity containedEntity : containedEntities) {
+            removeEntity(containedEntity);
+        }
+
+        Location oldLocation = locations.remove(entity);
+        if (oldLocation != null) {
+            contents.get(oldLocation).remove(entity);
+        }
+        contents.remove(entity);
+        entities.remove(entity.id());
     }
 
     private boolean wouldCreateContainmentCycle(Entity entity, Location destination) {

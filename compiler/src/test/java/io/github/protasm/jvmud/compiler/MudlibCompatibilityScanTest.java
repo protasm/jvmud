@@ -212,6 +212,19 @@ final class MudlibCompatibilityScanTest {
         assertTrue(runtime.outputTranscript().contains("gold coins to advance to level"));
     }
 
+    @Test
+    void vanillaLeoCanBeExaminedByDisplayedName() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LPCObjectHandle leo = runtime.load("obj/leo");
+
+        assertTrue(Truth.isTruthy(leo.invoke("id", "leo")));
+        assertTrue(Truth.isTruthy(leo.invoke("id", "archwizard")));
+    }
+
     private static void writeReport(MudlibBoundary boundary, Map<String, CompilationResult> results) throws IOException {
         Path reportPath = Path.of("target", "jvmud-mudlib-compatibility.md");
         Files.createDirectories(reportPath.getParent());

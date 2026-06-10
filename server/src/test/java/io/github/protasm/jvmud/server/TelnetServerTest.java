@@ -23,6 +23,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -76,6 +77,36 @@ final class TelnetServerTest {
                 TelnetServer.parseLaunchOptions(new String[] {"-port", "70000"}));
         assertThrows(IllegalArgumentException.class, () ->
                 TelnetServer.parseLaunchOptions(new String[] {"-bogus", "value"}));
+    }
+
+    @Test
+    void telnetServerReportsInitFilePreloadSummary() throws Exception {
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve("init_file"), """
+                obj/preload
+                obj/broken
+                """);
+        Files.writeString(tempDir.resolve("obj/preload.c"), """
+                string short() {
+                    return "preload";
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/broken.c"), "int broken() { return ; }\n");
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
+                string short() {
+                    return "green";
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            assertEquals(
+                    "init_file preload: compiled 1 object(s), skipped 1 object(s). Skipped: obj/broken",
+                    server.preloadSummary());
+        }
     }
 
     @Test
@@ -714,6 +745,16 @@ final class TelnetServerTest {
                 assertFalse(closeTail.contains("> "), closeTail);
                 assertFalse(closeTail.contains("You can't do that."), closeTail);
             }
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                String reattached = readUntilContains(socket, "Name: ");
+                assertTrue(reattached.contains("Attached player 4 as obj/test_player#clone"), reattached);
+                assertTrue(reattached.contains("Name: "), reattached);
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
         }
     }
 
@@ -857,7 +898,7 @@ final class TelnetServerTest {
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room"));
         Files.createDirectories(tempDir.resolve("room/village"));
-        Files.writeString(tempDir.resolve("room/init_file"), """
+        Files.writeString(tempDir.resolve("init_file"), """
                 # preload one simple object
                 obj/preload.c
                 """);
@@ -910,6 +951,8 @@ final class TelnetServerTest {
         assertEquals(null, result.actorHandle());
         assertEquals(null, result.actor());
         assertTrue(result.skippedPreloads().isEmpty());
+        assertEquals(List.of("obj/preload"), result.initFilePreloadedObjects());
+        assertTrue(result.initFileSkippedPreloads().isEmpty());
     }
 
     @Test

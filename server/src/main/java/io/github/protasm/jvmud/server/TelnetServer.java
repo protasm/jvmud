@@ -57,6 +57,7 @@ public final class TelnetServer implements AutoCloseable {
         TelnetServer server = new TelnetServer(
                 options.bindAddress(), options.port(), options.mudlibRoot(), options.configObjectPath());
         server.start();
+        System.out.println(server.preloadSummary());
         System.out.println("JVMud mudlib listening on " + server.bindAddress() + ":" + server.port());
         Runtime.getRuntime().addShutdownHook(new Thread(server::close, "jvmud-start-shutdown"));
         server.await();
@@ -152,6 +153,24 @@ public final class TelnetServer implements AutoCloseable {
 
     public int port() {
         return serverSocket == null ? requestedPort : serverSocket.getLocalPort();
+    }
+
+    String preloadSummary() {
+        if (mud == null) {
+            throw new IllegalStateException("Telnet server has not been started.");
+        }
+        MudlibBootResult result = mud.bootResult();
+        StringBuilder summary = new StringBuilder()
+                .append("init_file preload: compiled ")
+                .append(result.initFilePreloadedObjects().size())
+                .append(" object(s), skipped ")
+                .append(result.initFileSkippedPreloads().size())
+                .append(" object(s).");
+        if (!result.initFileSkippedPreloads().isEmpty()) {
+            summary.append(" Skipped: ")
+                    .append(String.join(", ", result.initFileSkippedPreloads()));
+        }
+        return summary.toString();
     }
 
     @Override

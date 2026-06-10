@@ -54,6 +54,8 @@ status get_cc(string cc) {
 
   if (is_reading)
     loop();
+
+  return 1;
 }
 
 status get_cmd(string str) {
@@ -70,33 +72,35 @@ status get_cmd(string str) {
     new_has_arrived = 1;
   }
 
-  if (str == "r") { reply_to_message(); return; }
-  if (sscanf(str, "r %d", curr_mess) == 1) { reply_to_message(); return; }
-  if (str == "h") { headers(); loop(); return; }
-  if (str == "n") { curr_mess++; print_message(); loop(); return; }
-  if (str == ".") { print_message(); loop(); return; }
-  if (str == "l") { save_message(); loop(); return; }
-  if (sscanf(str, "m %s", tmp) == 1) { mail_to(tmp); return; }
-  if (str == "?") { help_msg(); loop(); return; }
+  if (str == "r") { reply_to_message(); return 1; }
+  if (sscanf(str, "r %d", curr_mess) == 1) { reply_to_message(); return 1; }
+  if (str == "h") { headers(); loop(); return 1; }
+  if (str == "n") { curr_mess++; print_message(); loop(); return 1; }
+  if (str == ".") { print_message(); loop(); return 1; }
+  if (str == "l") { save_message(); loop(); return 1; }
+  if (sscanf(str, "m %s", tmp) == 1) { mail_to(tmp); return 1; }
+  if (str == "?") { help_msg(); loop(); return 1; }
   if (str == "p" || str == "-") {
-    curr_mess--; print_message(); loop(); return;
+    curr_mess--; print_message(); loop(); return 1;
   }
 
   if (sscanf(str, "%d", n) == 1) {
-    curr_mess = n; print_message(); loop(); return;
+    curr_mess = n; print_message(); loop(); return 1;
   }
 
   if (new_has_arrived) {
     write("New mail has arrived. Command ignored\n");
     loop();
 
-    return;
+    return 1;
   }
 
-  if (str == "x") { is_reading = 0; return; }
-  if (str == "d") { delete(); loop(); return; }
-  if (sscanf(str, "d %d", curr_mess) == 1) { delete(); loop(); return; }
+  if (str == "x") { is_reading = 0; return 1; }
+  if (str == "d") { delete(); loop(); return 1; }
+  if (sscanf(str, "d %d", curr_mess) == 1) { delete(); loop(); return 1; }
   loop();
+
+  return 1;
 }
 
 status get_subject(string str) {
@@ -109,14 +113,14 @@ status get_subject(string str) {
     if (is_reading)
       loop();
 
-    return;
+    return 1;
   }
 
   write("Give message.  Finish message with '**', or '~q' to cancel\n");
   write("]");
   input_to("more_mail");
 
-  return;
+  return 1;
 }
 
 status headers() {
@@ -280,20 +284,22 @@ status more_mail(string str) {
     if (is_reading)
       loop();
 
-    return;
+    return 1;
   }
 
   if (str == "**") {
     write("Cc:");
     input_to("get_cc");
 
-    return;
+    return 1;
   }
 
   new_message += str + "\n";
 
   write("]");
   input_to("more_mail");
+
+  return 1;
 }
 
 void notify_new_mail(string dest, string subj, string name) {

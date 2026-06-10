@@ -36,6 +36,23 @@ final class WorldRuntimeTest {
     }
 
     @Test
+    void removingEntityReleasesItsWorldIdentifierAndContainedEntities() {
+        WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
+        Place green = runtime.createPlace("room/village/vill_green", "Village Green");
+        Entity player = runtime.createEntity("obj/player#clone", "player", green, Capability.ACTOR);
+        Entity coin = runtime.createEntity("obj/coin", "coin", player);
+
+        assertTrue(runtime.removeEntity("obj/player#clone"));
+
+        assertTrue(runtime.entity("obj/player#clone") == null);
+        assertTrue(runtime.entity("obj/coin") == null);
+        assertTrue(runtime.contentsOf(green).isEmpty());
+        runtime.createEntity("obj/player#clone", "next player", green, Capability.ACTOR);
+        assertTrue(!runtime.removeEntity("obj/missing"));
+        assertTrue(runtime.locationOf(coin) == null);
+    }
+
+    @Test
     void entitiesCanContainOtherEntitiesWithoutLosingWorldLocationResolution() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
         Place green = runtime.createPlace("room/village/vill_green", "Village Green");

@@ -23,6 +23,7 @@ public final class MudlibBoot {
     public static final String DEFAULT_CONFIG_PATH = "jvmud/lp245.config";
     static final String DEFAULT_BOUNDARY_OBJECT = "jvmud/mudlib";
     static final String DEFAULT_STARTING_ROOM = "room/village/vill_green";
+    static final String DEFAULT_PRELOAD_FILE = "init_file";
     static final String LOCAL_ACTOR_HANDLE = "local/player";
 
     private final LPCRuntime runtime;
@@ -61,10 +62,12 @@ public final class MudlibBoot {
         runtime.setScheduler(worldRuntime.scheduler());
         List<String> preloadedObjects = new ArrayList<>();
         List<String> skippedPreloads = new ArrayList<>();
+        List<String> initFilePreloadedObjects = new ArrayList<>();
+        List<String> initFileSkippedPreloads = new ArrayList<>();
 
         MudlibBoundary boundary = discoverMudlibBoundary(worldRuntime, preloadedObjects, skippedPreloads);
         preloadConfiguredObjects(boundary, preloadedObjects, skippedPreloads);
-        preloadInitFile(boundary, preloadedObjects, skippedPreloads);
+        preloadInitFile(boundary, preloadedObjects, skippedPreloads, initFilePreloadedObjects, initFileSkippedPreloads);
 
         Object actor = null;
         String initialPlace = null;
@@ -98,6 +101,8 @@ public final class MudlibBoot {
                 boundary,
                 preloadedObjects,
                 skippedPreloads,
+                initFilePreloadedObjects,
+                initFileSkippedPreloads,
                 initialPlace,
                 actor == null ? null : initialPersonaId,
                 actor);
@@ -206,8 +211,12 @@ public final class MudlibBoot {
     }
 
     private void preloadInitFile(
-            MudlibBoundary boundary, List<String> preloadedObjects, List<String> skippedPreloads) {
-        String preloadFilePath = boundary.preloadFilePath().orElse("room/init_file");
+            MudlibBoundary boundary,
+            List<String> preloadedObjects,
+            List<String> skippedPreloads,
+            List<String> initFilePreloadedObjects,
+            List<String> initFileSkippedPreloads) {
+        String preloadFilePath = boundary.preloadFilePath().orElse(DEFAULT_PRELOAD_FILE);
         Path initFile = mudlibRoot.resolve(preloadFilePath);
         if (!Files.isRegularFile(initFile)) {
             return;
@@ -220,20 +229,36 @@ public final class MudlibBoot {
                     continue;
                 }
 
-                preloadObject(sourcePath, preloadedObjects, skippedPreloads);
+                preloadObject(sourcePath, preloadedObjects, skippedPreloads, initFilePreloadedObjects, initFileSkippedPreloads);
             }
         } catch (IOException e) {
             skippedPreloads.add(preloadFilePath);
+            initFileSkippedPreloads.add(preloadFilePath);
         }
     }
 
     private void preloadObject(String sourcePath, List<String> preloadedObjects, List<String> skippedPreloads) {
+        preloadObject(sourcePath, preloadedObjects, skippedPreloads, null, null);
+    }
+
+    private void preloadObject(
+            String sourcePath,
+            List<String> preloadedObjects,
+            List<String> skippedPreloads,
+            List<String> initFilePreloadedObjects,
+            List<String> initFileSkippedPreloads) {
         LPCLoadResult result = runtime.tryLoad(sourcePath);
         if (result.succeeded()) {
             LPCObjectHandle handle = result.handle().orElseThrow();
             preloadedObjects.add(handle.internalName());
+            if (initFilePreloadedObjects != null) {
+                initFilePreloadedObjects.add(handle.internalName());
+            }
         } else {
             skippedPreloads.add(sourcePath);
+            if (initFileSkippedPreloads != null) {
+                initFileSkippedPreloads.add(sourcePath);
+            }
         }
     }
 

@@ -9,6 +9,8 @@ public record MudlibBootResult(
         MudlibBoundary mudlibBoundary,
         List<String> preloadedObjects,
         List<String> skippedPreloads,
+        List<String> initFilePreloadedObjects,
+        List<String> initFileSkippedPreloads,
         String startingRoom,
         String actorHandle,
         Object actor) {
@@ -16,5 +18,7 @@ public record MudlibBootResult(
     public MudlibBootResult {
         preloadedObjects = List.copyOf(preloadedObjects);
         skippedPreloads = List.copyOf(skippedPreloads);
+        initFilePreloadedObjects = List.copyOf(initFilePreloadedObjects);
+        initFileSkippedPreloads = List.copyOf(initFileSkippedPreloads);
     }
 }

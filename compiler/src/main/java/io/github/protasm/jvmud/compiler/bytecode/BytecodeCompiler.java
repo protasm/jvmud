@@ -633,6 +633,20 @@ public final class BytecodeCompiler {
     }
 
     private void emitSscanfCaptureStore(MethodVisitor mv, IRExpression target, int resultSlot, int captureIndex) {
+        Label noCapture = new Label();
+        mv.visitVarInsn(ALOAD, resultSlot);
+        pushInt(mv, 0);
+        mv.visitInsn(AALOAD);
+        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(Number.class));
+        mv.visitMethodInsn(
+                INVOKEVIRTUAL,
+                Type.getInternalName(Number.class),
+                "intValue",
+                "()I",
+                false);
+        pushInt(mv, captureIndex);
+        mv.visitJumpInsn(IF_ICMPLT, noCapture);
+
         if (target instanceof IRLocalLoad localLoad) {
             mv.visitVarInsn(ALOAD, resultSlot);
             pushInt(mv, captureIndex);
@@ -643,6 +657,7 @@ public final class BytecodeCompiler {
             case FSTORE -> mv.visitVarInsn(FSTORE, localLoad.local().slot());
             default -> mv.visitVarInsn(ASTORE, localLoad.local().slot());
             }
+            mv.visitLabel(noCapture);
             return;
         }
 
@@ -657,6 +672,7 @@ public final class BytecodeCompiler {
                     fieldLoad.field().ownerInternalName(),
                     fieldLoad.field().name(),
                     descriptor(fieldLoad.field().type()));
+            mv.visitLabel(noCapture);
             return;
         }
 

@@ -178,9 +178,9 @@ void heart_beat() {
 void long() {
   write(short() + ".\n");
 }
-status id(string str) { return str == name; }
+status id(string str) { return str == name || str == "archwizard"; }
 
-void reset(string arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
