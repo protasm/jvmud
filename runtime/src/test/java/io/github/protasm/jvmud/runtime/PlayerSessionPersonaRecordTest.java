@@ -68,13 +68,22 @@ final class PlayerSessionPersonaRecordTest {
 
         PersonaRecord persona = new PersonaRecord(
                 personaId,
-                entity,
+                Optional.of(entity),
                 Optional.of(playerId),
                 Optional.of(behaviorProjection));
 
         assertEquals(personaId, persona.id());
-        assertEquals(entity, persona.entity());
+        assertEquals(Optional.of(entity), persona.entity());
         assertEquals(Optional.of(playerId), persona.controllingPlayerId());
         assertEquals(Optional.of(behaviorProjection), persona.mudlibBehaviorProjection());
+    }
+
+    @Test
+    void personaRecordCanRepresentCompatibilityProjectionBeforeEntityAttachment() {
+        PersonaRecord persona = new PersonaRecord(new PersonaId("persona/logon"));
+
+        assertTrue(persona.entity().isEmpty());
+        assertTrue(persona.controllingPlayerId().isEmpty());
+        assertTrue(persona.mudlibBehaviorProjection().isEmpty());
     }
 }

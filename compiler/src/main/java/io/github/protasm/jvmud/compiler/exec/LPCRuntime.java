@@ -11,6 +11,9 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.PersonaRecord;
+import io.github.protasm.jvmud.runtime.PlayerRecord;
+import io.github.protasm.jvmud.runtime.SessionRecord;
 import io.github.protasm.jvmud.runtime.WorldScheduler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -27,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -510,6 +514,21 @@ public final class LPCRuntime {
     /** Removes a host session binding. */
     public void unbindSession(String sessionId) {
         runtimeContext.unbindSession(sessionId);
+    }
+
+    /** Returns the engine-owned Session record for a bound host session. */
+    public Optional<SessionRecord> sessionRecord(String sessionId) {
+        return runtimeContext.sessionRecord(sessionId);
+    }
+
+    /** Returns the engine-owned Player record associated with a bound host session. */
+    public Optional<PlayerRecord> playerRecordForSession(String sessionId) {
+        return runtimeContext.playerRecordForSession(sessionId);
+    }
+
+    /** Returns the engine-owned Persona record associated with a compatibility persona projection. */
+    public Optional<PersonaRecord> personaRecordForProjection(Object persona) {
+        return runtimeContext.personaRecordForProjection(persona);
     }
 
     /** Returns the accumulated default output transcript for diagnostics and tests. */

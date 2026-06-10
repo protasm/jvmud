@@ -585,6 +585,19 @@ final class CompilerSmokeTest {
         runtime.bindSession("s1", first.instance(), "127.0.0.1", firstOutput::append);
         runtime.bindSession("s2", second.instance(), "10.0.0.2", secondOutput::append);
 
+        var firstSession = runtime.sessionRecord("s1").orElseThrow();
+        var firstPlayer = runtime.playerRecordForSession("s1").orElseThrow();
+        var firstPersona = runtime.personaRecordForProjection(first.instance()).orElseThrow();
+        assertEquals("s1", firstSession.id().value());
+        assertEquals("127.0.0.1", firstSession.remoteAddress().orElseThrow());
+        assertEquals(firstPlayer.id(), firstSession.playerId());
+        assertEquals(firstSession.id(), firstPlayer.activeSessionIds().iterator().next());
+        assertEquals(firstPersona.id(), firstSession.attachedPersonaId().orElseThrow());
+        assertEquals(firstPersona.id(), firstPlayer.activePersonaId().orElseThrow());
+        assertEquals(first.instance(), firstPersona.mudlibBehaviorProjection().orElseThrow());
+        assertEquals(firstPlayer.id(), firstPersona.controllingPlayerId().orElseThrow());
+        assertTrue(firstPersona.entity().isEmpty());
+
         first.invoke("write_self");
         first.invoke("tell", second.instance());
 
@@ -614,6 +627,7 @@ final class CompilerSmokeTest {
         runtime.unbindSession("s2");
 
         assertEquals(1, first.invoke("user_count"));
+        assertTrue(runtime.sessionRecord("s2").isEmpty());
     }
 
     @Test

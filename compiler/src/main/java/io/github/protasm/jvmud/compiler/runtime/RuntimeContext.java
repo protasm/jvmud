@@ -9,18 +9,27 @@ import io.github.protasm.jvmud.compiler.preproc.IncludeResolver;
 import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.PersonaId;
+import io.github.protasm.jvmud.runtime.PersonaRecord;
+import io.github.protasm.jvmud.runtime.PlayerId;
+import io.github.protasm.jvmud.runtime.PlayerRecord;
 import io.github.protasm.jvmud.runtime.ScheduledTask;
+import io.github.protasm.jvmud.runtime.SessionId;
+import io.github.protasm.jvmud.runtime.SessionRecord;
 import io.github.protasm.jvmud.runtime.WorldScheduler;
 import java.lang.reflect.Method;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -48,8 +57,11 @@ public final class RuntimeContext {
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
     private final Map<Object, ScheduledTask> recurringTickTasks = new IdentityHashMap<>();
     private final Map<Object, Map<String, ScheduledTask>> callOutTasks = new IdentityHashMap<>();
-    private final Map<String, SessionBinding> sessions = new LinkedHashMap<>();
+    private final Map<PlayerId, PlayerRecord> players = new LinkedHashMap<>();
+    private final Map<SessionId, SessionBinding> sessions = new LinkedHashMap<>();
+    private final Map<PersonaId, PersonaRecord> personas = new LinkedHashMap<>();
     private final Map<Object, SessionBinding> sessionsByPersona = new IdentityHashMap<>();
+    private final Map<Object, PersonaId> personaIdsByProjection = new IdentityHashMap<>();
     private final Map<Object, PendingSessionInput> pendingInputsByPersona = new IdentityHashMap<>();
     private final StringBuilder outputTranscript = new StringBuilder();
     private final ThreadLocal<Deque<Object>> currentObjectStack =
@@ -324,41 +336,84 @@ public final class RuntimeContext {
 
     public List<Object> users() {
         return sessions.values().stream()
-                .map(SessionBinding::persona)
+                .map(SessionBinding::personaProjection)
                 .toList();
     }
 
     public void bindSession(String sessionId, Object persona, String remoteAddress, Consumer<String> sessionOutputSink) {
-        Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(persona, "persona");
+        SessionId engineSessionId = new SessionId(sessionId);
+        PlayerId playerId = legacyPlayerIdFor(persona);
+        PersonaId personaId = legacyPersonaIdFor(persona);
         Consumer<String> sink = sessionOutputSink != null ? sessionOutputSink : ignored -> {};
-        SessionBinding existing = sessions.get(sessionId);
+        SessionBinding existing = sessions.get(engineSessionId);
         if (existing != null) {
-            sessionsByPersona.remove(existing.persona());
+            detachSessionFromRecords(existing);
         }
         SessionBinding previousPersonaBinding = sessionsByPersona.get(persona);
         if (previousPersonaBinding != null) {
-            sessions.remove(previousPersonaBinding.sessionId());
+            sessions.remove(previousPersonaBinding.sessionRecord().id());
+            detachSessionFromRecords(previousPersonaBinding);
         }
+
+        long nowMillis = System.currentTimeMillis();
+        Instant now = Instant.ofEpochMilli(nowMillis);
+        SessionRecord sessionRecord = new SessionRecord(
+                engineSessionId,
+                playerId,
+                Optional.ofNullable(normalizeSessionText(remoteAddress)),
+                now,
+                now,
+                Optional.of(personaId));
+        PlayerRecord playerRecord = new PlayerRecord(
+                playerId,
+                addSessionId(players.get(playerId), engineSessionId),
+                Optional.of(personaId),
+                Optional.empty());
+        PersonaRecord personaRecord = new PersonaRecord(
+                personaId,
+                Optional.empty(),
+                Optional.of(playerId),
+                Optional.of(persona));
         SessionBinding binding = new SessionBinding(
-                sessionId,
-                persona,
-                normalizeSessionText(remoteAddress),
-                sink,
-                System.currentTimeMillis());
-        sessions.put(sessionId, binding);
+                sessionRecord,
+                playerRecord,
+                personaRecord,
+                sink);
+        players.put(playerId, playerRecord);
+        personas.put(personaId, personaRecord);
+        sessions.put(engineSessionId, binding);
         sessionsByPersona.put(persona, binding);
+        personaIdsByProjection.put(persona, personaId);
     }
 
     public void unbindSession(String sessionId) {
         if (sessionId == null) {
             return;
         }
-        SessionBinding binding = sessions.remove(sessionId);
+        SessionBinding binding = sessions.remove(new SessionId(sessionId));
         if (binding != null) {
-            sessionsByPersona.remove(binding.persona());
-            pendingInputsByPersona.remove(binding.persona());
+            detachSessionFromRecords(binding);
         }
+    }
+
+    public Optional<SessionRecord> sessionRecord(String sessionId) {
+        if (sessionId == null) {
+            return Optional.empty();
+        }
+        SessionBinding binding = sessions.get(new SessionId(sessionId));
+        return binding != null ? Optional.of(binding.sessionRecord()) : Optional.empty();
+    }
+
+    public Optional<PlayerRecord> playerRecordForSession(String sessionId) {
+        return sessionRecord(sessionId)
+                .map(SessionRecord::playerId)
+                .map(players::get);
+    }
+
+    public Optional<PersonaRecord> personaRecordForProjection(Object persona) {
+        PersonaId personaId = personaIdsByProjection.get(persona);
+        return personaId != null ? Optional.ofNullable(personas.get(personaId)) : Optional.empty();
     }
 
     public void captureSessionInput(String methodName, boolean noEcho) {
@@ -392,16 +447,17 @@ public final class RuntimeContext {
         if (binding == null) {
             return 0;
         }
-        long elapsedMillis = Math.max(0L, System.currentTimeMillis() - binding.lastActivityMillis());
+        long elapsedMillis = Math.max(0L, System.currentTimeMillis()
+                - binding.sessionRecord().lastActivityAt().toEpochMilli());
         return (int) (elapsedMillis / 1000L);
     }
 
     public Object queryIpNumber(Object persona) {
         SessionBinding binding = sessionsByPersona.get(persona);
-        if (binding == null || binding.remoteAddress() == null) {
+        if (binding == null || binding.sessionRecord().remoteAddress().isEmpty()) {
             return 0;
         }
-        return binding.remoteAddress();
+        return binding.sessionRecord().remoteAddress().orElseThrow();
     }
 
     public Object readMudlibText(String path) {
@@ -423,9 +479,9 @@ public final class RuntimeContext {
         if (binding == null) {
             return;
         }
-        SessionBinding touched = binding.touch(System.currentTimeMillis());
-        sessions.put(touched.sessionId(), touched);
-        sessionsByPersona.put(touched.persona(), touched);
+        SessionBinding touched = binding.touch(Instant.ofEpochMilli(System.currentTimeMillis()));
+        sessions.put(touched.sessionRecord().id(), touched);
+        sessionsByPersona.put(touched.personaProjection(), touched);
     }
 
     private String normalizeMudlibPath(String path) {
@@ -1158,6 +1214,63 @@ public final class RuntimeContext {
         return actor != null ? actor : currentObject();
     }
 
+    private PlayerId legacyPlayerIdFor(Object persona) {
+        return new PlayerId("legacy-player/" + objectReference(persona));
+    }
+
+    private PersonaId legacyPersonaIdFor(Object persona) {
+        PersonaId existing = personaIdsByProjection.get(persona);
+        if (existing != null) {
+            return existing;
+        }
+        return new PersonaId("legacy-persona/" + objectReference(persona));
+    }
+
+    private String objectReference(Object object) {
+        String id = objectId(object);
+        if (id != null && !id.isBlank()) {
+            return id;
+        }
+        return object.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(object));
+    }
+
+    private Set<SessionId> addSessionId(PlayerRecord playerRecord, SessionId sessionId) {
+        Set<SessionId> sessionIds = new HashSet<>();
+        if (playerRecord != null) {
+            sessionIds.addAll(playerRecord.activeSessionIds());
+        }
+        sessionIds.add(sessionId);
+        return sessionIds;
+    }
+
+    private void detachSessionFromRecords(SessionBinding binding) {
+        Object persona = binding.personaProjection();
+        sessionsByPersona.remove(persona);
+        pendingInputsByPersona.remove(persona);
+
+        SessionRecord sessionRecord = binding.sessionRecord();
+        PlayerRecord playerRecord = players.get(sessionRecord.playerId());
+        if (playerRecord != null) {
+            Set<SessionId> remainingSessions = new HashSet<>(playerRecord.activeSessionIds());
+            remainingSessions.remove(sessionRecord.id());
+            PlayerRecord updatedPlayer = new PlayerRecord(
+                    playerRecord.id(),
+                    remainingSessions,
+                    Optional.empty(),
+                    playerRecord.mudlibProfileProjection());
+            players.put(updatedPlayer.id(), updatedPlayer);
+        }
+
+        PersonaRecord personaRecord = personas.get(binding.personaRecord().id());
+        if (personaRecord != null) {
+            personas.put(personaRecord.id(), new PersonaRecord(
+                    personaRecord.id(),
+                    personaRecord.entity(),
+                    Optional.empty(),
+                    personaRecord.mudlibBehaviorProjection()));
+        }
+    }
+
     private String normalizeSessionText(String value) {
         if (value == null) {
             return null;
@@ -1234,13 +1347,23 @@ public final class RuntimeContext {
     private record PendingSessionInput(Object handler, String methodName, boolean noEcho) {}
 
     private record SessionBinding(
-            String sessionId,
-            Object persona,
-            String remoteAddress,
-            Consumer<String> outputSink,
-            long lastActivityMillis) {
-        private SessionBinding touch(long nowMillis) {
-            return new SessionBinding(sessionId, persona, remoteAddress, outputSink, nowMillis);
+            SessionRecord sessionRecord,
+            PlayerRecord playerRecord,
+            PersonaRecord personaRecord,
+            Consumer<String> outputSink) {
+        private Object personaProjection() {
+            return personaRecord.mudlibBehaviorProjection().orElse(null);
+        }
+
+        private SessionBinding touch(Instant now) {
+            SessionRecord touchedSession = new SessionRecord(
+                    sessionRecord.id(),
+                    sessionRecord.playerId(),
+                    sessionRecord.remoteAddress(),
+                    sessionRecord.connectedAt(),
+                    now,
+                    sessionRecord.attachedPersonaId());
+            return new SessionBinding(touchedSession, playerRecord, personaRecord, outputSink);
         }
     }
 }
