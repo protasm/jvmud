@@ -1,45 +1,19 @@
 [[mudlib-layout]]
 == Mudlib Layout
 
-The bundled mudlib lives at:
-
-[source,text]
-----
-mudlibs/lp245/
-----
-
-Treat that tree as LPC source and content, not Java module source.
+Document in progress....
 
 [[mudlib-layout-core]]
 === Important Paths
 
-[cols="1,3",options="header"]
-|===
-| Path
-| Purpose
-
-| `mudlibs/lp245/jvmud/lp245.config`
-| JVMud mudlib configuration, including lifecycle and compatibility paths.
-
-| `mudlibs/lp245/jvmud/mudlib.c`
-| Mudlib-side boundary shim object.
-
-| `mudlibs/lp245/jvmud/mfuns.c`
-| Mudlib-side compatibility functions used as a simul-efun style support layer.
-
-| `mudlibs/lp245/obj/`
-| Reusable LPC object definitions, including player-oriented objects.
-
-| `mudlibs/lp245/room/`
-| World and room content.
-|===
+Document in progress....
 
 [[mudlib-layout-upstream]]
 === Upstream Source Policy
 
-Preserve upstream vanilla mudlib files by default. Compatibility belongs in dedicated JVMud shim objects and focused compiler/runtime support unless a task explicitly asks for mudlib style or formatting changes.
+Document in progress....
 
 [[mudlib-layout-boundary]]
 === Engine And Mudlib Boundary
 
-The engine owns JVMud-native concepts: world, place, link, entity, location, capability, containment, presence, persistence, and time. The LP245 mudlib can keep legacy vocabulary and behavior behind compatibility shims, but the engine should not become a copy of the old driver ontology.
+Document in progress....

@@ -1,26 +1,14 @@
 [[overview]]
 == Overview
 
-JVMud is an experimental LPC/LPMud text-world engine for the JVM. It compiles LPC-authored mudlib objects into JVM classes, hosts them inside a Java runtime, and exposes both an admin shell and a player-facing Telnet server.
-
-image::jvmud-logo.png[JVMud logo,320,align="center"]
-
-The project is intentionally split into a few clear layers:
-
-* The runtime owns JVMud-native world concepts such as worlds, places, links, entities, locations, capabilities, containment, and scheduling.
-* The compiler owns LPC scanning, preprocessing, parsing, semantic analysis, intermediate representation, bytecode generation, efun contracts, and host-facing object loading.
-* The server hosts a mudlib as a shared interactive world and accepts Telnet player sessions.
-* The admin CLI gives a local operator a direct shell for loading, inspecting, cloning, moving, calling, and reloading objects.
-* The bundled `mudlibs/lp245` tree is the vanilla LPMUD 2.4.5 compatibility target.
-
-JVMud uses the human-facing chain `Player -> Session -> Persona -> World`. A player connects through a session. The session attaches to a persona. The persona is present in the world. The term `player object` is reserved for the mudlib-side LPC object used by LP245 compatibility.
+Document in progress....
 
 [[manual-audience]]
 === Who This Manual Is For
 
-This manual is for people who want to run JVMud, inspect the bundled mudlib, connect as a player, or author LPC content against the current project shape. Java API details live in the generated API docs; this manual explains the user and operator path first.
+Document in progress....
 
 [[manual-status]]
 === Project Status
 
-JVMud is early-stage engine work. The current repository can build with Maven, run compiler and runtime tests, start an admin shell, and start a Telnet-capable server against the bundled LP245 mudlib. Compatibility is deliberately incremental, so some vanilla mudlib paths may expose compiler, runtime, or shim gaps.
+Document in progress....

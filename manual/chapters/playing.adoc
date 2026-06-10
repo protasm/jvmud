@@ -1,37 +1,24 @@
 [[playing]]
 == Playing
 
-The player path runs through the Telnet server, not the admin CLI.
+Document in progress....
 
 [[playing-login]]
 === Login
 
-After connecting to the Telnet server, JVMud attempts to attach the configured LP245 player object. New players may be prompted for creation details such as name, password confirmation, email, or gender, depending on the current mudlib state. Returning players with saved state should skip character creation prompts.
+Document in progress....
 
 [[playing-commands]]
 === Basic Commands
 
-Useful early commands include:
-
-* `look`
-* movement commands such as `north`
-* `get all`
-* `light stick`
-* `help`
-
-Session controls use slash commands:
-
-* `/help`
-* `/quit`
-
-Slash commands are limited to session control. World interaction is routed through the mudlib action system.
+Document in progress....
 
 [[playing-world-input]]
 === How World Input Is Routed
 
-Player input is routed through LPC `init`, `add_action`, and `add_verb` registrations on nearby or carried objects. This keeps player commands mudlib-facing while the engine owns the live world, session, persona, containment, movement, and scheduling model.
+Document in progress....
 
 [[playing-limits]]
 === Current Limits
 
-The player-facing server is still early development software. Session-to-session messaging, output isolation between participants, and production networking policy belong to later server work.
+Document in progress....

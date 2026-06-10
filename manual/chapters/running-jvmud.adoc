@@ -1,73 +1,24 @@
 [[running-jvmud]]
 == Running JVMud
 
-JVMud currently has two main local entrypoints: the admin CLI and the player-facing Telnet server.
+Document in progress....
 
 [[running-admin-cli]]
 === Start The Admin CLI
 
-Run:
-
-[source,sh]
-----
-./jvmud-admin
-----
-
-Optionally pass a mudlib root as the first argument:
-
-[source,sh]
-----
-./jvmud-admin mudlibs/lp245
-----
-
-The admin CLI is a single-user operator shell. It is useful for loading objects, inspecting compiled state, invoking methods, walking the mudlib filesystem, and diagnosing compile or load failures.
+Document in progress....
 
 [[running-server]]
 === Start The Telnet Server
 
-Run:
-
-[source,sh]
-----
-./jvmud-start
-----
-
-The default server uses:
-
-* mudlib root: `mudlibs/lp245`
-* host: `localhost`
-* port: `4000`
-* config path: `jvmud/lp245.config`
-
-You can override those defaults:
-
-[source,sh]
-----
-./jvmud-start -mudlib-dir mudlibs/lp245 -host localhost -port 4000 -config jvmud/lp245.config
-----
-
-Starting the server boots one shared runtime and world. Each Telnet connection attempts to attach the configured mudlib player object and uses a host-owned fallback persona only if that path fails.
+Document in progress....
 
 [[running-connect]]
 === Connect As A Player
 
-In another terminal, connect with a Telnet client:
-
-[source,sh]
-----
-telnet localhost 4000
-----
-
-Use `/help` for session controls and `/quit` to disconnect. Admin inspection and object mutation stay in the admin CLI.
+Document in progress....
 
 [[running-smoke]]
 === Run The Startup Smoke Test
 
-The real entrypoint smoke test launches `jvmud-start`, connects over TCP, completes the mudlib login flow when needed, and verifies basic player commands:
-
-[source,sh]
-----
-scripts/smoke-jvmud-start.sh
-----
-
-Use this check after meaningful changes to startup, login, player attachment, command dispatch, or mudlib compatibility behavior.
+Document in progress....

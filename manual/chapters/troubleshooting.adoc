@@ -1,65 +1,29 @@
 [[troubleshooting]]
 == Troubleshooting
 
-JVMud issues are easiest to diagnose when compile, load, boot, and live player behavior are kept separate.
+Document in progress....
 
 [[troubleshooting-build]]
 === Build Fails
 
-Run:
-
-[source,sh]
-----
-mvn test
-----
-
-If dependencies are missing for launcher scripts, run the baseline Maven build once so local dependencies are resolved.
+Document in progress....
 
 [[troubleshooting-admin]]
 === Object Load Fails
 
-In the admin CLI:
-
-[source,text]
-----
-verbosity watch
-load /path/to/object
-----
-
-Read the failing stage first. Parser, semantic analysis, bytecode generation, direct object load, reset-time behavior, and command dispatch failures often need different fixes.
+Document in progress....
 
 [[troubleshooting-player]]
 === Player Login Or Commands Fail
 
-Run the real startup smoke:
-
-[source,sh]
-----
-scripts/smoke-jvmud-start.sh
-----
-
-This checks the configured player object path, login prompts, movement, and representative LP245 commands through the same process boundary a player uses.
+Document in progress....
 
 [[troubleshooting-compatibility]]
 === Mudlib Compatibility Report
 
-The compatibility report is written to:
-
-[source,text]
-----
-compiler/target/jvmud-mudlib-compatibility.md
-----
-
-Use it as a broad readiness signal. For a user-visible bug, prefer a focused admin CLI load or live Telnet smoke that reproduces the behavior.
+Document in progress....
 
 [[troubleshooting-docs]]
 === Manual Generation Fails
 
-Regenerate the manual with:
-
-[source,sh]
-----
-mvn -Pmanual-docs process-resources
-----
-
-The HTML and PDF are generated from the same `manual/index.adoc` include tree. Do not edit generated files under `docs/manual/` as the source of truth.
+Document in progress....

@@ -94,58 +94,84 @@ commands.
 
 ## Player Connection Lifecycle
 
-A connected player is represented by four related but distinct JVMud concepts:
+A connected player is represented by five related but distinct JVMud concepts:
 
-- an entity, which is a thing in the world;
-- presence, which is the experiential relationship created when a player
-  engages the world through a located persona;
-- a session, which is the active connection/control context;
-- a persona, which is the entity currently associated with a session as that
-  session's in-world perspective.
+- a Player, which is the human or account-like controller known to the engine;
+- a Session, which is the active connection and transport context;
+- a Persona, which is the Player's current in-World manifestation and
+  perspective;
+- an Entity, which is a thing in the World and may be used as a Persona;
+- Presence, which is the experiential relationship created when a Player
+  engages the World through a located Persona.
 
-The player object is the LPC-authored mudlib object that gives the persona
-entity its behavior. It is compatibility vocabulary, not a JVMud engine concept.
-The Persona is the Entity with mechanical location; the player object is the
-LPC implementation attached to that Persona.
+Player, Session, and Persona are JVMud-native engine concepts. They exist even
+when a mudlib has no LPC object named "player" and no mudlib-side account model.
+Mudlibs may optionally provide projections of those concepts: a Player profile
+projection for mudlib-owned facts about the human controller, and a Persona
+behavior projection for the in-World entity being controlled.
+
+The phrase player object is compatibility vocabulary for a mudlib-authored
+object, not an engine concept. A compatibility mudlib may use one object for
+Player profile, Persona behavior, login flow, and legacy session glue. LP245's
+`/obj/player.c` has that combined shape. JVMud supports that collapse through
+adapters, but it does not make the combined object the engine ontology.
 
 The minimal JVMud-native attach sequence is:
 
-1. A telnet session connects. JVMud creates a session record and records the
-   transport address and idle timestamp.
-2. JVMud resolves, creates, loads, or restores the entity that will serve as
-   the session's persona.
-3. JVMud ensures that Persona has a live LPC player object implementation.
-4. JVMud associates the session with that entity as its control context.
-5. JVMud gives the persona entity a location, using the configured initial place
-   when no stronger restored location exists.
-6. JVMud refreshes the interaction scope for the persona entity so surrounding
-   mudlib objects can register commands.
-7. Each input line is dispatched as that persona entity. During dispatch,
-   `this_player()` is the session's persona and `query_verb()` is the parsed
-   verb.
-8. When the session disconnects, JVMud removes the session association and
-   session-only routing. The entity may remain present in the world or be saved,
-   moved, or removed according to persistence policy.
+1. A telnet connection arrives. JVMud creates a Session record and records
+   transport details such as remote address, idle timestamp, and output sink.
+2. JVMud resolves or creates the Player associated with that Session. Login,
+   authentication, reconnect, profile, and character-selection text can be
+   messaged directly to the Player before any Persona exists.
+3. JVMud resolves, creates, loads, or restores the Persona that will serve as
+   the Player's in-World perspective for this Session.
+4. JVMud ensures that the Persona has any required mudlib-side behavior
+   projection, such as a compatibility player object.
+5. JVMud associates the Session, Player, and Persona as the active control
+   relationship.
+6. JVMud gives the Persona's entity a location, using the configured initial
+   place when no stronger restored location exists.
+7. JVMud refreshes the interaction scope for the Persona so surrounding mudlib
+   objects can register commands.
+8. Each gameplay input line is dispatched as that Persona. During dispatch,
+   `this_player()` is the compatibility view of the active Persona and
+   `query_verb()` is the parsed verb.
+9. When the Session disconnects, JVMud removes the session-only association.
+   The Player and Persona may remain durable concepts according to persistence
+   policy.
 
 The player lifecycle hooks above correspond to this sequence. They are optional
 boundary hooks, not legacy driver applies. A mudlib may map them to LPC methods
-on a boundary object, a player shim, or the player object itself. If a mapping
-is absent, JVMud proceeds with the engine-owned step.
+on a boundary object, a Player profile shim, a Persona behavior shim, or a
+legacy combined player object. If a mapping is absent, JVMud proceeds with the
+engine-owned step.
+
+JVMud-native messaging uses message terminology. Engine APIs should prefer names
+such as messagePlayer, messageSession, and messagePersona rather than legacy
+LPMud tell vocabulary. Direct Player messaging is for login, authentication,
+reconnect, account/profile, server notice, and other control-plane text. Normal
+gameplay output is Persona-routed because it is perspectival and may depend on
+location, perception, command actor, inventory, or world state. Legacy LPC names
+such as `write`, `say`, `tell_object`, and `tell_room` remain compatibility
+entry points layered onto those engine operations.
 
 The first playable implementation should prefer the smallest coherent contract:
 
-- bind one telnet session to one persona entity with a player object
-  implementation;
+- bind one telnet Session to one Player and, after login, to one Persona with
+  any required mudlib behavior projection;
+- route login, reconnect, and system/control-plane text through Player
+  messaging;
 - route `write` and `tell_object` to the bound session when their target is the
-  active persona;
+  active Persona;
 - route `say` and `shout` through presence-aware text delivery, even if the
   first slice uses simple broadcast behavior;
-- make `users()` return connected persona entities, not all loaded objects;
+- make `users()` return connected Persona entities or their compatibility
+  mudlib projections, not all loaded objects;
 - make `query_idle(player)` and `query_ip_number(player)` read from the bound
   session record;
 - dispatch input through the command registry populated by
   `interaction_scope_started`;
-- move the persona entity through world containment/location APIs rather than
+- move the Persona entity through World containment/location APIs rather than
   treating legacy rooms as engine concepts.
 
 Persistence has two modes at this boundary. World Continuity is the MUD pillar:
@@ -173,7 +199,7 @@ entry points, not the conceptual boundary.
 | Query contents | Ask what entities are contained by a place or entity. | `all_inventory`, `first_inventory`, `next_inventory` |
 | Query current execution context | Ask which object, Persona, verb, or command is active. | `this_object`, `this_player`, `query_verb` |
 | Register interaction commands | Make an object respond to Player text in its interaction scope. | `enable_commands`, `add_action`, `add_verb` |
-| Send text | Deliver text to one Player, nearby Players, or a place. | `write`, `say`, `tell_object`, `tell_room` |
+| Message output | Deliver text to a Player, Session, Persona, nearby perceivers, or a place. | `write`, `say`, `tell_object`, `tell_room` |
 | Schedule time | Request recurring or delayed work. | `set_heart_beat`, `call_out`, `remove_call_out` |
 | Access mudlib storage | Read, write, list, or query files within policy. | `read_file`, `write_file`, `file_size`, directory engine functions |
 | Ask mudlib policy | Delegate permissions or compatibility choices to mudlib policy objects. | master object hooks |
