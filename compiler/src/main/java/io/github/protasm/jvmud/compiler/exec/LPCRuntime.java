@@ -11,8 +11,11 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.runtime.PersonaId;
 import io.github.protasm.jvmud.runtime.PersonaRecord;
+import io.github.protasm.jvmud.runtime.PlayerId;
 import io.github.protasm.jvmud.runtime.PlayerRecord;
+import io.github.protasm.jvmud.runtime.SessionId;
 import io.github.protasm.jvmud.runtime.SessionRecord;
 import io.github.protasm.jvmud.runtime.WorldScheduler;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -529,6 +532,21 @@ public final class LPCRuntime {
     /** Returns the engine-owned Persona record associated with a compatibility persona projection. */
     public Optional<PersonaRecord> personaRecordForProjection(Object persona) {
         return runtimeContext.personaRecordForProjection(persona);
+    }
+
+    /** Delivers engine control-plane or transport text to one bound Session. */
+    public boolean messageSession(SessionId sessionId, Object value) {
+        return runtimeContext.messageSession(sessionId, value);
+    }
+
+    /** Delivers engine control-plane text to all active Sessions for one Player. */
+    public boolean messagePlayer(PlayerId playerId, Object value) {
+        return runtimeContext.messagePlayer(playerId, value);
+    }
+
+    /** Delivers engine gameplay text to one bound Persona. */
+    public boolean messagePersona(PersonaId personaId, Object value) {
+        return runtimeContext.messagePersona(personaId, value);
     }
 
     /** Returns the accumulated default output transcript for diagnostics and tests. */

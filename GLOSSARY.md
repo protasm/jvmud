@@ -38,8 +38,9 @@ Persistence includes two related modes:
 World Continuity is the core MUD pillar: the World remains live and coherent
 independently of any particular Player's connection.
 
-Save/Restore State is durable state for selected Player, account, Entity, or
-mudlib-defined data that is outside active World temporality until restored.
+Save/Restore State is durable state for selected Personas, Entities, or
+mudlib-defined account/profile data that is outside active World temporality
+until restored.
 
 Legacy LPC `save_object` and `restore_object` are compatibility vocabulary for
 saving and restoring LPC object state. `Object` is LPC/LPMud vocabulary, not a
@@ -110,22 +111,32 @@ inside another Entity.
 
 ### Player
 
-The human person playing the Game from outside the fictional World.
+The human-controller endpoint associated with a Session.
 
-A Player interacts with JVMud through a Session and experiences the World
+A Player represents the presumed human person at the other end of a connection,
+but it is not an account, login, durable identity, or authentication principal.
+JVMud does not know whether two Players are the same real-world person unless a
+mudlib chooses to model that relationship.
+
+A Player interacts with JVMud through its Session and experiences the World
 through a Persona. The Player is not an Entity inside the World; the Persona is
-the in-world Entity that creates Presence for that Player.
+the in-world Entity that creates Presence for that Player. Mudlibs may decide
+which Player can control which Persona, whether a Persona can have multiple
+controllers, and what names, passwords, profiles, or accounts mean.
 
 ### Session
 
 An active connection/control context, such as a telnet connection.
 
-A Session is not itself an Entity. It is the live connection between JVMud and a
-Player, and it controls or observes the World through a Persona.
+A Session is not itself an Entity. It is the live transport pipe between JVMud
+and a remote client, carrying raw input, output, remote address, idle time,
+terminal state, and disconnect lifecycle. In the core engine model, each live
+Session has one Player, and that Player is the human-facing controller role for
+the Session.
 
 ### Persona
 
-The Entity currently associated with a Session as that Session's in-world
+The Entity currently controlled by a Player as that Player's in-world
 perspective.
 
 A Persona is the player's current point of perception and action. It must have a
@@ -133,25 +144,28 @@ Location for Presence to exist. A Persona may be located in a Place or in
 another Entity if the game supports containment, vehicles, possession, carried
 objects, or similar structures.
 
-A Persona is a specific role for an Entity: it is linked to a Player through a
-Session. A Persona is usually also an Actor because Player commands can cause it
-to act, but Actor is a broader capability that also includes NPCs, traps,
-schedulers, scripted effects, and other Entities that initiate change.
+A Persona is a specific role for an Entity: it is linked to a Player through
+control policy. A Persona is usually also an Actor because Player commands can
+cause it to act, but Actor is a broader capability that also includes NPCs,
+traps, schedulers, scripted effects, and other Entities that initiate change.
 
 ### Player Object
 
-The LPC-authored mudlib object that gives a Persona its behavior.
+An LPC-authored mudlib object that gives a Persona, mudlib player profile, or
+legacy combined player/persona shape its behavior.
 
 This is mudlib and compatibility vocabulary, especially for legacy LP mudlibs.
-It should not be confused with a JVMud Player, who is the human person outside
-the World, or with the Persona, which is the Entity through which Presence
-occurs. A player object is an LPC implementation attached to a Persona.
+It should not be confused with a JVMud Player, which is the human-controller
+endpoint for a Session, or with the Persona, which is the Entity through which
+Presence occurs. A legacy player object may combine login flow, profile fields,
+session glue, and Persona behavior; that collapse is mudlib policy, not engine
+ontology.
 
 ### Player Connection Lifecycle
 
-The engine sequence that attaches a Session to a Persona, ensures that the
-Persona has a live player object implementation, gives the Persona a Location,
-refreshes interaction scope, routes input, and later disconnects or saves the
+The engine sequence that creates a Session and Player, lets mudlib policy choose
+or create a Persona, attaches the Player to that Persona, gives the Persona a
+Location, refreshes interaction scope, routes input, and later disconnects the
 Session association.
 
 ### Interaction Scope

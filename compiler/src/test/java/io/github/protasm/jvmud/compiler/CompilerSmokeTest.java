@@ -1,6 +1,7 @@
 package io.github.protasm.jvmud.compiler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -628,6 +629,43 @@ final class CompilerSmokeTest {
 
         assertEquals(1, first.invoke("user_count"));
         assertTrue(runtime.sessionRecord("s2").isEmpty());
+    }
+
+    @Test
+    void runtimeRoutesEngineMessagesToSessionPlayerAndPersona() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle first = runtime.loadSource("smoke/first_player.c", """
+                int value() {
+                    return 1;
+                }
+                """);
+        LPCObjectHandle second = runtime.loadSource("smoke/second_player.c", """
+                int value() {
+                    return 2;
+                }
+                """);
+        StringBuilder firstOutput = new StringBuilder();
+        StringBuilder secondOutput = new StringBuilder();
+
+        runtime.bindSession("s1", first.instance(), "127.0.0.1", firstOutput::append);
+        runtime.bindSession("s2", second.instance(), "10.0.0.2", secondOutput::append);
+
+        var firstSession = runtime.sessionRecord("s1").orElseThrow();
+        var firstPlayer = runtime.playerRecordForSession("s1").orElseThrow();
+        var firstPersona = runtime.personaRecordForProjection(first.instance()).orElseThrow();
+
+        assertTrue(runtime.messageSession(firstSession.id(), "session-only\\n"));
+        assertTrue(runtime.messagePlayer(firstPlayer.id(), "player-only\\n"));
+        assertTrue(runtime.messagePersona(firstPersona.id(), "persona-only\\n"));
+        assertEquals("session-only\nplayer-only\npersona-only\n", firstOutput.toString());
+        assertEquals("", secondOutput.toString());
+        assertEquals(firstOutput.toString(), runtime.outputTranscript());
+
+        runtime.unbindSession("s1");
+
+        assertFalse(runtime.messageSession(firstSession.id(), "after-unbind"));
+        assertFalse(runtime.messagePlayer(firstPlayer.id(), "after-unbind"));
+        assertFalse(runtime.messagePersona(firstPersona.id(), "after-unbind"));
     }
 
     @Test

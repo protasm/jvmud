@@ -17,6 +17,8 @@ import java.util.Objects;
 
 /** Shared runtime state for a persistent Telnet mud process. */
 final class TelnetMud {
+    private static final String CONNECTED_BANNER = "JVMud telnet. Type /help for commands or /quit to disconnect.\n";
+
     private final LPCRuntime runtime;
     private final WorldRuntime worldRuntime;
     private final Path mudlibRoot;
@@ -126,7 +128,9 @@ final class TelnetMud {
                 out.flush();
             });
             runtime.clearOutputTranscript();
-            out.println("Attached " + name + " as " + objectId + " in " + startingRoomPath + ".");
+            messagePlayerForSession(sessionId, CONNECTED_BANNER);
+            messagePlayerForSession(sessionId, "Attached " + name + " as " + objectId
+                    + " in " + startingRoomPath + ".\n");
             invokePlayerSessionConnected(actor);
             return new Persona(sessionId, objectId, name, actor);
         } catch (RuntimeException | LinkageError e) {
@@ -156,8 +160,14 @@ final class TelnetMud {
             out.flush();
         });
         runtime.clearOutputTranscript();
-        out.println("Attached " + name + " in " + startingRoomPath + ".");
+        messagePlayerForSession(sessionId, CONNECTED_BANNER);
+        messagePlayerForSession(sessionId, "Attached " + name + " in " + startingRoomPath + ".\n");
         return new Persona(sessionId, objectId, name, actor);
+    }
+
+    private void messagePlayerForSession(String sessionId, String text) {
+        runtime.playerRecordForSession(sessionId)
+                .ifPresent(player -> runtime.messagePlayer(player.id(), text));
     }
 
     private void invokePlayerSessionConnected(Object actor) {

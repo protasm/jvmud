@@ -75,11 +75,11 @@ The currently defined JVMud lifecycle events are:
 | `entity_departed_from_place` | Reserved | Departing entity or source place | source place, destination place, movement action | An entity is leaving a place. |
 | `entity_added_to_entity` | Reserved | Added entity or containing entity | container entity | An entity has entered another entity's containment. |
 | `entity_removed_from_entity` | Reserved | Removed entity or containing entity | previous container entity | An entity has left another entity's containment. |
-| `player_session_connected` | Implemented, optional mapping | Player object | none currently | A Player transport has connected and JVMud has bound the Session to the player object; compatibility mudlibs may use this to start login input. |
-| `player_persona_resolved` | Reserved | Boundary object or player object | persona id | JVMud has resolved the entity that this session will use as its in-world perspective. |
-| `player_object_bound` | Reserved | Player object | persona id, session id | JVMud has associated a live player object entity with a connected session. |
-| `player_entered_world` | Reserved | Player object | starting place | JVMud has placed the player object into the world and interaction can begin. |
-| `player_session_disconnected` | Reserved | Player object or boundary object | persona id, session id | The transport has disconnected and JVMud is about to save, unbind, or clean up session control. |
+| `player_session_connected` | Implemented, optional mapping | Player object | none currently | A Session has connected and JVMud has created a Player endpoint for that Session; compatibility mudlibs may use this to start login input. |
+| `player_persona_resolved` | Reserved | Boundary object or player object | persona id | Mudlib policy or JVMud fallback has resolved the entity that this Player will use as its in-world perspective. |
+| `player_object_bound` | Reserved | Player object | persona id, session id | JVMud has associated a live compatibility player object with the Player, Session, and Persona relationship. |
+| `player_entered_world` | Reserved | Player object | starting place | JVMud has placed the Persona into the world and interaction can begin. |
+| `player_session_disconnected` | Reserved | Player object or boundary object | persona id, session id | The transport has disconnected and JVMud is about to unbind session-only routing; mudlib policy may save or clean up related state. |
 | `interaction_scope_started` | Implemented, optional mapping | Persona, Persona location, carried objects, and nearby objects | none currently | An interactive Persona's local command/perception scope is being refreshed; mudlib objects may register text commands or interaction affordances. |
 | `command_dispatch_started` | Reserved | Persona or boundary object | command text, verb | JVMud is about to dispatch Player text to mudlib behavior. |
 | `command_dispatch_finished` | Reserved | Persona or boundary object | command text, verb, handled status | JVMud has finished dispatching Player text. |
@@ -96,39 +96,49 @@ commands.
 
 A connected player is represented by five related but distinct JVMud concepts:
 
-- a Player, which is the human or account-like controller known to the engine;
-- a Session, which is the active connection and transport context;
+- a Session, which is the active connection and transport pipe;
+- a Player, which is the human-controller endpoint associated with that
+  Session;
 - a Persona, which is the Player's current in-World manifestation and
   perspective;
 - an Entity, which is a thing in the World and may be used as a Persona;
 - Presence, which is the experiential relationship created when a Player
   engages the World through a located Persona.
 
-Player, Session, and Persona are JVMud-native engine concepts. They exist even
-when a mudlib has no LPC object named "player" and no mudlib-side account model.
-Mudlibs may optionally provide projections of those concepts: a Player profile
-projection for mudlib-owned facts about the human controller, and a Persona
-behavior projection for the in-World entity being controlled.
+Player, Session, and Persona are JVMud-native engine concepts. A Session is the
+transport layer: socket or channel, remote address, idle time, terminal state,
+raw input/output, and disconnect lifecycle. A Player is deliberately thinner:
+the human-facing controller role for that Session. Player is not an account,
+login, durable identity, or authentication principal, and JVMud does not know
+whether two Players are the same real-world person. A Persona is the in-World
+Entity controlled by a Player.
+
+Mudlibs may optionally provide projections and policies for those concepts:
+profile/account data, login prompts, passwords, character names, duplicate
+control rules, and Persona behavior. Those are mudlib-owned meanings layered on
+top of JVMud's anonymous Player/Session/Persona mechanics.
 
 The phrase player object is compatibility vocabulary for a mudlib-authored
 object, not an engine concept. A compatibility mudlib may use one object for
-Player profile, Persona behavior, login flow, and legacy session glue. LP245's
-`/obj/player.c` has that combined shape. JVMud supports that collapse through
-adapters, but it does not make the combined object the engine ontology.
+account/profile fields, Persona behavior, login flow, duplicate-login policy,
+and legacy session glue. LP245's `/obj/player.c` has that combined shape. JVMud
+supports that collapse through adapters, but it does not make the combined
+object the engine ontology.
 
 The minimal JVMud-native attach sequence is:
 
 1. A telnet connection arrives. JVMud creates a Session record and records
    transport details such as remote address, idle timestamp, and output sink.
-2. JVMud resolves or creates the Player associated with that Session. Login,
-   authentication, reconnect, profile, and character-selection text can be
+2. JVMud creates the Player endpoint associated with that Session. Login,
+   character-selection, server notice, and other human-facing text can be
    messaged directly to the Player before any Persona exists.
-3. JVMud resolves, creates, loads, or restores the Persona that will serve as
-   the Player's in-World perspective for this Session.
+3. Mudlib policy, or a JVMud fallback, resolves, creates, loads, or restores the
+   Persona that will serve as the Player's in-World perspective.
 4. JVMud ensures that the Persona has any required mudlib-side behavior
    projection, such as a compatibility player object.
 5. JVMud associates the Session, Player, and Persona as the active control
-   relationship.
+   relationship, without deciding mudlib account ownership or duplicate-control
+   policy.
 6. JVMud gives the Persona's entity a location, using the configured initial
    place when no stronger restored location exists.
 7. JVMud refreshes the interaction scope for the Persona so surrounding mudlib
@@ -137,30 +147,32 @@ The minimal JVMud-native attach sequence is:
    `this_player()` is the compatibility view of the active Persona and
    `query_verb()` is the parsed verb.
 9. When the Session disconnects, JVMud removes the session-only association.
-   The Player and Persona may remain durable concepts according to persistence
-   policy.
+   Mudlib policy may save, move, preserve, or clean up the Persona or related
+   profile state.
 
 The player lifecycle hooks above correspond to this sequence. They are optional
 boundary hooks, not legacy driver applies. A mudlib may map them to LPC methods
-on a boundary object, a Player profile shim, a Persona behavior shim, or a
+on a boundary object, a profile/account shim, a Persona behavior shim, or a
 legacy combined player object. If a mapping is absent, JVMud proceeds with the
 engine-owned step.
 
 JVMud-native messaging uses message terminology. Engine APIs should prefer names
 such as messagePlayer, messageSession, and messagePersona rather than legacy
-LPMud tell vocabulary. Direct Player messaging is for login, authentication,
-reconnect, account/profile, server notice, and other control-plane text. Normal
-gameplay output is Persona-routed because it is perspectival and may depend on
-location, perception, command actor, inventory, or world state. Legacy LPC names
-such as `write`, `say`, `tell_object`, and `tell_room` remain compatibility
-entry points layered onto those engine operations.
+LPMud tell vocabulary. Direct Player messaging is for login prompts,
+character-selection prompts, server notices, and other control-plane text aimed
+at the human endpoint. Normal gameplay output is Persona-routed because it is
+perspectival and may depend on location, perception, command actor, inventory,
+or world state. Legacy LPC names such as `write`, `say`, `tell_object`, and
+`tell_room` remain compatibility entry points layered onto those engine
+operations.
 
 The first playable implementation should prefer the smallest coherent contract:
 
-- bind one telnet Session to one Player and, after login, to one Persona with
-  any required mudlib behavior projection;
-- route login, reconnect, and system/control-plane text through Player
-  messaging;
+- bind one telnet Session to one Player and, after mudlib policy resolves a
+  character or fallback, to one Persona with any required mudlib behavior
+  projection;
+- route login prompts, character-selection prompts, and system/control-plane
+  text through Player messaging;
 - route `write` and `tell_object` to the bound session when their target is the
   active Persona;
 - route `say` and `shout` through presence-aware text delivery, even if the
@@ -176,8 +188,8 @@ The first playable implementation should prefer the smallest coherent contract:
 
 Persistence has two modes at this boundary. World Continuity is the MUD pillar:
 the World endures independently of individual sessions. Save/Restore State is
-durable state for selected Player, account, Entity, or mudlib-defined data that
-is outside active World temporality until restored.
+durable state for selected Personas, Entities, or mudlib-defined account/profile
+data that is outside active World temporality until restored.
 
 `save_object` and `restore_object` are compatibility spellings for saving and
 restoring LPC object state. JVMud owns storage policy and engine Persistence.

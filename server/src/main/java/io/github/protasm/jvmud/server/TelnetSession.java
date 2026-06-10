@@ -32,7 +32,6 @@ final class TelnetSession implements Runnable {
                 BufferedInputStream in = new BufferedInputStream(socket.getInputStream());
                 OutputStream rawOut = socket.getOutputStream();
                 PrintWriter out = new PrintWriter(new OutputStreamWriter(rawOut, StandardCharsets.UTF_8), true)) {
-            out.println("JVMud telnet. Type /help for commands or /quit to disconnect.");
             session = new SessionState(mud.attachPersona(out, socket.getInetAddress().getHostAddress()));
             mud.printPromptIfReady(session.persona, out);
 

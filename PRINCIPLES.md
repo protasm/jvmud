@@ -98,11 +98,10 @@ The Eight Core Concepts
    that the world endures independently of individual sessions.
 
    Save/Restore State is the persistence mode for selected state
-   that is outside active World temporality until restored. Player
-   and account state are common examples, but mudlibs may also
-   save and restore concrete Entities such as stored weapons or
-   vault contents when their policy removes those Entities from
-   active World time.
+   that is outside active World temporality until restored. Persona
+   state, concrete Entity state, and mudlib-defined account or
+   profile state are common examples when mudlib policy removes
+   those things from active World time.
 
    Legacy LPC names such as save_object and restore_object are
    compatibility vocabulary for saving and restoring LPC object
@@ -159,10 +158,16 @@ The Eight Core Concepts
    Presence is central to the style of world simulation that
    JVMud is designed to support.
 
-   A Session is an active connection/control context.
+   A Session is an active connection/control context: the transport
+   pipe between JVMud and a remote client.
 
-   A Persona is the Entity currently associated with a Session
-   as that Session's in-world perspective.
+   A Player is the human-controller endpoint associated with a
+   Session. It is not an account, login, durable identity, or
+   authentication principal. JVMud does not know whether two Players
+   are the same real-world person unless mudlib policy tells it so.
+
+   A Persona is the Entity currently controlled by a Player as that
+   Player's in-world perspective.
 
    A Persona is a specific kind of Entity relationship, not a
    synonym for Actor. Actor is a capability: an Entity capable of
@@ -488,7 +493,8 @@ One Temporality Model
 
 One Player Population
 
-    Represents the Players inhabiting the world.
+    Represents the Players participating in the world through
+    Sessions and Personas.
 
 One Canonical Text Model
 

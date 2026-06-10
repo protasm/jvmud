@@ -146,11 +146,48 @@ public final class RuntimeContext {
     }
 
     public void writeOutput(Object value) {
-        writeOutputTo(outputTarget(), value);
+        writeOutputToProjection(outputTarget(), value);
     }
 
     public void tellObject(Object target, Object value) {
-        writeOutputTo(target, value);
+        writeOutputToProjection(target, value);
+    }
+
+    public boolean messageSession(SessionId sessionId, Object value) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        SessionBinding binding = sessions.get(sessionId);
+        if (binding == null) {
+            return false;
+        }
+        deliverToSession(binding, value);
+        return true;
+    }
+
+    public boolean messagePlayer(PlayerId playerId, Object value) {
+        Objects.requireNonNull(playerId, "playerId");
+        PlayerRecord player = players.get(playerId);
+        if (player == null) {
+            return false;
+        }
+        boolean delivered = false;
+        for (SessionId sessionId : player.activeSessionIds()) {
+            delivered |= messageSession(sessionId, value);
+        }
+        return delivered;
+    }
+
+    public boolean messagePersona(PersonaId personaId, Object value) {
+        Objects.requireNonNull(personaId, "personaId");
+        PersonaRecord persona = personas.get(personaId);
+        if (persona == null || persona.mudlibBehaviorProjection().isEmpty()) {
+            return false;
+        }
+        SessionBinding binding = sessionsByPersona.get(persona.mudlibBehaviorProjection().orElseThrow());
+        if (binding == null) {
+            return false;
+        }
+        deliverToSession(binding, value);
+        return true;
     }
 
     public void emitPerceivable(Object emitter, Object value) {
@@ -172,7 +209,7 @@ public final class RuntimeContext {
 
         for (Object target : List.copyOf(inventoryFor(location))) {
             if (!isExcluded(target, excluded) && sessionsByPersona.containsKey(target)) {
-                writeOutputTo(target, value);
+                writeOutputToProjection(target, value);
             }
         }
     }
@@ -186,15 +223,25 @@ public final class RuntimeContext {
         return false;
     }
 
-    private void writeOutputTo(Object target, Object value) {
-        String text = String.valueOf(value).replace("\\n", "\n");
-        outputTranscript.append(text);
+    private void writeOutputToProjection(Object target, Object value) {
         SessionBinding binding = target != null ? sessionsByPersona.get(target) : null;
         if (binding != null) {
-            binding.outputSink().accept(text);
+            deliverToSession(binding, value);
         } else {
+            String text = messageText(value);
+            outputTranscript.append(text);
             outputSink.accept(text);
         }
+    }
+
+    private void deliverToSession(SessionBinding binding, Object value) {
+        String text = messageText(value);
+        outputTranscript.append(text);
+        binding.outputSink().accept(text);
+    }
+
+    private String messageText(Object value) {
+        return String.valueOf(value).replace("\\n", "\n");
     }
 
     public String outputTranscript() {
