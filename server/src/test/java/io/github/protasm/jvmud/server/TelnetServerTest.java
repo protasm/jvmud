@@ -915,7 +915,6 @@ final class TelnetServerTest {
                 mfun_object = config/mfuns
                 player_prompt = "$ "
                 initial_place = place/start
-                initial_presence_id = presence/local
                 preload_objects = obj/preload
                 lifecycle.object_loaded = on_loaded
                 lifecycle.interaction_scope_started = on_scope
@@ -947,14 +946,13 @@ final class TelnetServerTest {
         assertEquals("config/mfuns", boundary.mfunObjectPath().orElseThrow());
         assertEquals("$ ", boundary.playerPrompt().orElseThrow());
         assertEquals("place/start", boundary.initialPlacePath().orElseThrow());
-        assertEquals("presence/local", boundary.initialPresenceId().orElseThrow());
         assertEquals("heartbeat", boundary.temporalTickMethod().orElseThrow());
         assertEquals(5, boundary.temporalTickIntervalSeconds());
         assertEquals("on_loaded", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED).orElseThrow());
         assertEquals("on_scope", boundary.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElseThrow());
         assertTrue(result.preloadedObjects().contains("obj/preload"));
         assertEquals("place/start", result.startingRoom());
-        assertEquals("presence/local", result.actorHandle());
+        assertEquals("local/player", result.actorHandle());
     }
 
     private String readUntilContains(Socket socket, String expected) throws Exception {

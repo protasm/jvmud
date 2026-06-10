@@ -69,7 +69,7 @@ public final class MudlibBoot {
         Object actor = null;
         String initialPlace = null;
         String initialPlacePath = boundary.initialPlacePath().orElse(DEFAULT_STARTING_ROOM);
-        String initialPresenceId = boundary.initialPresenceId().orElse(LOCAL_ACTOR_HANDLE);
+        String initialPersonaId = LOCAL_ACTOR_HANDLE;
         if (loadInitialPlace && mudlibFileExists(initialPlacePath)) {
             try {
                 Object placeObject = runtime.loadOrGetObject(initialPlacePath);
@@ -77,14 +77,14 @@ public final class MudlibBoot {
                 initialPlace = initialPlacePath;
                 if (createInitialActor) {
                     Entity actorEntity = worldRuntime.createEntity(
-                            initialPresenceId,
+                            initialPersonaId,
                             "local player",
                             startingPlace,
                             Capability.ACTOR,
                             Capability.PERCEPTIVE);
                     LocalSessionActor localActor =
                             new LocalSessionActor(runtime, worldRuntime, actorEntity, "local player");
-                    runtime.registerHostObject(initialPresenceId, localActor);
+                    runtime.registerHostObject(initialPersonaId, localActor);
                     runtime.moveObject(localActor, placeObject);
                     actor = localActor;
                 }
@@ -99,7 +99,7 @@ public final class MudlibBoot {
                 preloadedObjects,
                 skippedPreloads,
                 initialPlace,
-                actor == null ? null : initialPresenceId,
+                actor == null ? null : initialPersonaId,
                 actor);
     }
 

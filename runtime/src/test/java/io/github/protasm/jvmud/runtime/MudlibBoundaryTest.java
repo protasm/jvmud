@@ -97,7 +97,6 @@ final class MudlibBoundaryTest {
                 player_object = /obj/player.c
                 player_prompt = "> "
                 initial_place = room/village/vill_green
-                initial_presence_id = local/player
                 preload_file = room/init_file
                 preload_objects = obj/torch, obj/money.c
                 handled_lifecycle_events = scheduled-tick
@@ -118,7 +117,6 @@ final class MudlibBoundaryTest {
         assertEquals("obj/player", boundary.playerObjectPath().orElseThrow());
         assertEquals("> ", boundary.playerPrompt().orElseThrow());
         assertEquals("room/village/vill_green", boundary.initialPlacePath().orElseThrow());
-        assertEquals("local/player", boundary.initialPresenceId().orElseThrow());
         assertEquals("room/init_file", boundary.preloadFilePath().orElseThrow());
         assertTrue(boundary.preloadObjectPaths().contains("obj/torch"));
         assertTrue(boundary.preloadObjectPaths().contains("obj/money"));

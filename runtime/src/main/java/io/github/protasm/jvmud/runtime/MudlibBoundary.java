@@ -25,7 +25,6 @@ public final class MudlibBoundary {
     private final String playerObjectPath;
     private final String playerPrompt;
     private final String initialPlacePath;
-    private final String initialPresenceId;
     private final String preloadFilePath;
     private final Set<String> preloadObjectPaths;
     private final String temporalTickMethod;
@@ -41,7 +40,6 @@ public final class MudlibBoundary {
         this.playerObjectPath = normalizeOptionalPath(builder.playerObjectPath);
         this.playerPrompt = normalizeOptionalPrompt(builder.playerPrompt);
         this.initialPlacePath = normalizeOptionalPath(builder.initialPlacePath);
-        this.initialPresenceId = normalizeOptionalText(builder.initialPresenceId);
         this.preloadFilePath = normalizeOptionalPath(builder.preloadFilePath);
         this.preloadObjectPaths = normalizePathSet(builder.preloadObjectPaths);
         this.temporalTickMethod = normalizeOptionalText(builder.temporalTickMethod);
@@ -90,14 +88,9 @@ public final class MudlibBoundary {
         return Optional.ofNullable(playerPrompt);
     }
 
-    /** Returns the optional starting place object path for new local presence. */
+    /** Returns the optional starting place object path for new local Personas. */
     public Optional<String> initialPlacePath() {
         return Optional.ofNullable(initialPlacePath);
-    }
-
-    /** Returns the optional initial engine presence id used for host-owned personas. */
-    public Optional<String> initialPresenceId() {
-        return Optional.ofNullable(initialPresenceId);
     }
 
     /** Returns the optional mudlib-relative file that lists startup preload objects. */
@@ -155,7 +148,6 @@ public final class MudlibBoundary {
                 || playerObjectPath != null
                 || playerPrompt != null
                 || initialPlacePath != null
-                || initialPresenceId != null
                 || preloadFilePath != null
                 || !preloadObjectPaths.isEmpty()
                 || temporalTickMethod != null
@@ -230,7 +222,6 @@ public final class MudlibBoundary {
         private String playerObjectPath;
         private String playerPrompt;
         private String initialPlacePath;
-        private String initialPresenceId;
         private String preloadFilePath;
         private final java.util.LinkedHashSet<String> preloadObjectPaths =
                 new java.util.LinkedHashSet<>();
@@ -279,15 +270,9 @@ public final class MudlibBoundary {
             return this;
         }
 
-        /** Sets the starting place object path for new presence. */
+        /** Sets the starting place object path for new Personas. */
         public Builder initialPlacePath(String initialPlacePath) {
             this.initialPlacePath = initialPlacePath;
-            return this;
-        }
-
-        /** Sets the initial host-owned presence id. */
-        public Builder initialPresenceId(String initialPresenceId) {
-            this.initialPresenceId = initialPresenceId;
             return this;
         }
 

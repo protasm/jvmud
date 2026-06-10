@@ -34,11 +34,6 @@ public final class MudlibBoundaryConfigReader {
         }
         addString(builder::playerPrompt, playerPrompt);
         addString(builder::initialPlacePath, firstValue(values, "initial_place"));
-        String initialPresence = firstValue(values, "initial_presence_id");
-        if (initialPresence == null) {
-            initialPresence = firstValue(values, "initial_presence");
-        }
-        addString(builder::initialPresenceId, initialPresence);
         addString(builder::preloadFilePath, firstValue(values, "preload_file"));
         addPreloadObjects(builder, allValues(values, "preload_objects"));
         addLifecycleEvents(builder, allValues(values, "handled_lifecycle_events"));
