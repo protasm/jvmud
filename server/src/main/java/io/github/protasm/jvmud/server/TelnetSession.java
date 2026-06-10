@@ -81,6 +81,9 @@ final class TelnetSession implements Runnable {
             executePlayerCommand(session, out, commandLine);
         }
         out.flush();
+        if (!mud.isAttached(session.persona)) {
+            session.running = false;
+        }
         if (session.running) {
             mud.printPromptIfReady(session.persona, out);
         }

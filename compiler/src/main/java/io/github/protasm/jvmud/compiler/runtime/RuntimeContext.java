@@ -834,6 +834,11 @@ public final class RuntimeContext {
             return;
         }
 
+        SessionBinding binding = sessionsByPersona.get(object);
+        if (binding != null) {
+            sessions.remove(binding.sessionRecord().id());
+            detachSessionFromRecords(binding);
+        }
         cancelRecurringTick(object);
         cancelCallOuts(object);
         List<Object> contents = new ArrayList<>(inventoryFor(object));

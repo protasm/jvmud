@@ -536,6 +536,7 @@ final class TelnetServerTest {
                 string mailaddr;
                 int gender;
                 int level;
+                int password_attempts;
 
                 void reset(mixed arg) {
                     gender = -1;
@@ -588,10 +589,19 @@ final class TelnetServerTest {
                 }
 
                 void check_password(mixed str) {
-                    if (str == password)
+                    if (str == password) {
+                        password_attempts = 0;
                         write("Welcome back " + capitalize(name) + "\\n");
-                    else
+                    } else {
                         write("Wrong password!\\n");
+                        password_attempts = password_attempts + 1;
+                        if (password_attempts < 3) {
+                            input_to("check_password", 1);
+                            write("Password: ");
+                            return;
+                        }
+                        destruct(this_object());
+                    }
                 }
 
                 int quit() {
@@ -671,6 +681,38 @@ final class TelnetServerTest {
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
+            }
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilContains(socket, "Name: ").contains("Name: "));
+
+                socket.getOutputStream().write("alice\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "Password: ").contains("Password: "));
+
+                socket.getOutputStream().write("wrong\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String firstBadPassword = readUntilContains(socket, "Password: ");
+                assertTrue(firstBadPassword.contains("Wrong password!"), firstBadPassword);
+                assertTrue(firstBadPassword.contains("Password: "), firstBadPassword);
+                assertFalse(firstBadPassword.contains("> "), firstBadPassword);
+
+                socket.getOutputStream().write("wrong\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String secondBadPassword = readUntilContains(socket, "Password: ");
+                assertTrue(secondBadPassword.contains("Wrong password!"), secondBadPassword);
+                assertTrue(secondBadPassword.contains("Password: "), secondBadPassword);
+                assertFalse(secondBadPassword.contains("> "), secondBadPassword);
+
+                socket.getOutputStream().write("wrong\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String thirdBadPassword = readUntilContains(socket, "Wrong password!");
+                assertTrue(thirdBadPassword.contains("Wrong password!"), thirdBadPassword);
+                assertFalse(thirdBadPassword.contains("> "), thirdBadPassword);
+                String closeTail = readUntilSocketClosed(socket);
+                assertFalse(closeTail.contains("> "), closeTail);
+                assertFalse(closeTail.contains("You can't do that."), closeTail);
             }
         }
     }
@@ -983,6 +1025,17 @@ final class TelnetServerTest {
         return output.toString();
     }
 
+    private String readUntilSocketClosed(Socket socket) throws Exception {
+        StringBuilder output = new StringBuilder();
+        while (true) {
+            int value = socket.getInputStream().read();
+            if (value == -1) {
+                return output.toString();
+            }
+            output.append((char) value);
+        }
+    }
+
     private void assertSavedPlayerFile(Path path) throws Exception {
         long deadline = System.nanoTime() + 1_000_000_000L;
         while (System.nanoTime() < deadline) {
@@ -1152,6 +1205,10 @@ final class TelnetServerTest {
 
                 object this_object() {
                     return jvmud_current_entity();
+                }
+
+                void destruct(object ob) {
+                    jvmud_destroy_entity(ob);
                 }
                 """);
     }

@@ -201,7 +201,7 @@ final class TelnetMud {
             runtime.clearOutputTranscript();
             Object result = runtime.deliverCapturedSessionInput(persona.actor(), commandLine);
             runtime.clearOutputTranscript();
-            return result;
+            return isAttached(persona) ? result : 1;
         }
 
         runtime.clearOutputTranscript();
@@ -222,11 +222,15 @@ final class TelnetMud {
     }
 
     synchronized void printPromptIfReady(Persona persona, PrintWriter out) {
-        if (playerPrompt == null || runtime.hasCapturedSessionInput(persona.actor())) {
+        if (playerPrompt == null || !isAttached(persona) || runtime.hasCapturedSessionInput(persona.actor())) {
             return;
         }
         out.print(playerPrompt);
         out.flush();
+    }
+
+    synchronized boolean isAttached(Persona persona) {
+        return persona != null && runtime.sessionRecord(persona.sessionId()).isPresent();
     }
 
     private void lookAt(Object object, PrintWriter out) {

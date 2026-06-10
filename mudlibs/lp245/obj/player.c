@@ -20,6 +20,7 @@ int tot_value;    /* Saved values of this player. */
 
 static object myself;    /* Ourselfs. */
 static string password2;  /* Temporary when setting new password */
+static int password_attempts;  /* Failed login password attempts */
 static int time_to_save;  /* Time to autosave. */
 
 static string saved_where;     /* Temp... */
@@ -341,11 +342,20 @@ static void check_password(mixed p) {
 
   else if (name != "guest" && crypt(p, password) != password) {
     write("Wrong password!\n");
+    password_attempts = password_attempts + 1;
+    if (password_attempts < 3) {
+      input_to("check_password", 1);
+      write("Password: ");
+
+      return;
+    }
+
     destruct(myself);
 
     return;
   }
 
+  password_attempts = 0;
   move_player_to_start(0);
   #ifdef LOG_ENTER
   log_file("ENTER", cap_name + ", " + extract(ctime(time()), 4, 15)+ ".\n");
@@ -1603,6 +1613,7 @@ static void logon2(mixed str) {
   }
 
   time_to_save = age + 500;
+  password_attempts = 0;
   /*
   * Don't do this before the restore !
   */
