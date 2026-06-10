@@ -18,7 +18,7 @@ Treat that tree as LPC source and content, not Java module source.
 | Path
 | Purpose
 
-| `mudlibs/lp245/jvmud/config`
+| `mudlibs/lp245/jvmud/lp245.config`
 | JVMud mudlib configuration, including lifecycle and compatibility paths.
 
 | `mudlibs/lp245/jvmud/mudlib.c`

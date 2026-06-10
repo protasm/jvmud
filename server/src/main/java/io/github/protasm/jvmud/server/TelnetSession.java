@@ -34,7 +34,7 @@ final class TelnetSession implements Runnable {
                 PrintWriter out = new PrintWriter(new OutputStreamWriter(rawOut, StandardCharsets.UTF_8), true)) {
             out.println("JVMud telnet. Type /help for commands or /quit to disconnect.");
             session = new SessionState(mud.attachPersona(out, socket.getInetAddress().getHostAddress()));
-            prompt(out);
+            mud.printPromptIfReady(session.persona, out);
 
             StringBuilder line = new StringBuilder();
             int value;
@@ -72,7 +72,7 @@ final class TelnetSession implements Runnable {
         String commandLine = line.toString().trim();
         line.setLength(0);
         if (commandLine.isBlank()) {
-            prompt(out);
+            mud.printPromptIfReady(session.persona, out);
             return;
         }
 
@@ -81,8 +81,9 @@ final class TelnetSession implements Runnable {
         } else {
             executePlayerCommand(session, out, commandLine);
         }
+        out.flush();
         if (session.running) {
-            prompt(out);
+            mud.printPromptIfReady(session.persona, out);
         }
     }
 
@@ -158,11 +159,6 @@ final class TelnetSession implements Runnable {
         rawOut.write(response);
         rawOut.write(option);
         rawOut.flush();
-    }
-
-    private void prompt(PrintWriter out) {
-        out.print("> ");
-        out.flush();
     }
 
     private static final class SessionState {

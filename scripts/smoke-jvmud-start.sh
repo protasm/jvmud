@@ -41,7 +41,7 @@ rm -f "$SMOKE_PLAYER_FILE"
   -mudlib-dir mudlibs/lp245 \
   -port "$PORT" \
   -host 127.0.0.1 \
-  -config jvmud/config \
+  -config jvmud/lp245.config \
   >"$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 
@@ -80,231 +80,271 @@ def read_until(sock, marker):
     return "".join(chunks)
 
 
+def read_until_any(sock, markers):
+    chunks = []
+    while True:
+        data = sock.recv(4096)
+        if not data:
+            break
+        chunks.append(data.decode("utf-8", errors="replace"))
+        transcript = "".join(chunks)
+        if any(marker in transcript for marker in markers):
+            return transcript
+    return "".join(chunks)
+
+
+def read_tail(sock, idle_seconds=0.05):
+    chunks = []
+    original_timeout = sock.gettimeout()
+    sock.settimeout(idle_seconds)
+    try:
+        while True:
+            try:
+                data = sock.recv(4096)
+            except socket.timeout:
+                break
+            if not data:
+                break
+            chunks.append(data.decode("utf-8", errors="replace"))
+    finally:
+        sock.settimeout(original_timeout)
+    return "".join(chunks)
+
+
 with connect_with_retry() as sock:
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "What is your name: ") + read_tail(sock)
     if "JVMud telnet." not in transcript:
         raise AssertionError(f"missing telnet greeting:\n{transcript}")
     if "Attached player 1 as obj/player#clone" not in transcript:
         raise AssertionError(f"did not attach configured mudlib player object:\n{transcript}")
     if "What is your name: " not in transcript:
         raise AssertionError(f"vanilla player logon did not capture initial input:\n{transcript}")
+    if "What is your name: > " in transcript:
+        raise AssertionError(f"command prompt was emitted while mudlib login input was pending:\n{transcript}")
 
     sock.sendall(b"smoketest\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "Password: ") + read_tail(sock)
     if "New character." not in transcript:
         raise AssertionError(f"logon name input did not reach obj/player.logon2:\n{transcript}")
     if "Password: " not in transcript:
         raise AssertionError(f"logon name input did not request a password:\n{transcript}")
+    if "Password: > " in transcript:
+        raise AssertionError(f"telnet layer appended a prompt to the mudlib password prompt:\n{transcript}")
 
     sock.sendall(b"secret1\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "Password: (again) ") + read_tail(sock)
     if "Password: (again) " not in transcript:
         raise AssertionError(f"first password input did not request confirmation:\n{transcript}")
+    if "Password: (again) > " in transcript:
+        raise AssertionError(f"telnet layer appended a prompt to the mudlib password prompt:\n{transcript}")
 
     sock.sendall(b"secret1\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "Please enter your email address")
     if "Please enter your email address" not in transcript:
         raise AssertionError(f"password confirmation did not request email:\n{transcript}")
 
     sock.sendall(b"none\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "Are you, male, female or other")
     if "Are you, male, female or other" not in transcript:
         raise AssertionError(f"email input did not request gender:\n{transcript}")
 
     sock.sendall(b"o\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "Welcome, Creature!")
     if "Welcome, Creature!" not in transcript:
         raise AssertionError(f"gender input did not complete login:\n{transcript}")
+    prompt = read_until(sock, "> ")
+    if "> " not in prompt:
+        raise AssertionError(f"configured mudlib command prompt did not appear after login:\n{transcript}{prompt}")
 
     sock.sendall(b"look\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "You are in the local village church.")
     if "You are in the local village church." not in transcript:
         raise AssertionError(f"look did not render the village church:\n{transcript}")
 
     sock.sendall(b"south\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "You are at an open green place south of the village church.")
     if "You are at an open green place south of the village church." not in transcript:
         raise AssertionError(f"south did not move to the village green:\n{transcript}")
     if "You can't do that." in transcript:
         raise AssertionError(f"south moved but was reported as unhandled:\n{transcript}")
 
     sock.sendall(b"east\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "A track going into the village.")
     if "A track going into the village." not in transcript:
         raise AssertionError(f"east from village green did not move to the village track:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"village track movement reported an error:\n{transcript}")
 
     sock.sendall(b"east\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "A long road going east through the village.")
     if "A long road going east through the village." not in transcript:
         raise AssertionError(f"east from village track did not move to the first village road:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"first village road movement reported an error:\n{transcript}")
 
     sock.sendall(b"east\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "south is the adventurers guild")
     if "south is the adventurers guild" not in transcript:
         raise AssertionError(f"east on village road did not move to the guild road:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"guild road movement reported an error:\n{transcript}")
 
     sock.sendall(b"south\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "You have to come here when you want to advance your level.")
     if "You have to come here when you want to advance your level." not in transcript:
         raise AssertionError(f"south from village road did not move to the adventurers guild:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"adventurers guild movement reported an error:\n{transcript}")
 
     sock.sendall(b"cost\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "gold coins to advance to level")
     if "Str: " not in transcript or "gold coins to advance to level" not in transcript:
         raise AssertionError(f"cost in the adventurers guild did not quote advancement costs:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"adventurers guild cost reported an error:\n{transcript}")
 
     sock.sendall(b"exa book\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "There is a book hanging in a chain from the wall.")
     if "There is a book hanging in a chain from the wall." not in transcript:
         raise AssertionError(f"exa book did not examine the guild book:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"exa book reported an error:\n{transcript}")
 
     sock.sendall(b"north\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "south is the adventurers guild")
     if "south is the adventurers guild" not in transcript:
         raise AssertionError(f"north from guild did not return to the guild road:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"guild exit reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "A long road going east through the village.")
     if "A long road going east through the village." not in transcript:
         raise AssertionError(f"west from guild road did not return to the first village road:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"guild road return reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "A track going into the village.")
     if "A track going into the village." not in transcript:
         raise AssertionError(f"west from first village road did not return to the village track:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"village road return reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "You are at an open green place south of the village church.")
     if "You are at an open green place south of the village church." not in transcript:
         raise AssertionError(f"west from village track did not return to the village green:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"village green return reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "An old humpbacked bridge.")
     if "An old humpbacked bridge." not in transcript:
         raise AssertionError(f"west did not move to the humpbacked bridge:\n{transcript}")
     if "You can't do that." in transcript:
         raise AssertionError(f"west moved but was reported as unhandled:\n{transcript}")
 
     sock.sendall(b"exa stick\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "stick")
     if "stick" not in transcript:
         raise AssertionError(f"exa stick did not examine the bridge stick:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"exa stick reported an error:\n{transcript}")
 
     sock.sendall(b"get all\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "10 gold coins: Ok.")
     if "stick: Ok." not in transcript or "10 gold coins: Ok." not in transcript:
         raise AssertionError(f"get all did not pick up bridge items:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"get all reported an error:\n{transcript}")
 
     sock.sendall(b"light stick\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until_any(sock, ["Ok.", "You can see again."])
     if "Ok." not in transcript and "You can see again." not in transcript:
         raise AssertionError(f"carried stick did not expose its light action:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"light stick reported an error:\n{transcript}")
 
     sock.sendall(b"help\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "Common commands:")
     if "JVMud LP245 help" not in transcript or "Common commands:" not in transcript:
         raise AssertionError(f"help did not render mudlib help text:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"help reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "You are in the wilderness outside the village.")
     if "You are in the wilderness outside the village." not in transcript:
         raise AssertionError(f"west from bridge did not move to the wilderness:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"wilderness movement reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "You are in a big forest.")
     if "You are in a big forest." not in transcript:
         raise AssertionError(f"west from wilderness did not move to the forest:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"forest movement reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "A small clearing. There are trees all around you.")
     if "A small clearing. There are trees all around you." not in transcript:
         raise AssertionError(f"west from forest did not move to the clearing:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"clearing movement reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "You are in a big forest.")
     if "You are in a big forest." not in transcript:
         raise AssertionError(f"west from clearing did not move to the next forest room:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"second forest movement reported an error:\n{transcript}")
 
     sock.sendall(b"exa troll\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "It is a nasty troll that look very aggressive.")
     if "It is a nasty troll that look very aggressive." not in transcript:
         raise AssertionError(f"exa troll did not examine the forest troll:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"exa troll reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "The forest gets light here, and slopes down to the west.")
     if "The forest gets light here, and slopes down to the west." not in transcript:
         raise AssertionError(f"west from second forest did not move to the mountain slope:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"mountain slope movement reported an error:\n{transcript}")
 
     sock.sendall(b"west\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "You are in the orc valley. This place is inhabited by orcs.")
     if "You are in the orc valley. This place is inhabited by orcs." not in transcript:
         raise AssertionError(f"west from mountain slope did not move to the orc valley:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"orc valley movement reported an error:\n{transcript}")
 
     sock.sendall(b"north\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "This is the local strong point of the orcs.")
     if "This is the local strong point of the orcs." not in transcript:
         raise AssertionError(f"north from orc valley did not move to the orc fortress:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"orc fortress movement reported an error:\n{transcript}")
 
     sock.sendall(b"look\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "This is the local strong point of the orcs.")
     if "This is the local strong point of the orcs." not in transcript:
         raise AssertionError(f"look in the orc fortress did not render the room:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"orc fortress look reported an error:\n{transcript}")
 
     sock.sendall(b"south\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "You are in the orc valley. This place is inhabited by orcs.")
     if "You are in the orc valley. This place is inhabited by orcs." not in transcript:
         raise AssertionError(f"south from orc fortress did not return to the orc valley:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"orc fortress exit reported an error:\n{transcript}")
 
     sock.sendall(b"east\n")
-    transcript = read_until(sock, "> ")
+    transcript = read_until(sock, "The forest gets light here, and slopes down to the west.")
     if "The forest gets light here, and slopes down to the west." not in transcript:
         raise AssertionError(f"east from orc valley did not return to the mountain slope:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:

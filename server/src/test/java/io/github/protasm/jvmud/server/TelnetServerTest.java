@@ -46,13 +46,13 @@ final class TelnetServerTest {
                 "-mudlib-dir", "mudlibs/lp245",
                 "-port", "4303",
                 "-host", "127.0.0.1",
-                "-config", "jvmud/config"
+                "-config", "jvmud/lp245.config"
         });
 
         assertEquals(Path.of("mudlibs", "lp245"), options.mudlibRoot());
         assertEquals(4303, options.port());
         assertEquals("127.0.0.1", options.bindAddress());
-        assertEquals("jvmud/config", options.configObjectPath());
+        assertEquals("jvmud/lp245.config", options.configObjectPath());
     }
 
     @Test
@@ -93,12 +93,12 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                String initial = readUntilPrompt(socket);
+                String initial = readUntilContains(socket, "Attached player 1");
                 assertTrue(initial.contains("JVMud telnet."));
 
                 socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String look = readUntilPrompt(socket);
+                String look = readUntilContains(socket, "A test green.");
                 assertTrue(look.contains("A test green."));
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
@@ -124,11 +124,11 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                readUntilPrompt(socket);
+                readUntilContains(socket, "Attached player 1");
 
                 socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String look = readUntilPrompt(socket);
+                String look = readUntilContains(socket, "A spaced-path green.");
                 assertTrue(look.contains("A spaced-path green."));
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
@@ -142,7 +142,7 @@ final class TelnetServerTest {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room/village"));
-        Files.writeString(tempDir.resolve("jvmud/config"), """
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
                 mfun_object = jvmud/mfuns
                 player_object = obj/player
                 initial_place = room/village/vill_green
@@ -206,11 +206,11 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                readUntilPrompt(socket);
+                readUntilContains(socket, "Attached player 1");
 
                 socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String look = readUntilPrompt(socket);
+                String look = readUntilContains(socket, "A no-argument long room.");
                 assertTrue(look.contains("A no-argument long room."), look);
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
@@ -222,7 +222,7 @@ final class TelnetServerTest {
     @Test
     void telnetSessionCanAttachConfiguredMudlibPlayerObject() throws Exception {
         installMfunShim();
-        Files.writeString(tempDir.resolve("jvmud/config"), """
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
                 initial_place = room/village/vill_green
@@ -310,15 +310,16 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                assertTrue(readUntilPrompt(socket).contains("Attached player 1 as obj/test_player#clone"));
+                assertTrue(readUntilContains(socket, "Attached player 1 as obj/test_player#clone")
+                        .contains("Attached player 1 as obj/test_player#clone"));
 
                 socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilPrompt(socket).contains("You are on the green."));
+                assertTrue(readUntilContains(socket, "You are on the green.").contains("You are on the green."));
 
                 socket.getOutputStream().write("north\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String north = readUntilPrompt(socket);
+                String north = readUntilContains(socket, "You are in the church.");
                 assertTrue(north.contains("You are in the church."), north);
                 assertFalse(north.contains("mudlib player leaves north."), north);
                 assertFalse(north.contains("mudlib player arrives."), north);
@@ -332,9 +333,10 @@ final class TelnetServerTest {
     @Test
     void telnetSessionRoutesCapturedInputThroughMfunInputTo() throws Exception {
         installMfunShim();
-        Files.writeString(tempDir.resolve("jvmud/config"), """
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
+                player_prompt = "> "
                 initial_place = room/start
                 lifecycle.object_loaded = reset
                 lifecycle.interaction_scope_started = init
@@ -399,15 +401,18 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                readUntilPrompt(socket);
+                readUntilContains(socket, "Attached player 1");
 
                 socket.getOutputStream().write("name\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilPrompt(socket).contains("Name: "));
+                String namePrompt = readUntilQuietAfterContains(socket, "Name: ");
+                assertTrue(namePrompt.contains("Name: "));
+                assertFalse(namePrompt.contains("Name: > "), namePrompt);
 
                 socket.getOutputStream().write("Alice\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilPrompt(socket).contains("Hello Alice"));
+                String greeting = readUntilContains(socket, "Hello Alice\n> ");
+                assertTrue(greeting.contains("Hello Alice"));
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -419,7 +424,7 @@ final class TelnetServerTest {
     void telnetSessionInvokesConfiguredPlayerConnectionLifecycleHook() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("WELCOME"), "Welcome login.\\n");
-        Files.writeString(tempDir.resolve("jvmud/config"), """
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
                 initial_place = room/start
@@ -483,14 +488,15 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                String greeting = readUntilPrompt(socket);
+                String greeting = readUntilQuietAfterContains(socket, "What is your name: ");
                 assertTrue(greeting.contains("Welcome login."), greeting);
                 assertTrue(greeting.contains("What is your name: "), greeting);
+                assertFalse(greeting.contains("What is your name: > "), greeting);
                 assertTrue(greeting.indexOf("JVMud telnet.") < greeting.indexOf("What is your name: "), greeting);
 
                 socket.getOutputStream().write("Alice\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilPrompt(socket).contains("Hello Alice"));
+                assertTrue(readUntilContains(socket, "Hello Alice").contains("Hello Alice"));
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -501,7 +507,7 @@ final class TelnetServerTest {
     @Test
     void telnetLoginRestoresSavedPlayerInsteadOfCreatingAgain() throws Exception {
         installMfunShim();
-        Files.writeString(tempDir.resolve("jvmud/config"), """
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
                 initial_place = room/start
@@ -593,29 +599,32 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                assertTrue(readUntilPrompt(socket).contains("Name: "));
+                String firstNamePrompt = readUntilQuietAfterContains(socket, "Name: ");
+                assertTrue(firstNamePrompt.contains("Name: "));
+                assertFalse(firstNamePrompt.contains("Name: > "), firstNamePrompt);
 
                 socket.getOutputStream().write("alice\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String firstPassword = readUntilPrompt(socket);
+                String firstPassword = readUntilQuietAfterContains(socket, "Password: ");
                 assertTrue(firstPassword.contains("New character."), firstPassword);
                 assertTrue(firstPassword.contains("Password: "), firstPassword);
+                assertFalse(firstPassword.contains("Password: > "), firstPassword);
 
                 socket.getOutputStream().write("secret\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilPrompt(socket).contains("Password: (again) "));
+                assertTrue(readUntilContains(socket, "Password: (again) ").contains("Password: (again) "));
 
                 socket.getOutputStream().write("secret\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilPrompt(socket).contains("Email: "));
+                assertTrue(readUntilContains(socket, "Email: ").contains("Email: "));
 
                 socket.getOutputStream().write("alice@example.test\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilPrompt(socket).contains("Gender: "));
+                assertTrue(readUntilContains(socket, "Gender: ").contains("Gender: "));
 
                 socket.getOutputStream().write("female\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilPrompt(socket).contains("Welcome new Alice"));
+                assertTrue(readUntilContains(socket, "Welcome new Alice").contains("Welcome new Alice"));
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -631,17 +640,17 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                assertTrue(readUntilPrompt(socket).contains("Name: "));
+                assertTrue(readUntilContains(socket, "Name: ").contains("Name: "));
 
                 socket.getOutputStream().write("alice\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String secondPassword = readUntilPrompt(socket);
+                String secondPassword = readUntilContains(socket, "Password: ");
                 assertFalse(secondPassword.contains("New character."), secondPassword);
                 assertTrue(secondPassword.contains("Password: "), secondPassword);
 
                 socket.getOutputStream().write("secret\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String welcomeBack = readUntilPrompt(socket);
+                String welcomeBack = readUntilContains(socket, "Welcome back Alice");
                 assertTrue(welcomeBack.contains("Welcome back Alice"), welcomeBack);
                 assertFalse(welcomeBack.contains("Email: "), welcomeBack);
                 assertFalse(welcomeBack.contains("Gender: "), welcomeBack);
@@ -677,19 +686,19 @@ final class TelnetServerTest {
 
             try (Socket first = new Socket("127.0.0.1", server.port())) {
                 first.setSoTimeout(5000);
-                assertTrue(readUntilPrompt(first).contains("Attached player 1"));
+                assertTrue(readUntilContains(first, "Attached player 1").contains("Attached player 1"));
 
                 try (Socket second = new Socket("127.0.0.1", server.port())) {
                     second.setSoTimeout(5000);
-                    assertTrue(readUntilPrompt(second).contains("Attached player 2"));
+                    assertTrue(readUntilContains(second, "Attached player 2").contains("Attached player 2"));
 
                     first.getOutputStream().write("touch\n".getBytes(StandardCharsets.UTF_8));
                     first.getOutputStream().flush();
-                    assertTrue(readUntilPrompt(first).contains("touch 1"));
+                    assertTrue(readUntilContains(first, "touch 1").contains("touch 1"));
 
                     second.getOutputStream().write("touch\n".getBytes(StandardCharsets.UTF_8));
                     second.getOutputStream().flush();
-                    assertTrue(readUntilPrompt(second).contains("touch 2"));
+                    assertTrue(readUntilContains(second, "touch 2").contains("touch 2"));
 
                     first.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
                     second.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
@@ -735,17 +744,17 @@ final class TelnetServerTest {
                     Socket second = new Socket("127.0.0.1", server.port())) {
                 first.setSoTimeout(5000);
                 second.setSoTimeout(5000);
-                assertTrue(readUntilPrompt(first).contains("Attached player 1"));
-                assertTrue(readUntilPrompt(second).contains("Attached player 2"));
+                assertTrue(readUntilContains(first, "Attached player 1").contains("Attached player 1"));
+                assertTrue(readUntilContains(second, "Attached player 2").contains("Attached player 2"));
 
                 first.getOutputStream().write("who\n".getBytes(StandardCharsets.UTF_8));
                 first.getOutputStream().flush();
-                String who = readUntilPrompt(first);
+                String who = readUntilContains(first, "users=2 ip=127.0.0.1");
                 assertTrue(who.contains("users=2 ip=127.0.0.1"));
 
                 first.getOutputStream().write("poke\n".getBytes(StandardCharsets.UTF_8));
                 first.getOutputStream().flush();
-                assertTrue(readUntilPrompt(first).contains("sent"));
+                assertTrue(readUntilContains(first, "sent").contains("sent"));
                 assertTrue(readUntilContains(second, "poke from 127.0.0.1").contains("poke from 127.0.0.1"));
 
                 first.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
@@ -855,6 +864,10 @@ final class TelnetServerTest {
                     return "/jvmud/functions.c";
                 }
 
+                string player_prompt() {
+                    return "% ";
+                }
+
                 mixed handled_lifecycle_events() {
                     return ({ "object-initialized", "scheduled tick" });
                 }
@@ -870,6 +883,7 @@ final class TelnetServerTest {
 
         assertEquals("jvmud/mudlib", boundary.boundaryObjectPath().orElseThrow());
         assertEquals("jvmud/functions", boundary.mfunObjectPath().orElseThrow());
+        assertEquals("% ", boundary.playerPrompt().orElseThrow());
         assertTrue(boundary.handles(MudlibLifecycleEvent.OBJECT_LOADED));
         assertTrue(boundary.handles(MudlibLifecycleEvent.SCHEDULED_TICK));
         assertEquals(boundary, runtime.mudlibBoundary());
@@ -885,6 +899,7 @@ final class TelnetServerTest {
                 game_id = strange-new-mudlib
                 game_name = Strange New Mudlib
                 mfun_object = config/mfuns
+                player_prompt = "$ "
                 initial_place = place/start
                 initial_presence_id = presence/local
                 preload_objects = obj/preload
@@ -916,6 +931,7 @@ final class TelnetServerTest {
         assertEquals("Strange New Mudlib", boundary.gameName().orElseThrow());
         assertEquals("config/startup", boundary.boundaryObjectPath().orElseThrow());
         assertEquals("config/mfuns", boundary.mfunObjectPath().orElseThrow());
+        assertEquals("$ ", boundary.playerPrompt().orElseThrow());
         assertEquals("place/start", boundary.initialPlacePath().orElseThrow());
         assertEquals("presence/local", boundary.initialPresenceId().orElseThrow());
         assertEquals("heartbeat", boundary.temporalTickMethod().orElseThrow());
@@ -927,9 +943,9 @@ final class TelnetServerTest {
         assertEquals("presence/local", result.actorHandle());
     }
 
-    private String readUntilPrompt(Socket socket) throws Exception {
+    private String readUntilContains(Socket socket, String expected) throws Exception {
         StringBuilder output = new StringBuilder();
-        while (!output.toString().endsWith("> ")) {
+        while (!output.toString().contains(expected)) {
             int value = socket.getInputStream().read();
             if (value == -1) {
                 break;
@@ -939,14 +955,18 @@ final class TelnetServerTest {
         return output.toString();
     }
 
-    private String readUntilContains(Socket socket, String expected) throws Exception {
-        StringBuilder output = new StringBuilder();
-        while (!output.toString().contains(expected)) {
-            int value = socket.getInputStream().read();
-            if (value == -1) {
-                break;
+    private String readUntilQuietAfterContains(Socket socket, String expected) throws Exception {
+        StringBuilder output = new StringBuilder(readUntilContains(socket, expected));
+        long deadline = System.nanoTime() + 50_000_000L;
+        while (System.nanoTime() < deadline) {
+            while (socket.getInputStream().available() > 0) {
+                int value = socket.getInputStream().read();
+                if (value == -1) {
+                    return output.toString();
+                }
+                output.append((char) value);
             }
-            output.append((char) value);
+            Thread.sleep(5);
         }
         return output.toString();
     }
@@ -980,7 +1000,7 @@ final class TelnetServerTest {
 
     private void installMfunShim(Path mudlibRoot) throws Exception {
         Files.createDirectories(mudlibRoot.resolve("jvmud"));
-        Files.writeString(mudlibRoot.resolve("jvmud/config"), """
+        Files.writeString(mudlibRoot.resolve("jvmud/lp245.config"), """
                 mfun_object = jvmud/mfuns
                 lifecycle.object_loaded = reset
                 lifecycle.interaction_scope_started = init

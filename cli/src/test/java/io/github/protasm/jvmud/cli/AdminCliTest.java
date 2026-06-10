@@ -356,7 +356,7 @@ final class AdminCliTest {
     void bootStartsMudlibSandboxWithoutInitialWorldObject() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.createDirectories(tempDir.resolve("room/village"));
-        Files.writeString(tempDir.resolve("jvmud/config"), """
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
                 mfun_object = jvmud/mfuns
                 initial_place = room/village/vill_green
                 """);

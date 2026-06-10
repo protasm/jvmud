@@ -23,6 +23,7 @@ final class TelnetMud {
     private final String startingRoomPath;
     private final Object startingRoomObject;
     private final String playerObjectPath;
+    private final String playerPrompt;
     private final String playerSessionConnectedMethod;
     private final String playerSessionDisconnectedMethod;
     private int nextPersonaId = 1;
@@ -34,6 +35,7 @@ final class TelnetMud {
             String startingRoomPath,
             Object startingRoomObject,
             String playerObjectPath,
+            String playerPrompt,
             String playerSessionConnectedMethod,
             String playerSessionDisconnectedMethod) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
@@ -42,6 +44,7 @@ final class TelnetMud {
         this.startingRoomPath = Objects.requireNonNull(startingRoomPath, "startingRoomPath");
         this.startingRoomObject = Objects.requireNonNull(startingRoomObject, "startingRoomObject");
         this.playerObjectPath = playerObjectPath;
+        this.playerPrompt = playerPrompt;
         this.playerSessionConnectedMethod = playerSessionConnectedMethod;
         this.playerSessionDisconnectedMethod = playerSessionDisconnectedMethod;
     }
@@ -69,6 +72,7 @@ final class TelnetMud {
                 result.startingRoom(),
                 startingRoomObject,
                 boundary.playerObjectPath().orElse(null),
+                boundary.playerPrompt().orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_DISCONNECTED).orElse(null));
     }
@@ -202,6 +206,14 @@ final class TelnetMud {
             runtime.clearOutputTranscript();
         }
         return result;
+    }
+
+    synchronized void printPromptIfReady(Persona persona, PrintWriter out) {
+        if (playerPrompt == null || runtime.hasCapturedSessionInput(persona.actor())) {
+            return;
+        }
+        out.print(playerPrompt);
+        out.flush();
     }
 
     private void lookAt(Object object, PrintWriter out) {

@@ -23,6 +23,7 @@ public final class MudlibBoundary {
     private final String boundaryObjectPath;
     private final String mfunObjectPath;
     private final String playerObjectPath;
+    private final String playerPrompt;
     private final String initialPlacePath;
     private final String initialPresenceId;
     private final String preloadFilePath;
@@ -38,6 +39,7 @@ public final class MudlibBoundary {
         this.boundaryObjectPath = normalizeOptionalPath(builder.boundaryObjectPath);
         this.mfunObjectPath = normalizeOptionalPath(builder.mfunObjectPath);
         this.playerObjectPath = normalizeOptionalPath(builder.playerObjectPath);
+        this.playerPrompt = normalizeOptionalPrompt(builder.playerPrompt);
         this.initialPlacePath = normalizeOptionalPath(builder.initialPlacePath);
         this.initialPresenceId = normalizeOptionalText(builder.initialPresenceId);
         this.preloadFilePath = normalizeOptionalPath(builder.preloadFilePath);
@@ -81,6 +83,11 @@ public final class MudlibBoundary {
     /** Returns the optional LPC player object path used when binding interactive sessions. */
     public Optional<String> playerObjectPath() {
         return Optional.ofNullable(playerObjectPath);
+    }
+
+    /** Returns the optional prompt text to display when an interactive player can enter commands. */
+    public Optional<String> playerPrompt() {
+        return Optional.ofNullable(playerPrompt);
     }
 
     /** Returns the optional starting place object path for new local presence. */
@@ -146,6 +153,7 @@ public final class MudlibBoundary {
                 || gameName != null
                 || mfunObjectPath != null
                 || playerObjectPath != null
+                || playerPrompt != null
                 || initialPlacePath != null
                 || initialPresenceId != null
                 || preloadFilePath != null
@@ -196,6 +204,13 @@ public final class MudlibBoundary {
         return normalized.isEmpty() ? null : normalized;
     }
 
+    private static String normalizeOptionalPrompt(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value;
+    }
+
     private static Set<String> normalizePathSet(Set<String> paths) {
         if (paths.isEmpty()) {
             return Set.of();
@@ -213,6 +228,7 @@ public final class MudlibBoundary {
         private String boundaryObjectPath;
         private String mfunObjectPath;
         private String playerObjectPath;
+        private String playerPrompt;
         private String initialPlacePath;
         private String initialPresenceId;
         private String preloadFilePath;
@@ -254,6 +270,12 @@ public final class MudlibBoundary {
         /** Sets the LPC player object path used when binding interactive sessions. */
         public Builder playerObjectPath(String playerObjectPath) {
             this.playerObjectPath = playerObjectPath;
+            return this;
+        }
+
+        /** Sets the prompt text shown when an interactive player can enter commands. */
+        public Builder playerPrompt(String playerPrompt) {
+            this.playerPrompt = playerPrompt;
             return this;
         }
 

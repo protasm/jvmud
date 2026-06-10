@@ -88,13 +88,14 @@ final class MudlibBoundaryTest {
 
     @Test
     void configReaderBuildsBoundaryDeclaration() throws IOException {
-        Path config = tempDir.resolve("jvmud").resolve("config");
+        Path config = tempDir.resolve("jvmud").resolve("lp245.config");
         Files.createDirectories(config.getParent());
         Files.writeString(config, """
                 game_id = vanilla-lpmud-245
                 game_name = Vanilla LPMUD 2.4.5
                 mfun_object = /jvmud/mfuns.c
                 player_object = /obj/player.c
+                player_prompt = "> "
                 initial_place = room/village/vill_green
                 initial_presence_id = local/player
                 preload_file = room/init_file
@@ -108,13 +109,14 @@ final class MudlibBoundaryTest {
                 temporal_tick_interval = 0.25
                 """);
 
-        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/config");
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/lp245.config");
 
-        assertEquals("jvmud/config", boundary.boundaryObjectPath().orElseThrow());
+        assertEquals("jvmud/lp245.config", boundary.boundaryObjectPath().orElseThrow());
         assertEquals("vanilla-lpmud-245", boundary.gameId().orElseThrow());
         assertEquals("Vanilla LPMUD 2.4.5", boundary.gameName().orElseThrow());
         assertEquals("jvmud/mfuns", boundary.mfunObjectPath().orElseThrow());
         assertEquals("obj/player", boundary.playerObjectPath().orElseThrow());
+        assertEquals("> ", boundary.playerPrompt().orElseThrow());
         assertEquals("room/village/vill_green", boundary.initialPlacePath().orElseThrow());
         assertEquals("local/player", boundary.initialPresenceId().orElseThrow());
         assertEquals("room/init_file", boundary.preloadFilePath().orElseThrow());

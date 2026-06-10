@@ -118,7 +118,7 @@ public final class TelnetServer implements AutoCloseable {
 
     private static String usage() {
         return "Usage: ./jvmud-start [-mudlib-dir mudlibs/lp245] [-port 4000] "
-                + "[-host localhost] [-config jvmud/config]";
+                + "[-host localhost] [-config jvmud/lp245.config]";
     }
 
     public synchronized void start() throws IOException {

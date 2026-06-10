@@ -97,7 +97,7 @@ through its `logon` lifecycle hook. It drives name, password, email, and gender
 prompts through `input_to`, then verifies `look` and movement after the Persona
 enters the world.
 
-The mudlib boundary is now manifest-driven by `mudlibs/lp245/jvmud/config`. The current
+The mudlib boundary is now manifest-driven by `mudlibs/lp245/jvmud/lp245.config`. The current
 manifest declares:
 
 - game id and name;
@@ -245,7 +245,7 @@ Near-term focus:
 
 ### 7. Mudlib Boot And Boundary Config
 
-Use `mudlibs/lp245/jvmud/config` as the source of mudlib integration declarations.
+Use `mudlibs/lp245/jvmud/lp245.config` as the source of mudlib integration declarations.
 Boot should preload configured objects, interpret `room/init_file`, create the
 initial place, attach lifecycle behavior, and provide clear skipped-preload
 evidence.

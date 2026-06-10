@@ -159,11 +159,11 @@ The `server` module provides the player-facing game server path. Start a mudlib
 as a persistent Telnet target with:
 
 ```text
-./jvmud-start [-mudlib-dir mudlibs/lp245] [-port 4000] [-host localhost] [-config jvmud/config]
+./jvmud-start [-mudlib-dir mudlibs/lp245] [-port 4000] [-host localhost] [-config jvmud/lp245.config]
 ```
 
 All flags are optional. By default it serves `mudlibs/lp245` on `localhost:4000`
-using `jvmud/config`. Starting this process boots one shared runtime and world; each
+using `jvmud/lp245.config`. Starting this process boots one shared runtime and world; each
 Telnet connection attempts to attach a configured mudlib player object and falls
 back to a host-owned persona if that path fails. Player/world input is routed
 through LPC `init`, `add_action`, and `add_verb` registrations on nearby or

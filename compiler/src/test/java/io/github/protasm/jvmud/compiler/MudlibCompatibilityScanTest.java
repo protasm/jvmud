@@ -61,7 +61,7 @@ import org.junit.jupiter.api.Test;
 final class MudlibCompatibilityScanTest {
     private static final Path REPO_ROOT = Path.of("..").toAbsolutePath().normalize();
     private static final Path MUDLIB_ROOT = REPO_ROOT.resolve("mudlibs").resolve("lp245");
-    private static final String CONFIG_PATH = "jvmud/config";
+    private static final String CONFIG_PATH = "jvmud/lp245.config";
     private static final String PLAYER_SOURCE = "obj/player.c";
     private static final List<String> COMPATIBILITY_SET =
             List.of(

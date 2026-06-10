@@ -3,6 +3,6 @@
 *
 * This object is intentionally separate from the vanilla LPMUD 2.4.5 files.
 */
-string mfun_object() {
-  return "jvmud/mfuns";
+string player_prompt() {
+  return "> ";
 }

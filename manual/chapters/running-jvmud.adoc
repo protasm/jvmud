@@ -37,13 +37,13 @@ The default server uses:
 * mudlib root: `mudlibs/lp245`
 * host: `localhost`
 * port: `4000`
-* config path: `jvmud/config`
+* config path: `jvmud/lp245.config`
 
 You can override those defaults:
 
 [source,sh]
 ----
-./jvmud-start -mudlib-dir mudlibs/lp245 -host localhost -port 4000 -config jvmud/config
+./jvmud-start -mudlib-dir mudlibs/lp245 -host localhost -port 4000 -config jvmud/lp245.config
 ----
 
 Starting the server boots one shared runtime and world. Each Telnet connection attempts to attach the configured mudlib player object and uses a host-owned fallback persona only if that path fails.

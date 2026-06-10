@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Objects;
 
 public final class MudlibBoot {
-    public static final String DEFAULT_CONFIG_PATH = "jvmud/config";
+    public static final String DEFAULT_CONFIG_PATH = "jvmud/lp245.config";
     static final String DEFAULT_BOUNDARY_OBJECT = "jvmud/mudlib";
     static final String DEFAULT_STARTING_ROOM = "room/village/vill_green";
     static final String LOCAL_ACTOR_HANDLE = "local/player";
@@ -144,6 +144,14 @@ public final class MudlibBoot {
         Object mfunObject = invokeNoArgIfPresent(boundaryObject, "mfun_object");
         if (mfunObject instanceof String path && !path.isBlank()) {
             builder.mfunObjectPath(path);
+        }
+
+        Object playerPrompt = invokeNoArgIfPresent(boundaryObject, "player_prompt");
+        if (playerPrompt == null) {
+            playerPrompt = invokeNoArgIfPresent(boundaryObject, "command_prompt");
+        }
+        if (playerPrompt instanceof String prompt && !prompt.isBlank()) {
+            builder.playerPrompt(prompt);
         }
 
         Object lifecycleEvents = invokeNoArgIfPresent(boundaryObject, "handled_lifecycle_events");
