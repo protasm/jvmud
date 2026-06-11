@@ -770,7 +770,8 @@ final class CompilerSmokeTest {
         assertTrue(projection.hasRole(MudlibProjectionRole.COMBINED_PLAYER_PERSONA));
 
         assertTrue(runtime.messagePersona(personaRecord.id(), "projected-persona\\n"));
-        assertEquals("projected-persona\n", output.toString());
+        assertTrue(runtime.messagePersona(personaRecord.id(), "\\tindented\\n"));
+        assertEquals("projected-persona\n\tindented\n", output.toString());
     }
 
     @Test
@@ -1536,6 +1537,36 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeUsesBoundaryMudlibRootForAbsoluteInherits() throws Exception {
+        Path mudlibRoot = tempDir.resolve("realms");
+        Files.createDirectories(mudlibRoot.resolve("areas"));
+        Files.createDirectories(mudlibRoot.resolve("lib/environment"));
+        Files.writeString(mudlibRoot.resolve("lib/environment/environment.c"), """
+                int environment_value() {
+                    return 30;
+                }
+                """);
+        Files.writeString(mudlibRoot.resolve("areas/example.c"), """
+                inherit "/lib/environment/environment.c";
+
+                int child_value() {
+                    return environment_value() + 12;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
+                .baseIncludePath(tempDir.resolve("wrong-root"))
+                .build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mudlibRootPath(mudlibRoot)
+                .build());
+
+        LPCObjectHandle child = runtime.load(mudlibRoot.resolve("areas/example.c"));
+
+        assertEquals(42, child.invoke("child_value"));
+    }
+
+    @Test
     void arrowInvokeOnExpressionUsesNativeDynamicDispatch() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
@@ -2087,7 +2118,7 @@ final class CompilerSmokeTest {
     @Test
     void runtimeMovesObjectsThroughEnvironmentAndInventory() throws Exception {
         Files.writeString(tempDir.resolve("thing.c"), """
-                int id(mixed str) {
+                int id(mixed str, mixed lvl) {
                     if (str == "thing")
                         return 1;
                     return 0;

@@ -7,6 +7,7 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationUnit;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
+import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
@@ -67,11 +68,15 @@ public final class LPCRuntime {
     private final RuntimeContext runtimeContext;
     private final CompilationPipeline pipeline;
     private final Path baseIncludePath;
+    private final List<Path> includeSearchPaths;
+    private final boolean useBoundaryMudlibRootForIncludes;
     private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
 
     public LPCRuntime(LPCRuntimeConfig config) {
         Objects.requireNonNull(config, "config");
         this.baseIncludePath = config.baseIncludePath();
+        this.includeSearchPaths = config.includeSearchPaths();
+        this.useBoundaryMudlibRootForIncludes = config.includeResolver() == null;
         this.runtimeContext = new RuntimeContext(config.resolveIncludeResolver());
         this.runtimeContext.setObjectFactory(this::cloneObject);
         this.runtimeContext.setObjectLoader(this::loadOrGetObject);
@@ -409,6 +414,10 @@ public final class LPCRuntime {
         this.mudlibBoundary = Objects.requireNonNull(mudlibBoundary, "mudlibBoundary");
         runtimeContext.setMudlibBoundary(mudlibBoundary);
         runtimeContext.setMfunObjectPath(mudlibBoundary.mfunObjectPath().orElse(null));
+        if (useBoundaryMudlibRootForIncludes) {
+            mudlibBoundary.mudlibRootPath().ifPresent(root ->
+                    runtimeContext.setIncludeResolver(new SearchPathIncludeResolver(root, includeSearchPaths)));
+        }
     }
 
     /** Connects this LPC runtime to the deterministic scheduler for its owning world. */

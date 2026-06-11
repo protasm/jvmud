@@ -45,7 +45,7 @@ import java.util.function.Supplier;
  */
 public final class RuntimeContext {
     private final EfunRegistry efunRegistry;
-    private final IncludeResolver includeResolver;
+    private IncludeResolver includeResolver;
     private final Map<String, Object> objects = new LinkedHashMap<>();
     private final Map<Object, String> objectIds = new IdentityHashMap<>();
     private final Map<Object, Object> environments = new IdentityHashMap<>();
@@ -96,6 +96,10 @@ public final class RuntimeContext {
 
     public IncludeResolver includeResolver() {
         return includeResolver;
+    }
+
+    public void setIncludeResolver(IncludeResolver includeResolver) {
+        this.includeResolver = (includeResolver != null) ? includeResolver : Preprocessor.rejectingResolver();
     }
 
     public EfunRegistry efunRegistry() {
@@ -242,7 +246,7 @@ public final class RuntimeContext {
     }
 
     private String messageText(Object value) {
-        return String.valueOf(value).replace("\\n", "\n");
+        return String.valueOf(value).replace("\\n", "\n").replace("\\t", "\t");
     }
 
     public String outputTranscript() {
@@ -1443,11 +1447,10 @@ public final class RuntimeContext {
         }
 
         try {
-            for (var method : object.getClass().getMethods()) {
-                if (method.getName().equals("id") && method.getParameterCount() == 1) {
-                    return Truth.isTruthy(method.invoke(object, identifier.toString()));
-                }
-            }
+            InvocationPlan invocation = findInvocation(object.getClass(), "id", new Object[] {identifier.toString()});
+            return Truth.isTruthy(invocation.method().invoke(object, invocation.arguments()));
+        } catch (NoSuchMethodException e) {
+            // Fall back to exact object id matching below.
         } catch (ReflectiveOperationException e) {
             return false;
         }
