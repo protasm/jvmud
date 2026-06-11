@@ -60,9 +60,15 @@ Lifecycle mappings are declared in the mudlib boundary configuration, for
 example:
 
 ```text
+mudlib_object = jvmud/mudlib
+mfun_object = jvmud/mfuns
 lifecycle.object_loaded = reset
 lifecycle.interaction_scope_started = init
 ```
+
+`mudlib_object` identifies the mudlib-side boundary adapter object, such as
+LP245's `/jvmud/mudlib.c`. `mfun_object` identifies the separate legacy
+mudlib-function shim object.
 
 The currently defined JVMud lifecycle events are:
 

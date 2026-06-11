@@ -115,6 +115,7 @@ public final class MudlibBoot {
         if (mudlibConfigFileExists(configPath)) {
             try {
                 MudlibBoundary boundary = MudlibBoundaryConfigReader.read(mudlibRoot, configPath);
+                boundary = readConfiguredBoundaryObject(boundary, preloadedObjects, skippedPreloads);
                 registerBoundary(worldRuntime, boundary);
                 return boundary;
             } catch (IOException | RuntimeException e) {
@@ -161,6 +162,58 @@ public final class MudlibBoot {
 
         Object lifecycleEvents = invokeNoArgIfPresent(boundaryObject, "handled_lifecycle_events");
         addLifecycleEvents(builder, lifecycleEvents);
+
+        return builder.build();
+    }
+
+    private MudlibBoundary readConfiguredBoundaryObject(
+            MudlibBoundary configBoundary,
+            List<String> preloadedObjects,
+            List<String> skippedPreloads) {
+        if (configBoundary.boundaryObjectPath().isEmpty()) {
+            return configBoundary;
+        }
+
+        String boundaryObjectPath = configBoundary.boundaryObjectPath().orElseThrow();
+        LPCLoadResult result = runtime.tryLoad(boundaryObjectPath);
+        if (!result.succeeded()) {
+            skippedPreloads.add(boundaryObjectPath);
+            return configBoundary;
+        }
+
+        LPCObjectHandle handle = result.handle().orElseThrow();
+        preloadedObjects.add(handle.internalName());
+        MudlibBoundary objectBoundary = readBoundaryDeclaration(handle.instance());
+        return mergeBoundaryDeclarations(configBoundary, objectBoundary);
+    }
+
+    private MudlibBoundary mergeBoundaryDeclarations(MudlibBoundary configBoundary, MudlibBoundary objectBoundary) {
+        MudlibBoundary.Builder builder = MudlibBoundary.builder();
+
+        configBoundary.gameId().ifPresent(builder::gameId);
+        configBoundary.gameName().ifPresent(builder::gameName);
+        configBoundary.mudlibRootPath().ifPresent(builder::mudlibRootPath);
+        configBoundary.boundaryObjectPath()
+                .or(() -> objectBoundary.boundaryObjectPath())
+                .ifPresent(builder::boundaryObjectPath);
+        configBoundary.mfunObjectPath()
+                .or(() -> objectBoundary.mfunObjectPath())
+                .ifPresent(builder::mfunObjectPath);
+        configBoundary.playerObjectPath().ifPresent(builder::playerObjectPath);
+        configBoundary.playerPrompt()
+                .or(() -> objectBoundary.playerPrompt())
+                .ifPresent(builder::playerPrompt);
+        configBoundary.initialPlacePath().ifPresent(builder::initialPlacePath);
+        configBoundary.preloadFilePath().ifPresent(builder::preloadFilePath);
+        configBoundary.preloadObjectPaths().forEach(builder::preloadObjectPath);
+        configBoundary.temporalTickMethod().ifPresent(builder::temporalTickMethod);
+        if (!configBoundary.temporalTickInterval().isZero()) {
+            builder.temporalTickInterval(configBoundary.temporalTickInterval());
+        }
+        objectBoundary.lifecycleEvents().forEach(builder::handle);
+        configBoundary.lifecycleEvents().forEach(builder::handle);
+        objectBoundary.lifecycleMethods().forEach(builder::lifecycleMethod);
+        configBoundary.lifecycleMethods().forEach(builder::lifecycleMethod);
 
         return builder.build();
     }

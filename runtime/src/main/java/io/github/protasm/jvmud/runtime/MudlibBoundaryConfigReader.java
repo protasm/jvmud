@@ -22,12 +22,12 @@ public final class MudlibBoundaryConfigReader {
 
         Path configFile = mudlibRoot.resolve(configPath).toAbsolutePath().normalize();
         Map<String, List<String>> values = readConfigValues(configFile);
-        MudlibBoundary.Builder builder = MudlibBoundary.builder()
-                .boundaryObjectPath(configPath);
+        MudlibBoundary.Builder builder = MudlibBoundary.builder();
 
         addString(builder::gameId, firstValue(values, "game_id"));
         addString(builder::gameName, firstValue(values, "game_name"));
         builder.mudlibRootPath(resolveMudlibRootPath(configFile, mudlibRoot, firstValue(values, "mudlib_root")));
+        addString(builder::boundaryObjectPath, firstValue(values, "mudlib_object"));
         addString(builder::mfunObjectPath, firstValue(values, "mfun_object"));
         addString(builder::playerObjectPath, firstValue(values, "player_object"));
         String playerPrompt = firstValue(values, "player_prompt");

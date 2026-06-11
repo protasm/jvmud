@@ -1,8 +1,0 @@
-Object help
-
-Use "get thing" or "get all" to pick up portable items.
-Use "drop thing" to put an item down.
-Use "examine thing" or "exa thing" to inspect something nearby.
-
-Some carried items add commands of their own. A weapon may add "wield"; a
-torch may add "light" and "extinguish".

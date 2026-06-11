@@ -997,6 +997,7 @@ final class TelnetServerTest {
         Files.writeString(tempDir.resolve("config/startup"), """
                 game_id = strange-new-mudlib
                 game_name = Strange New Mudlib
+                mudlib_object = config/mudlib
                 mfun_object = config/mfuns
                 player_prompt = "$ "
                 initial_place = place/start
@@ -1009,6 +1010,11 @@ final class TelnetServerTest {
         Files.writeString(tempDir.resolve("obj/preload.c"), """
                 string short() {
                     return "preload";
+                }
+                """);
+        Files.writeString(tempDir.resolve("config/mudlib.c"), """
+                string player_prompt() {
+                    return "% ";
                 }
                 """);
         Files.writeString(tempDir.resolve("place/start.c"), """
@@ -1027,7 +1033,7 @@ final class TelnetServerTest {
 
         assertEquals("strange-new-mudlib", boundary.gameId().orElseThrow());
         assertEquals("Strange New Mudlib", boundary.gameName().orElseThrow());
-        assertEquals("config/startup", boundary.boundaryObjectPath().orElseThrow());
+        assertEquals("config/mudlib", boundary.boundaryObjectPath().orElseThrow());
         assertEquals("config/mfuns", boundary.mfunObjectPath().orElseThrow());
         assertEquals("$ ", boundary.playerPrompt().orElseThrow());
         assertEquals("place/start", boundary.initialPlacePath().orElseThrow());
@@ -1035,6 +1041,7 @@ final class TelnetServerTest {
         assertEquals(5, boundary.temporalTickIntervalSeconds());
         assertEquals("on_loaded", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED).orElseThrow());
         assertEquals("on_scope", boundary.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElseThrow());
+        assertTrue(result.preloadedObjects().contains("config/mudlib"));
         assertTrue(result.preloadedObjects().contains("obj/preload"));
         assertEquals("place/start", result.startingRoom());
         assertEquals("local/player", result.actorHandle());

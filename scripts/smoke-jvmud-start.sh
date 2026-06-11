@@ -152,7 +152,7 @@ with connect_with_retry() as sock:
     transcript = read_until(sock, "Welcome, Creature!")
     if "Welcome, Creature!" not in transcript:
         raise AssertionError(f"gender input did not complete login:\n{transcript}")
-    prompt = read_until(sock, "> ")
+    prompt = transcript if "> " in transcript else read_until(sock, "> ")
     if "> " not in prompt:
         raise AssertionError(f"configured mudlib command prompt did not appear after login:\n{transcript}{prompt}")
 

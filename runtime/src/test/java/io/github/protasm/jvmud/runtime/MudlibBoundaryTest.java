@@ -94,6 +94,7 @@ final class MudlibBoundaryTest {
                 game_id = vanilla-lpmud-245
                 game_name = Vanilla LPMUD 2.4.5
                 mudlib_root = ..
+                mudlib_object = /jvmud/mudlib.c
                 mfun_object = /jvmud/mfuns.c
                 player_object = /obj/player.c
                 player_prompt = "> "
@@ -111,7 +112,7 @@ final class MudlibBoundaryTest {
 
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/lp245.config");
 
-        assertEquals("jvmud/lp245.config", boundary.boundaryObjectPath().orElseThrow());
+        assertEquals("jvmud/mudlib", boundary.boundaryObjectPath().orElseThrow());
         assertEquals("vanilla-lpmud-245", boundary.gameId().orElseThrow());
         assertEquals("Vanilla LPMUD 2.4.5", boundary.gameName().orElseThrow());
         assertEquals(tempDir.toAbsolutePath().normalize(), boundary.mudlibRootPath().orElseThrow());
