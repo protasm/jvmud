@@ -1,0 +1,144 @@
+//*****************************************************************************
+// Copyright (c) 2017-2026 - Allen Cummings, RealmsMUD, All rights reserved. See
+//                      the accompanying LICENSE file for details.
+//*****************************************************************************
+inherit "/lib/modules/research/researchTree.c";
+
+/////////////////////////////////////////////////////////////////////////////
+protected void Setup()
+{
+    Name("Blade Craft");
+    Description("This research tree provides the rogue with advanced "
+        "blade combat techniques using daggers and short swords.");
+    Source("rogue");
+    addResearchElement("/guilds/rogue/blade-craft/root.c");
+    TreeRoot("/guilds/rogue/blade-craft/root.c");
+
+    addResearchElement("/guilds/rogue/blade-craft/precision-edge.c");
+    addResearchElement("/guilds/rogue/blade-craft/knife-work.c");
+    addResearchElement("/guilds/rogue/blade-craft/adders-tongue.c");
+    addResearchElement("/guilds/rogue/blade-craft/honed-reflexes.c");
+    addResearchElement("/guilds/rogue/blade-craft/blade-mastery.c");
+    addResearchElement("/guilds/rogue/blade-craft/peerless-edge.c");
+    addResearchElement("/guilds/rogue/blade-craft/supreme-blade.c");
+    addResearchElement("/guilds/rogue/blade-craft/masterwork-cuts.c");
+    addResearchElement("/guilds/rogue/blade-craft/blade-lord.c");
+    addResearchElement("/guilds/rogue/blade-craft/transcendent-edge.c");
+    addResearchElement("/guilds/rogue/blade-craft/infinite-edge.c");
+    addResearchElement("/guilds/rogue/blade-craft/perfected-blade.c");
+    addResearchElement("/guilds/rogue/blade-craft/blades-transcendence.c");
+    addResearchElement("/guilds/rogue/blade-craft/supreme-lethality.c");
+    addResearchElement("/guilds/rogue/blade-craft/eternal-edge.c");
+    addResearchElement("/guilds/rogue/blade-craft/blademasters-perfection.c");
+    addResearchElement("/guilds/rogue/blade-craft/peerless-artistry.c");
+    addResearchElement("/guilds/rogue/blade-craft/apex-blade.c");
+    addResearchElement("/guilds/rogue/blade-craft/transcendent-lethality.c");
+    addResearchElement("/guilds/rogue/blade-craft/blade-honing.c");
+    addResearchElement("/guilds/rogue/blade-craft/blade-honing-ii.c");
+    addResearchElement("/guilds/rogue/blade-craft/blade-honing-iii.c");
+    addResearchElement("/guilds/rogue/blade-craft/surgical-precision.c");
+    addResearchElement("/guilds/rogue/blade-craft/surgical-precision-ii.c");
+    addResearchElement("/guilds/rogue/blade-craft/surgical-precision-iii.c");
+    addResearchElement("/guilds/rogue/blade-craft/surgical-precision-iv.c");
+    addResearchElement("/guilds/rogue/blade-craft/surgical-precision-v.c");
+    addResearchElement("/guilds/rogue/blade-craft/surgical-precision-vi.c");
+    addResearchElement("/guilds/rogue/blade-craft/surgical-precision-vii.c");
+    addResearchElement("/guilds/rogue/blade-craft/surgical-precision-viii.c");
+    addResearchElement("/guilds/rogue/blade-craft/quick-cut.c");
+    addResearchElement("/guilds/rogue/blade-craft/twin-fangs.c");
+    addResearchElement("/guilds/rogue/blade-craft/arterial-slash.c");
+    addResearchElement("/guilds/rogue/blade-craft/riposte.c");
+    addResearchElement("/guilds/rogue/blade-craft/gutting-strike.c");
+    addResearchElement("/guilds/rogue/blade-craft/flurry-of-knives.c");
+    addResearchElement("/guilds/rogue/blade-craft/eviscerate.c");
+    addResearchElement("/guilds/rogue/blade-craft/whirling-blades.c");
+    addResearchElement("/guilds/rogue/blade-craft/death-cut.c");
+    addResearchElement("/guilds/rogue/blade-craft/thousand-cuts.c");
+    addResearchElement("/guilds/rogue/blade-craft/blade-storm.c");
+    addResearchElement("/guilds/rogue/blade-craft/deadly-flourish.c");
+
+    addChild("/guilds/rogue/blade-craft/precision-edge.c",
+        "/guilds/rogue/blade-craft/root.c");
+    addChild("/guilds/rogue/blade-craft/knife-work.c",
+        "/guilds/rogue/blade-craft/root.c");
+    addChild("/guilds/rogue/blade-craft/blade-honing.c",
+        "/guilds/rogue/blade-craft/root.c");
+    addChild("/guilds/rogue/blade-craft/quick-cut.c",
+        "/guilds/rogue/blade-craft/root.c");
+    addChild("/guilds/rogue/blade-craft/adders-tongue.c",
+        "/guilds/rogue/blade-craft/knife-work.c");
+    addChild("/guilds/rogue/blade-craft/twin-fangs.c",
+        "/guilds/rogue/blade-craft/knife-work.c");
+    addChild("/guilds/rogue/blade-craft/blade-honing-ii.c",
+        "/guilds/rogue/blade-craft/blade-honing.c");
+    addChild("/guilds/rogue/blade-craft/blade-honing-iii.c",
+        "/guilds/rogue/blade-craft/blade-honing-ii.c");
+    addChild("/guilds/rogue/blade-craft/surgical-precision.c",
+        "/guilds/rogue/blade-craft/blade-honing-iii.c");
+    addChild("/guilds/rogue/blade-craft/surgical-precision-ii.c",
+        "/guilds/rogue/blade-craft/surgical-precision.c");
+    addChild("/guilds/rogue/blade-craft/surgical-precision-iii.c",
+        "/guilds/rogue/blade-craft/surgical-precision-ii.c");
+    addChild("/guilds/rogue/blade-craft/surgical-precision-iv.c",
+        "/guilds/rogue/blade-craft/surgical-precision-iii.c");
+    addChild("/guilds/rogue/blade-craft/surgical-precision-v.c",
+        "/guilds/rogue/blade-craft/surgical-precision-iv.c");
+    addChild("/guilds/rogue/blade-craft/surgical-precision-vi.c",
+        "/guilds/rogue/blade-craft/surgical-precision-v.c");
+    addChild("/guilds/rogue/blade-craft/surgical-precision-vii.c",
+        "/guilds/rogue/blade-craft/surgical-precision-vi.c");
+    addChild("/guilds/rogue/blade-craft/surgical-precision-viii.c",
+        "/guilds/rogue/blade-craft/surgical-precision-vii.c");
+    addChild("/guilds/rogue/blade-craft/honed-reflexes.c",
+        "/guilds/rogue/blade-craft/adders-tongue.c");
+    addChild("/guilds/rogue/blade-craft/arterial-slash.c",
+        "/guilds/rogue/blade-craft/adders-tongue.c");
+    addChild("/guilds/rogue/blade-craft/riposte.c",
+        "/guilds/rogue/blade-craft/honed-reflexes.c");
+    addChild("/guilds/rogue/blade-craft/blade-mastery.c",
+        "/guilds/rogue/blade-craft/honed-reflexes.c");
+    addChild("/guilds/rogue/blade-craft/gutting-strike.c",
+        "/guilds/rogue/blade-craft/blade-mastery.c");
+    addChild("/guilds/rogue/blade-craft/flurry-of-knives.c",
+        "/guilds/rogue/blade-craft/blade-mastery.c");
+    addChild("/guilds/rogue/blade-craft/eviscerate.c",
+        "/guilds/rogue/blade-craft/blade-mastery.c");
+    addChild("/guilds/rogue/blade-craft/whirling-blades.c",
+        "/guilds/rogue/blade-craft/blade-mastery.c");
+    addChild("/guilds/rogue/blade-craft/death-cut.c",
+        "/guilds/rogue/blade-craft/blade-mastery.c");
+    addChild("/guilds/rogue/blade-craft/peerless-edge.c",
+        "/guilds/rogue/blade-craft/blade-mastery.c");
+    addChild("/guilds/rogue/blade-craft/thousand-cuts.c",
+        "/guilds/rogue/blade-craft/peerless-edge.c");
+    addChild("/guilds/rogue/blade-craft/blade-storm.c",
+        "/guilds/rogue/blade-craft/peerless-edge.c");
+    addChild("/guilds/rogue/blade-craft/supreme-blade.c",
+        "/guilds/rogue/blade-craft/peerless-edge.c");
+    addChild("/guilds/rogue/blade-craft/deadly-flourish.c",
+        "/guilds/rogue/blade-craft/supreme-blade.c");
+    addChild("/guilds/rogue/blade-craft/masterwork-cuts.c",
+        "/guilds/rogue/blade-craft/supreme-blade.c");
+    addChild("/guilds/rogue/blade-craft/blade-lord.c",
+        "/guilds/rogue/blade-craft/masterwork-cuts.c");
+    addChild("/guilds/rogue/blade-craft/transcendent-edge.c",
+        "/guilds/rogue/blade-craft/blade-lord.c");
+    addChild("/guilds/rogue/blade-craft/infinite-edge.c",
+        "/guilds/rogue/blade-craft/transcendent-edge.c");
+    addChild("/guilds/rogue/blade-craft/perfected-blade.c",
+        "/guilds/rogue/blade-craft/infinite-edge.c");
+    addChild("/guilds/rogue/blade-craft/blades-transcendence.c",
+        "/guilds/rogue/blade-craft/perfected-blade.c");
+    addChild("/guilds/rogue/blade-craft/supreme-lethality.c",
+        "/guilds/rogue/blade-craft/blades-transcendence.c");
+    addChild("/guilds/rogue/blade-craft/eternal-edge.c",
+        "/guilds/rogue/blade-craft/supreme-lethality.c");
+    addChild("/guilds/rogue/blade-craft/blademasters-perfection.c",
+        "/guilds/rogue/blade-craft/eternal-edge.c");
+    addChild("/guilds/rogue/blade-craft/peerless-artistry.c",
+        "/guilds/rogue/blade-craft/blademasters-perfection.c");
+    addChild("/guilds/rogue/blade-craft/apex-blade.c",
+        "/guilds/rogue/blade-craft/peerless-artistry.c");
+    addChild("/guilds/rogue/blade-craft/transcendent-lethality.c",
+        "/guilds/rogue/blade-craft/apex-blade.c");
+}

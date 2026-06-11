@@ -82,7 +82,7 @@ void long() {
   write("A stethoscope.\n");
 }
 
-int query_listening() {
+object query_listening() {
   return listen_ob;
 }
 

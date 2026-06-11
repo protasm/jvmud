@@ -1,0 +1,135 @@
+//*****************************************************************************
+// Copyright (c) 2017-2026 - Allen Cummings, RealmsMUD, All rights reserved. See
+//                      the accompanying LICENSE file for details.
+//*****************************************************************************
+inherit "/lib/modules/research/researchTree.c";
+
+/////////////////////////////////////////////////////////////////////////////
+protected void Setup()
+{
+    Name("Opportunism");
+    Description("This research tree provides the rogue with the ability "
+        "to exploit openings, flanks, and weaknesses in combat.");
+    Source("rogue");
+    addResearchElement("/guilds/rogue/opportunism/root.c");
+    TreeRoot("/guilds/rogue/opportunism/root.c");
+
+    addResearchElement("/guilds/rogue/opportunism/achilles-cut.c");
+    addResearchElement("/guilds/rogue/opportunism/ambush.c");
+    addResearchElement("/guilds/rogue/opportunism/backstab.c");
+    addResearchElement("/guilds/rogue/opportunism/calculated-cruelty.c");
+    addResearchElement("/guilds/rogue/opportunism/capitalize.c");
+    addResearchElement("/guilds/rogue/opportunism/coup-de-grace.c");
+    addResearchElement("/guilds/rogue/opportunism/deathblow.c");
+    addResearchElement("/guilds/rogue/opportunism/exploit-opening.c");
+    addResearchElement("/guilds/rogue/opportunism/exploit-weakness.c");
+    addResearchElement("/guilds/rogue/opportunism/finishing-instinct.c");
+    addResearchElement("/guilds/rogue/opportunism/flank-strike.c");
+    addResearchElement("/guilds/rogue/opportunism/flanking.c");
+    addResearchElement("/guilds/rogue/opportunism/jugular-strike.c");
+    addResearchElement("/guilds/rogue/opportunism/opportune-strike.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunism-mastery-ii.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunism-mastery-iii.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunism-mastery-iv.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunism-mastery-v.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunism-mastery-vi.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunism-mastery.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-insight-ii.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-insight-iii.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-insight-iv.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-insight-ix.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-insight-v.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-insight-vi.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-insight-vii.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-insight-viii.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-insight-x.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-insight.c");
+    addResearchElement("/guilds/rogue/opportunism/opportunistic-strike.c");
+    addResearchElement("/guilds/rogue/opportunism/perfect-strike.c");
+    addResearchElement("/guilds/rogue/opportunism/perfect-timing.c");
+    addResearchElement("/guilds/rogue/opportunism/pounce.c");
+    addResearchElement("/guilds/rogue/opportunism/press-advantage.c");
+    addResearchElement("/guilds/rogue/opportunism/relentless-pressure.c");
+    addResearchElement("/guilds/rogue/opportunism/seize-the-moment.c");
+    addResearchElement("/guilds/rogue/opportunism/supreme-opportunism.c");
+    addResearchElement("/guilds/rogue/opportunism/vulture-strike.c");
+
+    addChild("/guilds/rogue/opportunism/exploit-weakness.c",
+        "/guilds/rogue/opportunism/root.c");
+    addChild("/guilds/rogue/opportunism/flanking.c",
+        "/guilds/rogue/opportunism/root.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-insight.c",
+        "/guilds/rogue/opportunism/root.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-strike.c",
+        "/guilds/rogue/opportunism/exploit-weakness.c");
+    addChild("/guilds/rogue/opportunism/ambush.c",
+        "/guilds/rogue/opportunism/exploit-weakness.c");
+    addChild("/guilds/rogue/opportunism/press-advantage.c",
+        "/guilds/rogue/opportunism/flanking.c");
+    addChild("/guilds/rogue/opportunism/perfect-timing.c",
+        "/guilds/rogue/opportunism/opportunistic-strike.c");
+    addChild("/guilds/rogue/opportunism/backstab.c",
+        "/guilds/rogue/opportunism/opportunistic-strike.c");
+    addChild("/guilds/rogue/opportunism/capitalize.c",
+        "/guilds/rogue/opportunism/press-advantage.c");
+    addChild("/guilds/rogue/opportunism/exploit-opening.c",
+        "/guilds/rogue/opportunism/capitalize.c");
+    addChild("/guilds/rogue/opportunism/pounce.c",
+        "/guilds/rogue/opportunism/perfect-timing.c");
+    addChild("/guilds/rogue/opportunism/flank-strike.c",
+        "/guilds/rogue/opportunism/pounce.c");
+    addChild("/guilds/rogue/opportunism/seize-the-moment.c",
+        "/guilds/rogue/opportunism/pounce.c");
+    addChild("/guilds/rogue/opportunism/coup-de-grace.c",
+        "/guilds/rogue/opportunism/seize-the-moment.c");
+    addChild("/guilds/rogue/opportunism/relentless-pressure.c",
+        "/guilds/rogue/opportunism/seize-the-moment.c");
+    addChild("/guilds/rogue/opportunism/opportune-strike.c",
+        "/guilds/rogue/opportunism/relentless-pressure.c");
+    addChild("/guilds/rogue/opportunism/calculated-cruelty.c",
+        "/guilds/rogue/opportunism/relentless-pressure.c");
+    addChild("/guilds/rogue/opportunism/jugular-strike.c",
+        "/guilds/rogue/opportunism/calculated-cruelty.c");
+    addChild("/guilds/rogue/opportunism/vulture-strike.c",
+        "/guilds/rogue/opportunism/calculated-cruelty.c");
+    addChild("/guilds/rogue/opportunism/achilles-cut.c",
+        "/guilds/rogue/opportunism/vulture-strike.c");
+    addChild("/guilds/rogue/opportunism/finishing-instinct.c",
+        "/guilds/rogue/opportunism/vulture-strike.c");
+    addChild("/guilds/rogue/opportunism/deathblow.c",
+        "/guilds/rogue/opportunism/finishing-instinct.c");
+    addChild("/guilds/rogue/opportunism/opportunism-mastery.c",
+        "/guilds/rogue/opportunism/finishing-instinct.c");
+    addChild("/guilds/rogue/opportunism/perfect-strike.c",
+        "/guilds/rogue/opportunism/opportunism-mastery.c");
+    addChild("/guilds/rogue/opportunism/opportunism-mastery-ii.c",
+        "/guilds/rogue/opportunism/opportunism-mastery.c");
+    addChild("/guilds/rogue/opportunism/opportunism-mastery-iii.c",
+        "/guilds/rogue/opportunism/opportunism-mastery-ii.c");
+    addChild("/guilds/rogue/opportunism/opportunism-mastery-iv.c",
+        "/guilds/rogue/opportunism/opportunism-mastery-iii.c");
+    addChild("/guilds/rogue/opportunism/opportunism-mastery-v.c",
+        "/guilds/rogue/opportunism/opportunism-mastery-iv.c");
+    addChild("/guilds/rogue/opportunism/opportunism-mastery-vi.c",
+        "/guilds/rogue/opportunism/opportunism-mastery-v.c");
+    addChild("/guilds/rogue/opportunism/supreme-opportunism.c",
+        "/guilds/rogue/opportunism/opportunism-mastery-vi.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-insight-ii.c",
+        "/guilds/rogue/opportunism/opportunistic-insight.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-insight-iii.c",
+        "/guilds/rogue/opportunism/opportunistic-insight-ii.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-insight-iv.c",
+        "/guilds/rogue/opportunism/opportunistic-insight-iii.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-insight-v.c",
+        "/guilds/rogue/opportunism/opportunistic-insight-iv.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-insight-vi.c",
+        "/guilds/rogue/opportunism/opportunistic-insight-v.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-insight-vii.c",
+        "/guilds/rogue/opportunism/opportunistic-insight-vi.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-insight-viii.c",
+        "/guilds/rogue/opportunism/opportunistic-insight-vii.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-insight-ix.c",
+        "/guilds/rogue/opportunism/opportunistic-insight-viii.c");
+    addChild("/guilds/rogue/opportunism/opportunistic-insight-x.c",
+        "/guilds/rogue/opportunism/opportunistic-insight-ix.c");
+}

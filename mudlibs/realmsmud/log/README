@@ -1,0 +1,14 @@
+Error logs and other items saved via the log service will be placed in 
+this directory.
+
+To create your own custom log files, you can do so in code like this:
+
+void someFunc()
+{
+    ...
+    getService("log")->log("MyLogName", "Some message");
+    ...
+}
+
+The log "MyLogName" will then show up in this directory and will have
+an entry added whenever someFunc() is called.

@@ -1,0 +1,37 @@
+//*****************************************************************************
+// Copyright (c) 2017-2026 - Allen Cummings, RealmsMUD, All rights reserved.
+//                      See the accompanying LICENSE file for details.
+//*****************************************************************************
+inherit "/lib/modules/research/knowledgeResearchItem.c";
+
+/////////////////////////////////////////////////////////////////////////////
+protected void Setup()
+{
+    addSpecification("name", "Tectonic Knowledge");
+    addSpecification("source", "druid");
+    addSpecification("description", "This research unlocks the most devastating tectonic and volcanic techniques.");
+
+    addPrerequisite("/guilds/druid/natures-wrath/root.c",
+        ([ "type": "research" ]));
+    addPrerequisite("level", ([
+        "type": "level", "guild": "druid", "value": 33
+    ]));
+
+    addPrerequisite("/guilds/druid/natures-wrath/earth-fire-mastery.c",
+        ([ "type": "research" ]));
+
+    addSpecification("research type", "points");
+    addSpecification("research cost", 1);
+    addSpecification("affected research", ([
+        "Thorn Whip": 25,
+        "Stone Fist": 25,
+        "Earthen Grasp": 25,
+        "Eruption": 25,
+        "Wildfire": 25,
+        "Magma Surge": 25,
+        "Conflagration": 25,
+        "Earthquake": 25,
+        "Volcanic Fury": 25,
+        "Infernal Wild": 25,
+    ]));
+}

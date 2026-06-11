@@ -5,7 +5,7 @@ public final class ASTField extends ASTNode {
     private final Symbol symbol;
     private ASTExpression initializer;
     private final boolean declared;
-    private final boolean staticModifier;
+    private final DeclarationModifiers modifiers;
     private boolean defined;
 
     public ASTField(int line, String ownerName, Symbol symbol) {
@@ -17,12 +17,32 @@ public final class ASTField extends ASTNode {
     }
 
     public ASTField(int line, String ownerName, Symbol symbol, boolean declared, boolean staticModifier) {
+        this(
+                line,
+                ownerName,
+                symbol,
+                declared,
+                new DeclarationModifiers(
+                        DeclarationModifiers.Visibility.DEFAULT,
+                        staticModifier,
+                        false,
+                        false,
+                        false,
+                        false));
+    }
+
+    public ASTField(
+            int line,
+            String ownerName,
+            Symbol symbol,
+            boolean declared,
+            DeclarationModifiers modifiers) {
         super(line);
 
         this.ownerName = ownerName;
         this.symbol = symbol;
         this.declared = declared;
-        this.staticModifier = staticModifier;
+        this.modifiers = modifiers != null ? modifiers : DeclarationModifiers.NONE;
 
         initializer = null;
         defined = false;
@@ -53,7 +73,11 @@ public final class ASTField extends ASTNode {
     }
 
     public boolean isStatic() {
-        return staticModifier;
+        return modifiers.isStatic();
+    }
+
+    public DeclarationModifiers modifiers() {
+        return modifiers;
     }
 
     public boolean isDefined() {

@@ -211,6 +211,23 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void explicitBareReturnUsesDefaultValueForDeclaredReturnType() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/bare_return.c", """
+                status status_value() {
+                    return;
+                }
+
+                object object_value() {
+                    return;
+                }
+                """);
+
+        assertEquals(false, object.invoke("status_value"));
+        assertNull(object.invoke("object_value"));
+    }
+
+    @Test
     void runtimeSupportsCommaSeparatedForInitializerAndUpdateExpressions() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/for_comma.c", """
@@ -358,6 +375,33 @@ final class CompilerSmokeTest {
         ASTObject ast = result.getAstObject();
         assertTrue(ast.fields().get("hidden").isStatic());
         assertTrue(ast.methods().get("value").isStatic());
+    }
+
+    @Test
+    void parserPreservesLdmudStyleDeclarationModifiers() {
+        String source = """
+                private nosave object cache;
+
+                public nomask varargs int value(string name, string title) {
+                    return 42;
+                }
+
+                protected void setup() {
+                }
+                """;
+
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run(source);
+        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
+
+        ASTObject ast = result.getAstObject();
+        assertTrue(ast.fields().get("cache").modifiers().isPrivate());
+        assertTrue(ast.fields().get("cache").modifiers().isNosave());
+
+        assertTrue(ast.methods().get("value").modifiers().isPublic());
+        assertTrue(ast.methods().get("value").modifiers().isNomask());
+        assertTrue(ast.methods().get("value").modifiers().isVarargs());
+
+        assertTrue(ast.methods().get("setup").modifiers().isProtected());
     }
 
     @Test

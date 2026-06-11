@@ -99,13 +99,15 @@ status i_dump(string str) {
 }
 
 status i_mark(string str) {
-  string tmp;
+  int tmp;
+  string living_name;
+  string object_name;
 
   if (str == 0)
     return 0;
 
-  if (sscanf(str, "living %s", tmp) == 1) {
-    mark = find_living(tmp);
+  if (sscanf(str, "living %s", living_name) == 1) {
+    mark = find_living(living_name);
 
     if (!mark) {
       write("No such living object.\n");
@@ -118,8 +120,8 @@ status i_mark(string str) {
     return 1;
   }
 
-  if (sscanf(str, "ob %s", tmp) == 1) {
-    mark = find_object(tmp);
+  if (sscanf(str, "ob %s", object_name) == 1) {
+    mark = find_object(object_name);
 
     if (!mark) {
       write("No such object.\n");

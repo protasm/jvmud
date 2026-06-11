@@ -1,7 +1,11 @@
 inherit "room/room";
 
 object beggar;
-string chat_str, a_chat_str, function, type, match;
+string *chat_str;
+string *a_chat_str;
+string *function;
+string *type;
+string *match;
 /*
 * Make these arrays global, so they only have to be initialized once.
 */
@@ -9,7 +13,7 @@ void extra_reset() {
   no_castle_flag = 1;
 
   if (!present("knife")) {
-    string weapon;
+    object weapon;
 
     weapon = clone_object("obj/weapon");
 

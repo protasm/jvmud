@@ -10,7 +10,7 @@ public final class ASTMethod extends ASTNode {
     private final java.util.List<ASTLocal> locals;
     private ASTMethod overrides;
     private final boolean declared;
-    private final boolean staticModifier;
+    private final DeclarationModifiers modifiers;
     private boolean defined;
 
     public ASTMethod(int line, String ownerName, Symbol symbol) {
@@ -22,12 +22,32 @@ public final class ASTMethod extends ASTNode {
     }
 
     public ASTMethod(int line, String ownerName, Symbol symbol, boolean declared, boolean staticModifier) {
+        this(
+                line,
+                ownerName,
+                symbol,
+                declared,
+                new DeclarationModifiers(
+                        DeclarationModifiers.Visibility.DEFAULT,
+                        staticModifier,
+                        false,
+                        false,
+                        false,
+                        false));
+    }
+
+    public ASTMethod(
+            int line,
+            String ownerName,
+            Symbol symbol,
+            boolean declared,
+            DeclarationModifiers modifiers) {
         super(line);
 
         this.ownerName = ownerName;
         this.symbol = symbol;
         this.declared = declared;
-        this.staticModifier = staticModifier;
+        this.modifiers = modifiers != null ? modifiers : DeclarationModifiers.NONE;
 
         parameters = null;
         body = null;
@@ -84,7 +104,11 @@ public final class ASTMethod extends ASTNode {
     }
 
     public boolean isStatic() {
-        return staticModifier;
+        return modifiers.isStatic();
+    }
+
+    public DeclarationModifiers modifiers() {
+        return modifiers;
     }
 
     public boolean isDefined() {

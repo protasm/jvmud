@@ -1,0 +1,28 @@
+//*****************************************************************************
+// Copyright (c) 2017-2026 - Allen Cummings, RealmsMUD, All rights reserved. See
+//                      the accompanying LICENSE file for details.
+//*****************************************************************************
+inherit "/lib/modules/research/knowledgeResearchItem.c";
+
+/////////////////////////////////////////////////////////////////////////////
+protected void Setup()
+{
+    addSpecification("name", "Thick Hide III");
+    addSpecification("source", "druid");
+    addSpecification("description", "This research causes the wolf's body to become supernaturally hardened, shrugging off blows that would cripple lesser creatures.");
+
+    addPrerequisite("level", ([
+        "type": "level",
+        "guild": "druid",
+        "value": 21
+    ]));
+
+    addPrerequisite("/guilds/druid/companions/wolf/thick-hide-ii.c",
+        ([ "type": "research" ]));
+
+    addSpecification("research type", "points");
+    addSpecification("research cost", 1);
+    addSpecification("related research", ({
+        "/guilds/druid/companions/wolf/root.c",
+    }));
+}

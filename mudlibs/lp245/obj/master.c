@@ -1,5 +1,4 @@
 #pragma strict_types
-#endif
 #if 0 /* Dedicated flags not used. A save file method is used below */
 #define FIRST_ED_FLAG 0 /* adjust this value so that no flags are clobbered */
 #define NUM_ED_FLAGS 10
@@ -44,11 +43,7 @@ object connect() {
   string ret;
 
   write("obj/master: Connect to player.c...");
-  #if 0
-  ret = (string)catch(ob = clone_object("obj/player"));
-  #else
   ob = clone_object("obj/player");
-  #endif
   write("\n");
 
   if (ret) {
@@ -111,7 +106,7 @@ void flag(string str) {
   }
 
   if (sscanf(str, "call %s %s", file, arg) == 2) {
-    arg = (string)call_other(file, arg);
+    arg = call_other(file, arg);
 
     write("Got " + arg + " back.\n");
 

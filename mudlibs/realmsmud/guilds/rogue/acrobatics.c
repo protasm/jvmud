@@ -1,0 +1,135 @@
+//*****************************************************************************
+// Copyright (c) 2017-2026 - Allen Cummings, RealmsMUD, All rights reserved. See
+//                      the accompanying LICENSE file for details.
+//*****************************************************************************
+inherit "/lib/modules/research/researchTree.c";
+
+/////////////////////////////////////////////////////////////////////////////
+protected void Setup()
+{
+    Name("Acrobatics");
+    Description("This research tree provides the rogue with agility, "
+        "evasion, and acrobatic combat techniques.");
+    Source("rogue");
+    addResearchElement("/guilds/rogue/acrobatics/root.c");
+    TreeRoot("/guilds/rogue/acrobatics/root.c");
+
+    addResearchElement("/guilds/rogue/acrobatics/acrobatic-barrage.c");
+    addResearchElement("/guilds/rogue/acrobatics/acrobatic-defense.c");
+    addResearchElement("/guilds/rogue/acrobatics/acrobatic-mastery-ii.c");
+    addResearchElement("/guilds/rogue/acrobatics/acrobatic-mastery-iii.c");
+    addResearchElement("/guilds/rogue/acrobatics/acrobatic-mastery-iv.c");
+    addResearchElement("/guilds/rogue/acrobatics/acrobatic-mastery-v.c");
+    addResearchElement("/guilds/rogue/acrobatics/acrobatic-mastery-vi.c");
+    addResearchElement("/guilds/rogue/acrobatics/acrobatic-mastery.c");
+    addResearchElement("/guilds/rogue/acrobatics/aerial-assault.c");
+    addResearchElement("/guilds/rogue/acrobatics/agile-insight-ii.c");
+    addResearchElement("/guilds/rogue/acrobatics/agile-insight-iii.c");
+    addResearchElement("/guilds/rogue/acrobatics/agile-insight-iv.c");
+    addResearchElement("/guilds/rogue/acrobatics/agile-insight-ix.c");
+    addResearchElement("/guilds/rogue/acrobatics/agile-insight-v.c");
+    addResearchElement("/guilds/rogue/acrobatics/agile-insight-vi.c");
+    addResearchElement("/guilds/rogue/acrobatics/agile-insight-vii.c");
+    addResearchElement("/guilds/rogue/acrobatics/agile-insight-viii.c");
+    addResearchElement("/guilds/rogue/acrobatics/agile-insight-x.c");
+    addResearchElement("/guilds/rogue/acrobatics/agile-insight.c");
+    addResearchElement("/guilds/rogue/acrobatics/diving-strike.c");
+    addResearchElement("/guilds/rogue/acrobatics/evasive-roll.c");
+    addResearchElement("/guilds/rogue/acrobatics/fleet-footed.c");
+    addResearchElement("/guilds/rogue/acrobatics/hurricane-kick.c");
+    addResearchElement("/guilds/rogue/acrobatics/leaping-slash.c");
+    addResearchElement("/guilds/rogue/acrobatics/lightning-reflexes.c");
+    addResearchElement("/guilds/rogue/acrobatics/nimble-feet.c");
+    addResearchElement("/guilds/rogue/acrobatics/perfect-balance.c");
+    addResearchElement("/guilds/rogue/acrobatics/phantom-step.c");
+    addResearchElement("/guilds/rogue/acrobatics/skyfall-strike.c");
+    addResearchElement("/guilds/rogue/acrobatics/spinning-kick.c");
+    addResearchElement("/guilds/rogue/acrobatics/spring-attack.c");
+    addResearchElement("/guilds/rogue/acrobatics/supreme-evasion.c");
+    addResearchElement("/guilds/rogue/acrobatics/tumbling-strike.c");
+    addResearchElement("/guilds/rogue/acrobatics/tumbling.c");
+    addResearchElement("/guilds/rogue/acrobatics/uncanny-dodge.c");
+    addResearchElement("/guilds/rogue/acrobatics/vault-strike.c");
+    addResearchElement("/guilds/rogue/acrobatics/wall-run.c");
+    addResearchElement("/guilds/rogue/acrobatics/whirlwind-kick.c");
+    addResearchElement("/guilds/rogue/acrobatics/wind-dancer.c");
+
+    addChild("/guilds/rogue/acrobatics/nimble-feet.c",
+        "/guilds/rogue/acrobatics/root.c");
+    addChild("/guilds/rogue/acrobatics/tumbling.c",
+        "/guilds/rogue/acrobatics/root.c");
+    addChild("/guilds/rogue/acrobatics/agile-insight.c",
+        "/guilds/rogue/acrobatics/root.c");
+    addChild("/guilds/rogue/acrobatics/evasive-roll.c",
+        "/guilds/rogue/acrobatics/nimble-feet.c");
+    addChild("/guilds/rogue/acrobatics/spinning-kick.c",
+        "/guilds/rogue/acrobatics/nimble-feet.c");
+    addChild("/guilds/rogue/acrobatics/acrobatic-defense.c",
+        "/guilds/rogue/acrobatics/tumbling.c");
+    addChild("/guilds/rogue/acrobatics/fleet-footed.c",
+        "/guilds/rogue/acrobatics/evasive-roll.c");
+    addChild("/guilds/rogue/acrobatics/vault-strike.c",
+        "/guilds/rogue/acrobatics/evasive-roll.c");
+    addChild("/guilds/rogue/acrobatics/spring-attack.c",
+        "/guilds/rogue/acrobatics/fleet-footed.c");
+    addChild("/guilds/rogue/acrobatics/wall-run.c",
+        "/guilds/rogue/acrobatics/fleet-footed.c");
+    addChild("/guilds/rogue/acrobatics/leaping-slash.c",
+        "/guilds/rogue/acrobatics/spring-attack.c");
+    addChild("/guilds/rogue/acrobatics/tumbling-strike.c",
+        "/guilds/rogue/acrobatics/spring-attack.c");
+    addChild("/guilds/rogue/acrobatics/uncanny-dodge.c",
+        "/guilds/rogue/acrobatics/wall-run.c");
+    addChild("/guilds/rogue/acrobatics/whirlwind-kick.c",
+        "/guilds/rogue/acrobatics/uncanny-dodge.c");
+    addChild("/guilds/rogue/acrobatics/lightning-reflexes.c",
+        "/guilds/rogue/acrobatics/uncanny-dodge.c");
+    addChild("/guilds/rogue/acrobatics/aerial-assault.c",
+        "/guilds/rogue/acrobatics/lightning-reflexes.c");
+    addChild("/guilds/rogue/acrobatics/perfect-balance.c",
+        "/guilds/rogue/acrobatics/lightning-reflexes.c");
+    addChild("/guilds/rogue/acrobatics/diving-strike.c",
+        "/guilds/rogue/acrobatics/perfect-balance.c");
+    addChild("/guilds/rogue/acrobatics/wind-dancer.c",
+        "/guilds/rogue/acrobatics/perfect-balance.c");
+    addChild("/guilds/rogue/acrobatics/acrobatic-barrage.c",
+        "/guilds/rogue/acrobatics/wind-dancer.c");
+    addChild("/guilds/rogue/acrobatics/phantom-step.c",
+        "/guilds/rogue/acrobatics/wind-dancer.c");
+    addChild("/guilds/rogue/acrobatics/hurricane-kick.c",
+        "/guilds/rogue/acrobatics/phantom-step.c");
+    addChild("/guilds/rogue/acrobatics/acrobatic-mastery.c",
+        "/guilds/rogue/acrobatics/phantom-step.c");
+    addChild("/guilds/rogue/acrobatics/skyfall-strike.c",
+        "/guilds/rogue/acrobatics/acrobatic-mastery.c");
+    addChild("/guilds/rogue/acrobatics/acrobatic-mastery-ii.c",
+        "/guilds/rogue/acrobatics/acrobatic-mastery.c");
+    addChild("/guilds/rogue/acrobatics/acrobatic-mastery-iii.c",
+        "/guilds/rogue/acrobatics/acrobatic-mastery-ii.c");
+    addChild("/guilds/rogue/acrobatics/acrobatic-mastery-iv.c",
+        "/guilds/rogue/acrobatics/acrobatic-mastery-iii.c");
+    addChild("/guilds/rogue/acrobatics/acrobatic-mastery-v.c",
+        "/guilds/rogue/acrobatics/acrobatic-mastery-iv.c");
+    addChild("/guilds/rogue/acrobatics/acrobatic-mastery-vi.c",
+        "/guilds/rogue/acrobatics/acrobatic-mastery-v.c");
+    addChild("/guilds/rogue/acrobatics/supreme-evasion.c",
+        "/guilds/rogue/acrobatics/acrobatic-mastery-vi.c");
+    addChild("/guilds/rogue/acrobatics/agile-insight-ii.c",
+        "/guilds/rogue/acrobatics/agile-insight.c");
+    addChild("/guilds/rogue/acrobatics/agile-insight-iii.c",
+        "/guilds/rogue/acrobatics/agile-insight-ii.c");
+    addChild("/guilds/rogue/acrobatics/agile-insight-iv.c",
+        "/guilds/rogue/acrobatics/agile-insight-iii.c");
+    addChild("/guilds/rogue/acrobatics/agile-insight-v.c",
+        "/guilds/rogue/acrobatics/agile-insight-iv.c");
+    addChild("/guilds/rogue/acrobatics/agile-insight-vi.c",
+        "/guilds/rogue/acrobatics/agile-insight-v.c");
+    addChild("/guilds/rogue/acrobatics/agile-insight-vii.c",
+        "/guilds/rogue/acrobatics/agile-insight-vi.c");
+    addChild("/guilds/rogue/acrobatics/agile-insight-viii.c",
+        "/guilds/rogue/acrobatics/agile-insight-vii.c");
+    addChild("/guilds/rogue/acrobatics/agile-insight-ix.c",
+        "/guilds/rogue/acrobatics/agile-insight-viii.c");
+    addChild("/guilds/rogue/acrobatics/agile-insight-x.c",
+        "/guilds/rogue/acrobatics/agile-insight-ix.c");
+}

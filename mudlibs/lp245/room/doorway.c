@@ -1,8 +1,8 @@
 #define EXTRA_MOVE /* nothing */
 string name,short_desc,long_desc,dir1,dir2,dest;
 
-set_dest(s) { if(s) dest=s; }
-enter(s) {
+void set_dest(string s) { if(s) dest=s; }
+status enter(string s) {
   if(!id(s)) return;
   EXTRA_MOVE
 
@@ -11,7 +11,7 @@ enter(s) {
   return 1;
 }
 
-go_room() {
+status go_room() {
   EXTRA_MOVE
 
   this_player()->move_player(dir1+"#"+dest);
@@ -19,32 +19,32 @@ go_room() {
   return 1;
 }
 
-id(s) {
+status id(string s) {
   if(!s) return;
   return(s==name);
 }
-short() { return short_desc; }
+string short() { return short_desc; }
 
-long() { write(long_desc); }
+void long() { write(long_desc); }
 
-init() {
+void init() {
   if(name) add_action("enter","enter");
   if(dir1) add_action("go_room",dir1);
   if(dir2) add_action("go_room",dir2);
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if(arg) return;
   dest="room/village/church";
   long_desc="You see nothing special.\n";
 }
-set_name(s) { name=s; }
+void set_name(string s) { name=s; }
 
-set_short(s) { short_desc=s; }
+void set_short(string s) { short_desc=s; }
 
-set_long(s) { if(s) long_desc=s; }
+void set_long(string s) { if(s) long_desc=s; }
 
-set_dirs(d1,d2) {
+void set_dirs(string d1, string d2) {
   if(d1) {
     dir1=d1;
     dir2=d2;

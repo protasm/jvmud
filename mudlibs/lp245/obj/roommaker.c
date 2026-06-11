@@ -198,12 +198,11 @@ status do_edit(int str) {
   }
 
   write("unknow edit parameter: " + str + "\n");
-  write("use the \"h\" to get help.\n");
+  write("use the 'h' to get help.\n");
 
   return 0;
 }
-static
-status do_file() {
+static status do_file() {
   int  i;
   object  longs, ob;
   string  slask;

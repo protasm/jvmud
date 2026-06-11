@@ -4,7 +4,7 @@ string owner;
 /*
 * This "room" is a special object which can be dropped once.
 */
-drop() {
+status drop() {
   if (environment(this_player())->query_drop_castle()) {
     write("Not this close to the city!\n");
 
@@ -19,7 +19,7 @@ drop() {
   return 0;
 }
 
-get() {
+status get() {
   if (dropped) {
     write("You can't take it anymore !\n");
 
@@ -29,7 +29,7 @@ get() {
   return 1;
 }
 
-heart_beat() {
+void heart_beat() {
   if (!dropped)
     return;
 
@@ -57,15 +57,15 @@ heart_beat() {
   }
 }
 
-id(str) {
+status id(string str) {
   return str == "castle";
 }
 
-long() {
+void long() {
   write(short() + ".\n");
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
@@ -73,10 +73,10 @@ reset(arg) {
   grow_stage = 5;
 }
 
-set_owner(n) {
+void set_owner(string n) {
   owner = n;
 }
 
-short() {
+string short() {
   return "portable castle";
 }

@@ -70,6 +70,7 @@ status has_drink(object obj) {
 
   return drink;
 }
+#endif
 
 void init() {
   add_action("move", "west");
@@ -140,8 +141,8 @@ status move() {
 
     return 1;
   }
+#endif
 
-  #endif
   call_other(this_player(), "move_player",  "west" + "#" +"room/village/yard");
 
   return 1;
@@ -234,8 +235,6 @@ status order(mixed str) {
 
   return 1;
 }
-#endif
-
 int query_drop_castle() {
   return 1;
 }

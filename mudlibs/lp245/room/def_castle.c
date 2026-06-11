@@ -9,8 +9,11 @@
 * ourself to where we are supposed to be.
 */
 
-id(str) { return str == "castle"; }
-enter(str) {
+#define NAME "Nobody"
+#define DEST "room/village/church"
+
+status id(string str) { return str == "castle"; }
+status enter(string str) {
   if (!id(str))
     return 0;
 
@@ -19,23 +22,23 @@ enter(str) {
   return 1;
 }
 
-init() {
+void init() {
   add_action("enter", "enter");
 }
 
-long() {
+void long() {
   write("This is the " + short() + ".\n");
   write(NAME + " is a rather new wizard, but it is an amazing castle\n");
   write("just the same. However, the gates are closed.\n");
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
   move_object(this_object(), DEST);
 }
 
-short() {
+string short() {
   return "Castle of " + NAME;
 }

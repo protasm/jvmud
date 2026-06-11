@@ -1,6 +1,6 @@
 int door_open;
 
-go_west() {
+void go_west() {
   if (!door_open)
     write("The door is closed.\n");
 
@@ -8,7 +8,7 @@ go_west() {
     call_other(this_player(), "move_object", "west#room/test");
 }
 
-init() {
+void init() {
   add_action("go_west"); add_verb("west");
 
   door_open = call_other("room/test", "door_open", 0);
@@ -19,6 +19,6 @@ init() {
     write("There is an open door to the west.\n");
 }
 
-long() {
+void long() {
   write("This is room 2. There is an exit to the west.\n");
 }

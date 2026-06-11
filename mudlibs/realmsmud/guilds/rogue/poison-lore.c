@@ -1,0 +1,135 @@
+//*****************************************************************************
+// Copyright (c) 2017-2026 - Allen Cummings, RealmsMUD, All rights reserved. See
+//                      the accompanying LICENSE file for details.
+//*****************************************************************************
+inherit "/lib/modules/research/researchTree.c";
+
+/////////////////////////////////////////////////////////////////////////////
+protected void Setup()
+{
+    Name("Poison Lore");
+    Description("This research tree provides the rogue with knowledge "
+        "of poisons, toxins, and venomous compounds.");
+    Source("rogue");
+    addResearchElement("/guilds/rogue/poison-lore/root.c");
+    TreeRoot("/guilds/rogue/poison-lore/root.c");
+
+    addResearchElement("/guilds/rogue/poison-lore/blood-toxin.c");
+    addResearchElement("/guilds/rogue/poison-lore/concentrated-toxins.c");
+    addResearchElement("/guilds/rogue/poison-lore/corrosive-venom.c");
+    addResearchElement("/guilds/rogue/poison-lore/deaths-touch.c");
+    addResearchElement("/guilds/rogue/poison-lore/debilitating-toxin.c");
+    addResearchElement("/guilds/rogue/poison-lore/envenom.c");
+    addResearchElement("/guilds/rogue/poison-lore/hemotoxin.c");
+    addResearchElement("/guilds/rogue/poison-lore/improved-resistance.c");
+    addResearchElement("/guilds/rogue/poison-lore/lethal-dosage.c");
+    addResearchElement("/guilds/rogue/poison-lore/lethal-injection.c");
+    addResearchElement("/guilds/rogue/poison-lore/master-poisoner.c");
+    addResearchElement("/guilds/rogue/poison-lore/mind-fog-poison.c");
+    addResearchElement("/guilds/rogue/poison-lore/necrotic-poison.c");
+    addResearchElement("/guilds/rogue/poison-lore/nerve-toxin.c");
+    addResearchElement("/guilds/rogue/poison-lore/paralytic-dose.c");
+    addResearchElement("/guilds/rogue/poison-lore/poison-mastery-ii.c");
+    addResearchElement("/guilds/rogue/poison-lore/poison-mastery-iii.c");
+    addResearchElement("/guilds/rogue/poison-lore/poison-mastery-iv.c");
+    addResearchElement("/guilds/rogue/poison-lore/poison-mastery-v.c");
+    addResearchElement("/guilds/rogue/poison-lore/poison-mastery-vi.c");
+    addResearchElement("/guilds/rogue/poison-lore/poison-mastery.c");
+    addResearchElement("/guilds/rogue/poison-lore/slowing-poison.c");
+    addResearchElement("/guilds/rogue/poison-lore/supreme-toxicology.c");
+    addResearchElement("/guilds/rogue/poison-lore/toxic-strike.c");
+    addResearchElement("/guilds/rogue/poison-lore/toxin-resistance.c");
+    addResearchElement("/guilds/rogue/poison-lore/venom-knowledge.c");
+    addResearchElement("/guilds/rogue/poison-lore/venomous-insight-ii.c");
+    addResearchElement("/guilds/rogue/poison-lore/venomous-insight-iii.c");
+    addResearchElement("/guilds/rogue/poison-lore/venomous-insight-iv.c");
+    addResearchElement("/guilds/rogue/poison-lore/venomous-insight-ix.c");
+    addResearchElement("/guilds/rogue/poison-lore/venomous-insight-v.c");
+    addResearchElement("/guilds/rogue/poison-lore/venomous-insight-vi.c");
+    addResearchElement("/guilds/rogue/poison-lore/venomous-insight-vii.c");
+    addResearchElement("/guilds/rogue/poison-lore/venomous-insight-viii.c");
+    addResearchElement("/guilds/rogue/poison-lore/venomous-insight-x.c");
+    addResearchElement("/guilds/rogue/poison-lore/venomous-insight.c");
+    addResearchElement("/guilds/rogue/poison-lore/virulent-compounds.c");
+    addResearchElement("/guilds/rogue/poison-lore/virulent-plague.c");
+    addResearchElement("/guilds/rogue/poison-lore/weakening-poison.c");
+
+    addChild("/guilds/rogue/poison-lore/venom-knowledge.c",
+        "/guilds/rogue/poison-lore/root.c");
+    addChild("/guilds/rogue/poison-lore/toxin-resistance.c",
+        "/guilds/rogue/poison-lore/root.c");
+    addChild("/guilds/rogue/poison-lore/venomous-insight.c",
+        "/guilds/rogue/poison-lore/root.c");
+    addChild("/guilds/rogue/poison-lore/envenom.c",
+        "/guilds/rogue/poison-lore/venom-knowledge.c");
+    addChild("/guilds/rogue/poison-lore/concentrated-toxins.c",
+        "/guilds/rogue/poison-lore/venom-knowledge.c");
+    addChild("/guilds/rogue/poison-lore/weakening-poison.c",
+        "/guilds/rogue/poison-lore/venom-knowledge.c");
+    addChild("/guilds/rogue/poison-lore/improved-resistance.c",
+        "/guilds/rogue/poison-lore/toxin-resistance.c");
+    addChild("/guilds/rogue/poison-lore/venomous-insight-ii.c",
+        "/guilds/rogue/poison-lore/venomous-insight.c");
+    addChild("/guilds/rogue/poison-lore/venomous-insight-iii.c",
+        "/guilds/rogue/poison-lore/venomous-insight-ii.c");
+    addChild("/guilds/rogue/poison-lore/venomous-insight-iv.c",
+        "/guilds/rogue/poison-lore/venomous-insight-iii.c");
+    addChild("/guilds/rogue/poison-lore/venomous-insight-v.c",
+        "/guilds/rogue/poison-lore/venomous-insight-iv.c");
+    addChild("/guilds/rogue/poison-lore/venomous-insight-vi.c",
+        "/guilds/rogue/poison-lore/venomous-insight-v.c");
+    addChild("/guilds/rogue/poison-lore/venomous-insight-vii.c",
+        "/guilds/rogue/poison-lore/venomous-insight-vi.c");
+    addChild("/guilds/rogue/poison-lore/venomous-insight-viii.c",
+        "/guilds/rogue/poison-lore/venomous-insight-vii.c");
+    addChild("/guilds/rogue/poison-lore/venomous-insight-ix.c",
+        "/guilds/rogue/poison-lore/venomous-insight-viii.c");
+    addChild("/guilds/rogue/poison-lore/venomous-insight-x.c",
+        "/guilds/rogue/poison-lore/venomous-insight-ix.c");
+    addChild("/guilds/rogue/poison-lore/toxic-strike.c",
+        "/guilds/rogue/poison-lore/concentrated-toxins.c");
+    addChild("/guilds/rogue/poison-lore/slowing-poison.c",
+        "/guilds/rogue/poison-lore/concentrated-toxins.c");
+    addChild("/guilds/rogue/poison-lore/lethal-dosage.c",
+        "/guilds/rogue/poison-lore/concentrated-toxins.c");
+    addChild("/guilds/rogue/poison-lore/paralytic-dose.c",
+        "/guilds/rogue/poison-lore/concentrated-toxins.c");
+    addChild("/guilds/rogue/poison-lore/mind-fog-poison.c",
+        "/guilds/rogue/poison-lore/lethal-dosage.c");
+    addChild("/guilds/rogue/poison-lore/nerve-toxin.c",
+        "/guilds/rogue/poison-lore/lethal-dosage.c");
+    addChild("/guilds/rogue/poison-lore/virulent-compounds.c",
+        "/guilds/rogue/poison-lore/lethal-dosage.c");
+    addChild("/guilds/rogue/poison-lore/corrosive-venom.c",
+        "/guilds/rogue/poison-lore/virulent-compounds.c");
+    addChild("/guilds/rogue/poison-lore/necrotic-poison.c",
+        "/guilds/rogue/poison-lore/virulent-compounds.c");
+    addChild("/guilds/rogue/poison-lore/debilitating-toxin.c",
+        "/guilds/rogue/poison-lore/virulent-compounds.c");
+    addChild("/guilds/rogue/poison-lore/master-poisoner.c",
+        "/guilds/rogue/poison-lore/virulent-compounds.c");
+    addChild("/guilds/rogue/poison-lore/blood-toxin.c",
+        "/guilds/rogue/poison-lore/master-poisoner.c");
+    addChild("/guilds/rogue/poison-lore/virulent-plague.c",
+        "/guilds/rogue/poison-lore/master-poisoner.c");
+    addChild("/guilds/rogue/poison-lore/hemotoxin.c",
+        "/guilds/rogue/poison-lore/master-poisoner.c");
+    addChild("/guilds/rogue/poison-lore/supreme-toxicology.c",
+        "/guilds/rogue/poison-lore/master-poisoner.c");
+    addChild("/guilds/rogue/poison-lore/deaths-touch.c",
+        "/guilds/rogue/poison-lore/supreme-toxicology.c");
+    addChild("/guilds/rogue/poison-lore/lethal-injection.c",
+        "/guilds/rogue/poison-lore/supreme-toxicology.c");
+    addChild("/guilds/rogue/poison-lore/poison-mastery.c",
+        "/guilds/rogue/poison-lore/supreme-toxicology.c");
+    addChild("/guilds/rogue/poison-lore/poison-mastery-ii.c",
+        "/guilds/rogue/poison-lore/poison-mastery.c");
+    addChild("/guilds/rogue/poison-lore/poison-mastery-iii.c",
+        "/guilds/rogue/poison-lore/poison-mastery-ii.c");
+    addChild("/guilds/rogue/poison-lore/poison-mastery-iv.c",
+        "/guilds/rogue/poison-lore/poison-mastery-iii.c");
+    addChild("/guilds/rogue/poison-lore/poison-mastery-v.c",
+        "/guilds/rogue/poison-lore/poison-mastery-iv.c");
+    addChild("/guilds/rogue/poison-lore/poison-mastery-vi.c",
+        "/guilds/rogue/poison-lore/poison-mastery-v.c");
+}

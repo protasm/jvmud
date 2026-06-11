@@ -603,7 +603,7 @@ public final class SemanticTypeChecker {
             LPCType declared = method.symbol().lpcType();
 
             if (valueType == LPCType.LPCVOID) {
-                if (declared != null && declared != LPCType.LPCVOID && declared != LPCType.LPCMIXED) {
+                if (synthetic && declared != null && declared != LPCType.LPCVOID && declared != LPCType.LPCMIXED) {
                     problems.add(
                             new CompilationProblem(
                                     CompilationStage.ANALYZE,

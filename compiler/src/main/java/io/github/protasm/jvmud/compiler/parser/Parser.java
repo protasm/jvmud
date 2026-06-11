@@ -43,6 +43,8 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTMethod;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTParameter;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTParameters;
+import io.github.protasm.jvmud.compiler.parser.ast.DeclarationModifiers;
+import io.github.protasm.jvmud.compiler.parser.ast.DeclarationModifiers.Visibility;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
@@ -173,14 +175,72 @@ public class Parser {
     }
 
     private DeclarationModifiers declarationModifiers() {
+        Visibility visibility = Visibility.DEFAULT;
         boolean isStatic = false;
+        boolean isNomask = false;
+        boolean isVarargs = false;
+        boolean isNosave = false;
+        boolean isDeprecated = false;
 
-        while (tokens.check(T_IDENTIFIER) && "static".equals(tokens.current().lexeme())) {
-            tokens.advance();
-            isStatic = true;
+        while (tokens.check(T_IDENTIFIER)) {
+            String lexeme = tokens.current().lexeme();
+
+            switch (lexeme) {
+            case "public" -> {
+                if (visibility != Visibility.DEFAULT)
+                    throw new ParseException("Only one visibility modifier is allowed.", tokens.current());
+                visibility = Visibility.PUBLIC;
+                tokens.advance();
+            }
+            case "private" -> {
+                if (visibility != Visibility.DEFAULT)
+                    throw new ParseException("Only one visibility modifier is allowed.", tokens.current());
+                visibility = Visibility.PRIVATE;
+                tokens.advance();
+            }
+            case "protected" -> {
+                if (visibility != Visibility.DEFAULT)
+                    throw new ParseException("Only one visibility modifier is allowed.", tokens.current());
+                visibility = Visibility.PROTECTED;
+                tokens.advance();
+            }
+            case "static" -> {
+                if (isStatic)
+                    throw new ParseException("Duplicate declaration modifier 'static'.", tokens.current());
+                isStatic = true;
+                tokens.advance();
+            }
+            case "nomask" -> {
+                if (isNomask)
+                    throw new ParseException("Duplicate declaration modifier 'nomask'.", tokens.current());
+                isNomask = true;
+                tokens.advance();
+            }
+            case "varargs" -> {
+                if (isVarargs)
+                    throw new ParseException("Duplicate declaration modifier 'varargs'.", tokens.current());
+                isVarargs = true;
+                tokens.advance();
+            }
+            case "nosave" -> {
+                if (isNosave)
+                    throw new ParseException("Duplicate declaration modifier 'nosave'.", tokens.current());
+                isNosave = true;
+                tokens.advance();
+            }
+            case "deprecated" -> {
+                if (isDeprecated)
+                    throw new ParseException("Duplicate declaration modifier 'deprecated'.", tokens.current());
+                isDeprecated = true;
+                tokens.advance();
+            }
+            default -> {
+                return new DeclarationModifiers(visibility, isStatic, isNomask, isVarargs, isNosave, isDeprecated);
+            }
+            }
         }
 
-        return new DeclarationModifiers(isStatic);
+        return new DeclarationModifiers(visibility, isStatic, isNomask, isVarargs, isNosave, isDeprecated);
     }
 
     private Symbol declarationSymbol() {
@@ -200,6 +260,9 @@ public class Parser {
     }
 
     private void field(Symbol symbol, int declarationLine, DeclarationModifiers modifiers) {
+        if (modifiers.isVarargs())
+            throw new ParseException("The 'varargs' modifier is only valid on methods.", tokens.current());
+
         if (locals == null)
             locals = new Locals();
 
@@ -213,7 +276,7 @@ public class Parser {
                         currObj.name(),
                         declarator.symbol(),
                         true,
-                        modifiers.isStatic());
+                        modifiers);
                 field.setSourceOrder(nextSourceOrder());
                 currObj.fields().put(field.symbol().name(), field);
                 continue;
@@ -228,7 +291,7 @@ public class Parser {
                         currObj.name(),
                         declarator.symbol(),
                         true,
-                        modifiers.isStatic());
+                        modifiers);
                 field.setSourceOrder(nextSourceOrder());
                 currObj.fields().put(field.symbol().name(), field);
             }
@@ -279,7 +342,7 @@ public class Parser {
                                 currObj.name(),
                                 symbol,
                                 true,
-                                modifiers.isStatic());
+                                modifiers);
                         declaration.setSourceOrder(nextSourceOrder());
                         declaration.setParameters(params);
                         parsedParams.locals().forEach(declaration::addLocal);
@@ -297,7 +360,7 @@ public class Parser {
                                 currObj.name(),
                                 symbol,
                                 true,
-                                modifiers.isStatic());
+                                modifiers);
                         method.setSourceOrder(nextSourceOrder());
                         currObj.methods().put(method.symbol().name(), method);
                 }
@@ -636,6 +699,4 @@ public class Parser {
         return false;
     }
 
-    private record DeclarationModifiers(boolean isStatic) {
-    }
 }

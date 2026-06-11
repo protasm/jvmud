@@ -1,0 +1,135 @@
+//*****************************************************************************
+// Copyright (c) 2017-2026 - Allen Cummings, RealmsMUD, All rights reserved. See
+//                      the accompanying LICENSE file for details.
+//*****************************************************************************
+inherit "/lib/modules/research/researchTree.c";
+
+/////////////////////////////////////////////////////////////////////////////
+protected void Setup()
+{
+    Name("Dirty Fighting");
+    Description("This research tree provides the rogue with underhanded "
+        "and brutal combat techniques.");
+    Source("rogue");
+    addResearchElement("/guilds/rogue/dirty-fighting/root.c");
+    TreeRoot("/guilds/rogue/dirty-fighting/root.c");
+
+    addResearchElement("/guilds/rogue/dirty-fighting/below-the-belt.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/bite.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/bone-crusher.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/brawlers-instinct.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/brutal-slam.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/crippling-blow.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/devastating-strike.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-insight-ii.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-insight-iii.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-insight-iv.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-insight-ix.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-insight-v.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-insight-vi.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-insight-vii.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-insight-viii.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-insight-x.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-insight.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-mastery-ii.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-mastery-iii.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-mastery-iv.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-mastery-v.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-mastery-vi.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-mastery.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/dirty-tricks.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/ear-clap.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/eye-gouge.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/groin-kick.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/gut-punch.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/headbutt.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/knee-breaker.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/no-rules.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/rib-crack.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/ruthless-fighter.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/sand-toss.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/savage-combatant.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/skull-bash.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/spine-snap.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/supreme-dirty-fighting.c");
+    addResearchElement("/guilds/rogue/dirty-fighting/throat-punch.c");
+
+    addChild("/guilds/rogue/dirty-fighting/below-the-belt.c",
+        "/guilds/rogue/dirty-fighting/root.c");
+    addChild("/guilds/rogue/dirty-fighting/eye-gouge.c",
+        "/guilds/rogue/dirty-fighting/root.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-insight.c",
+        "/guilds/rogue/dirty-fighting/root.c");
+    addChild("/guilds/rogue/dirty-fighting/sand-toss.c",
+        "/guilds/rogue/dirty-fighting/root.c");
+    addChild("/guilds/rogue/dirty-fighting/throat-punch.c",
+        "/guilds/rogue/dirty-fighting/below-the-belt.c");
+    addChild("/guilds/rogue/dirty-fighting/groin-kick.c",
+        "/guilds/rogue/dirty-fighting/below-the-belt.c");
+    addChild("/guilds/rogue/dirty-fighting/ear-clap.c",
+        "/guilds/rogue/dirty-fighting/eye-gouge.c");
+    addChild("/guilds/rogue/dirty-fighting/headbutt.c",
+        "/guilds/rogue/dirty-fighting/throat-punch.c");
+    addChild("/guilds/rogue/dirty-fighting/knee-breaker.c",
+        "/guilds/rogue/dirty-fighting/throat-punch.c");
+    addChild("/guilds/rogue/dirty-fighting/bite.c",
+        "/guilds/rogue/dirty-fighting/groin-kick.c");
+    addChild("/guilds/rogue/dirty-fighting/rib-crack.c",
+        "/guilds/rogue/dirty-fighting/ear-clap.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-tricks.c",
+        "/guilds/rogue/dirty-fighting/headbutt.c");
+    addChild("/guilds/rogue/dirty-fighting/skull-bash.c",
+        "/guilds/rogue/dirty-fighting/bite.c");
+    addChild("/guilds/rogue/dirty-fighting/brawlers-instinct.c",
+        "/guilds/rogue/dirty-fighting/dirty-tricks.c");
+    addChild("/guilds/rogue/dirty-fighting/gut-punch.c",
+        "/guilds/rogue/dirty-fighting/brawlers-instinct.c");
+    addChild("/guilds/rogue/dirty-fighting/no-rules.c",
+        "/guilds/rogue/dirty-fighting/brawlers-instinct.c");
+    addChild("/guilds/rogue/dirty-fighting/spine-snap.c",
+        "/guilds/rogue/dirty-fighting/no-rules.c");
+    addChild("/guilds/rogue/dirty-fighting/savage-combatant.c",
+        "/guilds/rogue/dirty-fighting/no-rules.c");
+    addChild("/guilds/rogue/dirty-fighting/crippling-blow.c",
+        "/guilds/rogue/dirty-fighting/savage-combatant.c");
+    addChild("/guilds/rogue/dirty-fighting/ruthless-fighter.c",
+        "/guilds/rogue/dirty-fighting/savage-combatant.c");
+    addChild("/guilds/rogue/dirty-fighting/brutal-slam.c",
+        "/guilds/rogue/dirty-fighting/ruthless-fighter.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-mastery.c",
+        "/guilds/rogue/dirty-fighting/ruthless-fighter.c");
+    addChild("/guilds/rogue/dirty-fighting/bone-crusher.c",
+        "/guilds/rogue/dirty-fighting/dirty-mastery.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-mastery-ii.c",
+        "/guilds/rogue/dirty-fighting/dirty-mastery.c");
+    addChild("/guilds/rogue/dirty-fighting/devastating-strike.c",
+        "/guilds/rogue/dirty-fighting/dirty-mastery-ii.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-mastery-iii.c",
+        "/guilds/rogue/dirty-fighting/dirty-mastery-ii.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-mastery-iv.c",
+        "/guilds/rogue/dirty-fighting/dirty-mastery-iii.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-mastery-v.c",
+        "/guilds/rogue/dirty-fighting/dirty-mastery-iv.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-mastery-vi.c",
+        "/guilds/rogue/dirty-fighting/dirty-mastery-v.c");
+    addChild("/guilds/rogue/dirty-fighting/supreme-dirty-fighting.c",
+        "/guilds/rogue/dirty-fighting/dirty-mastery-vi.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-insight-ii.c",
+        "/guilds/rogue/dirty-fighting/dirty-insight.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-insight-iii.c",
+        "/guilds/rogue/dirty-fighting/dirty-insight-ii.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-insight-iv.c",
+        "/guilds/rogue/dirty-fighting/dirty-insight-iii.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-insight-v.c",
+        "/guilds/rogue/dirty-fighting/dirty-insight-iv.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-insight-vi.c",
+        "/guilds/rogue/dirty-fighting/dirty-insight-v.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-insight-vii.c",
+        "/guilds/rogue/dirty-fighting/dirty-insight-vi.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-insight-viii.c",
+        "/guilds/rogue/dirty-fighting/dirty-insight-vii.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-insight-ix.c",
+        "/guilds/rogue/dirty-fighting/dirty-insight-viii.c");
+    addChild("/guilds/rogue/dirty-fighting/dirty-insight-x.c",
+        "/guilds/rogue/dirty-fighting/dirty-insight-ix.c");
+}

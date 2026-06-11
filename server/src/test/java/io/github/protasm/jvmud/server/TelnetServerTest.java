@@ -92,7 +92,7 @@ final class TelnetServerTest {
                     return "preload";
                 }
                 """);
-        Files.writeString(tempDir.resolve("obj/broken.c"), "int broken() { return ; }\n");
+        Files.writeString(tempDir.resolve("obj/broken.c"), "broken() { return 1; }\n");
         Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
                 string short() {
                     return "green";
@@ -887,7 +887,7 @@ final class TelnetServerTest {
         assertEquals(church, south.origin());
         assertEquals(green, worldRuntime.locationOf(actorEntity));
 
-        Files.writeString(tempDir.resolve("room/bad.c"), "int broken() { return ; }\n");
+        Files.writeString(tempDir.resolve("room/bad.c"), "broken() { return 1; }\n");
         assertEquals(0, actor.move_player("east#room/bad"));
         assertEquals(green, worldRuntime.locationOf(actorEntity));
     }

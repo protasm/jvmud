@@ -1,6 +1,6 @@
 inherit "room/room";
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
@@ -51,7 +51,7 @@ void long(mixed str) {
   write("There are two obvious exits, up and north.\n");
 }
 
-close(str) {
+status close(string str) {
   if (!str && str != "door")
     return 0;
 
@@ -64,7 +64,7 @@ status id(mixed str) {
   return str == "lever" || str == "door";
 }
 
-open(str) {
+status open(string str) {
   if (!str && str != "door")
     return 0;
 
@@ -73,7 +73,7 @@ open(str) {
   return 1;
 }
 
-pull(str) {
+status pull(string str) {
   if (!str || str != "lever")
     return 0;
 
@@ -82,7 +82,7 @@ pull(str) {
   return 1;
 }
 
-west() {
+status west() {
   if (call_other("room/sub/door_trap", "query_west_door") == 0) {
     call_other(this_player(), "move_player", "west#room/sub/door_trap");
 

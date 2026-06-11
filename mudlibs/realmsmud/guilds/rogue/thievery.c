@@ -1,0 +1,135 @@
+//*****************************************************************************
+// Copyright (c) 2017-2026 - Allen Cummings, RealmsMUD, All rights reserved. See
+//                      the accompanying LICENSE file for details.
+//*****************************************************************************
+inherit "/lib/modules/research/researchTree.c";
+
+/////////////////////////////////////////////////////////////////////////////
+protected void Setup()
+{
+    Name("Thievery");
+    Description("This research tree provides the rogue with thievery, "
+        "lockpicking, and trap-related abilities.");
+    Source("rogue");
+    addResearchElement("/guilds/rogue/thievery/root.c");
+    TreeRoot("/guilds/rogue/thievery/root.c");
+
+    addResearchElement("/guilds/rogue/thievery/advanced-trapwork.c");
+    addResearchElement("/guilds/rogue/thievery/blackjack.c");
+    addResearchElement("/guilds/rogue/thievery/caltrops.c");
+    addResearchElement("/guilds/rogue/thievery/expert-trapper.c");
+    addResearchElement("/guilds/rogue/thievery/garrote.c");
+    addResearchElement("/guilds/rogue/thievery/grand-larceny.c");
+    addResearchElement("/guilds/rogue/thievery/hamstring.c");
+    addResearchElement("/guilds/rogue/thievery/improved-lockpicking.c");
+    addResearchElement("/guilds/rogue/thievery/kidney-shot.c");
+    addResearchElement("/guilds/rogue/thievery/light-fingers.c");
+    addResearchElement("/guilds/rogue/thievery/low-blow.c");
+    addResearchElement("/guilds/rogue/thievery/master-locksmith.c");
+    addResearchElement("/guilds/rogue/thievery/master-thief.c");
+    addResearchElement("/guilds/rogue/thievery/nimble-hands.c");
+    addResearchElement("/guilds/rogue/thievery/pocket-sand.c");
+    addResearchElement("/guilds/rogue/thievery/quick-hands.c");
+    addResearchElement("/guilds/rogue/thievery/safecracker.c");
+    addResearchElement("/guilds/rogue/thievery/shiv.c");
+    addResearchElement("/guilds/rogue/thievery/sleight-of-hand.c");
+    addResearchElement("/guilds/rogue/thievery/snare.c");
+    addResearchElement("/guilds/rogue/thievery/supreme-thievery.c");
+    addResearchElement("/guilds/rogue/thievery/thievery-mastery-ii.c");
+    addResearchElement("/guilds/rogue/thievery/thievery-mastery-iii.c");
+    addResearchElement("/guilds/rogue/thievery/thievery-mastery-iv.c");
+    addResearchElement("/guilds/rogue/thievery/thievery-mastery-v.c");
+    addResearchElement("/guilds/rogue/thievery/thievery-mastery.c");
+    addResearchElement("/guilds/rogue/thievery/thieves-insight-ii.c");
+    addResearchElement("/guilds/rogue/thievery/thieves-insight-iii.c");
+    addResearchElement("/guilds/rogue/thievery/thieves-insight-iv.c");
+    addResearchElement("/guilds/rogue/thievery/thieves-insight-ix.c");
+    addResearchElement("/guilds/rogue/thievery/thieves-insight-v.c");
+    addResearchElement("/guilds/rogue/thievery/thieves-insight-vi.c");
+    addResearchElement("/guilds/rogue/thievery/thieves-insight-vii.c");
+    addResearchElement("/guilds/rogue/thievery/thieves-insight-viii.c");
+    addResearchElement("/guilds/rogue/thievery/thieves-insight-x.c");
+    addResearchElement("/guilds/rogue/thievery/thieves-insight.c");
+    addResearchElement("/guilds/rogue/thievery/trap-disarming.c");
+    addResearchElement("/guilds/rogue/thievery/trap-finding.c");
+    addResearchElement("/guilds/rogue/thievery/tripwire.c");
+
+    addChild("/guilds/rogue/thievery/light-fingers.c",
+        "/guilds/rogue/thievery/root.c");
+    addChild("/guilds/rogue/thievery/trap-finding.c",
+        "/guilds/rogue/thievery/root.c");
+    addChild("/guilds/rogue/thievery/thieves-insight.c",
+        "/guilds/rogue/thievery/root.c");
+    addChild("/guilds/rogue/thievery/nimble-hands.c",
+        "/guilds/rogue/thievery/light-fingers.c");
+    addChild("/guilds/rogue/thievery/improved-lockpicking.c",
+        "/guilds/rogue/thievery/light-fingers.c");
+    addChild("/guilds/rogue/thievery/pocket-sand.c",
+        "/guilds/rogue/thievery/light-fingers.c");
+    addChild("/guilds/rogue/thievery/trap-disarming.c",
+        "/guilds/rogue/thievery/trap-finding.c");
+    addChild("/guilds/rogue/thievery/quick-hands.c",
+        "/guilds/rogue/thievery/nimble-hands.c");
+    addChild("/guilds/rogue/thievery/garrote.c",
+        "/guilds/rogue/thievery/nimble-hands.c");
+    addChild("/guilds/rogue/thievery/master-locksmith.c",
+        "/guilds/rogue/thievery/improved-lockpicking.c");
+    addChild("/guilds/rogue/thievery/expert-trapper.c",
+        "/guilds/rogue/thievery/trap-disarming.c");
+    addChild("/guilds/rogue/thievery/shiv.c",
+        "/guilds/rogue/thievery/quick-hands.c");
+    addChild("/guilds/rogue/thievery/sleight-of-hand.c",
+        "/guilds/rogue/thievery/quick-hands.c");
+    addChild("/guilds/rogue/thievery/blackjack.c",
+        "/guilds/rogue/thievery/sleight-of-hand.c");
+    addChild("/guilds/rogue/thievery/safecracker.c",
+        "/guilds/rogue/thievery/master-locksmith.c");
+    addChild("/guilds/rogue/thievery/advanced-trapwork.c",
+        "/guilds/rogue/thievery/expert-trapper.c");
+    addChild("/guilds/rogue/thievery/kidney-shot.c",
+        "/guilds/rogue/thievery/safecracker.c");
+    addChild("/guilds/rogue/thievery/master-thief.c",
+        "/guilds/rogue/thievery/sleight-of-hand.c");
+    addChild("/guilds/rogue/thievery/low-blow.c",
+        "/guilds/rogue/thievery/master-thief.c");
+    addChild("/guilds/rogue/thievery/hamstring.c",
+        "/guilds/rogue/thievery/master-thief.c");
+    addChild("/guilds/rogue/thievery/grand-larceny.c",
+        "/guilds/rogue/thievery/master-thief.c");
+    addChild("/guilds/rogue/thievery/caltrops.c",
+        "/guilds/rogue/thievery/grand-larceny.c");
+    addChild("/guilds/rogue/thievery/thievery-mastery.c",
+        "/guilds/rogue/thievery/grand-larceny.c");
+    addChild("/guilds/rogue/thievery/tripwire.c",
+        "/guilds/rogue/thievery/thievery-mastery.c");
+    addChild("/guilds/rogue/thievery/thievery-mastery-ii.c",
+        "/guilds/rogue/thievery/thievery-mastery.c");
+    addChild("/guilds/rogue/thievery/snare.c",
+        "/guilds/rogue/thievery/thievery-mastery-ii.c");
+    addChild("/guilds/rogue/thievery/thievery-mastery-iii.c",
+        "/guilds/rogue/thievery/thievery-mastery-ii.c");
+    addChild("/guilds/rogue/thievery/thievery-mastery-iv.c",
+        "/guilds/rogue/thievery/thievery-mastery-iii.c");
+    addChild("/guilds/rogue/thievery/thievery-mastery-v.c",
+        "/guilds/rogue/thievery/thievery-mastery-iv.c");
+    addChild("/guilds/rogue/thievery/supreme-thievery.c",
+        "/guilds/rogue/thievery/thievery-mastery-v.c");
+    addChild("/guilds/rogue/thievery/thieves-insight-ii.c",
+        "/guilds/rogue/thievery/thieves-insight.c");
+    addChild("/guilds/rogue/thievery/thieves-insight-iii.c",
+        "/guilds/rogue/thievery/thieves-insight-ii.c");
+    addChild("/guilds/rogue/thievery/thieves-insight-iv.c",
+        "/guilds/rogue/thievery/thieves-insight-iii.c");
+    addChild("/guilds/rogue/thievery/thieves-insight-v.c",
+        "/guilds/rogue/thievery/thieves-insight-iv.c");
+    addChild("/guilds/rogue/thievery/thieves-insight-vi.c",
+        "/guilds/rogue/thievery/thieves-insight-v.c");
+    addChild("/guilds/rogue/thievery/thieves-insight-vii.c",
+        "/guilds/rogue/thievery/thieves-insight-vi.c");
+    addChild("/guilds/rogue/thievery/thieves-insight-viii.c",
+        "/guilds/rogue/thievery/thieves-insight-vii.c");
+    addChild("/guilds/rogue/thievery/thieves-insight-ix.c",
+        "/guilds/rogue/thievery/thieves-insight-viii.c");
+    addChild("/guilds/rogue/thievery/thieves-insight-x.c",
+        "/guilds/rogue/thievery/thieves-insight-ix.c");
+}

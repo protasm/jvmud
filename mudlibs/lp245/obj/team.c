@@ -2,7 +2,9 @@
 string direction;
 object last_room;
 string leader_name, mout;
-object members, pot_members, leader_ob;
+object *members;
+object *pot_members;
+object leader_ob;
 /*
 * Team object. It is inside the leader. Every player can make a team.
 */
@@ -12,19 +14,14 @@ object members, pot_members, leader_ob;
 * The arrays is extended if needed. The leader adds to the potential
 * members array.
 */
-status add(string item) {
+object *add(object *vec, object item) {
   int i;
-  object vec2;
-
-  if (members == 0) {
-    pot_members = allocate(INIT_SIZE);
-    members = allocate(INIT_SIZE);
-  }
+  object *vec2;
 
   i = 0;
 
-  while(i<sizeof(members)) {
-    if (members[i] == 0) {
+  while(i<sizeof(vec)) {
+    if (vec[i] == 0) {
       vec[i] = item;
       return vec;
     }
@@ -121,6 +118,11 @@ status join(string str) {
 
   if (!str)
     return;
+
+  if (members == 0) {
+    pot_members = allocate(INIT_SIZE);
+    members = allocate(INIT_SIZE);
+  }
 
   ob = present(str, environment(environment()));
 

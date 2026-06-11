@@ -1,0 +1,28 @@
+//*****************************************************************************
+// Copyright (c) 2017-2026 - Allen Cummings, RealmsMUD, All rights reserved. See
+//                      the accompanying LICENSE file for details.
+//*****************************************************************************
+inherit "/lib/environment/environment.c";
+
+/////////////////////////////////////////////////////////////////////////////
+public void Setup()
+{
+    cloneEnvironment();
+    setInterior("/areas/tol-dhurath/interiors/pedestal-chamber.c");
+    addDecorator("ruined interior south-west corner hallway");
+
+    setStateMachine("/areas/tol-dhurath/state-machine/obedience-quest.c");
+}
+
+/////////////////////////////////////////////////////////////////////////////
+public string **customIcon(string **baseIcon, string color, string charset)
+{
+    string baseColor = getService("region")->iconColor(
+        decoratorType(), color);
+
+    baseIcon[2][0] = sprintf("%s%s%s", baseColor,
+        (charset == "unicode") ? "\u2566" : "+",
+        (baseColor != "") ? "\x1b[0m" : baseColor);
+
+    return baseIcon;
+}

@@ -1,0 +1,135 @@
+//*****************************************************************************
+// Copyright (c) 2017-2026 - Allen Cummings, RealmsMUD, All rights reserved. See
+//                      the accompanying LICENSE file for details.
+//*****************************************************************************
+inherit "/lib/modules/research/researchTree.c";
+
+/////////////////////////////////////////////////////////////////////////////
+protected void Setup()
+{
+    Name("Subterfuge");
+    Description("This research tree provides the rogue with deception, "
+        "misdirection, and cunning combat techniques.");
+    Source("rogue");
+    addResearchElement("/guilds/rogue/subterfuge/root.c");
+    TreeRoot("/guilds/rogue/subterfuge/root.c");
+
+    addResearchElement("/guilds/rogue/subterfuge/blinding-dust.c");
+    addResearchElement("/guilds/rogue/subterfuge/cheap-shot.c");
+    addResearchElement("/guilds/rogue/subterfuge/cunning-ploy.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-insight-ii.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-insight-iii.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-insight-iv.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-insight-ix.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-insight-v.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-insight-vi.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-insight-vii.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-insight-viii.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-insight-x.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-insight.c");
+    addResearchElement("/guilds/rogue/subterfuge/deceptive-strike.c");
+    addResearchElement("/guilds/rogue/subterfuge/decoy-strike.c");
+    addResearchElement("/guilds/rogue/subterfuge/distraction.c");
+    addResearchElement("/guilds/rogue/subterfuge/feint.c");
+    addResearchElement("/guilds/rogue/subterfuge/grand-deception.c");
+    addResearchElement("/guilds/rogue/subterfuge/grand-illusion.c");
+    addResearchElement("/guilds/rogue/subterfuge/improved-feint.c");
+    addResearchElement("/guilds/rogue/subterfuge/masters-ruse.c");
+    addResearchElement("/guilds/rogue/subterfuge/mirror-image.c");
+    addResearchElement("/guilds/rogue/subterfuge/misdirection.c");
+    addResearchElement("/guilds/rogue/subterfuge/phantom-strike.c");
+    addResearchElement("/guilds/rogue/subterfuge/shadow-decoy.c");
+    addResearchElement("/guilds/rogue/subterfuge/shadow-gambit.c");
+    addResearchElement("/guilds/rogue/subterfuge/smoke-bomb.c");
+    addResearchElement("/guilds/rogue/subterfuge/subterfuge-mastery-ii.c");
+    addResearchElement("/guilds/rogue/subterfuge/subterfuge-mastery-iii.c");
+    addResearchElement("/guilds/rogue/subterfuge/subterfuge-mastery-iv.c");
+    addResearchElement("/guilds/rogue/subterfuge/subterfuge-mastery-v.c");
+    addResearchElement("/guilds/rogue/subterfuge/subterfuge-mastery-vi.c");
+    addResearchElement("/guilds/rogue/subterfuge/subterfuge-mastery-vii.c");
+    addResearchElement("/guilds/rogue/subterfuge/subterfuge-mastery-viii.c");
+    addResearchElement("/guilds/rogue/subterfuge/subterfuge-mastery.c");
+    addResearchElement("/guilds/rogue/subterfuge/sucker-punch.c");
+    addResearchElement("/guilds/rogue/subterfuge/supreme-guile.c");
+    addResearchElement("/guilds/rogue/subterfuge/supreme-subterfuge.c");
+    addResearchElement("/guilds/rogue/subterfuge/vanishing-act.c");
+
+    addChild("/guilds/rogue/subterfuge/misdirection.c",
+        "/guilds/rogue/subterfuge/root.c");
+    addChild("/guilds/rogue/subterfuge/feint.c",
+        "/guilds/rogue/subterfuge/root.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-insight.c",
+        "/guilds/rogue/subterfuge/root.c");
+    addChild("/guilds/rogue/subterfuge/distraction.c",
+        "/guilds/rogue/subterfuge/misdirection.c");
+    addChild("/guilds/rogue/subterfuge/cunning-ploy.c",
+        "/guilds/rogue/subterfuge/feint.c");
+    addChild("/guilds/rogue/subterfuge/cheap-shot.c",
+        "/guilds/rogue/subterfuge/feint.c");
+    addChild("/guilds/rogue/subterfuge/improved-feint.c",
+        "/guilds/rogue/subterfuge/cunning-ploy.c");
+    addChild("/guilds/rogue/subterfuge/blinding-dust.c",
+        "/guilds/rogue/subterfuge/cunning-ploy.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-strike.c",
+        "/guilds/rogue/subterfuge/improved-feint.c");
+    addChild("/guilds/rogue/subterfuge/sucker-punch.c",
+        "/guilds/rogue/subterfuge/improved-feint.c");
+    addChild("/guilds/rogue/subterfuge/shadow-gambit.c",
+        "/guilds/rogue/subterfuge/distraction.c");
+    addChild("/guilds/rogue/subterfuge/smoke-bomb.c",
+        "/guilds/rogue/subterfuge/deceptive-strike.c");
+    addChild("/guilds/rogue/subterfuge/phantom-strike.c",
+        "/guilds/rogue/subterfuge/shadow-gambit.c");
+    addChild("/guilds/rogue/subterfuge/masters-ruse.c",
+        "/guilds/rogue/subterfuge/shadow-gambit.c");
+    addChild("/guilds/rogue/subterfuge/mirror-image.c",
+        "/guilds/rogue/subterfuge/masters-ruse.c");
+    addChild("/guilds/rogue/subterfuge/grand-deception.c",
+        "/guilds/rogue/subterfuge/masters-ruse.c");
+    addChild("/guilds/rogue/subterfuge/decoy-strike.c",
+        "/guilds/rogue/subterfuge/grand-deception.c");
+    addChild("/guilds/rogue/subterfuge/supreme-guile.c",
+        "/guilds/rogue/subterfuge/grand-deception.c");
+    addChild("/guilds/rogue/subterfuge/vanishing-act.c",
+        "/guilds/rogue/subterfuge/supreme-guile.c");
+    addChild("/guilds/rogue/subterfuge/subterfuge-mastery.c",
+        "/guilds/rogue/subterfuge/supreme-guile.c");
+    addChild("/guilds/rogue/subterfuge/shadow-decoy.c",
+        "/guilds/rogue/subterfuge/subterfuge-mastery.c");
+    addChild("/guilds/rogue/subterfuge/subterfuge-mastery-ii.c",
+        "/guilds/rogue/subterfuge/subterfuge-mastery.c");
+    addChild("/guilds/rogue/subterfuge/grand-illusion.c",
+        "/guilds/rogue/subterfuge/subterfuge-mastery-ii.c");
+    addChild("/guilds/rogue/subterfuge/subterfuge-mastery-iii.c",
+        "/guilds/rogue/subterfuge/subterfuge-mastery-ii.c");
+    addChild("/guilds/rogue/subterfuge/subterfuge-mastery-iv.c",
+        "/guilds/rogue/subterfuge/subterfuge-mastery-iii.c");
+    addChild("/guilds/rogue/subterfuge/subterfuge-mastery-v.c",
+        "/guilds/rogue/subterfuge/subterfuge-mastery-iv.c");
+    addChild("/guilds/rogue/subterfuge/subterfuge-mastery-vi.c",
+        "/guilds/rogue/subterfuge/subterfuge-mastery-v.c");
+    addChild("/guilds/rogue/subterfuge/subterfuge-mastery-vii.c",
+        "/guilds/rogue/subterfuge/subterfuge-mastery-vi.c");
+    addChild("/guilds/rogue/subterfuge/subterfuge-mastery-viii.c",
+        "/guilds/rogue/subterfuge/subterfuge-mastery-vii.c");
+    addChild("/guilds/rogue/subterfuge/supreme-subterfuge.c",
+        "/guilds/rogue/subterfuge/subterfuge-mastery-viii.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-insight-ii.c",
+        "/guilds/rogue/subterfuge/deceptive-insight.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-insight-iii.c",
+        "/guilds/rogue/subterfuge/deceptive-insight-ii.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-insight-iv.c",
+        "/guilds/rogue/subterfuge/deceptive-insight-iii.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-insight-v.c",
+        "/guilds/rogue/subterfuge/deceptive-insight-iv.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-insight-vi.c",
+        "/guilds/rogue/subterfuge/deceptive-insight-v.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-insight-vii.c",
+        "/guilds/rogue/subterfuge/deceptive-insight-vi.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-insight-viii.c",
+        "/guilds/rogue/subterfuge/deceptive-insight-vii.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-insight-ix.c",
+        "/guilds/rogue/subterfuge/deceptive-insight-viii.c");
+    addChild("/guilds/rogue/subterfuge/deceptive-insight-x.c",
+        "/guilds/rogue/subterfuge/deceptive-insight-ix.c");
+}

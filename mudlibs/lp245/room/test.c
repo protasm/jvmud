@@ -1,31 +1,31 @@
 int a;
-string amiga_power;
-string amiga_present;
-string east_door_open;
-string name;
+int amiga_power;
+int amiga_present;
+int east_door_open;
+object name;
 
-apa() {
+void apa() {
   bepa(1);
 }
 
-close_door() {
+void close_door() {
   east_door_open = 0;
 
   write("Ok.\n");
 }
 
-door_open() {
+status door_open() {
   return east_door_open;
 }
 
-fac(n) {
+int fac(int n) {
   if (n <= 0)
     return 1;
 
   return n * fac(n-1);
 }
 
-go_east() {
+void go_east() {
   if (!east_door_open)
     write("The door is closed\n");
 
@@ -33,7 +33,7 @@ go_east() {
     move_object(this_player(), "room/rum2");
 }
 
-hit() {
+void hit() {
   if (!name) {
     write("Hit what ?\n");
 
@@ -43,7 +43,7 @@ hit() {
   call_other(name, "hit_player", 3);
 }
 
-init() {
+void init() {
   add_action("open_door", "open");
   add_action("go_east", "east");
   add_action("sesam", "sesam");
@@ -51,7 +51,7 @@ init() {
   write("You are in the computer room.\n");
 }
 
-long() {
+void long() {
   if (east_door_open)
     write("An empty room with an open door to the east.\n");
 
@@ -67,19 +67,19 @@ long() {
   }
 }
 
-open_door() {
+void open_door() {
   east_door_open = 1;
 
   write("Ok.\n");
 }
 
-power() {
+void power() {
   amiga_power = 1;
 
   write("The screen lights up.\n");
 }
 
-reset(arg) {
+void reset(mixed arg) {
   if (arg)
     return;
 
@@ -92,7 +92,7 @@ reset(arg) {
   a = 0;
 }
 
-sesam() {
+void sesam() {
   write("An amiga materialises!\n");
 
   amiga_present = 1;
@@ -100,7 +100,7 @@ sesam() {
   add_action("power", "power");
 }
 
-short() {
+int short() {
   write("Computer room\n");
 
   if (amiga_present) {
@@ -114,7 +114,7 @@ short() {
   return 0;
 }
 
-summon() {
+void summon() {
   name = clone_object("obj/player");
 
   write("Summoning a player...\n");
@@ -124,7 +124,7 @@ summon() {
   write("\n");
 }
 
-test() {
+void test() {
   a = a + 1;
 
   write("Fac "); write(a); write(" is "); write(fac(a)); write("\n");
