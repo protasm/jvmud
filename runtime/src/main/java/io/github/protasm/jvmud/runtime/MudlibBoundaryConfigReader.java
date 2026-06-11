@@ -20,12 +20,14 @@ public final class MudlibBoundaryConfigReader {
         Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         Objects.requireNonNull(configPath, "configPath");
 
-        Map<String, List<String>> values = readConfigValues(mudlibRoot.resolve(configPath));
+        Path configFile = mudlibRoot.resolve(configPath).toAbsolutePath().normalize();
+        Map<String, List<String>> values = readConfigValues(configFile);
         MudlibBoundary.Builder builder = MudlibBoundary.builder()
                 .boundaryObjectPath(configPath);
 
         addString(builder::gameId, firstValue(values, "game_id"));
         addString(builder::gameName, firstValue(values, "game_name"));
+        builder.mudlibRootPath(resolveMudlibRootPath(configFile, mudlibRoot, firstValue(values, "mudlib_root")));
         addString(builder::mfunObjectPath, firstValue(values, "mfun_object"));
         addString(builder::playerObjectPath, firstValue(values, "player_object"));
         String playerPrompt = firstValue(values, "player_prompt");
@@ -120,6 +122,21 @@ public final class MudlibBoundaryConfigReader {
 
     private static List<String> allValues(Map<String, List<String>> values, String key) {
         return values.getOrDefault(key, List.of());
+    }
+
+    private static Path resolveMudlibRootPath(Path configFile, Path fallbackRoot, String declaredRoot) {
+        if (declaredRoot == null || declaredRoot.isBlank()) {
+            return fallbackRoot.toAbsolutePath().normalize();
+        }
+
+        Path root = Path.of(declaredRoot.trim());
+        if (!root.isAbsolute()) {
+            Path configDir = configFile.getParent();
+            if (configDir != null) {
+                root = configDir.resolve(root);
+            }
+        }
+        return root.toAbsolutePath().normalize();
     }
 
     private static void addString(java.util.function.Consumer<String> setter, String value) {

@@ -1,5 +1,6 @@
 package io.github.protasm.jvmud.runtime;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -20,6 +21,7 @@ public final class MudlibBoundary {
 
     private final String gameId;
     private final String gameName;
+    private final Path mudlibRootPath;
     private final String boundaryObjectPath;
     private final String mfunObjectPath;
     private final String playerObjectPath;
@@ -35,6 +37,7 @@ public final class MudlibBoundary {
     private MudlibBoundary(Builder builder) {
         this.gameId = normalizeOptionalText(builder.gameId);
         this.gameName = normalizeOptionalText(builder.gameName);
+        this.mudlibRootPath = normalizeOptionalFilesystemPath(builder.mudlibRootPath);
         this.boundaryObjectPath = normalizeOptionalPath(builder.boundaryObjectPath);
         this.mfunObjectPath = normalizeOptionalPath(builder.mfunObjectPath);
         this.playerObjectPath = normalizeOptionalPath(builder.playerObjectPath);
@@ -66,6 +69,11 @@ public final class MudlibBoundary {
     /** Returns the optional display name declared by the mudlib. */
     public Optional<String> gameName() {
         return Optional.ofNullable(gameName);
+    }
+
+    /** Returns the optional filesystem root used to resolve mudlib-absolute LPC paths. */
+    public Optional<Path> mudlibRootPath() {
+        return Optional.ofNullable(mudlibRootPath);
     }
 
     /** Returns the optional object path for a general mudlib boundary adapter. */
@@ -144,6 +152,7 @@ public final class MudlibBoundary {
         return boundaryObjectPath != null
                 || gameId != null
                 || gameName != null
+                || mudlibRootPath != null
                 || mfunObjectPath != null
                 || playerObjectPath != null
                 || playerPrompt != null
@@ -203,6 +212,13 @@ public final class MudlibBoundary {
         return value;
     }
 
+    private static Path normalizeOptionalFilesystemPath(Path path) {
+        if (path == null) {
+            return null;
+        }
+        return path.toAbsolutePath().normalize();
+    }
+
     private static Set<String> normalizePathSet(Set<String> paths) {
         if (paths.isEmpty()) {
             return Set.of();
@@ -217,6 +233,7 @@ public final class MudlibBoundary {
     public static final class Builder {
         private String gameId;
         private String gameName;
+        private Path mudlibRootPath;
         private String boundaryObjectPath;
         private String mfunObjectPath;
         private String playerObjectPath;
@@ -243,6 +260,12 @@ public final class MudlibBoundary {
         /** Sets a display name for the game. Blank values are treated as absent. */
         public Builder gameName(String gameName) {
             this.gameName = gameName;
+            return this;
+        }
+
+        /** Sets the filesystem root used to resolve mudlib-absolute LPC paths. */
+        public Builder mudlibRootPath(Path mudlibRootPath) {
+            this.mudlibRootPath = mudlibRootPath;
             return this;
         }
 
