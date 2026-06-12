@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -108,7 +109,7 @@ public final class LPCRuntime {
     public Object loadOrGetObject(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
-        String internalName = normalizeInternalName(deriveSourceName(normalized, baseIncludePath));
+        String internalName = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
         Object existing = runtimeContext.getObject(internalName);
         if (existing != null) {
             return existing;
@@ -131,7 +132,7 @@ public final class LPCRuntime {
     public LPCObjectHandle reload(Path sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
-        String internalName = normalizeInternalName(deriveSourceName(normalized, baseIncludePath));
+        String internalName = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
         Object existing = runtimeContext.getObject(internalName);
         if (existing != null) {
             runtimeContext.destructObject(existing);
@@ -148,7 +149,7 @@ public final class LPCRuntime {
         Objects.requireNonNull(sourcePath, "sourcePath");
         CompilationResult result = compile(sourcePath);
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
-        String sourceName = deriveSourceName(normalized, baseIncludePath);
+        String sourceName = deriveSourceName(normalized, sourceNameBasePath(normalized));
 
         if (!result.getProblems().isEmpty()) {
             throw new LPCRuntimeException(formatProblems(result.getProblems()), result.getProblems());
@@ -190,7 +191,7 @@ public final class LPCRuntime {
             throw new LPCRuntimeException("Failed to read source file: " + normalized, e);
         }
 
-        String sourceName = deriveSourceName(normalized, baseIncludePath);
+        String sourceName = deriveSourceName(normalized, sourceNameBasePath(normalized));
         String displayPath = "/" + sourceName;
         return pipeline.run(normalized, source, sourceName, displayPath, ParserOptions.defaults());
     }
@@ -258,7 +259,7 @@ public final class LPCRuntime {
     public Object cloneObject(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
-        String internalName = deriveSourceName(normalized, baseIncludePath);
+        String internalName = deriveSourceName(normalized, sourceNameBasePath(normalized));
         internalName = normalizeInternalName(internalName);
 
         Class<?> objectClass = ensureClassDefined(normalized, internalName);
@@ -430,6 +431,11 @@ public final class LPCRuntime {
         return withRuntimeContext(() -> runtimeContext.invokeObject(object, methodName, args));
     }
 
+    /** Invokes a public LPC method when present, returning 0 if the object does not implement it. */
+    public Object invokeOptionalObject(Object object, String methodName, Object... args) {
+        return withRuntimeContext(() -> runtimeContext.invokeOptionalObject(object, methodName, args));
+    }
+
     /**
      * Rebuilds command actions for a Persona from nearby mudlib objects.
      *
@@ -512,6 +518,11 @@ public final class LPCRuntime {
     /** Registers one LPC-facing engine function in this runtime. */
     public void registerEfun(Efun efun) {
         runtimeContext.registerEfun(efun);
+    }
+
+    /** Sets the server-owned handler for moving the active Player between hosted games. */
+    public void setPlayerTransferHandler(BiFunction<Object, String, Integer> playerTransferHandler) {
+        runtimeContext.setPlayerTransferHandler(playerTransferHandler);
     }
 
     /** Sets the default output sink used for runtime text delivery. */
@@ -652,13 +663,7 @@ public final class LPCRuntime {
             return;
         }
 
-        try {
-            object.getClass().getMethod(methodName, parameterTypes(args));
-        } catch (NoSuchMethodException ignored) {
-            return;
-        }
-
-        withRuntimeContext(() -> runtimeContext.invokeObject(object, methodName, args));
+        withRuntimeContext(() -> runtimeContext.invokeOptionalObject(object, methodName, args));
     }
 
     private Class<?>[] parameterTypes(Object[] args) {
@@ -946,7 +951,18 @@ public final class LPCRuntime {
         }
 
         if (!raw.isAbsolute() && baseIncludePath != null) {
-            return baseIncludePath.resolve(raw).normalize();
+            Path baseCandidate = baseIncludePath.resolve(raw).normalize();
+            if (Files.exists(baseCandidate)) {
+                return baseCandidate;
+            }
+            Path mudlibRoot = mudlibBoundary.mudlibRootPath().orElse(null);
+            if (mudlibRoot != null) {
+                Path mudlibCandidate = mudlibRoot.resolve(raw).normalize();
+                if (Files.exists(mudlibCandidate)) {
+                    return mudlibCandidate;
+                }
+            }
+            return baseCandidate;
         }
 
         return raw.normalize();
@@ -1011,6 +1027,14 @@ public final class LPCRuntime {
             normalized = baseIncludePath.resolve(normalized);
         }
         return normalized.toAbsolutePath().normalize();
+    }
+
+    private Path sourceNameBasePath(Path sourcePath) {
+        Path mudlibRoot = mudlibBoundary.mudlibRootPath().orElse(null);
+        if (mudlibRoot != null && sourcePath.normalize().startsWith(mudlibRoot.normalize())) {
+            return mudlibRoot;
+        }
+        return baseIncludePath;
     }
 
     private Path appendExtension(Path sourcePath, String extension) {

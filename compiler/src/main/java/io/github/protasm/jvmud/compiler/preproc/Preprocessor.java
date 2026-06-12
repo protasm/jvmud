@@ -212,9 +212,9 @@ public final class Preprocessor {
       case "include" -> doInclude(cc, fileContext, out, includeGuard);
       case "define" -> doDefine(cc);
       case "undef" -> doUndef(cc, out);
-      case "ifdef" -> doIfdef(cc, out, true);
-      case "ifndef" -> doIfdef(cc, out, false);
-      case "if" -> doIf(cc, out);
+      case "ifdef" -> doIfdef(cc, fileContext, out, includeGuard, true);
+      case "ifndef" -> doIfdef(cc, fileContext, out, includeGuard, false);
+      case "if" -> doIf(cc, fileContext, out, includeGuard);
       case "elif", "else", "endif" ->
           throw error("#" + name + " without matching #if", cc, directiveLine);
       default -> {
@@ -337,7 +337,12 @@ public final class Preprocessor {
     skipRestOfLine(cc, out); // drop to EOL
   }
 
-  private void doIfdef(CharCursor cc, PreprocessedSourceBuilder out, boolean positive) {
+  private void doIfdef(
+      CharCursor cc,
+      FileContext fileContext,
+      PreprocessedSourceBuilder out,
+      Set<String> includeGuard,
+      boolean positive) {
     skipWhitespaceExceptNewline(cc);
 
     String name = readIdent(cc);
@@ -349,25 +354,31 @@ public final class Preprocessor {
 
     if (!positive) cond = !cond;
 
-    handleConditional(cc, out, cond);
+    handleConditional(cc, fileContext, out, includeGuard, cond);
   }
 
-  private void doIf(CharCursor cc, PreprocessedSourceBuilder out) {
+  private void doIf(
+      CharCursor cc, FileContext fileContext, PreprocessedSourceBuilder out, Set<String> includeGuard) {
     // Evaluate simple integer expression with defined(NAME)
     List<PPToken> expr = tokenizeUntilNewline(cc).tokens();
     boolean cond = evalIfExpr(expr);
 
-    handleConditional(cc, out, cond);
+    handleConditional(cc, fileContext, out, includeGuard, cond);
   }
 
-  private void handleConditional(CharCursor cc, PreprocessedSourceBuilder out, boolean firstBranch) {
+  private void handleConditional(
+      CharCursor cc,
+      FileContext fileContext,
+      PreprocessedSourceBuilder out,
+      Set<String> includeGuard,
+      boolean firstBranch) {
     // Consume blocks until matching #endif
     boolean taken = false;
 
     while (true) {
       if (!taken && firstBranch) {
         // Expand this block
-          expandConditionalBlock(cc, out);
+          expandConditionalBlock(cc, fileContext, out, includeGuard);
 
         taken = true;
       } else
@@ -404,7 +415,8 @@ public final class Preprocessor {
     }
   }
 
-  private void expandConditionalBlock(CharCursor cc, PreprocessedSourceBuilder out) {
+  private void expandConditionalBlock(
+      CharCursor cc, FileContext fileContext, PreprocessedSourceBuilder out, Set<String> includeGuard) {
     while (!cc.end()) {
       int mark = cc.index();
       skipWhitespaceExceptNewline(cc);
@@ -423,6 +435,8 @@ public final class Preprocessor {
           cc.rewind(mark);
           return; // let caller handle the directive
         }
+        handleDirective(cc, fileContext, out, includeGuard);
+        continue;
       }
 
       cc.rewind(mark);

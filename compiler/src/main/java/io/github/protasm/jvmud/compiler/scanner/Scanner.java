@@ -10,6 +10,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_COLON;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DOT_DOT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EOF;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL_EQUAL;
@@ -244,6 +245,10 @@ public class Scanner {
             return token(ss.match('=') ? T_STAR_EQUAL : T_STAR);
         case '~':
             return token(T_TILDE);
+        case '.':
+            if (ss.match('.'))
+                return token(T_DOT_DOT);
+            return unexpectedChar(c);
         case ' ':
         case '\r':
         case '\t':

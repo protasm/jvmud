@@ -144,6 +144,10 @@ void input_to(string method, int noecho) {
   jvmud_capture_session_input(method, noecho);
 }
 
+void input_to(string method, int flags, string prompt) {
+  jvmud_capture_session_input(method, flags);
+}
+
 object environment() {
   return jvmud_entity_location();
 }
@@ -161,6 +165,10 @@ string extract(mixed value, int from, int to) {
 }
 
 string file_name(mixed ob) {
+  return jvmud_entity_id(ob);
+}
+
+string object_name(mixed ob) {
   return jvmud_entity_id(ob);
 }
 

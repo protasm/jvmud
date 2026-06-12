@@ -73,7 +73,7 @@ public final class MudlibBoot {
         String initialPlace = null;
         String initialPlacePath = boundary.initialPlacePath().orElse(DEFAULT_STARTING_ROOM);
         String initialPersonaId = LOCAL_ACTOR_HANDLE;
-        if (loadInitialPlace && mudlibFileExists(initialPlacePath)) {
+        if (loadInitialPlace && mudlibFileExists(boundary, initialPlacePath)) {
             try {
                 Object placeObject = runtime.loadOrGetObject(initialPlacePath);
                 Place startingPlace = worldRuntime.createPlace(initialPlacePath, initialPlacePath);
@@ -125,7 +125,7 @@ public final class MudlibBoot {
             }
         }
 
-        if (!mudlibFileExists(DEFAULT_BOUNDARY_OBJECT)) {
+        if (!mudlibFileExists(MudlibBoundary.empty(), DEFAULT_BOUNDARY_OBJECT)) {
             registerBoundary(worldRuntime, MudlibBoundary.empty());
             return MudlibBoundary.empty();
         }
@@ -270,7 +270,7 @@ public final class MudlibBoot {
             List<String> initFilePreloadedObjects,
             List<String> initFileSkippedPreloads) {
         String preloadFilePath = boundary.preloadFilePath().orElse(DEFAULT_PRELOAD_FILE);
-        Path initFile = mudlibRoot.resolve(preloadFilePath);
+        Path initFile = activeMudlibRoot(boundary).resolve(preloadFilePath);
         if (!Files.isRegularFile(initFile)) {
             return;
         }
@@ -323,13 +323,20 @@ public final class MudlibBoot {
         return stripExtension(trimmed);
     }
 
-    private boolean mudlibFileExists(String sourcePath) {
-        return Files.isRegularFile(mudlibRoot.resolve(sourcePath + ".c"))
+    private boolean mudlibFileExists(MudlibBoundary boundary, String sourcePath) {
+        Path activeRoot = activeMudlibRoot(boundary);
+        return Files.isRegularFile(activeRoot.resolve(sourcePath + ".c"))
+                || Files.isRegularFile(activeRoot.resolve(sourcePath))
+                || Files.isRegularFile(mudlibRoot.resolve(sourcePath + ".c"))
                 || Files.isRegularFile(mudlibRoot.resolve(sourcePath));
     }
 
     private boolean mudlibConfigFileExists(String sourcePath) {
         return Files.isRegularFile(mudlibRoot.resolve(sourcePath));
+    }
+
+    private Path activeMudlibRoot(MudlibBoundary boundary) {
+        return boundary.mudlibRootPath().orElse(mudlibRoot);
     }
 
     private String stripExtension(String value) {

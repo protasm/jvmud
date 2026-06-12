@@ -18,9 +18,9 @@ final class TelnetSession implements Runnable {
     private static final int DONT = 254;
 
     private final Socket socket;
-    private final TelnetMud mud;
+    private final TelnetHost mud;
 
-    TelnetSession(Socket socket, TelnetMud mud) {
+    TelnetSession(Socket socket, TelnetHost mud) {
         this.socket = socket;
         this.mud = Objects.requireNonNull(mud, "mud");
     }
@@ -164,15 +164,15 @@ final class TelnetSession implements Runnable {
     }
 
     private static final class SessionState {
-        private final TelnetMud.Persona persona;
+        private final TelnetPersona persona;
         private boolean running = true;
         private boolean detached;
 
-        private SessionState(TelnetMud.Persona persona) {
+        private SessionState(TelnetPersona persona) {
             this.persona = persona;
         }
 
-        private void detach(TelnetMud mud) {
+        private void detach(TelnetHost mud) {
             if (detached) {
                 return;
             }

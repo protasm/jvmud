@@ -163,6 +163,96 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSlicesStringsWithInclusiveEndAndOpenTail() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/string_slice.c", """
+                string tail(string value) {
+                    return value[1..];
+                }
+
+                string middle(string value) {
+                    return value[1..3];
+                }
+                """);
+
+        assertEquals("ello", object.invoke("tail", "hello"));
+        assertEquals("ell", object.invoke("middle", "hello"));
+    }
+
+    @Test
+    void forwardMethodDeclarationsDoNotEmitBytecodeMethods() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/forward_declaration.c", """
+                int value();
+
+                int value() {
+                    return 42;
+                }
+                """);
+
+        assertEquals(42, object.invoke("value"));
+    }
+
+    @Test
+    void parserAcceptsRepeatedArrayFieldDeclarators() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/array_field_declarators.c", """
+                string *first, *second;
+
+                int value() {
+                    first = ({ "a" });
+                    second = ({ "b" });
+                    return 2;
+                }
+                """);
+
+        assertEquals(2, object.invoke("value"));
+    }
+
+    @Test
+    void objectLoadedLifecycleInvokesIntReset() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "reset")
+                .build());
+        LPCObjectHandle object = runtime.loadSource("smoke/reset_lifecycle.c", """
+                int initialized;
+
+                void reset(int arg) {
+                    initialized = arg == 0;
+                }
+
+                int value() {
+                    return initialized;
+                }
+                """);
+
+        assertEquals(1, object.invoke("value"));
+    }
+
+    @Test
+    void objectLoadedLifecycleTreatsZeroAsFalseForStringReset() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "reset")
+                .build());
+        LPCObjectHandle object = runtime.loadSource("smoke/string_reset_lifecycle.c", """
+                int initialized;
+
+                void reset(string arg) {
+                    if (!arg)
+                        initialized = 1;
+                }
+
+                int value() {
+                    return initialized;
+                }
+                """);
+
+        assertEquals(1, object.invoke("value"));
+    }
+
+    @Test
     void runtimeTreatsNullReferenceAndZeroAsEqualForLpcCompatibility() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/null_zero.c", """
@@ -422,10 +512,10 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void untypedMethodsProduceHardSemanticErrors() {
+    void untypedMethodsDefaultToMixedForCompatibility() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
-        RuntimeException error = assertThrows(RuntimeException.class, () -> runtime.loadSource("smoke/untyped.c", """
+        LPCObjectHandle object = runtime.loadSource("smoke/untyped.c", """
                 reset(arg) {
                     return arg + 1;
                 }
@@ -433,9 +523,9 @@ final class CompilerSmokeTest {
                 mixed value() {
                     return reset(41);
                 }
-                """));
+                """);
 
-        assertTrue(error.getMessage().contains("Method 'reset' must declare a return type"));
+        assertEquals(42, object.invoke("value"));
     }
 
     @Test
@@ -2054,30 +2144,27 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void pipelineRejectsUntypedObjectMethods() {
+    void pipelineTreatsUntypedObjectMethodsAsMixed() {
         CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
                 value() {
                     return 42;
                 }
                 """);
 
-        assertTrue(result.getProblems().stream()
-                .anyMatch(problem -> problem.getMessage().contains("Method 'value' must declare a return type")));
-        assertNull(result.getBytecode());
+        assertTrue(result.getProblems().isEmpty());
+        assertNotNull(result.getBytecode());
     }
 
     @Test
-    void pipelineRejectsUntypedMethodParameters() {
+    void pipelineTreatsUntypedMethodParametersAsMixed() {
         CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
                 mixed value(arg) {
                     return arg;
                 }
                 """);
 
-        assertTrue(result.getProblems().stream()
-                .anyMatch(problem -> problem.getMessage()
-                        .contains("Parameter 'arg' in method 'value' must declare a type")));
-        assertNull(result.getBytecode());
+        assertTrue(result.getProblems().isEmpty());
+        assertNotNull(result.getBytecode());
     }
 
     @Test

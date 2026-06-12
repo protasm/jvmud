@@ -79,6 +79,7 @@ public final class RuntimeContext {
     private Function<String, Object> objectFactory = path -> null;
     private Function<String, Object> objectLoader = path -> null;
     private Function<String, Object> mudlibTextReader = path -> 0;
+    private BiFunction<Object, String, Integer> playerTransferHandler = (actor, gameId) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateSaver = (path, object) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateRestorer = (path, object) -> 0;
     private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
@@ -124,6 +125,12 @@ public final class RuntimeContext {
 
     public void setMudlibTextReader(Function<String, Object> mudlibTextReader) {
         this.mudlibTextReader = (mudlibTextReader != null) ? mudlibTextReader : path -> 0;
+    }
+
+    public void setPlayerTransferHandler(BiFunction<Object, String, Integer> playerTransferHandler) {
+        this.playerTransferHandler = (playerTransferHandler != null)
+                ? playerTransferHandler
+                : (actor, gameId) -> 0;
     }
 
     public void setLPCObjectStateSaver(BiFunction<String, Object, Integer> lpcObjectStateSaver) {
@@ -562,6 +569,15 @@ public final class RuntimeContext {
 
     public Object readMudlibText(String path) {
         return mudlibTextReader.apply(path);
+    }
+
+    public int transferCurrentPlayerToGame(String gameId) {
+        String normalizedGameId = normalizeRegistryText(gameId);
+        if (normalizedGameId == null) {
+            return 0;
+        }
+        Object actor = outputTarget();
+        return actor != null ? playerTransferHandler.apply(actor, normalizedGameId) : 0;
     }
 
     public int saveCurrentLPCObjectState(String path) {
@@ -1219,7 +1235,8 @@ public final class RuntimeContext {
     private InvocationPlan findInvocation(Class<?> targetClass, String methodName, Object[] args)
             throws NoSuchMethodException {
         try {
-            return new InvocationPlan(findMethod(targetClass, methodName, args.length), args);
+            Method method = findMethod(targetClass, methodName, args.length);
+            return new InvocationPlan(method, adaptArguments(method, args));
         } catch (NoSuchMethodException exactMiss) {
             Method best = null;
             for (Method method : targetClass.getMethods()) {
@@ -1233,7 +1250,7 @@ public final class RuntimeContext {
             if (best == null) {
                 throw exactMiss;
             }
-            return new InvocationPlan(best, padMissingArguments(best, args));
+            return new InvocationPlan(best, adaptArguments(best, padMissingArguments(best, args)));
         }
     }
 
@@ -1256,8 +1273,36 @@ public final class RuntimeContext {
             }
             Object[] trimmed = new Object[best.getParameterCount()];
             System.arraycopy(args, 0, trimmed, 0, trimmed.length);
-            return new InvocationPlan(best, trimmed);
+            return new InvocationPlan(best, adaptArguments(best, trimmed));
         }
+    }
+
+    private Object[] adaptArguments(Method method, Object[] args) {
+        Object[] adapted = new Object[args.length];
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        for (int i = 0; i < args.length; i++) {
+            adapted[i] = adaptArgument(parameterTypes[i], args[i]);
+        }
+        return adapted;
+    }
+
+    private Object adaptArgument(Class<?> parameterType, Object arg) {
+        if (arg == null) {
+            return defaultArgumentValue(parameterType);
+        }
+        if (parameterType == String.class) {
+            if (arg instanceof Number number && number.intValue() == 0) {
+                return null;
+            }
+            return String.valueOf(arg);
+        }
+        if (parameterType == boolean.class && arg instanceof Number number) {
+            return number.intValue() != 0;
+        }
+        if (!parameterType.isPrimitive()) {
+            return arg;
+        }
+        return arg;
     }
 
     private Object[] padMissingArguments(Method method, Object[] args) {

@@ -6,7 +6,7 @@ public enum TokenType {
     // Operators and punctuation
     T_AMP(Object.class), T_AMP_EQUAL(Object.class), T_BANG(Object.class), T_CARET(Object.class),
     T_CARET_EQUAL(Object.class), T_COLON(Object.class), T_COMMA(Object.class), T_DBL_AMP(Object.class),
-    T_DBL_PIPE(Object.class), T_EQUAL(Object.class), T_LEFT_BRACE(Object.class), T_LEFT_BRACKET(Object.class),
+    T_DBL_PIPE(Object.class), T_DOT_DOT(Object.class), T_EQUAL(Object.class), T_LEFT_BRACE(Object.class), T_LEFT_BRACKET(Object.class),
     T_LEFT_PAREN(Object.class), T_LESS_LESS(Object.class), T_LESS_LESS_EQUAL(Object.class),
     T_MINUS(Object.class), T_MINUS_EQUAL(Object.class), T_MINUS_MINUS(Object.class),
     T_PIPE(Object.class), T_PIPE_EQUAL(Object.class), T_PLUS(Object.class), T_PLUS_EQUAL(Object.class),

@@ -34,6 +34,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignment;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedCall;
@@ -380,6 +381,11 @@ public final class SemanticAnalyzer {
         if (expression instanceof ASTExprArrayAccess access)
             return referencesLocal(access.target(), local) || referencesLocal(access.index(), local);
 
+        if (expression instanceof ASTExprSliceAccess access)
+            return referencesLocal(access.target(), local)
+                    || referencesLocal(access.start(), local)
+                    || (access.end() != null && referencesLocal(access.end(), local));
+
         if (expression instanceof ASTExprArrayLiteral arrayLiteral)
             return arrayLiteral.elements().stream().anyMatch(elem -> referencesLocal(elem, local));
 
@@ -469,25 +475,12 @@ public final class SemanticAnalyzer {
 
         for (ASTMethod method : astObject.methods()) {
             if (method.symbol().declaredTypeName() == null) {
-                problems.add(
-                        new CompilationProblem(
-                                CompilationStage.ANALYZE,
-                                "Method '" + method.symbol().name() + "' must declare a return type",
-                                method.line()));
-                // Keep the hard error, but recover as mixed so later diagnostics can continue.
                 method.symbol().resolveDeclaredType(LPCType.LPCMIXED);
             }
             resolveSymbolType(method.symbol(), method.line(), problems);
             if (method.parameters() != null) {
                 for (ASTParameter parameter : method.parameters()) {
                     if (parameter.symbol().declaredTypeName() == null) {
-                        problems.add(
-                                new CompilationProblem(
-                                        CompilationStage.ANALYZE,
-                                        "Parameter '" + parameter.symbol().name() + "' in method '"
-                                                + method.symbol().name() + "' must declare a type",
-                                        parameter.line()));
-                        // Keep the hard error, but recover as mixed so later diagnostics can continue.
                         parameter.symbol().resolveDeclaredType(LPCType.LPCMIXED);
                     }
                     resolveSymbolType(parameter.symbol(), parameter.line(), problems);
@@ -764,6 +757,15 @@ public final class SemanticAnalyzer {
                 if (resolvedTarget == access.target() && resolvedIndex == access.index())
                     return access;
                 return new ASTExprArrayAccess(access.line(), resolvedTarget, resolvedIndex);
+            }
+
+            if (expression instanceof ASTExprSliceAccess access) {
+                ASTExpression resolvedTarget = resolveExpression(access.target(), context);
+                ASTExpression resolvedStart = resolveExpression(access.start(), context);
+                ASTExpression resolvedEnd = access.end() == null ? null : resolveExpression(access.end(), context);
+                if (resolvedTarget == access.target() && resolvedStart == access.start() && resolvedEnd == access.end())
+                    return access;
+                return new ASTExprSliceAccess(access.line(), resolvedTarget, resolvedStart, resolvedEnd);
             }
 
             if (expression instanceof ASTExprLocalAccess access) {

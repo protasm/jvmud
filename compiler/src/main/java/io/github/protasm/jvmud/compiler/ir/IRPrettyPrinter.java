@@ -142,6 +142,10 @@ public final class IRPrettyPrinter {
         if (expression instanceof IRStringGet get) {
             return expression(get.string()) + "[" + expression(get.index()) + "]:" + type(get.type());
         }
+        if (expression instanceof IRSlice slice) {
+            return expression(slice.target()) + "[" + expression(slice.start()) + ".." + expression(slice.end()) + "]:"
+                    + type(slice.type());
+        }
         if (expression instanceof IRMappingLiteral mapping) {
             return "mapping{" + join(mapping.entries(), this::mappingEntry) + "}:" + type(mapping.type());
         }

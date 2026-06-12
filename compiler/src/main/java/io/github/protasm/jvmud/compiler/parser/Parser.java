@@ -311,8 +311,12 @@ public class Parser {
         declarators.add(fieldDeclarator(symbol));
 
         while (tokens.match(T_COMMA)) {
+            boolean isArrayType = tokens.match(TokenType.T_STAR);
             Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect field name.");
-            Symbol additionalSymbol = new Symbol(symbol.declaredTypeName(), nameToken.lexeme());
+            String declaredTypeName = symbol.declaredTypeName();
+            if (isArrayType && declaredTypeName != null && !declaredTypeName.endsWith("*"))
+                declaredTypeName = declaredTypeName + "*";
+            Symbol additionalSymbol = new Symbol(declaredTypeName, nameToken.lexeme());
 
             declarators.add(fieldDeclarator(additionalSymbol));
         }

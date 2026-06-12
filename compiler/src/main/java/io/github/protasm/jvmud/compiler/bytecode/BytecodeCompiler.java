@@ -357,6 +357,11 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRSlice slice) {
+            emitSlice(mv, internalName, method, slice);
+            return;
+        }
+
         if (expression instanceof IREfunCall efunCall) {
             emitEfunCall(mv, internalName, method, efunCall);
             return;
@@ -971,6 +976,22 @@ public final class BytecodeCompiler {
         emitExpression(mv, internalName, method, stringGet.index());
         coerceValue(mv, stringGet.index().type(), RuntimeTypes.INT);
         mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "charAt", "(I)C", false);
+    }
+
+    private void emitSlice(MethodVisitor mv, String internalName, IRMethod method, IRSlice slice) {
+        emitExpression(mv, internalName, method, slice.target());
+        boxIfNeeded(mv, slice.target().type());
+        emitExpression(mv, internalName, method, slice.start());
+        coerceValue(mv, slice.start().type(), RuntimeTypes.INT);
+        emitExpression(mv, internalName, method, slice.end());
+        boxIfNeeded(mv, slice.end().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeIndex.class),
+                "slice",
+                "(Ljava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;",
+                false);
+        coerceValue(mv, RuntimeTypes.MIXED, slice.type());
     }
 
     private void emitArraySet(MethodVisitor mv, String internalName, IRMethod method, IRArraySet arraySet) {

@@ -83,7 +83,7 @@ public final class LocalSessionActor {
         }
         worldRuntime.move(entity, destinationPlace);
         runtime.moveObject(this, destination);
-        runtime.invokeObject(destination, "long", new Object[] {null});
+        runtime.invokeOptionalObject(destination, "long", new Object[] {null});
         return 1;
     }
 

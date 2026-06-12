@@ -46,6 +46,11 @@ public final class SearchPathIncludeResolver implements IncludeResolver {
       if (dedup.add(roomDir)) {
         roots.add(roomDir);
       }
+
+      Path sysDir = this.baseIncludePath.resolve("sys").normalize();
+      if (dedup.add(sysDir)) {
+        roots.add(sysDir);
+      }
     }
 
     // Always search the base include path last to preserve the previous fallback behavior.

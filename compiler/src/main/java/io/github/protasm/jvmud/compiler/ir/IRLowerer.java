@@ -35,6 +35,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
@@ -158,8 +159,11 @@ public final class IRLowerer {
             String objectInternalName) {
         List<IRMethod> methods = new ArrayList<>();
 
-        for (ASTMethod method : astObject.methods())
+        for (ASTMethod method : astObject.methods()) {
+            if (!method.isDefined())
+                continue;
             methods.add(lowerMethod(method, fieldsBySymbol, problems, objectInternalName));
+        }
 
         return methods;
     }
@@ -498,6 +502,22 @@ public final class IRLowerer {
                 return new IRStringGet(arrayAccess.line(), target, index, RuntimeTypes.INT);
 
             return new IRArrayGet(arrayAccess.line(), target, index, RuntimeTypes.MIXED);
+        }
+
+        if (expression instanceof ASTExprSliceAccess sliceAccess) {
+            IRExpression target = lowerExpression(sliceAccess.target(), context, problems);
+            IRExpression start = coerceIfNeeded(
+                    lowerExpression(sliceAccess.start(), context, problems), RuntimeTypes.INT);
+            IRExpression end = sliceAccess.end() == null
+                    ? new IRConstant(sliceAccess.line(), null, RuntimeTypes.NULL)
+                    : coerceIfNeeded(lowerExpression(sliceAccess.end(), context, problems), RuntimeTypes.INT);
+            RuntimeType targetType = runtimeType(sliceAccess.target().lpcType());
+            RuntimeType resultType = RuntimeTypes.MIXED;
+            if (targetType != null && targetType.kind() == RuntimeValueKind.STRING)
+                resultType = RuntimeTypes.STRING;
+            else if (targetType != null && targetType.kind() == RuntimeValueKind.ARRAY)
+                resultType = RuntimeTypes.arrayOf(RuntimeTypes.MIXED);
+            return new IRSlice(sliceAccess.line(), target, start, end, resultType);
         }
 
         if (expression instanceof ASTExprArrayStore arrayStore) {

@@ -34,6 +34,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
@@ -164,6 +165,9 @@ public final class SemanticTypeChecker {
 
         if (expression instanceof ASTExprArrayAccess arrayAccess)
             return inferIndexAccessType(arrayAccess, context);
+
+        if (expression instanceof ASTExprSliceAccess sliceAccess)
+            return inferSliceAccessType(sliceAccess, context);
 
         if (expression instanceof ASTExprFieldStore store) {
             LPCType valueType = inferExpressionType(store.value(), context);
@@ -455,6 +459,29 @@ public final class SemanticTypeChecker {
         problems.add(
                 new CompilationProblem(
                         CompilationStage.ANALYZE, "Indexing expects array, mapping, or string target", access.line()));
+        return LPCType.LPCMIXED;
+    }
+
+    private LPCType inferSliceAccessType(ASTExprSliceAccess access, MethodContext context) {
+        LPCType targetType = inferExpressionType(access.target(), context);
+        LPCType startType = inferExpressionType(access.start(), context);
+        ensureAssignable(LPCType.LPCINT, startType, access.line(), "Slice start expects integer");
+        if (access.end() != null) {
+            LPCType endType = inferExpressionType(access.end(), context);
+            ensureAssignable(LPCType.LPCINT, endType, access.line(), "Slice end expects integer");
+        }
+
+        if (targetType == LPCType.LPCSTRING)
+            return LPCType.LPCSTRING;
+
+        if (targetType == LPCType.LPCARRAY)
+            return LPCType.LPCARRAY;
+
+        if (targetType == LPCType.LPCMIXED || targetType == null)
+            return LPCType.LPCMIXED;
+
+        problems.add(new CompilationProblem(
+                CompilationStage.ANALYZE, "Slicing expects array or string target", access.line()));
         return LPCType.LPCMIXED;
     }
 

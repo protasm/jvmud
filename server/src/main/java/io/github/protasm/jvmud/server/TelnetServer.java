@@ -24,7 +24,7 @@ public final class TelnetServer implements AutoCloseable {
     private final Path mudlibRoot;
     private final String configObjectPath;
     private final ExecutorService sessions;
-    private TelnetMud mud;
+    private TelnetHost mud;
     private WorldClock worldClock;
     private ServerSocket serverSocket;
     private Thread acceptThread;
@@ -126,7 +126,7 @@ public final class TelnetServer implements AutoCloseable {
         if (running) {
             return;
         }
-        mud = TelnetMud.boot(mudlibRoot, configObjectPath);
+        mud = MultiMudTelnetHost.boot(mudlibRoot, configObjectPath);
         startWorldClock();
         serverSocket = new ServerSocket(requestedPort, 50, InetAddress.getByName(bindAddress));
         running = true;
