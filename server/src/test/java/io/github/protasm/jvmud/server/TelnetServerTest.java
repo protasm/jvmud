@@ -92,11 +92,30 @@ final class TelnetServerTest {
                 assertTrue(greeting.contains("Hi, Protasm! Welcome to LPMuseum."), greeting);
                 assertTrue(greeting.contains("Protasm enters LPMuseum through the museum doors."), greeting);
 
+                try (Socket second = new Socket("127.0.0.1", server.port())) {
+                    second.setSoTimeout(5000);
+                    assertTrue(readUntilQuietAfterContains(second, "What is your name today? ")
+                            .contains("Attached player 2 as persona/visitor#clone"));
+                    second.getOutputStream().write("solfeggio\n".getBytes(StandardCharsets.UTF_8));
+                    second.getOutputStream().flush();
+                    assertTrue(readUntilQuietAfterContains(second, "Welcome to LPMuseum.")
+                            .contains("Hi, Solfeggio! Welcome to LPMuseum."));
+                    assertTrue(readUntilQuietAfterContains(socket, "Solfeggio enters LPMuseum through the museum doors.")
+                            .contains("Solfeggio enters LPMuseum through the museum doors."));
+
                 socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 String concourse = readUntilQuietAfterContains(socket, "directory and a docent");
                 assertTrue(concourse.contains("Grand Concourse of LPMuseum"), concourse);
-                assertTrue(concourse.contains("A kind museum security staffer is here"), concourse);
+                assertTrue(concourse.contains("Museum Security Staffer"), concourse);
+                assertFalse(concourse.contains("soft blue jacket"), concourse);
+                assertFalse(concourse.contains("gentle patrol is driven"), concourse);
+                assertTrue(concourse.contains("Solfeggio is here."), concourse);
+
+                socket.getOutputStream().write("exa solfeggio\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Solfeggio is a visiting Persona exploring LPMuseum.")
+                        .contains("Solfeggio is a visiting Persona exploring LPMuseum."));
 
                 socket.getOutputStream().write("look staffer\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -106,14 +125,20 @@ final class TelnetServerTest {
                 socket.getOutputStream().write("north\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 String originsWithStaffer = readUntilQuietAfterContains(socket, "Origins Gallery");
-                assertTrue(originsWithStaffer.contains("Protasm leaves north."), originsWithStaffer);
-                assertTrue(originsWithStaffer.contains("Protasm arrives."), originsWithStaffer);
+                assertFalse(originsWithStaffer.contains("Protasm leaves north."), originsWithStaffer);
+                assertFalse(originsWithStaffer.contains("Protasm arrives."), originsWithStaffer);
                 assertFalse(originsWithStaffer.contains("enters LPMuseum through the museum doors"), originsWithStaffer);
+                assertTrue(readUntilQuietAfterContains(second, "Protasm leaves north.")
+                        .contains("Protasm leaves north."));
 
                 socket.getOutputStream().write("south\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilContains(socket, "Grand Concourse of LPMuseum")
-                        .contains("Grand Concourse of LPMuseum"));
+                String returnedToConcourse = readUntilQuietAfterContains(socket, "Grand Concourse of LPMuseum");
+                assertTrue(returnedToConcourse.contains("Grand Concourse of LPMuseum"));
+                assertFalse(returnedToConcourse.contains("Protasm leaves south."), returnedToConcourse);
+                assertFalse(returnedToConcourse.contains("Protasm arrives."), returnedToConcourse);
+                assertTrue(readUntilQuietAfterContains(second, "Protasm arrives.")
+                        .contains("Protasm arrives."));
 
                 socket.getOutputStream().write("examine directory\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -133,8 +158,9 @@ final class TelnetServerTest {
 
                 socket.getOutputStream().write("who\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String who = readUntilQuietAfterContains(socket, "Connected Personas in LPMuseum: 1");
+                String who = readUntilQuietAfterContains(socket, "Connected Personas in LPMuseum: 2");
                 assertTrue(who.contains("Protasm"), who);
+                assertTrue(who.contains("Solfeggio"), who);
                 assertTrue(who.contains("persona/visitor#clone"), who);
                 assertTrue(who.contains("from 127.0.0.1"), who);
 
@@ -149,6 +175,53 @@ final class TelnetServerTest {
                 socket.getOutputStream().write("go east\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 assertTrue(readUntilContains(socket, "Creator Workshop").contains("Creator Workshop"));
+
+                socket.getOutputStream().write("examine machine\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String machine = readUntilQuietAfterContains(socket, "Try: vend entity");
+                assertTrue(machine.contains("at most ten vended Entities"), machine);
+
+                socket.getOutputStream().write("vend entity\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "vended curio #1 onto the floor")
+                        .contains("vended curio #1"));
+
+                socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "vended curio #1")
+                        .contains("vended curio #1"));
+
+                socket.getOutputStream().write("take curio\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "You take vended curio #1.")
+                        .contains("You take vended curio #1."));
+
+                socket.getOutputStream().write("inventory\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "vended curio #1")
+                        .contains("You are carrying:"));
+
+                socket.getOutputStream().write("examine curio\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "self-destruct two minutes")
+                        .contains("JVMud identity"));
+
+                socket.getOutputStream().write("drop curio\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "You drop vended curio #1.")
+                        .contains("You drop vended curio #1."));
+
+                for (int i = 2; i <= 10; i++) {
+                    socket.getOutputStream().write("vend entity\n".getBytes(StandardCharsets.UTF_8));
+                    socket.getOutputStream().flush();
+                    assertTrue(readUntilQuietAfterContains(socket, "vended curio #" + i + " onto the floor")
+                            .contains("vended curio #" + i));
+                }
+
+                socket.getOutputStream().write("vend entity\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "MAX 10 LIVE")
+                        .contains("MAX 10 LIVE"));
 
                 socket.getOutputStream().write("demo time\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -169,6 +242,7 @@ final class TelnetServerTest {
                 String quit = readUntilSocketClosed(socket);
                 assertTrue(quit.contains("You step away from LPMuseum."), quit);
                 assertFalse(quit.contains("You can't do that."), quit);
+                }
             }
         }
     }
@@ -198,6 +272,33 @@ final class TelnetServerTest {
         String destination = runtime.objectId(runtime.environment(staffer));
         assertTrue(List.of("place/origins", "place/workshop", "place/archive").contains(destination), destination);
         assertEquals(null, runtime.environment(preloadedStaffer));
+    }
+
+    @Test
+    void lpmuseumVendedEntitiesExpireAfterTwoMinutes() {
+        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
+                .baseIncludePath(museum)
+                .build());
+        EngineEfuns.registerCore(runtime);
+
+        MudlibBootResult result = new MudlibBoot(runtime, museum, MudlibBoot.DEFAULT_CONFIG_PATH, false).boot();
+        Object workshop = runtime.loadOrGetObject("place/workshop");
+        Object machine = runtime.present("vending machine", workshop);
+
+        assertTrue(machine != null);
+        assertEquals(1, runtime.invokeObject(machine, "vend", "entity"));
+        Object curio = runtime.present("curio", workshop);
+        assertTrue(curio != null);
+        assertEquals("place/workshop", runtime.objectId(runtime.environment(curio)));
+        assertEquals(1, runtime.invokeObject(machine, "live_count"));
+
+        result.worldRuntime().scheduler().advanceBy(119);
+        assertEquals(curio, runtime.present("curio", workshop));
+
+        result.worldRuntime().scheduler().advanceBy(1);
+        assertEquals(null, runtime.present("curio", workshop));
+        assertEquals(0, runtime.invokeObject(machine, "live_count"));
     }
 
     @Test

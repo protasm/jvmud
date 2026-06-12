@@ -35,6 +35,8 @@ public final class MudlibBoundaryConfigReader {
             playerPrompt = firstValue(values, "command_prompt");
         }
         addString(builder::playerPrompt, playerPrompt);
+        addBoundedInt(builder::maxLineLength, firstValue(values, "max_line_length"));
+        addBoolean(builder::showRuler, firstValue(values, "show_ruler"));
         addString(builder::initialPlacePath, firstValue(values, "initial_place"));
         addString(builder::preloadFilePath, firstValue(values, "preload_file"));
         addPreloadObjects(builder, allValues(values, "preload_objects"));
@@ -148,6 +150,26 @@ public final class MudlibBoundaryConfigReader {
         if (value != null && !value.isBlank()) {
             setter.accept(value);
         }
+    }
+
+    private static void addBoundedInt(java.util.function.IntConsumer setter, String value) {
+        if (value != null && !value.isBlank()) {
+            setter.accept(Integer.parseInt(value.trim()));
+        }
+    }
+
+    private static void addBoolean(java.util.function.Consumer<Boolean> setter, String value) {
+        if (value != null && !value.isBlank()) {
+            setter.accept(parseBoolean(value.trim()));
+        }
+    }
+
+    private static boolean parseBoolean(String value) {
+        return switch (value.toLowerCase()) {
+            case "true", "yes", "on", "1" -> true;
+            case "false", "no", "off", "0" -> false;
+            default -> throw new IllegalArgumentException("Invalid boolean config value: " + value);
+        };
     }
 
     private static void addPositiveDuration(java.util.function.Consumer<Duration> setter, String value) {

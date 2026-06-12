@@ -41,11 +41,11 @@ mixed call_other(mixed target, string method, mixed arg1, mixed arg2, mixed arg3
 }
 
 void call_out(string method, int delay) {
-  jvmud_call_out(method, delay);
+  jvmud_schedule_deferred_callback(method, delay);
 }
 
 void call_out(string method, int delay, mixed arg) {
-  jvmud_call_out(method, delay, arg);
+  jvmud_schedule_deferred_callback(method, delay, arg);
 }
 
 int cat(string path) {
@@ -240,7 +240,7 @@ int random(int max) {
 }
 
 int remove_call_out(string method) {
-  return jvmud_remove_call_out(method);
+  return jvmud_cancel_deferred_callback(method);
 }
 
 int restore_object(string path) {

@@ -15,6 +15,8 @@ void describe(object viewer) {
   write("Portal Hall\n");
   write("Mount points for exhibit mudlibs line the walls, but the hall belongs to LPMuseum.\n");
   write("A quiet exhibit portal waits here as an Entity. Origins is west.\n");
+  call_other(viewer, "list_vended_entities", viewer);
+  call_other(viewer, "list_present_personas", viewer);
 }
 
 void long(mixed str) {

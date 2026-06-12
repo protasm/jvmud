@@ -9,6 +9,7 @@ import io.github.protasm.jvmud.runtime.Location;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.runtime.MudlibProjection;
+import io.github.protasm.jvmud.runtime.OutgoingTextFormatter;
 import io.github.protasm.jvmud.runtime.Place;
 import io.github.protasm.jvmud.runtime.WorldRuntime;
 import java.io.PrintWriter;
@@ -30,6 +31,8 @@ final class TelnetMud implements TelnetHost {
     private final Object startingPlaceObject;
     private final String playerObjectPath;
     private final String playerPrompt;
+    private final int maxLineLength;
+    private final boolean showRuler;
     private final String playerSessionConnectedMethod;
     private final String playerSessionDisconnectedMethod;
     private final MudlibBootResult bootResult;
@@ -46,6 +49,8 @@ final class TelnetMud implements TelnetHost {
             Object startingPlaceObject,
             String playerObjectPath,
             String playerPrompt,
+            int maxLineLength,
+            boolean showRuler,
             String playerSessionConnectedMethod,
             String playerSessionDisconnectedMethod,
             MudlibBootResult bootResult) {
@@ -57,6 +62,8 @@ final class TelnetMud implements TelnetHost {
         this.startingPlaceObject = Objects.requireNonNull(startingPlaceObject, "startingPlaceObject");
         this.playerObjectPath = playerObjectPath;
         this.playerPrompt = playerPrompt;
+        this.maxLineLength = maxLineLength;
+        this.showRuler = showRuler;
         this.playerSessionConnectedMethod = playerSessionConnectedMethod;
         this.playerSessionDisconnectedMethod = playerSessionDisconnectedMethod;
         this.bootResult = Objects.requireNonNull(bootResult, "bootResult");
@@ -88,6 +95,8 @@ final class TelnetMud implements TelnetHost {
                 startingPlaceObject,
                 boundary.playerObjectPath().orElse(null),
                 boundary.playerPrompt().orElse(null),
+                boundary.maxLineLength(),
+                boundary.showRuler(),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_DISCONNECTED).orElse(null),
                 result);
@@ -325,6 +334,9 @@ final class TelnetMud implements TelnetHost {
         if (playerPrompt == null || !isAttached(persona) || runtime.hasCapturedSessionInput(persona.actor())) {
             return;
         }
+        if (showRuler) {
+            out.println(OutgoingTextFormatter.ruler(maxLineLength));
+        }
         out.print(playerPrompt);
         out.flush();
     }
@@ -354,7 +366,7 @@ final class TelnetMud implements TelnetHost {
 
     private void printReturnedDescription(Object description, PrintWriter out) {
         if (description instanceof String text && !text.isEmpty()) {
-            out.println(text);
+            out.println(OutgoingTextFormatter.wrap(text, maxLineLength));
         }
     }
 

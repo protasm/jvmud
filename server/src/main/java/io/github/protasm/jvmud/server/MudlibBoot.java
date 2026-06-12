@@ -203,6 +203,8 @@ public final class MudlibBoot {
         configBoundary.playerPrompt()
                 .or(() -> objectBoundary.playerPrompt())
                 .ifPresent(builder::playerPrompt);
+        builder.maxLineLength(configBoundary.maxLineLength());
+        builder.showRuler(configBoundary.showRuler());
         configBoundary.initialPlacePath().ifPresent(builder::initialPlacePath);
         configBoundary.preloadFilePath().ifPresent(builder::preloadFilePath);
         configBoundary.preloadObjectPaths().forEach(builder::preloadObjectPath);

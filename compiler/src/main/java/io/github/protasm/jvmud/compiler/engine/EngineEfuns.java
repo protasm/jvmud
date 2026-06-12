@@ -174,18 +174,20 @@ public final class EngineEfuns {
                             ((Number) args[1]).intValue());
                     return null;
                 }));
-        efuns.add(efun("jvmud_call_out", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
+        efuns.add(efun("jvmud_schedule_deferred_callback", LPCType.LPCVOID,
+                List.of(LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> {
-                    runtime.scheduleCallOut(String.valueOf(args[0]), ((Number) args[1]).intValue());
+                    runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue());
                     return null;
                 }));
-        efuns.add(efun("jvmud_call_out", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_schedule_deferred_callback", LPCType.LPCVOID,
+                List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED),
                 (runtime, args) -> {
-                    runtime.scheduleCallOut(String.valueOf(args[0]), ((Number) args[1]).intValue(), args[2]);
+                    runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue(), args[2]);
                     return null;
                 }));
-        efuns.add(efun("jvmud_remove_call_out", LPCType.LPCINT, List.of(LPCType.LPCSTRING),
-                (runtime, args) -> runtime.removeCallOut(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_cancel_deferred_callback", LPCType.LPCINT, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.cancelDeferredCallback(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_enable_commands", LPCType.LPCVOID, List.of(),
                 (runtime, args) -> {
                     runtime.enableEntityCommands(runtime.currentObject());

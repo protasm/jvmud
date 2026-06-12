@@ -32,8 +32,10 @@ void describe(object viewer) {
   write("North leads to Origins, east to the Creator Workshop, and west to the Archive.\n");
   write("A directory and a docent are here.\n");
   if (present("staffer", this_object())) {
-    write("A kind museum security staffer is here, keeping the concourse calm.\n");
+    write("Museum Security Staffer\n");
   }
+  call_other(viewer, "list_vended_entities", viewer);
+  call_other(viewer, "list_present_personas", viewer);
 }
 
 void long(mixed str) {

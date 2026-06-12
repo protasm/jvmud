@@ -23,11 +23,11 @@ mixed call_other(mixed target, string method, mixed arg) {
 }
 
 void call_out(string method, int delay) {
-  jvmud_call_out(method, delay);
+  jvmud_schedule_deferred_callback(method, delay);
 }
 
 void call_out(string method, int delay, mixed arg) {
-  jvmud_call_out(method, delay, arg);
+  jvmud_schedule_deferred_callback(method, delay, arg);
 }
 
 mixed command(string command_line) {
@@ -135,7 +135,7 @@ mixed read_file(string path) {
 }
 
 void remove_call_out(string method) {
-  jvmud_remove_call_out(method);
+  jvmud_cancel_deferred_callback(method);
 }
 
 void say(mixed value) {
@@ -168,6 +168,22 @@ void tell_object(object target, mixed value) {
 
 void tell_place(mixed place, mixed value) {
   jvmud_emit_perceivable_at(place, value);
+}
+
+void tell_place_except(mixed place, mixed value, object excluded) {
+  object *occupants;
+  object occupant;
+  int index;
+
+  occupants = users();
+  index = 0;
+  while (index < sizeof(occupants)) {
+    occupant = occupants[index];
+    if (occupant != excluded && environment(occupant) == place) {
+      tell_object(occupant, value);
+    }
+    index = index + 1;
+  }
 }
 
 object this_object() {

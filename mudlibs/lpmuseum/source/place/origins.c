@@ -19,8 +19,10 @@ void describe(object viewer) {
   write("An engine model rests in the center of the Place.\n");
   write("The concourse is south; the portal hall is east.\n");
   if (present("staffer", this_object())) {
-    write("A kind museum security staffer is here, making sure the quiet stays welcoming.\n");
+    write("Museum Security Staffer\n");
   }
+  call_other(viewer, "list_vended_entities", viewer);
+  call_other(viewer, "list_present_personas", viewer);
 }
 
 void long(mixed str) {

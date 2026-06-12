@@ -90,9 +90,9 @@ void wander() {
     direction = "west toward the Origins Gallery";
   }
 
-  tell_place(place, "The kind museum security staffer heads " + direction + ".\n");
+  tell_place(place, "Museum Security Staffer heads " + direction + ".\n");
   move_object(this_object(), destination);
-  tell_place(environment(this_object()), "The kind museum security staffer arrives, offering a quiet nod.\n");
+  tell_place(environment(this_object()), "Museum Security Staffer arrives, offering a quiet nod.\n");
 }
 
 void staff_emote() {
@@ -110,47 +110,47 @@ void staff_emote() {
 
   if (place_id == "place/concourse") {
     if (choice < 2) {
-      tell_place(place, "The kind museum security staffer updates the directory with careful little taps.\n");
+      tell_place(place, "Museum Security Staffer updates the directory with careful little taps.\n");
     } else if (choice < 4) {
-      tell_place(place, "The kind museum security staffer offers directions before anyone has to ask twice.\n");
+      tell_place(place, "Museum Security Staffer offers directions before anyone has to ask twice.\n");
     } else {
-      tell_place(place, "The kind museum security staffer watches the concourse doors with relaxed attention.\n");
+      tell_place(place, "Museum Security Staffer watches the concourse doors with relaxed attention.\n");
     }
     return;
   }
 
   if (place_id == "place/origins") {
     if (choice < 2) {
-      tell_place(place, "The kind museum security staffer studies the engine model with quiet pride.\n");
+      tell_place(place, "Museum Security Staffer studies the engine model with quiet pride.\n");
     } else if (choice < 4) {
-      tell_place(place, "The kind museum security staffer brushes dust from the Player -> Session -> Persona plaque.\n");
+      tell_place(place, "Museum Security Staffer brushes dust from the Player -> Session -> Persona plaque.\n");
     } else {
-      tell_place(place, "The kind museum security staffer smiles at the clean JVMud vocabulary on the wall.\n");
+      tell_place(place, "Museum Security Staffer smiles at the clean JVMud vocabulary on the wall.\n");
     }
     return;
   }
 
   if (place_id == "place/workshop") {
     if (choice < 2) {
-      tell_place(place, "The kind museum security staffer checks that the demo bench has enough room around it.\n");
+      tell_place(place, "Museum Security Staffer checks that the demo bench has enough room around it.\n");
     } else if (choice < 4) {
-      tell_place(place, "The kind museum security staffer reads a builder note and nods approvingly.\n");
+      tell_place(place, "Museum Security Staffer reads a builder note and nods approvingly.\n");
     } else {
-      tell_place(place, "The kind museum security staffer gently returns a misplaced tool to its outline.\n");
+      tell_place(place, "Museum Security Staffer gently returns a misplaced tool to its outline.\n");
     }
     return;
   }
 
   if (place_id == "place/archive") {
     if (choice < 2) {
-      tell_place(place, "The kind museum security staffer checks the archive case latch without making a sound.\n");
+      tell_place(place, "Museum Security Staffer checks the archive case latch without making a sound.\n");
     } else if (choice < 4) {
-      tell_place(place, "The kind museum security staffer lowers his voice even further among the records.\n");
+      tell_place(place, "Museum Security Staffer lowers his voice even further among the records.\n");
     } else {
-      tell_place(place, "The kind museum security staffer pauses beside the archive case, fond but careful.\n");
+      tell_place(place, "Museum Security Staffer pauses beside the archive case, fond but careful.\n");
     }
     return;
   }
 
-  tell_place(place, "The kind museum security staffer pauses, listening for anyone who needs help.\n");
+  tell_place(place, "Museum Security Staffer pauses, listening for anyone who needs help.\n");
 }

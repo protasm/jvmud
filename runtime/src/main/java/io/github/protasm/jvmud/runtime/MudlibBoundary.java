@@ -17,6 +17,10 @@ import java.util.Set;
  * implement legacy LP engine behavior and does not define engine concepts using legacy names.</p>
  */
 public final class MudlibBoundary {
+    public static final int DEFAULT_MAX_LINE_LENGTH = 80;
+    public static final int MIN_MAX_LINE_LENGTH = 20;
+    public static final int MAX_MAX_LINE_LENGTH = 140;
+
     private static final MudlibBoundary EMPTY = builder().build();
 
     private final String gameId;
@@ -26,6 +30,8 @@ public final class MudlibBoundary {
     private final String mfunObjectPath;
     private final String playerObjectPath;
     private final String playerPrompt;
+    private final int maxLineLength;
+    private final boolean showRuler;
     private final String initialPlacePath;
     private final String preloadFilePath;
     private final Set<String> preloadObjectPaths;
@@ -42,6 +48,8 @@ public final class MudlibBoundary {
         this.mfunObjectPath = normalizeOptionalPath(builder.mfunObjectPath);
         this.playerObjectPath = normalizeOptionalPath(builder.playerObjectPath);
         this.playerPrompt = normalizeOptionalPrompt(builder.playerPrompt);
+        this.maxLineLength = normalizeMaxLineLength(builder.maxLineLength);
+        this.showRuler = builder.showRuler;
         this.initialPlacePath = normalizeOptionalPath(builder.initialPlacePath);
         this.preloadFilePath = normalizeOptionalPath(builder.preloadFilePath);
         this.preloadObjectPaths = normalizePathSet(builder.preloadObjectPaths);
@@ -94,6 +102,16 @@ public final class MudlibBoundary {
     /** Returns the optional prompt text to display when an interactive player can enter commands. */
     public Optional<String> playerPrompt() {
         return Optional.ofNullable(playerPrompt);
+    }
+
+    /** Returns the configured maximum output line length before whitespace wrapping is attempted. */
+    public int maxLineLength() {
+        return maxLineLength;
+    }
+
+    /** Returns whether command prompts should be preceded by a visual line-length ruler. */
+    public boolean showRuler() {
+        return showRuler;
     }
 
     /** Returns the optional starting place object path for new local Personas. */
@@ -156,6 +174,8 @@ public final class MudlibBoundary {
                 || mfunObjectPath != null
                 || playerObjectPath != null
                 || playerPrompt != null
+                || maxLineLength != DEFAULT_MAX_LINE_LENGTH
+                || showRuler
                 || initialPlacePath != null
                 || preloadFilePath != null
                 || !preloadObjectPaths.isEmpty()
@@ -212,6 +232,14 @@ public final class MudlibBoundary {
         return value;
     }
 
+    private static int normalizeMaxLineLength(int maxLineLength) {
+        if (maxLineLength < MIN_MAX_LINE_LENGTH || maxLineLength > MAX_MAX_LINE_LENGTH) {
+            throw new IllegalArgumentException("max_line_length must be between "
+                    + MIN_MAX_LINE_LENGTH + " and " + MAX_MAX_LINE_LENGTH + ".");
+        }
+        return maxLineLength;
+    }
+
     private static Path normalizeOptionalFilesystemPath(Path path) {
         if (path == null) {
             return null;
@@ -238,6 +266,8 @@ public final class MudlibBoundary {
         private String mfunObjectPath;
         private String playerObjectPath;
         private String playerPrompt;
+        private int maxLineLength = DEFAULT_MAX_LINE_LENGTH;
+        private boolean showRuler;
         private String initialPlacePath;
         private String preloadFilePath;
         private final java.util.LinkedHashSet<String> preloadObjectPaths =
@@ -290,6 +320,18 @@ public final class MudlibBoundary {
         /** Sets the prompt text shown when an interactive player can enter commands. */
         public Builder playerPrompt(String playerPrompt) {
             this.playerPrompt = playerPrompt;
+            return this;
+        }
+
+        /** Sets the maximum output line length before whitespace wrapping is attempted. */
+        public Builder maxLineLength(int maxLineLength) {
+            this.maxLineLength = normalizeMaxLineLength(maxLineLength);
+            return this;
+        }
+
+        /** Sets whether command prompts should be preceded by a visual line-length ruler. */
+        public Builder showRuler(boolean showRuler) {
+            this.showRuler = showRuler;
             return this;
         }
 

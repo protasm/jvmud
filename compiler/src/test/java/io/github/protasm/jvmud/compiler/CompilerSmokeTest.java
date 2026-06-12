@@ -805,6 +805,27 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeWrapsOutgoingSessionMessagesAtConfiguredLineLength() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .maxLineLength(20)
+                .build());
+        LPCObjectHandle player = runtime.loadSource("smoke/wrapped_player.c", """
+                int value() {
+                    return 1;
+                }
+                """);
+        StringBuilder output = new StringBuilder();
+
+        runtime.bindSession("s1", player.instance(), "127.0.0.1", output::append);
+        var session = runtime.sessionRecord("s1").orElseThrow();
+
+        assertTrue(runtime.messageSession(session.id(), "one two three four five six\\n"));
+        assertEquals("one two three four\nfive six\n", output.toString());
+        assertEquals(output.toString(), runtime.outputTranscript());
+    }
+
+    @Test
     void runtimeMessagesPlayerBeforePersonaAttachmentThenPreservesPlayerOnAttach() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         StringBuilder output = new StringBuilder();
@@ -1939,7 +1960,7 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void callOutSchedulesCurrentObjectOnce() {
+    void deferredCallbackSchedulesCurrentEntityOnce() {
         WorldScheduler scheduler = new WorldScheduler();
         LPCRuntime runtime = temporalRuntime(scheduler, 1);
 
@@ -1971,7 +1992,7 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void callOutDeliversOneArgument() {
+    void deferredCallbackDeliversOneArgument() {
         WorldScheduler scheduler = new WorldScheduler();
         LPCRuntime runtime = temporalRuntime(scheduler, 1);
 
@@ -1998,7 +2019,7 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void removeCallOutCancelsScheduledWork() {
+    void cancelDeferredCallbackCancelsScheduledWork() {
         WorldScheduler scheduler = new WorldScheduler();
         LPCRuntime runtime = temporalRuntime(scheduler, 1);
 
@@ -2062,11 +2083,11 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void destructCancelsCallOut() {
+    void destructCancelsDeferredCallback() {
         WorldScheduler scheduler = new WorldScheduler();
         LPCRuntime runtime = temporalRuntime(scheduler, 1);
 
-        LPCObjectHandle object = runtime.loadSource("smoke/destructed_callout.c", """
+        LPCObjectHandle object = runtime.loadSource("smoke/destructed_deferred_callback.c", """
                 int calls;
 
                 void start() {
@@ -2456,15 +2477,15 @@ final class CompilerSmokeTest {
                 }
 
                 void call_out(string method, int delay) {
-                    jvmud_call_out(method, delay);
+                    jvmud_schedule_deferred_callback(method, delay);
                 }
 
                 void call_out(string method, int delay, mixed arg) {
-                    jvmud_call_out(method, delay, arg);
+                    jvmud_schedule_deferred_callback(method, delay, arg);
                 }
 
                 int remove_call_out(string method) {
-                    return jvmud_remove_call_out(method);
+                    return jvmud_cancel_deferred_callback(method);
                 }
                 """);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()

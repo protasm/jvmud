@@ -51,6 +51,9 @@ void init() {
   add_action("direction", "d");
   add_action("examine", "examine");
   add_action("examine", "exa");
+  add_action("take", "take");
+  add_action("take", "get");
+  add_action("drop", "drop");
   add_action("inventory", "inventory");
   add_action("inventory", "i");
   add_action("help", "help");
@@ -74,8 +77,21 @@ string short() {
   return display_name;
 }
 
+void describe(object viewer) {
+  if (viewer == this_object()) {
+    write("You are " + display_name + ", a visiting Persona exploring LPMuseum.\n");
+  } else {
+    write(display_name + " is a visiting Persona exploring LPMuseum.\n");
+  }
+}
+
 int id(mixed value) {
-  return value == display_name || value == persona_name || value == "visitor" || value == "persona" || value == "me";
+  if (!value) {
+    return 0;
+  }
+  value = lower_case(value);
+  return value == persona_name || value == lower_case(display_name)
+      || value == "visitor" || value == "persona" || value == "me";
 }
 
 int look(mixed target) {
@@ -108,6 +124,54 @@ int examine(mixed target) {
   }
 
   return look(target);
+}
+
+int take(mixed target) {
+  object place;
+  object item;
+
+  if (!target) {
+    write("Take what?\n");
+    return 1;
+  }
+
+  place = environment(this_object());
+  item = present(target, place);
+  if (!item) {
+    write("You do not see that here.\n");
+    return 1;
+  }
+  if (!call_other(item, "can_take", this_object())) {
+    write("That is part of the museum display.\n");
+    return 1;
+  }
+
+  move_object(item, this_object());
+  write("You take " + call_other(item, "short") + ".\n");
+  tell_place_except(place, display_name + " takes " + call_other(item, "short") + ".\n", this_object());
+  return 1;
+}
+
+int drop(mixed target) {
+  object place;
+  object item;
+
+  if (!target) {
+    write("Drop what?\n");
+    return 1;
+  }
+
+  item = present(target, this_object());
+  if (!item) {
+    write("You are not carrying that.\n");
+    return 1;
+  }
+
+  place = environment(this_object());
+  move_object(item, place);
+  write("You drop " + call_other(item, "short") + ".\n");
+  tell_place_except(place, display_name + " drops " + call_other(item, "short") + ".\n", this_object());
+  return 1;
 }
 
 int go(mixed destination) {
@@ -149,10 +213,10 @@ int move_player(mixed movement) {
   }
 
   old_place = environment(this_object());
-  tell_place(old_place, display_name + " leaves " + direction + ".\n");
+  tell_place_except(old_place, display_name + " leaves " + direction + ".\n", this_object());
   move_object(this_object(), destination);
   new_place = environment(this_object());
-  tell_place(new_place, display_name + " arrives.\n");
+  tell_place_except(new_place, display_name + " arrives.\n", this_object());
   call_other(new_place, "describe", this_object());
   return 1;
 }
@@ -251,4 +315,34 @@ int who(mixed ignored) {
 int whoami(mixed ignored) {
   write("You are " + display_name + ", a JVMud Player with this Telnet Session bound to a museum Persona.\n");
   return 1;
+}
+
+void list_present_personas(object viewer) {
+  object *connected;
+  object persona;
+  int index;
+
+  connected = users();
+  index = 0;
+  while (index < sizeof(connected)) {
+    persona = connected[index];
+    if (persona != viewer && environment(persona) == environment(viewer)) {
+      write(call_other(persona, "query_name") + " is here.\n");
+    }
+    index = index + 1;
+  }
+}
+
+void list_vended_entities(object viewer) {
+  object place;
+  object item;
+
+  place = environment(viewer);
+  item = first_inventory(place);
+  while (item) {
+    if (item != viewer && call_other(item, "is_vended_entity")) {
+      write(call_other(item, "short") + "\n");
+    }
+    item = next_inventory(item);
+  }
 }

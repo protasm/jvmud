@@ -1,4 +1,10 @@
 void reset(mixed first_load) {
+  object machine;
+
+  if (!present("vending machine", this_object())) {
+    machine = clone_object("entity/vending_machine");
+    move_object(machine, this_object());
+  }
 }
 
 void init() {
@@ -14,9 +20,14 @@ void describe(object viewer) {
   write("The Persona owns general commands; Places own exits; Entities own local affordances.\n");
   write("Try demo time, demo users, demo inventory, demo dispatch, or demo signal.\n");
   write("The concourse is west.\n");
-  if (present("staffer", this_object())) {
-    write("A kind museum security staffer is here, watching the workshop with gentle patience.\n");
+  if (present("vending machine", this_object())) {
+    write("Entity Vending Machine\n");
   }
+  if (present("staffer", this_object())) {
+    write("Museum Security Staffer\n");
+  }
+  call_other(viewer, "list_vended_entities", viewer);
+  call_other(viewer, "list_present_personas", viewer);
 }
 
 void long(mixed str) {

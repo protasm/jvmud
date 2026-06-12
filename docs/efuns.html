@@ -243,16 +243,16 @@
               <td>Schedules or cancels recurring temporal work for the current mudlib object.</td>
             </tr>
             <tr>
-              <td><code>void jvmud_call_out(string method, int delay)</code></td>
-              <td>Compatibility placeholder for delayed callback requests.</td>
+              <td><code>void jvmud_schedule_deferred_callback(string method, int delay)</code></td>
+              <td>Schedules one deferred callback on the current Entity.</td>
             </tr>
             <tr>
-              <td><code>void jvmud_call_out(string method, int delay, mixed arg)</code></td>
-              <td>Compatibility placeholder for delayed callback requests with one argument.</td>
+              <td><code>void jvmud_schedule_deferred_callback(string method, int delay, mixed arg)</code></td>
+              <td>Schedules one deferred callback with one argument on the current Entity.</td>
             </tr>
             <tr>
-              <td><code>int jvmud_remove_call_out(string method)</code></td>
-              <td>Compatibility placeholder; currently returns <code>-1</code>.</td>
+              <td><code>int jvmud_cancel_deferred_callback(string method)</code></td>
+              <td>Cancels a pending deferred callback on the current Entity.</td>
             </tr>
           </tbody>
         </table>

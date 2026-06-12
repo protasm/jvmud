@@ -10,6 +10,7 @@ import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.runtime.MudlibProjection;
+import io.github.protasm.jvmud.runtime.OutgoingTextFormatter;
 import io.github.protasm.jvmud.runtime.PersonaId;
 import io.github.protasm.jvmud.runtime.PersonaRecord;
 import io.github.protasm.jvmud.runtime.PlayerId;
@@ -57,7 +58,7 @@ public final class RuntimeContext {
             Collections.newSetFromMap(new IdentityHashMap<>());
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
     private final Map<Object, ScheduledTask> recurringTickTasks = new IdentityHashMap<>();
-    private final Map<Object, Map<String, ScheduledTask>> callOutTasks = new IdentityHashMap<>();
+    private final Map<Object, Map<String, ScheduledTask>> deferredCallbackTasks = new IdentityHashMap<>();
     private final Map<PlayerId, PlayerRecord> players = new LinkedHashMap<>();
     private final Map<SessionId, SessionBinding> sessions = new LinkedHashMap<>();
     private final Map<PersonaId, PersonaRecord> personas = new LinkedHashMap<>();
@@ -240,16 +241,20 @@ public final class RuntimeContext {
         if (binding != null) {
             deliverToSession(binding, value);
         } else {
-            String text = messageText(value);
+            String text = formattedMessageText(value);
             outputTranscript.append(text);
             outputSink.accept(text);
         }
     }
 
     private void deliverToSession(SessionBinding binding, Object value) {
-        String text = messageText(value);
+        String text = formattedMessageText(value);
         outputTranscript.append(text);
         binding.outputSink().accept(text);
+    }
+
+    private String formattedMessageText(Object value) {
+        return OutgoingTextFormatter.wrap(messageText(value), mudlibBoundary.maxLineLength());
     }
 
     private String messageText(Object value) {
@@ -860,7 +865,7 @@ public final class RuntimeContext {
             detachSessionFromRecords(binding);
         }
         cancelRecurringTick(object);
-        cancelCallOuts(object);
+        cancelDeferredCallbacks(object);
         List<Object> contents = new ArrayList<>(inventoryFor(object));
         for (Object child : contents) {
             moveObject(child, null);
@@ -880,7 +885,7 @@ public final class RuntimeContext {
         }
     }
 
-    public void scheduleCallOut(String methodName, int delaySeconds, Object... args) {
+    public void scheduleDeferredCallback(String methodName, int delaySeconds, Object... args) {
         if (methodName == null || methodName.isBlank()) {
             return;
         }
@@ -893,18 +898,18 @@ public final class RuntimeContext {
             return;
         }
 
-        Map<String, ScheduledTask> tasks = callOutTasks.computeIfAbsent(target, ignored -> new LinkedHashMap<>());
+        Map<String, ScheduledTask> tasks = deferredCallbackTasks.computeIfAbsent(target, ignored -> new LinkedHashMap<>());
         ScheduledTask previous = tasks.remove(methodName);
         if (previous != null) {
             previous.cancel();
         }
 
         Object[] invocationArgs = args == null ? new Object[0] : args.clone();
-        ScheduledTask task = scheduler.scheduleAfter(delaySeconds, () -> deliverCallOut(target, methodName, invocationArgs));
+        ScheduledTask task = scheduler.scheduleAfter(delaySeconds, () -> deliverDeferredCallback(target, methodName, invocationArgs));
         tasks.put(methodName, task);
     }
 
-    public int removeCallOut(String methodName) {
+    public int cancelDeferredCallback(String methodName) {
         if (methodName == null) {
             return -1;
         }
@@ -914,7 +919,7 @@ public final class RuntimeContext {
             return -1;
         }
 
-        Map<String, ScheduledTask> tasks = callOutTasks.get(target);
+        Map<String, ScheduledTask> tasks = deferredCallbackTasks.get(target);
         if (tasks == null) {
             return -1;
         }
@@ -926,7 +931,7 @@ public final class RuntimeContext {
 
         task.cancel();
         if (tasks.isEmpty()) {
-            callOutTasks.remove(target);
+            deferredCallbackTasks.remove(target);
         }
         return 0;
     }
@@ -961,8 +966,8 @@ public final class RuntimeContext {
         }
     }
 
-    private void cancelCallOuts(Object target) {
-        Map<String, ScheduledTask> tasks = callOutTasks.remove(target);
+    private void cancelDeferredCallbacks(Object target) {
+        Map<String, ScheduledTask> tasks = deferredCallbackTasks.remove(target);
         if (tasks == null) {
             return;
         }
@@ -991,12 +996,12 @@ public final class RuntimeContext {
         }
     }
 
-    private void deliverCallOut(Object target, String methodName, Object[] args) {
-        Map<String, ScheduledTask> tasks = callOutTasks.get(target);
+    private void deliverDeferredCallback(Object target, String methodName, Object[] args) {
+        Map<String, ScheduledTask> tasks = deferredCallbackTasks.get(target);
         if (tasks != null) {
             tasks.remove(methodName);
             if (tasks.isEmpty()) {
-                callOutTasks.remove(target);
+                deferredCallbackTasks.remove(target);
             }
         }
 

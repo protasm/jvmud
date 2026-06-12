@@ -24,6 +24,8 @@ final class MudlibBoundaryTest {
         assertTrue(boundary.boundaryObjectPath().isEmpty());
         assertTrue(boundary.mfunObjectPath().isEmpty());
         assertTrue(boundary.lifecycleEvents().isEmpty());
+        assertEquals(80, boundary.maxLineLength());
+        assertFalse(boundary.showRuler());
     }
 
     @Test
@@ -98,6 +100,8 @@ final class MudlibBoundaryTest {
                 mfun_object = /jvmud/mfuns.c
                 player_object = /obj/player.c
                 player_prompt = "> "
+                max_line_length = 40
+                show_ruler = true
                 initial_place = room/village/vill_green
                 preload_file = init_file
                 preload_objects = obj/torch, obj/money.c
@@ -119,6 +123,8 @@ final class MudlibBoundaryTest {
         assertEquals("jvmud/mfuns", boundary.mfunObjectPath().orElseThrow());
         assertEquals("obj/player", boundary.playerObjectPath().orElseThrow());
         assertEquals("> ", boundary.playerPrompt().orElseThrow());
+        assertEquals(40, boundary.maxLineLength());
+        assertTrue(boundary.showRuler());
         assertEquals("room/village/vill_green", boundary.initialPlacePath().orElseThrow());
         assertEquals("init_file", boundary.preloadFilePath().orElseThrow());
         assertTrue(boundary.preloadObjectPaths().contains("obj/torch"));
@@ -148,5 +154,31 @@ final class MudlibBoundaryTest {
 
         assertEquals("persona/visitor", boundary.playerObjectPath().orElseThrow());
         assertEquals("place/concourse", boundary.initialPlacePath().orElseThrow());
+    }
+
+    @Test
+    void rejectsMaxLineLengthsOutsideSupportedRange() {
+        assertThrows(IllegalArgumentException.class, () -> MudlibBoundary.builder()
+                .maxLineLength(19)
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> MudlibBoundary.builder()
+                .maxLineLength(141)
+                .build());
+    }
+
+    @Test
+    void configReaderParsesBooleanAliasesForRuler() throws IOException {
+        Path config = tempDir.resolve("jvmud").resolve("lpmuseum.config");
+        Files.createDirectories(config.getParent());
+        Files.writeString(config, """
+                mudlib_root = ..
+                max_line_length = 140
+                show_ruler = yes
+                """);
+
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/lpmuseum.config");
+
+        assertEquals(140, boundary.maxLineLength());
+        assertTrue(boundary.showRuler());
     }
 }
