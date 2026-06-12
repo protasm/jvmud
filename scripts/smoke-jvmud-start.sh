@@ -4,15 +4,7 @@ set -euo pipefail
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT_DIR"
 
-PORT=$(
-  python3 - <<'PY'
-import socket
-
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    sock.bind(("127.0.0.1", 0))
-    print(sock.getsockname()[1])
-PY
-)
+PORT=4000
 
 TMP_BASE=${TMPDIR:-/tmp}
 TMP_BASE=${TMP_BASE%/}
@@ -37,12 +29,7 @@ trap 'status=$?; cleanup "$status"; exit "$status"' EXIT
 
 rm -f "$SMOKE_PLAYER_FILE"
 
-./jvmud-start \
-  -mudlib-dir mudlibs/lp245 \
-  -port "$PORT" \
-  -host 127.0.0.1 \
-  -config jvmud/lp245.config \
-  >"$LOG_FILE" 2>&1 &
+./jvmud-start mudlibs/lp245/jvmud/lp245.config >"$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 
 python3 - "$PORT" <<'PY'

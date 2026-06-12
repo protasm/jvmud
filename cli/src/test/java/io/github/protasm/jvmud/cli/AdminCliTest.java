@@ -55,7 +55,7 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
+        cli.execute("boot " + configFile());
         cli.execute("load room");
         cli.execute("clone thing");
         cli.execute("move thing room");
@@ -94,7 +94,7 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
+        cli.execute("boot " + configFile());
         cli.execute("pwd");
         cli.execute("ls");
         cli.execute("cd room");
@@ -114,11 +114,11 @@ final class AdminCliTest {
     }
 
     @Test
-    void virtualFilesystemRejectsPathsOutsideMudlibRoot() {
+    void virtualFilesystemRejectsPathsOutsideMudlibRoot() throws Exception {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
+        cli.execute("boot " + configFile());
         cli.execute("cd ..");
         cli.execute("cat ../outside.txt");
 
@@ -185,7 +185,7 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
+        cli.execute("boot " + configFile());
         cli.execute("verbosity quiet");
         cli.execute("load quiet");
         cli.execute("verbosity watch");
@@ -212,7 +212,7 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("b " + tempDir);
+        cli.execute("b " + configFile());
         cli.execute("cd room");
         cli.execute("pwd");
         cli.execute("ls");
@@ -291,7 +291,7 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
+        cli.execute("boot " + configFile());
         cli.execute("load thing");
         cli.execute("call thing short");
 
@@ -328,7 +328,7 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
+        cli.execute("boot " + configFile());
         cli.execute("pp tool");
         cli.execute("s tool");
         cli.execute("p tool");
@@ -374,7 +374,7 @@ final class AdminCliTest {
         StringWriter transcript = new StringWriter();
         AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
 
-        cli.execute("boot " + tempDir);
+        cli.execute("boot " + tempDir.resolve("jvmud/lp245.config"));
         cli.execute("objects");
 
         String output = transcript.toString();
@@ -382,6 +382,15 @@ final class AdminCliTest {
         assertTrue(output.contains("(no objects)"));
         assertFalse(output.contains("room/village/vill_green : room/village/vill_green"));
         assertFalse(output.contains("local/player"));
+    }
+
+    private Path configFile() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Path configFile = tempDir.resolve("jvmud/test.config");
+        if (!Files.exists(configFile)) {
+            Files.writeString(configFile, "");
+        }
+        return configFile;
     }
 
 }

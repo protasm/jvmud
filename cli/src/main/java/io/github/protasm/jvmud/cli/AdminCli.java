@@ -37,6 +37,8 @@ import java.util.stream.Stream;
 
 /** Local JVMud administration shell backed by the real runtime. */
 public final class AdminCli {
+    private static final Path DEFAULT_CONFIG_FILE = Path.of("mudlibs", "lpmuseum", "jvmud", "lpmuseum.config");
+
     private final PrintWriter out;
     private final Map<String, Object> handles = new java.util.LinkedHashMap<>();
     private final Map<Object, String> objectNames = new IdentityHashMap<>();
@@ -52,11 +54,13 @@ public final class AdminCli {
     }
 
     public static void main(String[] args) throws IOException {
+        if (args.length > 1) {
+            throw new IllegalArgumentException("Usage: ./jvmud-admin [mudlib-config-file]");
+        }
         PrintWriter out = new PrintWriter(System.out, true);
         AdminCli cli = new AdminCli(out);
-        Path mudlib = (args.length > 0) ? Path.of(args[0]) : Path.of("mudlibs", "lp245");
-        String configObjectPath = (args.length > 1) ? args[1] : MudlibBoot.DEFAULT_CONFIG_PATH;
-        cli.boot(mudlib, configObjectPath);
+        Path configFile = args.length == 1 ? Path.of(args[0]) : DEFAULT_CONFIG_FILE;
+        cli.bootConfig(configFile);
         cli.run(new BufferedReader(new InputStreamReader(System.in)));
     }
 
@@ -94,9 +98,7 @@ public final class AdminCli {
         try {
             switch (canonicalName) {
             case "help" -> help();
-            case "boot" -> boot(
-                    command.pathArgument(0, Path.of("mudlibs", "lp245")),
-                    command.optional(1, MudlibBoot.DEFAULT_CONFIG_PATH));
+            case "boot" -> bootConfig(command.pathArgument(0, DEFAULT_CONFIG_FILE));
             case "pwd" -> pwd();
             case "cd" -> cd(command.optional(0, "/"));
             case "ls" -> ls(command.optional(0, "."));
@@ -136,6 +138,14 @@ public final class AdminCli {
         boot(mudlibRoot, MudlibBoot.DEFAULT_CONFIG_PATH);
     }
 
+    public void bootConfig(Path configFile) {
+        Path resolvedConfigFile = resolveConfigFile(configFile);
+        Path mudlibRoot = mudlibRootForConfigFile(resolvedConfigFile);
+        String configObjectPath = mudlibRoot.relativize(resolvedConfigFile).toString()
+                .replace('\\', '/');
+        boot(mudlibRoot, configObjectPath);
+    }
+
     public void boot(Path mudlibRoot, String configObjectPath) {
         this.mudlibRoot = mudlibRoot.toAbsolutePath().normalize();
         this.virtualCwd = Path.of("");
@@ -169,10 +179,49 @@ public final class AdminCli {
         }
     }
 
+    private static Path mudlibRootForConfigFile(Path configFile) {
+        Path normalized = resolveConfigFile(configFile);
+        Path configDir = normalized.getParent();
+        if (configDir == null) {
+            throw new IllegalArgumentException("Config file must have a parent directory: " + configFile);
+        }
+        if ("jvmud".equals(configDir.getFileName().toString())) {
+            Path root = configDir.getParent();
+            if (root == null) {
+                throw new IllegalArgumentException("Config file must live inside a mudlib root: " + configFile);
+            }
+            return root;
+        }
+        return configDir;
+    }
+
+    private static Path resolveConfigFile(Path configFile) {
+        if (configFile.isAbsolute()) {
+            return configFile.normalize();
+        }
+        return launchRoot().resolve(configFile).normalize();
+    }
+
+    private static Path launchRoot() {
+        Path cwd = Path.of("").toAbsolutePath().normalize();
+        if (isRepositoryRoot(cwd)) {
+            return cwd;
+        }
+        Path parent = cwd.getParent();
+        if (parent != null && isRepositoryRoot(parent)) {
+            return parent;
+        }
+        return cwd;
+    }
+
+    private static boolean isRepositoryRoot(Path path) {
+        return Files.exists(path.resolve("pom.xml")) && Files.isDirectory(path.resolve("mudlibs"));
+    }
+
     private void help() {
         out.println("Admin commands:");
         helpLine("h", "help", "Show this command reference.");
-        helpLine("b", "boot [mudlib] [config]", "Start a fresh mudlib sandbox without a player session.");
+        helpLine("b", "boot [mudlib-config-file]", "Start a fresh mudlib sandbox without a player session.");
         helpLine("", "call <handle> <method> [args...]", "Invoke a method on a loaded object handle.");
         helpLine("", "cat <path>", "Print a file from the virtual mudlib filesystem.");
         helpLine("", "cd [path]", "Change the current virtual mudlib directory.");
@@ -560,7 +609,7 @@ public final class AdminCli {
     private String syntaxFor(String command) {
         return switch (command) {
         case "help" -> "help";
-        case "boot" -> "boot [mudlib] [config]";
+        case "boot" -> "boot [mudlib-config-file]";
         case "call" -> "call <handle> <method> [args...]";
         case "cat" -> "cat <path>";
         case "cd" -> "cd [path]";

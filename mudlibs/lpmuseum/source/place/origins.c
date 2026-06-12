@@ -1,4 +1,8 @@
 void reset(mixed first_load) {
+  object model;
+
+  model = clone_object("entity/engine_model");
+  move_object(model, this_object());
 }
 
 void init() {
@@ -6,16 +10,37 @@ void init() {
   add_action("south", "s");
   add_action("east", "east");
   add_action("east", "e");
+  add_action("go", "go");
+}
+
+void describe(object viewer) {
+  write("Origins Gallery\n");
+  write("This gallery names JVMud concepts before any exhibit vocabulary appears.\n");
+  write("An engine model rests in the center of the Place.\n");
+  write("The concourse is south; the portal hall is east.\n");
+  if (present("staffer", this_object())) {
+    write("A kind museum security staffer is here, making sure the quiet stays welcoming.\n");
+  }
 }
 
 void long(mixed str) {
-  write("Origins Wing\n");
-  write("Cases of early LPC craft line the walls. To the east, a lit placard reads: LP245.\n");
-  write("The grand concourse waits back to the south.\n");
+  describe(this_player());
 }
 
 string short() {
-  return "Origins Wing";
+  return "Origins Gallery";
+}
+
+int go(mixed destination) {
+  if (destination == "south" || destination == "concourse") {
+    return south(0);
+  }
+  if (destination == "east" || destination == "portal" || destination == "portal hall") {
+    return east(0);
+  }
+
+  write("You can't go that way.\n");
+  return 1;
 }
 
 int south(mixed str) {
@@ -23,5 +48,5 @@ int south(mixed str) {
 }
 
 int east(mixed str) {
-  return call_other(this_player(), "move_player", "east#place/lp245");
+  return call_other(this_player(), "move_player", "east#place/portal_hall");
 }

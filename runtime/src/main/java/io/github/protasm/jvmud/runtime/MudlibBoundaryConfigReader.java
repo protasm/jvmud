@@ -29,7 +29,7 @@ public final class MudlibBoundaryConfigReader {
         builder.mudlibRootPath(resolveMudlibRootPath(configFile, mudlibRoot, firstValue(values, "mudlib_root")));
         addString(builder::boundaryObjectPath, firstValue(values, "mudlib_object"));
         addString(builder::mfunObjectPath, firstValue(values, "mfun_object"));
-        addString(builder::playerObjectPath, firstValue(values, "player_object"));
+        addString(builder::playerObjectPath, firstValue(values, "persona_object", "player_object"));
         String playerPrompt = firstValue(values, "player_prompt");
         if (playerPrompt == null) {
             playerPrompt = firstValue(values, "command_prompt");
@@ -115,9 +115,14 @@ public final class MudlibBoundaryConfigReader {
         return value;
     }
 
-    private static String firstValue(Map<String, List<String>> values, String key) {
-        List<String> matches = values.get(key);
-        return matches == null || matches.isEmpty() ? null : matches.get(0);
+    private static String firstValue(Map<String, List<String>> values, String... keys) {
+        for (String key : keys) {
+            List<String> matches = values.get(key);
+            if (matches != null && !matches.isEmpty()) {
+                return matches.get(0);
+            }
+        }
+        return null;
     }
 
     private static List<String> allValues(Map<String, List<String>> values, String key) {

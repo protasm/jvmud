@@ -35,7 +35,7 @@ final class TelnetServerTest {
     void telnetServerLaunchOptionsDefaultToLocalMudlibStart() {
         TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[0]);
 
-        assertEquals(Path.of("mudlibs", "lpmuseum"), options.mudlibRoot());
+        assertEquals(repositoryRoot().resolve("mudlibs/lpmuseum"), options.mudlibRoot());
         assertEquals(4000, options.port());
         assertEquals("localhost", options.bindAddress());
         assertEquals(MudlibBoot.DEFAULT_CONFIG_PATH, options.configObjectPath());
@@ -43,30 +43,22 @@ final class TelnetServerTest {
     }
 
     @Test
-    void telnetServerLaunchOptionsAcceptNamedFlags() {
+    void telnetServerLaunchOptionsAcceptSingleConfigFileArgument() {
         TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {
-                "-mudlib-dir", "mudlibs/lp245",
-                "-port", "4303",
-                "-host", "127.0.0.1",
-                "-config", "jvmud/lp245.config"
+                "mudlibs/lp245/jvmud/lp245.config"
         });
 
-        assertEquals(Path.of("mudlibs", "lp245"), options.mudlibRoot());
-        assertEquals(4303, options.port());
-        assertEquals("127.0.0.1", options.bindAddress());
+        assertEquals(repositoryRoot().resolve("mudlibs/lp245"), options.mudlibRoot());
+        assertEquals(4000, options.port());
+        assertEquals("localhost", options.bindAddress());
         assertEquals("jvmud/lp245.config", options.configObjectPath());
     }
 
     @Test
-    void telnetServerLaunchOptionsStillAcceptLegacyPositionals() {
-        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {
-                "custom-mudlib", "4303", "0.0.0.0", "custom/config"
-        });
+    void telnetServerLaunchOptionsAcceptHelp() {
+        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {"--help"});
 
-        assertEquals(Path.of("custom-mudlib"), options.mudlibRoot());
-        assertEquals(4303, options.port());
-        assertEquals("0.0.0.0", options.bindAddress());
-        assertEquals("custom/config", options.configObjectPath());
+        assertTrue(options.help());
     }
 
     @Test
@@ -74,54 +66,150 @@ final class TelnetServerTest {
         assertThrows(IllegalArgumentException.class, () ->
                 TelnetServer.parseLaunchOptions(new String[] {"-port"}));
         assertThrows(IllegalArgumentException.class, () ->
-                TelnetServer.parseLaunchOptions(new String[] {"-port", "70000"}));
+                TelnetServer.parseLaunchOptions(new String[] {"mudlibs/lpmuseum/jvmud/lpmuseum.config", "extra"}));
         assertThrows(IllegalArgumentException.class, () ->
                 TelnetServer.parseLaunchOptions(new String[] {"-bogus", "value"}));
     }
 
     @Test
-    void lpmuseumIsDefaultTelnetMudlibAndTransfersIntoLp245AsVisitor() throws Exception {
-        Path mudlibs = tempDir.resolve("mudlibs");
-        Path museum = mudlibs.resolve("lpmuseum");
-        Path lp245 = mudlibs.resolve("lp245");
-        installMuseumMudlib(museum);
-        installLp245ExhibitMudlib(lp245);
+    void lpmuseumIsDefaultStandaloneNativeMudlib() throws Exception {
+        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
 
         try (TelnetServer server = new TelnetServer(
                 "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
             server.start();
+            assertEquals("preload manifest: none declared.", server.preloadSummary());
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                String initial = readUntilContains(socket, "in place/concourse");
-                assertTrue(initial.contains("in place/concourse"), initial);
+                String initial = readUntilQuietAfterContains(socket, "What is your name today? ");
+                assertTrue(initial.contains("Attached player 1 as persona/visitor#clone in place/concourse"), initial);
+                assertTrue(initial.contains("What is your name today? "), initial);
+
+                socket.getOutputStream().write("protasm\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String greeting = readUntilQuietAfterContains(socket, "Welcome to LPMuseum.");
+                assertTrue(greeting.contains("Hi, Protasm! Welcome to LPMuseum."), greeting);
+                assertTrue(greeting.contains("Protasm enters LPMuseum through the museum doors."), greeting);
 
                 socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilContains(socket, "Grand Concourse").contains("Grand Concourse"));
+                String concourse = readUntilQuietAfterContains(socket, "directory and a docent");
+                assertTrue(concourse.contains("Grand Concourse of LPMuseum"), concourse);
+                assertTrue(concourse.contains("A kind museum security staffer is here"), concourse);
+
+                socket.getOutputStream().write("look staffer\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String staffer = readUntilQuietAfterContains(socket, "soft blue jacket");
+                assertTrue(staffer.contains("gentle patrol is driven by LPMuseum's timed heartbeat"), staffer);
+
+                socket.getOutputStream().write("north\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String originsWithStaffer = readUntilQuietAfterContains(socket, "Origins Gallery");
+                assertTrue(originsWithStaffer.contains("Protasm leaves north."), originsWithStaffer);
+                assertTrue(originsWithStaffer.contains("Protasm arrives."), originsWithStaffer);
+                assertFalse(originsWithStaffer.contains("enters LPMuseum through the museum doors"), originsWithStaffer);
+
+                socket.getOutputStream().write("south\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "Grand Concourse of LPMuseum")
+                        .contains("Grand Concourse of LPMuseum"));
+
+                socket.getOutputStream().write("examine directory\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "four native JVMud Places").contains("four native JVMud Places"));
+
+                socket.getOutputStream().write("south\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "You can't go that way.").contains("You can't go that way."));
+
+                socket.getOutputStream().write("say hello museum\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "Protasm says: hello museum").contains("Protasm says: hello museum"));
+
+                socket.getOutputStream().write("say to docent hello\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "Protasm says to docent: hello").contains("Protasm says to docent: hello"));
+
+                socket.getOutputStream().write("who\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String who = readUntilQuietAfterContains(socket, "Connected Personas in LPMuseum: 1");
+                assertTrue(who.contains("Protasm"), who);
+                assertTrue(who.contains("persona/visitor#clone"), who);
+                assertTrue(who.contains("from 127.0.0.1"), who);
+
+                socket.getOutputStream().write("smile\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "Protasm smiles.").contains("Protasm smiles."));
+
+                socket.getOutputStream().write("wave docent\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "Protasm waves docent.").contains("Protasm waves docent."));
+
+                socket.getOutputStream().write("go east\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "Creator Workshop").contains("Creator Workshop"));
+
+                socket.getOutputStream().write("demo time\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "ctime(time())").contains("time() ->"));
+
+                socket.getOutputStream().write("go west\nnorth\neast\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "Portal Hall").contains("Portal Hall"));
 
                 socket.getOutputStream().write("enter portal\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String transfer = readUntilQuietAfterContains(socket, "The exhibit portal opens.");
-                assertTrue(transfer.contains("The exhibit portal opens."), transfer);
-                assertFalse(transfer.contains("LP245 login should not run"), transfer);
+                String portal = readUntilQuietAfterContains(socket, "No exhibit is mounted here yet.");
+                assertTrue(portal.contains("The portal is quiet."), portal);
+                assertFalse(portal.contains("The exhibit portal opens."), portal);
 
-                socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String exhibit = readUntilQuietAfterContains(socket, "LP245 church.");
-                assertTrue(exhibit.contains("LP245 church."), exhibit);
-                assertFalse(exhibit.contains("LP245 login should not run"), exhibit);
-
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
+                String quit = readUntilSocketClosed(socket);
+                assertTrue(quit.contains("You step away from LPMuseum."), quit);
+                assertFalse(quit.contains("You can't do that."), quit);
             }
         }
     }
 
     @Test
-    void telnetServerReportsInitFilePreloadSummary() throws Exception {
+    void lpmuseumStafferPatrolsNoMoreThanEveryThirtyTicks() {
+        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
+                .baseIncludePath(museum)
+                .build());
+        EngineEfuns.registerCore(runtime);
+
+        MudlibBootResult result = new MudlibBoot(runtime, museum, MudlibBoot.DEFAULT_CONFIG_PATH, false).boot();
+        Object concourse = runtime.loadOrGetObject("place/concourse");
+        Object staffer = runtime.present("staffer", concourse);
+        Object preloadedStaffer = runtime.loadOrGetObject("entity/staffer");
+
+        assertTrue(staffer != null);
+        assertEquals("place/concourse", runtime.objectId(runtime.environment(staffer)));
+        assertEquals(null, runtime.environment(preloadedStaffer));
+
+        result.worldRuntime().scheduler().advanceBy(29);
+        assertEquals("place/concourse", runtime.objectId(runtime.environment(staffer)));
+        assertEquals(null, runtime.environment(preloadedStaffer));
+
+        result.worldRuntime().scheduler().advanceBy(1);
+        String destination = runtime.objectId(runtime.environment(staffer));
+        assertTrue(List.of("place/origins", "place/workshop", "place/archive").contains(destination), destination);
+        assertEquals(null, runtime.environment(preloadedStaffer));
+    }
+
+    @Test
+    void telnetServerReportsExplicitPreloadManifestSummary() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve(MudlibBoot.LP245_CONFIG_PATH), """
+                mfun_object = jvmud/mfuns
+                initial_place = room/village/vill_green
+                preload_file = init_file
+                """);
         Files.writeString(tempDir.resolve("init_file"), """
                 obj/preload
                 obj/broken
@@ -143,7 +231,7 @@ final class TelnetServerTest {
             server.start();
 
             assertEquals(
-                    "init_file preload: compiled 1 object(s), skipped 1 object(s). Skipped: obj/broken",
+                    "preload manifest init_file: compiled 1 object(s), skipped 1 object(s). Skipped: obj/broken",
                     server.preloadSummary());
         }
     }
@@ -932,11 +1020,17 @@ final class TelnetServerTest {
     }
 
     @Test
-    void bootPreloadsInitFileAndRegistersStartingRoomWithoutPlayerHandle() throws Exception {
+    void bootPreloadsExplicitManifestAndRegistersStartingPlaceWithoutPlayerHandle() throws Exception {
         installMfunShim();
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room"));
         Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve(MudlibBoot.DEFAULT_CONFIG_PATH), """
+                mfun_object = jvmud/mfuns
+                lifecycle.object_loaded = reset
+                lifecycle.interaction_scope_started = init
+                preload_file = init_file
+                """);
         Files.writeString(tempDir.resolve("init_file"), """
                 # preload one simple object
                 obj/preload.c
@@ -990,8 +1084,8 @@ final class TelnetServerTest {
         assertEquals(null, result.actorHandle());
         assertEquals(null, result.actor());
         assertTrue(result.skippedPreloads().isEmpty());
-        assertEquals(List.of("obj/preload"), result.initFilePreloadedObjects());
-        assertTrue(result.initFileSkippedPreloads().isEmpty());
+        assertEquals(List.of("obj/preload"), result.preloadManifestPreloadedObjects());
+        assertTrue(result.preloadManifestSkippedPreloads().isEmpty());
     }
 
     @Test
@@ -1098,104 +1192,16 @@ final class TelnetServerTest {
         return output.toString();
     }
 
-    private void installMuseumMudlib(Path mudlibRoot) throws Exception {
-        Files.createDirectories(mudlibRoot.resolve("jvmud"));
-        Files.createDirectories(mudlibRoot.resolve("source/place"));
-        Files.writeString(mudlibRoot.resolve(MudlibBoot.DEFAULT_CONFIG_PATH), """
-                game_id = lpmuseum
-                game_name = LPMuseum
-                mudlib_root = ../source
-                mfun_object = jvmud/mfuns
-                player_prompt = "> "
-                initial_place = place/concourse
-                lifecycle.object_loaded = reset
-                lifecycle.interaction_scope_started = init
-                """);
-        Files.writeString(mudlibRoot.resolve("jvmud/mfuns.c"), """
-                void write(mixed value) {
-                    jvmud_write(value);
-                }
-
-                void add_action(string method, string verb) {
-                    jvmud_add_action(method, verb);
-                }
-
-                object this_player() {
-                    return jvmud_current_actor();
-                }
-
-                mixed call_other(mixed target, string method, mixed arg) {
-                    return jvmud_invoke_entity(target, method, arg);
-                }
-
-                int transfer_player_to_game(string game_id) {
-                    return jvmud_transfer_player_to_game(game_id);
-                }
-                """);
-        Files.writeString(mudlibRoot.resolve("source/place/concourse.c"), """
-                void reset(mixed first_load) {
-                }
-
-                void init() {
-                    add_action("enter", "enter");
-                }
-
-                void long(mixed str) {
-                    write("Grand Concourse\\n");
-                }
-
-                string short() {
-                    return "Grand Concourse";
-                }
-
-                int enter(mixed str) {
-                    if (str != "portal") {
-                        write("Enter what?\\n");
-                        return 1;
-                    }
-
-                    return transfer_player_to_game("vanilla-lpmud-245");
-                }
-                """);
-    }
-
-    private void installLp245ExhibitMudlib(Path mudlibRoot) throws Exception {
-        Files.createDirectories(mudlibRoot.resolve("jvmud"));
-        Files.createDirectories(mudlibRoot.resolve("source/obj"));
-        Files.createDirectories(mudlibRoot.resolve("source/room"));
-        Files.writeString(mudlibRoot.resolve(MudlibBoot.LP245_CONFIG_PATH), """
-                game_id = vanilla-lpmud-245
-                game_name = Vanilla LPMUD 2.4.5
-                mudlib_root = ../source
-                mfun_object = jvmud/mfuns
-                player_object = obj/test_player
-                player_prompt = "> "
-                initial_place = room/church
-                lifecycle.object_loaded = reset
-                lifecycle.player_session_connected = logon
-                """);
-        Files.writeString(mudlibRoot.resolve("jvmud/mfuns.c"), """
-                void write(mixed value) {
-                    jvmud_write(value);
-                }
-                """);
-        Files.writeString(mudlibRoot.resolve("source/room/church.c"), """
-                void reset(mixed first_load) {
-                }
-
-                void long(mixed str) {
-                    write("LP245 church.\\n");
-                }
-
-                string short() {
-                    return "LP245 church";
-                }
-                """);
-        Files.writeString(mudlibRoot.resolve("source/obj/test_player.c"), """
-                void logon() {
-                    write("LP245 login should not run\\n");
-                }
-                """);
+    private Path repositoryRoot() {
+        Path current = Path.of("").toAbsolutePath().normalize();
+        while (current != null) {
+            if (Files.isRegularFile(current.resolve("pom.xml"))
+                    && Files.isDirectory(current.resolve("mudlibs"))) {
+                return current;
+            }
+            current = current.getParent();
+        }
+        throw new IllegalStateException("Could not locate JVMud repository root.");
     }
 
     private String readUntilQuietAfterContains(Socket socket, String expected) throws Exception {

@@ -140,7 +140,8 @@ object runtime. After building, run it with:
 ```
 
 The launcher compiles the CLI and compiler modules, then starts the shell with
-the local build output. Optionally pass a mudlib root as the first argument.
+the local build output. Optionally pass a mudlib config file as the single
+argument.
 
 The shell is admin-only: every input line is parsed as an admin command. Commands
 include `boot`, `call`, `cat`, `cd`, `clone`, `destruct`, `inspect`, `load`,
@@ -148,9 +149,10 @@ include `boot`, `call`, `cat`, `cd`, `clone`, `destruct`, `inspect`, `load`,
 `quit`. Some commands have single-character shortcuts; run `help` in the shell
 to see the current alias list and per-command usage notes.
 
-The CLI includes a mudlib-rooted virtual filesystem. If the mudlib root is
-`/Users/jonathan/Projects/jvmud/mudlibs/lp245`, then CLI path `/` maps to that real
-directory. Filesystem commands cannot navigate above the mudlib root.
+The CLI includes a mudlib-rooted virtual filesystem. If the config file is
+`/Users/jonathan/Projects/jvmud/mudlibs/lpmuseum/jvmud/lpmuseum.config`, then
+CLI path `/` maps to `/Users/jonathan/Projects/jvmud/mudlibs/lpmuseum`.
+Filesystem commands cannot navigate above the mudlib root.
 
 Use `verbosity quiet`, `verbosity normal`, or `verbosity watch` to control shell
 output. `watch` prints compiler stage progress for commands such as `load` and
@@ -161,17 +163,16 @@ The `server` module provides the player-facing game server path. Start a mudlib
 as a persistent Telnet target with:
 
 ```text
-./jvmud-start [-mudlib-dir mudlibs/lpmuseum] [-port 4000] [-host localhost] [-config jvmud/lpmuseum.config]
+./jvmud-start [mudlib-config-file]
 ```
 
-All flags are optional. By default it serves native JVMud LPMuseum from
-`mudlibs/lpmuseum` on `localhost:4000` using `jvmud/lpmuseum.config`. Telnet
-connections arrive in the LPMuseum concourse with a host-owned JVMud persona.
-When LPMuseum routes a player through an exhibit portal, the server transfers
-that same session and display name into the exhibit as a visitor, bypassing the
-exhibit mudlib's legacy account creation or login hook where possible. To boot
-LP245 directly for compatibility testing, pass `-mudlib-dir mudlibs/lp245
--config jvmud/lp245.config`.
+The config argument is optional. By default it serves native JVMud LPMuseum from
+`mudlibs/lpmuseum/jvmud/lpmuseum.config` on `localhost:4000`. Telnet
+connections arrive in the LPMuseum concourse through the museum's own Persona
+object, command grammar, Places, and Entities. LPMuseum includes stub portal
+mount points for future exhibit mudlibs, but it does not need any exhibit
+content to boot or play. To boot LP245 directly for compatibility testing, pass
+`mudlibs/lp245/jvmud/lp245.config`.
 
 Player/world input is routed through LPC `init`, `add_action`, and `add_verb`
 registrations on nearby or carried objects. Telnet slash commands are limited

@@ -132,4 +132,21 @@ final class MudlibBoundaryTest {
         assertEquals(Duration.ofMillis(250), boundary.temporalTickInterval());
         assertEquals(0, boundary.temporalTickIntervalSeconds());
     }
+
+    @Test
+    void configReaderAcceptsNativePersonaObjectSpelling() throws IOException {
+        Path config = tempDir.resolve("jvmud").resolve("lpmuseum.config");
+        Files.createDirectories(config.getParent());
+        Files.writeString(config, """
+                game_id = lpmuseum
+                mudlib_root = ../source
+                persona_object = persona/visitor
+                initial_place = place/concourse
+                """);
+
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/lpmuseum.config");
+
+        assertEquals("persona/visitor", boundary.playerObjectPath().orElseThrow());
+        assertEquals("place/concourse", boundary.initialPlacePath().orElseThrow());
+    }
 }

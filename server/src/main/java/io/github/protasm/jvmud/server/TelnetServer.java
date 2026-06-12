@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
@@ -16,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** Starts a mudlib as a persistent telnet target for interactive JVMud sessions. */
 public final class TelnetServer implements AutoCloseable {
     public static final int DEFAULT_PORT = 4000;
-    private static final Path DEFAULT_MUDLIB_ROOT = Path.of("mudlibs", "lpmuseum");
+    private static final Path DEFAULT_CONFIG_FILE = Path.of("mudlibs", "lpmuseum", "jvmud", "lpmuseum.config");
     private static final String DEFAULT_BIND_ADDRESS = "localhost";
 
     private final String bindAddress;
@@ -64,62 +65,72 @@ public final class TelnetServer implements AutoCloseable {
     }
 
     static LaunchOptions parseLaunchOptions(String[] args) {
-        Path mudlibRoot = DEFAULT_MUDLIB_ROOT;
-        int port = DEFAULT_PORT;
-        String bindAddress = DEFAULT_BIND_ADDRESS;
-        String configObjectPath = MudlibBoot.DEFAULT_CONFIG_PATH;
-        int positional = 0;
-
-        for (int i = 0; i < args.length; i++) {
-            String arg = args[i];
-            switch (arg) {
-                case "-help", "--help" -> {
-                    return new LaunchOptions(mudlibRoot, port, bindAddress, configObjectPath, true);
-                }
-                case "-mudlib-dir", "--mudlib-dir" -> mudlibRoot = Path.of(requireValue(args, ++i, arg));
-                case "-port", "--port" -> port = parsePort(requireValue(args, ++i, arg));
-                case "-host", "--host" -> bindAddress = requireValue(args, ++i, arg);
-                case "-config", "--config" -> configObjectPath = requireValue(args, ++i, arg);
-                default -> {
-                    if (arg.startsWith("-")) {
-                        throw new IllegalArgumentException("Unknown option: " + arg);
-                    }
-                    switch (positional++) {
-                        case 0 -> mudlibRoot = Path.of(arg);
-                        case 1 -> port = parsePort(arg);
-                        case 2 -> bindAddress = arg;
-                        case 3 -> configObjectPath = arg;
-                        default -> throw new IllegalArgumentException("Too many positional arguments: " + arg);
-                    }
-                }
-            }
+        if (args.length > 1) {
+            throw new IllegalArgumentException("Too many arguments.");
         }
 
-        return new LaunchOptions(mudlibRoot, port, bindAddress, configObjectPath, false);
+        if (args.length == 1 && ("-help".equals(args[0]) || "--help".equals(args[0]))) {
+            return optionsForConfigFile(DEFAULT_CONFIG_FILE, true);
+        }
+        if (args.length == 1 && args[0].startsWith("-")) {
+            throw new IllegalArgumentException("Unknown option: " + args[0]);
+        }
+
+        Path configFile = args.length == 1 ? Path.of(args[0]) : DEFAULT_CONFIG_FILE;
+        return optionsForConfigFile(configFile, false);
     }
 
-    private static String requireValue(String[] args, int index, String option) {
-        if (index >= args.length || args[index].startsWith("-")) {
-            throw new IllegalArgumentException("Missing value for " + option);
-        }
-        return args[index];
+    private static LaunchOptions optionsForConfigFile(Path configFile, boolean help) {
+        Path resolvedConfigFile = resolveConfigFile(configFile);
+        Path mudlibRoot = mudlibRootForConfigFile(resolvedConfigFile);
+        String configObjectPath = mudlibRoot.relativize(resolvedConfigFile).toString()
+                .replace('\\', '/');
+        return new LaunchOptions(mudlibRoot, DEFAULT_PORT, DEFAULT_BIND_ADDRESS, configObjectPath, help);
     }
 
-    private static int parsePort(String value) {
-        try {
-            int port = Integer.parseInt(value);
-            if (port < 0 || port > 65535) {
-                throw new IllegalArgumentException("Port must be between 0 and 65535: " + value);
-            }
-            return port;
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Port must be an integer: " + value, e);
+    private static Path mudlibRootForConfigFile(Path configFile) {
+        Path normalized = resolveConfigFile(configFile);
+        Path configDir = normalized.getParent();
+        if (configDir == null) {
+            throw new IllegalArgumentException("Config file must have a parent directory: " + configFile);
         }
+        if ("jvmud".equals(configDir.getFileName().toString())) {
+            Path root = configDir.getParent();
+            if (root == null) {
+                throw new IllegalArgumentException("Config file must live inside a mudlib root: " + configFile);
+            }
+            return root;
+        }
+        return configDir;
+    }
+
+    private static Path resolveConfigFile(Path configFile) {
+        if (configFile.isAbsolute()) {
+            return configFile.normalize();
+        }
+        return launchRoot().resolve(configFile).normalize();
+    }
+
+    private static Path launchRoot() {
+        Path cwd = Path.of("").toAbsolutePath().normalize();
+        if (isRepositoryRoot(cwd)) {
+            return cwd;
+        }
+        Path parent = cwd.getParent();
+        if (parent != null && isRepositoryRoot(parent)) {
+            return parent;
+        }
+        return cwd;
+    }
+
+    private static boolean isRepositoryRoot(Path path) {
+        return Files.exists(path.resolve("pom.xml")) && Files.isDirectory(path.resolve("mudlibs"));
     }
 
     private static String usage() {
-        return "Usage: ./jvmud-start [-mudlib-dir mudlibs/lpmuseum] [-port 4000] "
-                + "[-host localhost] [-config jvmud/lpmuseum.config]";
+        return "Usage: ./jvmud-start [mudlib-config-file]\n"
+                + "Default: ./jvmud-start mudlibs/lpmuseum/jvmud/lpmuseum.config\n"
+                + "Listens on localhost:4000.";
     }
 
     public synchronized void start() throws IOException {
@@ -160,15 +171,22 @@ public final class TelnetServer implements AutoCloseable {
             throw new IllegalStateException("Telnet server has not been started.");
         }
         MudlibBootResult result = mud.bootResult();
+        if (result.mudlibBoundary().preloadFilePath().isEmpty()) {
+            return "preload manifest: none declared.";
+        }
+
+        String preloadFilePath = result.mudlibBoundary().preloadFilePath().orElseThrow();
         StringBuilder summary = new StringBuilder()
-                .append("init_file preload: compiled ")
-                .append(result.initFilePreloadedObjects().size())
+                .append("preload manifest ")
+                .append(preloadFilePath)
+                .append(": compiled ")
+                .append(result.preloadManifestPreloadedObjects().size())
                 .append(" object(s), skipped ")
-                .append(result.initFileSkippedPreloads().size())
+                .append(result.preloadManifestSkippedPreloads().size())
                 .append(" object(s).");
-        if (!result.initFileSkippedPreloads().isEmpty()) {
+        if (!result.preloadManifestSkippedPreloads().isEmpty()) {
             summary.append(" Skipped: ")
-                    .append(String.join(", ", result.initFileSkippedPreloads()));
+                    .append(String.join(", ", result.preloadManifestSkippedPreloads()));
         }
         return summary.toString();
     }
