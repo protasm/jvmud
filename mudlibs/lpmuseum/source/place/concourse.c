@@ -17,5 +17,5 @@ string short() {
 }
 
 int north(mixed str) {
-  return call_other(this_player(), "move_player", "north#room/origins");
+  return call_other(this_player(), "move_player", "north#place/origins");
 }

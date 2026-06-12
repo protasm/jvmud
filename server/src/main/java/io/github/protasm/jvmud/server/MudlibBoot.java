@@ -20,7 +20,8 @@ import java.util.List;
 import java.util.Objects;
 
 public final class MudlibBoot {
-    public static final String DEFAULT_CONFIG_PATH = "jvmud/lp245.config";
+    public static final String DEFAULT_CONFIG_PATH = "jvmud/lpmuseum.config";
+    public static final String LP245_CONFIG_PATH = "jvmud/lp245.config";
     static final String DEFAULT_BOUNDARY_OBJECT = "jvmud/mudlib";
     static final String DEFAULT_STARTING_ROOM = "room/village/vill_green";
     static final String DEFAULT_PRELOAD_FILE = "init_file";

@@ -26,8 +26,8 @@ final class TelnetMud implements TelnetHost {
     private final WorldRuntime worldRuntime;
     private final String gameId;
     private final Path mudlibRoot;
-    private final String startingRoomPath;
-    private final Object startingRoomObject;
+    private final String startingPlacePath;
+    private final Object startingPlaceObject;
     private final String playerObjectPath;
     private final String playerPrompt;
     private final String playerSessionConnectedMethod;
@@ -42,8 +42,8 @@ final class TelnetMud implements TelnetHost {
             WorldRuntime worldRuntime,
             String gameId,
             Path mudlibRoot,
-            String startingRoomPath,
-            Object startingRoomObject,
+            String startingPlacePath,
+            Object startingPlaceObject,
             String playerObjectPath,
             String playerPrompt,
             String playerSessionConnectedMethod,
@@ -53,8 +53,8 @@ final class TelnetMud implements TelnetHost {
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
         this.gameId = Objects.requireNonNull(gameId, "gameId");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
-        this.startingRoomPath = Objects.requireNonNull(startingRoomPath, "startingRoomPath");
-        this.startingRoomObject = Objects.requireNonNull(startingRoomObject, "startingRoomObject");
+        this.startingPlacePath = Objects.requireNonNull(startingPlacePath, "startingPlacePath");
+        this.startingPlaceObject = Objects.requireNonNull(startingPlaceObject, "startingPlaceObject");
         this.playerObjectPath = playerObjectPath;
         this.playerPrompt = playerPrompt;
         this.playerSessionConnectedMethod = playerSessionConnectedMethod;
@@ -72,10 +72,10 @@ final class TelnetMud implements TelnetHost {
         MudlibBootResult result =
                 new MudlibBoot(runtime, normalizedRoot, configObjectPath, false).boot();
         if (result.startingRoom() == null) {
-            throw new IllegalStateException("Mudlib boot did not provide a starting room.");
+            throw new IllegalStateException("Mudlib boot did not provide a starting place.");
         }
 
-        Object startingRoomObject = runtime.loadOrGetObject(result.startingRoom());
+        Object startingPlaceObject = runtime.loadOrGetObject(result.startingRoom());
         MudlibBoundary boundary = result.mudlibBoundary();
         String gameId = boundary.gameId().orElse(normalizedRoot.getFileName().toString());
         runtime.clearOutputTranscript();
@@ -85,7 +85,7 @@ final class TelnetMud implements TelnetHost {
                 gameId,
                 normalizedRoot,
                 result.startingRoom(),
-                startingRoomObject,
+                startingPlaceObject,
                 boundary.playerObjectPath().orElse(null),
                 boundary.playerPrompt().orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null),
@@ -133,8 +133,8 @@ final class TelnetMud implements TelnetHost {
         runtime.clearOutputTranscript();
     }
 
-    String startingRoomPath() {
-        return startingRoomPath;
+    String startingPlacePath() {
+        return startingPlacePath;
     }
 
     @Override
@@ -155,6 +155,15 @@ final class TelnetMud implements TelnetHost {
         return attachHostPersona(id, sessionId, out, remoteAddress, announceConnection);
     }
 
+    synchronized TelnetPersona attachVisitingPersona(
+            String sessionId,
+            PrintWriter out,
+            String remoteAddress,
+            String name) {
+        int id = nextPersonaId++;
+        return attachHostPersona(id, sessionId, out, remoteAddress, name, false);
+    }
+
     private TelnetPersona attachMudlibPlayer(
             int id,
             String sessionId,
@@ -169,14 +178,14 @@ final class TelnetMud implements TelnetHost {
             Object actor = runtime.cloneObject(playerObjectPath);
             String objectId = Objects.requireNonNullElse(runtime.objectId(actor), playerObjectPath + "#" + id);
             String name = "player " + id;
-            Place startingPlace = placeFor(startingRoomPath);
+            Place startingPlace = placeFor(startingPlacePath);
             worldRuntime.createEntity(
                     objectId,
                     name,
                     startingPlace,
                     Capability.ACTOR,
                     Capability.PERCEPTIVE);
-            runtime.moveObject(actor, startingRoomObject);
+            runtime.moveObject(actor, startingPlaceObject);
             MudlibProjection projection = new LegacyPlayerObjectAdapter(playerObjectPath)
                     .combinedProjection(actor);
             runtime.bindSession(sessionId, actor, remoteAddress, text -> {
@@ -187,7 +196,7 @@ final class TelnetMud implements TelnetHost {
             if (announceConnection) {
                 messagePlayerForSession(sessionId, CONNECTED_BANNER);
                 messagePlayerForSession(sessionId, "Attached " + name + " as " + objectId
-                        + " in " + startingRoomPath + ".\n");
+                        + " in " + startingPlacePath + ".\n");
             }
             invokePlayerSessionConnected(actor);
             return new TelnetPersona(this, sessionId, objectId, name, actor, remoteAddress);
@@ -205,9 +214,18 @@ final class TelnetMud implements TelnetHost {
             PrintWriter out,
             String remoteAddress,
             boolean announceConnection) {
+        return attachHostPersona(id, sessionId, out, remoteAddress, "player " + id, announceConnection);
+    }
+
+    private TelnetPersona attachHostPersona(
+            int id,
+            String sessionId,
+            PrintWriter out,
+            String remoteAddress,
+            String name,
+            boolean announceConnection) {
         String objectId = "persona/" + id;
-        String name = "player " + id;
-        Place startingPlace = placeFor(startingRoomPath);
+        Place startingPlace = placeFor(startingPlacePath);
         Entity entity = worldRuntime.createEntity(
                 objectId,
                 name,
@@ -216,7 +234,7 @@ final class TelnetMud implements TelnetHost {
                 Capability.PERCEPTIVE);
         LocalSessionActor actor = new LocalSessionActor(runtime, worldRuntime, entity, name);
         runtime.registerHostObject(objectId, actor);
-        runtime.moveObject(actor, startingRoomObject);
+        runtime.moveObject(actor, startingPlaceObject);
         runtime.bindSession(sessionId, actor, remoteAddress, text -> {
             out.print(text);
             out.flush();
@@ -224,7 +242,7 @@ final class TelnetMud implements TelnetHost {
         runtime.clearOutputTranscript();
         if (announceConnection) {
             messagePlayerForSession(sessionId, CONNECTED_BANNER);
-            messagePlayerForSession(sessionId, "Attached " + name + " in " + startingRoomPath + ".\n");
+            messagePlayerForSession(sessionId, "Attached " + name + " in " + startingPlacePath + ".\n");
         }
         return new TelnetPersona(this, sessionId, objectId, name, actor, remoteAddress);
     }

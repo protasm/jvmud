@@ -25,7 +25,7 @@ final class MultiMudTelnetHost implements TelnetHost {
         if ("lpmuseum".equals(defaultMud.gameId())) {
             Path siblingLp245 = defaultMud.mudlibRoot().getParent().resolve("lp245");
             if (Files.isDirectory(siblingLp245)) {
-                host.register(TelnetMud.boot(siblingLp245, MudlibBoot.DEFAULT_CONFIG_PATH));
+                host.register(TelnetMud.boot(siblingLp245, MudlibBoot.LP245_CONFIG_PATH));
             }
         }
         return host;
@@ -97,11 +97,11 @@ final class MultiMudTelnetHost implements TelnetHost {
         }
         persona.mud().detachPersona(persona, false);
         out.println("The exhibit portal opens.");
-        TelnetPersona replacement = destinationMud.attachPersona(
+        TelnetPersona replacement = destinationMud.attachVisitingPersona(
                 persona.sessionId(),
                 out,
                 persona.remoteAddress(),
-                false);
+                persona.name());
         persona.replaceWith(replacement);
     }
 

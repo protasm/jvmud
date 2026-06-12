@@ -2,8 +2,9 @@
 
 JVMud is an experimental LPC/LPMud text-world engine for the JVM. This
 repository is a monorepo: the core runtime lives under `runtime/`, the LPC
-compiler lives under `compiler/`, and vanilla LPMUD 2.4.5 mudlib source lives
-under `mudlibs/lp245/`.
+compiler lives under `compiler/`, the native JVMud LPMuseum mudlib lives under
+`mudlibs/lpmuseum/`, and vanilla LPMUD 2.4.5 exhibit source lives under
+`mudlibs/lp245/`.
 
 `PRINCIPLES.md` is the controlling design document for the engine, and
 `GLOSSARY.md` defines JVMud vocabulary. The engine is being built around
@@ -27,7 +28,8 @@ call_outs, or master objects as engine ontology.
 | `compiler/` | JVMud compiler Java source. It currently contains the LPC scanner, preprocessor, parser, semantic analysis, IR, bytecode compiler, engine function interfaces, and host-facing runtime loader classes. |
 | `server/` | JVMud game-server source. It boots a mudlib, manages shared runtime/world state, and accepts Telnet player sessions. |
 | `cli/` | JVMud local admin CLI source. It is a single-user command-line tool for filesystem navigation, object loading, inspection, invocation, and mutation. |
-| `mudlibs/lp245/` | Vanilla LPMUD 2.4.5 mudlib content. Treat upstream files as read-only unless an explicit style or formatting change is requested; add compatibility through dedicated independent shim objects. |
+| `mudlibs/lpmuseum/` | Native JVMud mudlib content. This is the free-standing Telnet landing experience and museum concourse for exhibit mudlibs. |
+| `mudlibs/lp245/` | Vanilla LPMUD 2.4.5 exhibit mudlib content. Treat upstream files as read-only unless an explicit style or formatting change is requested; add compatibility through dedicated independent shim objects. |
 | `docs/` | Static project site published from simple HTML. |
 
 ## Runtime Status
@@ -159,19 +161,24 @@ The `server` module provides the player-facing game server path. Start a mudlib
 as a persistent Telnet target with:
 
 ```text
-./jvmud-start [-mudlib-dir mudlibs/lp245] [-port 4000] [-host localhost] [-config jvmud/lp245.config]
+./jvmud-start [-mudlib-dir mudlibs/lpmuseum] [-port 4000] [-host localhost] [-config jvmud/lpmuseum.config]
 ```
 
-All flags are optional. By default it serves `mudlibs/lp245` on `localhost:4000`
-using `jvmud/lp245.config`. Starting this process boots one shared runtime and world; each
-Telnet connection attempts to attach a configured mudlib player object and falls
-back to a host-owned persona if that path fails. Player/world input is routed
-through LPC `init`, `add_action`, and `add_verb` registrations on nearby or
-carried objects. Telnet slash commands are limited to session controls such as
-`/help` and `/quit`; admin inspection and object mutation stay in the admin CLI.
-This is still an early development listener: session-to-session messaging,
-output isolation between participants, and production networking policy belong
-to later server slices.
+All flags are optional. By default it serves native JVMud LPMuseum from
+`mudlibs/lpmuseum` on `localhost:4000` using `jvmud/lpmuseum.config`. Telnet
+connections arrive in the LPMuseum concourse with a host-owned JVMud persona.
+When LPMuseum routes a player through an exhibit portal, the server transfers
+that same session and display name into the exhibit as a visitor, bypassing the
+exhibit mudlib's legacy account creation or login hook where possible. To boot
+LP245 directly for compatibility testing, pass `-mudlib-dir mudlibs/lp245
+-config jvmud/lp245.config`.
+
+Player/world input is routed through LPC `init`, `add_action`, and `add_verb`
+registrations on nearby or carried objects. Telnet slash commands are limited
+to session controls such as `/help` and `/quit`; admin inspection and object
+mutation stay in the admin CLI. This is still an early development listener:
+session-to-session messaging, output isolation between participants, and
+production networking policy belong to later server slices.
 
 To run the startup smoke test that launches `jvmud-start`, connects over TCP,
 verifies that the configured `obj/player` mudlib player object attaches, drives

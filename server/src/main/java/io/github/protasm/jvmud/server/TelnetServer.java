@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** Starts a mudlib as a persistent telnet target for interactive JVMud sessions. */
 public final class TelnetServer implements AutoCloseable {
     public static final int DEFAULT_PORT = 4000;
-    private static final Path DEFAULT_MUDLIB_ROOT = Path.of("mudlibs", "lp245");
+    private static final Path DEFAULT_MUDLIB_ROOT = Path.of("mudlibs", "lpmuseum");
     private static final String DEFAULT_BIND_ADDRESS = "localhost";
 
     private final String bindAddress;
@@ -118,8 +118,8 @@ public final class TelnetServer implements AutoCloseable {
     }
 
     private static String usage() {
-        return "Usage: ./jvmud-start [-mudlib-dir mudlibs/lp245] [-port 4000] "
-                + "[-host localhost] [-config jvmud/lp245.config]";
+        return "Usage: ./jvmud-start [-mudlib-dir mudlibs/lpmuseum] [-port 4000] "
+                + "[-host localhost] [-config jvmud/lpmuseum.config]";
     }
 
     public synchronized void start() throws IOException {

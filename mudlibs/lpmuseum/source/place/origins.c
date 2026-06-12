@@ -19,9 +19,9 @@ string short() {
 }
 
 int south(mixed str) {
-  return call_other(this_player(), "move_player", "south#room/concourse");
+  return call_other(this_player(), "move_player", "south#place/concourse");
 }
 
 int east(mixed str) {
-  return call_other(this_player(), "move_player", "east#room/lp245");
+  return call_other(this_player(), "move_player", "east#place/lp245");
 }
