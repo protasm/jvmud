@@ -975,7 +975,12 @@ public final class BytecodeCompiler {
         coerceValue(mv, stringGet.string().type(), RuntimeTypes.STRING);
         emitExpression(mv, internalName, method, stringGet.index());
         coerceValue(mv, stringGet.index().type(), RuntimeTypes.INT);
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "charAt", "(I)C", false);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeIndex.class),
+                "stringCharCode",
+                "(Ljava/lang/String;I)I",
+                false);
     }
 
     private void emitSlice(MethodVisitor mv, String internalName, IRMethod method, IRSlice slice) {

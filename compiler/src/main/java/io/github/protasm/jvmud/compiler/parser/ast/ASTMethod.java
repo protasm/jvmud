@@ -87,6 +87,10 @@ public final class ASTMethod extends ASTNode {
         locals.add(local);
     }
 
+    public void clearLocals() {
+        locals.clear();
+    }
+
     public ASTMethod overrides() {
         return overrides;
     }

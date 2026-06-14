@@ -72,7 +72,7 @@ public final class RuntimeContext {
             ThreadLocal.withInitial(ArrayDeque::new);
     private final ThreadLocal<Deque<String>> commandVerbStack =
             ThreadLocal.withInitial(ArrayDeque::new);
-    private final ThreadLocal<Deque<String>> pendingActionStack =
+    private final ThreadLocal<Deque<PendingAction>> pendingActionStack =
             ThreadLocal.withInitial(ArrayDeque::new);
     private final ThreadLocal<Integer> scopedCommandRegistrationDepth =
             ThreadLocal.withInitial(() -> 0);
@@ -1073,7 +1073,9 @@ public final class RuntimeContext {
     }
 
     public void rememberActionMethod(String methodName) {
-        pendingActionStack.get().push(Objects.requireNonNull(methodName, "methodName"));
+        pendingActionStack.get().push(new PendingAction(
+                Objects.requireNonNull(methodName, "methodName"),
+                scopedCommandRegistrationDepth.get() == 0));
     }
 
     public void registerVerb(String verb) {
@@ -1082,7 +1084,7 @@ public final class RuntimeContext {
 
     public void registerVerb(String verb, boolean prefixMatch) {
         Objects.requireNonNull(verb, "verb");
-        Deque<String> pendingActions = pendingActionStack.get();
+        Deque<PendingAction> pendingActions = pendingActionStack.get();
         if (pendingActions.isEmpty()) {
             return;
         }
@@ -1093,11 +1095,11 @@ public final class RuntimeContext {
             return;
         }
 
-        String methodName = pendingActions.pop();
+        PendingAction pendingAction = pendingActions.pop();
         commandActions
                 .computeIfAbsent(actor, ignored -> new LinkedHashMap<>())
                 .computeIfAbsent(verb, ignored -> new ArrayList<>())
-                .add(new CommandAction(handler, methodName, prefixMatch, scopedCommandRegistrationDepth.get() == 0));
+                .add(new CommandAction(handler, pendingAction.methodName(), prefixMatch, pendingAction.persistent()));
     }
 
     public void clearCommandActions(Object actor) {
@@ -1507,6 +1509,8 @@ public final class RuntimeContext {
 
         return identifier.toString().equals(objectId(object));
     }
+
+    private record PendingAction(String methodName, boolean persistent) {}
 
     private record CommandAction(Object handler, String methodName, boolean prefixMatch, boolean persistent) {}
 

@@ -323,7 +323,20 @@ public class Scanner {
 
         ss.advance();
 
-        return stringToken(T_STRING_LITERAL, ss.readTrimmed());
+        return stringToken(T_STRING_LITERAL, unescapeStringLiteral(ss.readTrimmed()));
+    }
+
+    private String unescapeStringLiteral(String value) {
+        StringBuilder unescaped = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c != '\\' || i + 1 >= value.length()) {
+                unescaped.append(c);
+                continue;
+            }
+            unescaped.append((char) escapedCharacterValue(value.charAt(++i)));
+        }
+        return unescaped.toString();
     }
 
     private Token<?> characterLiteral() {

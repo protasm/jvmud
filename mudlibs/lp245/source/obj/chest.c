@@ -28,10 +28,11 @@ int get() { return 1; }
 
 int can_put_and_get() { return chest_is_open; }
 
-void add_weight(int w) {
+int add_weight(int w) {
     if (w + local_weight > 8)
 	return 0;
     local_weight += w;
+    return 1;
 }
 
 int close(string str)

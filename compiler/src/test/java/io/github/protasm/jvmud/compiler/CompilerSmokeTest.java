@@ -143,11 +143,25 @@ final class CompilerSmokeTest {
                     path = "/ab";
                     return path[0] == '/';
                 }
+
+                int empty_first() {
+                    string path;
+                    path = "";
+                    return path[0];
+                }
+
+                int negative_index() {
+                    string path;
+                    path = "/ab";
+                    return path[-1];
+                }
                 """);
 
         assertEquals(47, object.invoke("slash_code"));
         assertEquals(97, object.invoke("second_char"));
         assertEquals(1, object.invoke("has_slash_at_start"));
+        assertEquals(0, object.invoke("empty_first"));
+        assertEquals(0, object.invoke("negative_index"));
     }
 
     @Test
@@ -160,6 +174,7 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(97, object.invoke("first", "abc"));
+        assertEquals(0, object.invoke("first", ""));
     }
 
     @Test
@@ -956,6 +971,23 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeReadsMudlibTextFromConfiguredSourceRoot() throws Exception {
+        Path configRoot = tempDir.resolve("jvmud");
+        Path sourceRoot = tempDir.resolve("source");
+        Files.createDirectories(configRoot);
+        Files.createDirectories(sourceRoot.resolve("doc"));
+        Files.writeString(sourceRoot.resolve("doc/help"), "COMMUNICATIONS:\n");
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(configRoot).build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mudlibRootPath(sourceRoot)
+                .build());
+
+        assertEquals("COMMUNICATIONS:\n", runtime.readMudlibText("/doc/help"));
+        assertEquals(0, runtime.readMudlibText("../source/doc/help"));
+    }
+
+    @Test
     void lpcObjectStatePersistenceWritesJsonAndRestoresLegacyProperties() throws Exception {
         Files.createDirectories(tempDir.resolve("players"));
 
@@ -1328,6 +1360,107 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void addVerbKeepsScopedActionTransientAcrossRefresh() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void add_action(string method) {
+                    jvmud_add_action(method);
+                }
+
+                void add_verb(string verb) {
+                    jvmud_add_verb(verb);
+                }
+
+                mixed call_other(mixed target, string method, mixed arg) {
+                    return jvmud_invoke_entity(target, method, arg);
+                }
+
+                void move_object(mixed ob, mixed destination) {
+                    jvmud_move_entity(ob, destination);
+                }
+
+                object this_object() {
+                    return jvmud_current_entity();
+                }
+
+                object this_player() {
+                    return jvmud_current_actor();
+                }
+
+                void write(mixed value) {
+                    jvmud_write(value);
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                mixed move_player(mixed dir_dest) {
+                    move_object(this_object(), "room/next");
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void init() {
+                    add_action("move");
+                    add_verb("west");
+                }
+
+                int move() {
+                    write("old room moved\\n");
+                    return this_player()->move_player("west#room/next");
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/next.c"), """
+                string short() {
+                    return "next room";
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+        LPCObjectHandle start = runtime.load(tempDir.resolve("room/start.c"));
+        LPCObjectHandle next = runtime.load(tempDir.resolve("room/next.c"));
+        runtime.moveObject(player.instance(), start.instance());
+
+        runtime.refreshCommandActions(player.instance());
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "west"));
+        assertEquals(next.instance(), runtime.environment(player.instance()));
+
+        runtime.clearOutputTranscript();
+        runtime.refreshCommandActions(player.instance());
+        assertEquals(0, runtime.dispatchCommand(player.instance(), "west"));
+        assertEquals("", runtime.outputTranscript());
+    }
+
+    @Test
+    void forwardDeclaredMethodDefinitionUsesDefinitionParameterLocals() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/prototype_args.c", """
+                static void helper(string value);
+
+                int result;
+
+                int call_helper(string value) {
+                    result = 0;
+                    helper(value);
+                    return result;
+                }
+
+                static void helper(string value) {
+                    if (value == "stick")
+                        result = 1;
+                }
+                """);
+
+        assertEquals(1, object.invoke("call_helper", "stick"));
+    }
+
+    @Test
     void moveEntityResolvesStringSourcePaths() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.createDirectories(tempDir.resolve("obj"));
@@ -1345,7 +1478,7 @@ final class CompilerSmokeTest {
                 }
                 """);
         Files.writeString(tempDir.resolve("obj/book.c"), """
-                int id(mixed str) {
+                int id(string str) {
                     return str == "book";
                 }
                 """);
@@ -1468,6 +1601,45 @@ final class CompilerSmokeTest {
         LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
 
         assertEquals("50:chat", caller.invoke("combine", target.instance()));
+    }
+
+    @Test
+    void callOtherResolvesRegisteredStringObjectTargets() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                mixed call_other(mixed target, string method, mixed arg) {
+                    return jvmud_invoke_entity(target, method, arg);
+                }
+                """);
+        Files.writeString(tempDir.resolve("target.c"), """
+                string heard;
+
+                int matched(string value) {
+                    heard = value;
+                    return 1;
+                }
+
+                string query_heard() {
+                    return heard;
+                }
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                int relay(string value) {
+                    return call_other("target", "matched", value);
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .build());
+
+        LPCObjectHandle target = runtime.load(tempDir.resolve("target.c"));
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+
+        assertEquals(1, caller.invoke("relay", "hello"));
+        assertEquals("hello", target.invoke("query_heard"));
     }
 
     @Test
@@ -1741,6 +1913,47 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals("north:room/village/church", object.invoke("parse", "north#room/village/church"));
+    }
+
+    @Test
+    void sscanfAssignsCapturesWithDynamicFormatString() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/sscanf_dynamic.c", """
+                string type;
+                string match;
+
+                void configure(string value) {
+                    type = value;
+                    match = "grrr";
+                }
+
+                string format() {
+                    return "%s " + type + " %s\\n";
+                }
+
+                int parse(string value) {
+                    string who, rest;
+                    if (sscanf(value, format(), who, rest) != 2)
+                        return 0;
+                    return rest == match;
+                }
+
+                string parsed(string value) {
+                    string who, rest;
+                    if (sscanf(value, format(), who, rest) != 2)
+                        return "bad";
+                    return who + ":" + rest + ":" + match;
+                }
+                """);
+
+        object.invoke("configure", "says:");
+
+        assertEquals("%s says: %s\n", object.invoke("format"));
+        assertEquals("Orc:grrr:grrr", object.invoke("parsed", "Orc says: grrr\n"));
+        assertEquals(1, object.invoke("parse", "Orc says: grrr\n"));
+        assertEquals(0, object.invoke("parse", "Orc says: hello\n"));
     }
 
     @Test

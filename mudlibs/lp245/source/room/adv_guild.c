@@ -2,7 +2,7 @@
 #include "tune.h"
 
 #undef EXTRA_RESET
-#define EXTRA_RESET extra_reset(arg);
+#define EXTRA_RESET set_light(1); extra_reset(arg);
 
 void extra_reset(int arg) {
     object ob;
@@ -493,8 +493,8 @@ int query_drop_castle() {
     return 1;
 }
 
-void alas(string what) {
-    write("Sorry " + gnd_prn() + ", but you are already as " + what +
+void alas(string str) {
+    write("Sorry " + gnd_prn() + ", but you are already as " + str +
 	  "\nas any");
     if (this_player()->query_gender() == 0)
 	write("thing could possibly hope to get.\n");

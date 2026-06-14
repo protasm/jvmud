@@ -370,8 +370,8 @@ public class Parser {
                 }
 
                 method.setParameters(params);
-                if (method.locals().isEmpty())
-                        parsedParams.locals().forEach(method::addLocal);
+                method.clearLocals();
+                parsedParams.locals().forEach(method::addLocal);
 
                 currentMethod = method;
 

@@ -254,8 +254,8 @@ with connect_with_retry() as sock:
         raise AssertionError(f"light stick reported an error:\n{transcript}")
 
     sock.sendall(b"help\n")
-    transcript = read_until(sock, "Common commands:")
-    if "JVMud LP245 help" not in transcript or "Common commands:" not in transcript:
+    transcript = read_until(sock, "OTHER TOPICS:")
+    if "COMMUNICATIONS:" not in transcript or "OTHER TOPICS:" not in transcript:
         raise AssertionError(f"help did not render mudlib help text:\n{transcript}")
     if "Error:" in transcript or "You can't do that." in transcript:
         raise AssertionError(f"help reported an error:\n{transcript}")

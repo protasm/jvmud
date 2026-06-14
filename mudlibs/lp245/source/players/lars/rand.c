@@ -7,7 +7,8 @@ int test_random(string str) {
    if (sscanf(str, "%d %d", iterations, range) != 2) return 0;
    a = allocate(range);
    for (i = 0; i < iterations; i++) {
-      a[random(range)]++;
+      k = random(range);
+      a[k] = a[k] + 1;
       b++;
    }
    for (i = 0; i < range; i++) {

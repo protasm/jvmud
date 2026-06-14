@@ -109,8 +109,8 @@ public final class LPCRuntime {
     public Object loadOrGetObject(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
-        String internalName = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
-        Object existing = runtimeContext.getObject(internalName);
+        String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
+        Object existing = runtimeContext.getObject(objectId);
         if (existing != null) {
             return existing;
         }
@@ -132,8 +132,8 @@ public final class LPCRuntime {
     public LPCObjectHandle reload(Path sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
-        String internalName = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
-        Object existing = runtimeContext.getObject(internalName);
+        String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
+        Object existing = runtimeContext.getObject(objectId);
         if (existing != null) {
             runtimeContext.destructObject(existing);
         }
@@ -149,7 +149,7 @@ public final class LPCRuntime {
         Objects.requireNonNull(sourcePath, "sourcePath");
         CompilationResult result = compile(sourcePath);
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
-        String sourceName = deriveSourceName(normalized, sourceNameBasePath(normalized));
+        String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
 
         if (!result.getProblems().isEmpty()) {
             throw new LPCRuntimeException(formatProblems(result.getProblems()), result.getProblems());
@@ -162,18 +162,18 @@ public final class LPCRuntime {
 
         byte[] bytecode = result.getBytecode();
         if (bytecode == null) {
-            throw new LPCRuntimeException("Compilation did not produce bytecode for " + sourceName);
+            throw new LPCRuntimeException("Compilation did not produce bytecode for " + objectId);
         }
 
-        String internalName = (result.getAstObject() != null) ? result.getAstObject().name() : sourceName;
-        internalName = normalizeInternalName(internalName);
+        String internalName = (result.getAstObject() != null) ? result.getAstObject().name() : jvmInternalName(objectId);
+        internalName = jvmInternalName(normalizeInternalName(internalName));
         Class<?> compiledClass = classLoader.defineClass(internalName, bytecode);
         Object instance = instantiate(compiledClass);
 
-        registerObject(internalName, instance);
+        registerObject(objectId, instance);
         resetIfPresent(instance);
 
-        return new LPCObjectHandle(this, internalName, compiledClass, instance);
+        return new LPCObjectHandle(this, objectId, compiledClass, instance);
     }
 
     /** Compiles one source file using this runtime's include, efun, and mudlib boundary context. */
@@ -191,9 +191,9 @@ public final class LPCRuntime {
             throw new LPCRuntimeException("Failed to read source file: " + normalized, e);
         }
 
-        String sourceName = deriveSourceName(normalized, sourceNameBasePath(normalized));
-        String displayPath = "/" + sourceName;
-        return pipeline.run(normalized, source, sourceName, displayPath, ParserOptions.defaults());
+        String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
+        String displayPath = "/" + objectId;
+        return pipeline.run(normalized, source, jvmInternalName(objectId), displayPath, ParserOptions.defaults());
     }
 
     /** Attempts to load source and captures runtime failures as a result object. */
@@ -220,11 +220,11 @@ public final class LPCRuntime {
     public LPCObjectHandle loadSource(String sourceName, String source) {
         Objects.requireNonNull(sourceName, "sourceName");
         Objects.requireNonNull(source, "source");
-        String normalizedName = normalizeInternalName(stripExtension(sourceName));
-        String displayPath = "/" + normalizedName;
+        String objectId = normalizeInternalName(stripExtension(sourceName));
+        String displayPath = "/" + objectId;
 
         CompilationResult result =
-                pipeline.run(null, source, normalizedName, displayPath, ParserOptions.defaults());
+                pipeline.run(null, source, jvmInternalName(objectId), displayPath, ParserOptions.defaults());
 
         if (!result.getProblems().isEmpty()) {
             throw new LPCRuntimeException(formatProblems(result.getProblems()), result.getProblems());
@@ -237,18 +237,18 @@ public final class LPCRuntime {
 
         byte[] bytecode = result.getBytecode();
         if (bytecode == null) {
-            throw new LPCRuntimeException("Compilation did not produce bytecode for " + normalizedName);
+            throw new LPCRuntimeException("Compilation did not produce bytecode for " + objectId);
         }
 
-        String internalName = (result.getAstObject() != null) ? result.getAstObject().name() : normalizedName;
-        internalName = normalizeInternalName(internalName);
+        String internalName = (result.getAstObject() != null) ? result.getAstObject().name() : jvmInternalName(objectId);
+        internalName = jvmInternalName(normalizeInternalName(internalName));
         Class<?> compiledClass = classLoader.defineClass(internalName, bytecode);
         Object instance = instantiate(compiledClass);
 
-        registerObject(internalName, instance);
+        registerObject(objectId, instance);
         resetIfPresent(instance);
 
-        return new LPCObjectHandle(this, internalName, compiledClass, instance);
+        return new LPCObjectHandle(this, objectId, compiledClass, instance);
     }
 
     /**
@@ -259,12 +259,12 @@ public final class LPCRuntime {
     public Object cloneObject(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
-        String internalName = deriveSourceName(normalized, sourceNameBasePath(normalized));
-        internalName = normalizeInternalName(internalName);
+        String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
+        String internalName = jvmInternalName(objectId);
 
-        Class<?> objectClass = ensureClassDefined(normalized, internalName);
+        Class<?> objectClass = ensureClassDefined(normalized, objectId, internalName);
         Object instance = instantiate(objectClass);
-        registerObject(nextCloneId(internalName), instance);
+        registerObject(nextCloneId(objectId), instance);
         resetIfPresent(instance);
         return instance;
     }
@@ -316,6 +316,9 @@ public final class LPCRuntime {
     public Object readMudlibText(String path) {
         Objects.requireNonNull(path, "path");
         Path resolved = resolveMudlibStoragePath(path);
+        if (resolved == null || !Files.isRegularFile(resolved)) {
+            resolved = resolveMudlibTextPath(path);
+        }
         if (resolved == null || !Files.isRegularFile(resolved)) {
             return 0;
         }
@@ -883,7 +886,7 @@ public final class LPCRuntime {
         return type.getSimpleName();
     }
 
-    private Class<?> ensureClassDefined(Path sourcePath, String internalName) {
+    private Class<?> ensureClassDefined(Path sourcePath, String objectId, String internalName) {
         if (classLoader.isDefined(internalName)) {
             try {
                 return classLoader.loadClass(internalName.replace('/', '.'));
@@ -900,7 +903,7 @@ public final class LPCRuntime {
         }
 
         CompilationResult result =
-                pipeline.run(sourcePath, source, internalName, "/" + internalName, ParserOptions.defaults());
+                pipeline.run(sourcePath, source, internalName, "/" + objectId, ParserOptions.defaults());
         if (!result.getProblems().isEmpty()) {
             throw new LPCRuntimeException(formatProblems(result.getProblems()), result.getProblems());
         }
@@ -972,6 +975,26 @@ public final class LPCRuntime {
         if (baseIncludePath == null) {
             return null;
         }
+        String normalized = normalizeMudlibStoragePath(path);
+        if (normalized == null) {
+            return null;
+        }
+        return resolveMudlibPathUnder(baseIncludePath, normalized);
+    }
+
+    private Path resolveMudlibTextPath(String path) {
+        Path mudlibRoot = mudlibBoundary.mudlibRootPath().orElse(null);
+        if (mudlibRoot == null) {
+            return null;
+        }
+        String normalized = normalizeMudlibStoragePath(path);
+        if (normalized == null) {
+            return null;
+        }
+        return resolveMudlibPathUnder(mudlibRoot, normalized);
+    }
+
+    private String normalizeMudlibStoragePath(String path) {
         String normalized = path.trim();
         while (normalized.startsWith("/")) {
             normalized = normalized.substring(1);
@@ -979,8 +1002,18 @@ public final class LPCRuntime {
         if (normalized.isBlank()) {
             return null;
         }
-        Path resolved = baseIncludePath.resolve(normalized).normalize();
-        return resolved.startsWith(baseIncludePath) ? resolved : null;
+        for (Path segment : Path.of(normalized)) {
+            if (segment.toString().equals("..")) {
+                return null;
+            }
+        }
+        return normalized;
+    }
+
+    private Path resolveMudlibPathUnder(Path root, String normalizedPath) {
+        Path normalizedRoot = root.toAbsolutePath().normalize();
+        Path resolved = normalizedRoot.resolve(normalizedPath).normalize();
+        return resolved.startsWith(normalizedRoot) ? resolved : null;
     }
 
     private Path resolveSourcePathWithExtensions(String sourcePath) {
@@ -1053,8 +1086,7 @@ public final class LPCRuntime {
             return false;
         }
         String name = fileName.toString();
-        int dot = name.lastIndexOf('.');
-        return dot > 0 && dot < name.length() - 1;
+        return name.endsWith(".c") || name.endsWith(".lpc");
     }
 
     private String formatProblems(List<CompilationProblem> problems) {
@@ -1082,6 +1114,10 @@ public final class LPCRuntime {
             normalized = normalized.substring(1);
         }
         return normalized;
+    }
+
+    private String jvmInternalName(String objectId) {
+        return objectId.replace(".", "$dot$");
     }
 
     private String deriveSourceName(Path sourcePath, Path basePath) {

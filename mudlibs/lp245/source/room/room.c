@@ -146,20 +146,35 @@ string query_long() {
 string * numbers;
 
 string convert_number(int n) {
-    if (!pointerp(numbers))
-	numbers = query_numbers();
+    if (n == 0)
+	return "no";
+    if (n == 1)
+	return "one";
+    if (n == 2)
+	return "two";
+    if (n == 3)
+	return "three";
+    if (n == 4)
+	return "four";
+    if (n == 5)
+	return "five";
+    if (n == 6)
+	return "six";
+    if (n == 7)
+	return "seven";
+    if (n == 8)
+	return "eight";
+    if (n == 9)
+	return "nine";
     if (n > 9)
 	return "lot of";
-    return numbers[n];
+    return "no";
 }
 
 string * query_numbers() {
     if (!numbers) {
-	if (object_name(this_object()) == "room/room")
-	    numbers = ({"no", "one", "two", "three", "four", "five",
-			    "six", "seven", "eight", "nine" });
-	else
-	    numbers = "room/room"->query_numbers();
+	numbers = ({"no", "one", "two", "three", "four", "five",
+			"six", "seven", "eight", "nine" });
     }
     return numbers;
 }

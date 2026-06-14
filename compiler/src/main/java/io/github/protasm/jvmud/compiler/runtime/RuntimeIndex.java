@@ -9,12 +9,19 @@ public final class RuntimeIndex {
 
     public static Object get(Object target, int index) {
         if (target instanceof CharSequence text) {
-            return Integer.valueOf(text.charAt(index));
+            return Integer.valueOf(stringCharCode(text.toString(), index));
         }
         if (target instanceof List<?> list) {
             return list.get(index);
         }
         throw new IllegalArgumentException("Cannot index value: " + target);
+    }
+
+    public static int stringCharCode(String text, int index) {
+        if (text == null || index < 0 || index >= text.length()) {
+            return 0;
+        }
+        return text.charAt(index);
     }
 
     public static Object slice(Object target, int start, Object endValue) {

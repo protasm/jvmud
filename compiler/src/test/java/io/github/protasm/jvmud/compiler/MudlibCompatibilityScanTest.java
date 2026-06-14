@@ -1,7 +1,8 @@
 package io.github.protasm.jvmud.compiler;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
@@ -43,6 +44,7 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibBoundaryConfigReader;
+import io.github.protasm.jvmud.runtime.WorldScheduler;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -142,6 +144,156 @@ final class MudlibCompatibilityScanTest {
     }
 
     @Test
+    void vanillaAdventurersGuildCompilesForCompatibilityRadar() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        assertNotNull(runtime.load("room/adv_guild"));
+    }
+
+    @Test
+    void vanillaHumpResetCreatesPresentPickupObjects() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LPCObjectHandle hump = runtime.load("room/hump");
+
+        assertNotNull(runtime.present("stick", hump.instance()));
+        assertNotNull(runtime.present("money", hump.instance()));
+    }
+
+    @Test
+    void vanillaChestLoadsAndHandlesOpenCloseActions() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        Object player = runtime.cloneObject("obj/player");
+        LPCObjectHandle room = runtime.load("room/hump");
+        LPCObjectHandle chest = runtime.load("obj/chest");
+        runtime.withCommandActor(player, () -> runtime.invokeObject(player, "logon2", "chesttest"));
+        runtime.moveObject(player, room.instance());
+        runtime.moveObject(chest.instance(), room.instance());
+        runtime.refreshCommandActions(player);
+
+        runtime.clearOutputTranscript();
+        runtime.invokeObject(chest.instance(), "long");
+        assertTrue(runtime.outputTranscript().contains("It is closed."));
+        assertEquals(0, chest.invoke("can_put_and_get"));
+
+        runtime.clearOutputTranscript();
+        assertEquals(1, runtime.dispatchCommand(player, "open chest"));
+        assertEquals("Ok.\n", runtime.outputTranscript());
+        assertEquals(1, chest.invoke("can_put_and_get"));
+
+        runtime.clearOutputTranscript();
+        assertEquals(1, runtime.dispatchCommand(player, "close chest"));
+        assertEquals("Ok.\n", runtime.outputTranscript());
+        assertEquals(0, chest.invoke("can_put_and_get"));
+    }
+
+    @Test
+    void vanillaRandLoadsAndRunsDistributionCommand() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        Object player = runtime.cloneObject("obj/player");
+        LPCObjectHandle room = runtime.load("room/hump");
+        LPCObjectHandle rand = runtime.load("players/lars/rand");
+        runtime.withCommandActor(player, () -> runtime.invokeObject(player, "logon2", "randtest"));
+        runtime.moveObject(player, room.instance());
+        runtime.moveObject(rand.instance(), room.instance());
+        runtime.refreshCommandActions(player);
+
+        runtime.clearOutputTranscript();
+        assertEquals(1, runtime.dispatchCommand(player, "test 10 3"));
+        String transcript = runtime.outputTranscript();
+        assertTrue(transcript.contains("iterations: 10"), transcript);
+        assertTrue(transcript.contains("range: 3"), transcript);
+        assertTrue(transcript.contains("count: 10"), transcript);
+        assertTrue(transcript.contains("sum: 10"), transcript);
+    }
+
+    @Test
+    void vanillaOrcCatchTalkMatchesAndDelegatesToStringObject() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+        LPCObjectHandle target = runtime.loadSource("smoke/orc_talk_target.c", """
+                string heard;
+
+                int matched(string str) {
+                    heard = str;
+                    return 1;
+                }
+
+                string query_heard() {
+                    return heard;
+                }
+                """);
+
+        LPCObjectHandle matcher = runtime.load("obj/catch_talk.orc");
+        matcher.invoke("set_type", "says:");
+        matcher.invoke("set_match", "grrr");
+        matcher.invoke("set_function", "matched");
+        matcher.invoke("set_object", "smoke/orc_talk_target");
+
+        assertEquals(target.instance(), runtime.loadOrGetObject("smoke/orc_talk_target"));
+        assertEquals(1, matcher.invoke("test_match", "Orc says: grrr\n"));
+        assertEquals("Orc says: grrr\n", target.invoke("query_heard"));
+        assertEquals(0, matcher.invoke("test_match", "Orc says: hello\n"));
+    }
+
+    @Test
+    void vanillaVillageHarryLoadsAndRespondsToTalkMatch() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LPCObjectHandle villageRoad = runtime.load("room/vill_road2");
+        Object harry = runtime.present("harry", villageRoad.instance());
+
+        assertNotNull(harry);
+        assertEquals("Harry the affectionate", runtime.invokeObject(harry, "short"));
+        assertTrue(Truth.isTruthy(runtime.invokeObject(harry, "id", "fjant")));
+
+        runtime.clearOutputTranscript();
+        runtime.invokeObject(harry, "test_match", "Alice says: hello\n");
+
+        assertEquals("Harry says: Pleased to meet you!\n", runtime.outputTranscript());
+    }
+
+    @Test
+    void vanillaPlayerCanPickUpBridgeStick() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        Object player = runtime.cloneObject("obj/player");
+        LPCObjectHandle hump = runtime.load("room/hump");
+        runtime.withCommandActor(player, () -> runtime.invokeObject(player, "logon2", "pickuptest"));
+        runtime.moveObject(player, hump.instance());
+
+        assertEquals(hump.instance(), runtime.environment(player));
+        assertNotNull(runtime.present("stick", runtime.environment(player)));
+        assertTrue(runtime.inspectObject(player).fields().stream()
+                .anyMatch(field -> field.name().equals("myself") && field.value().equals(runtime.objectId(player))),
+                () -> runtime.inspectObject(player).fields().toString());
+        assertEquals(1, runtime.withCommandActor(player, () -> runtime.invokeObject(player, "pick_up", "stick")));
+        assertNotNull(runtime.present("stick", player), runtime.outputTranscript());
+    }
+
+    @Test
     void vanillaSlopeCompilesForCompatibilityRadar() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
@@ -175,6 +327,20 @@ final class MudlibCompatibilityScanTest {
 
         assertTrue(Truth.isTruthy(leo.invoke("id", "leo")));
         assertEquals("Leo the Archwizard", leo.invoke("short"));
+    }
+
+    @Test
+    void vanillaMapperHeartbeatSurvivesUnexploredDirections() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+        runtime.setScheduler(scheduler);
+
+        assertNotNull(runtime.load("players/lars/mapper"));
+
+        assertDoesNotThrow(() -> scheduler.advanceBy(1));
     }
 
     private static void writeReport(MudlibBoundary boundary, Map<String, CompilationResult> results) throws IOException {
