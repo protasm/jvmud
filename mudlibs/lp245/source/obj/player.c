@@ -463,9 +463,7 @@ int score(string arg) {
       if (stuffed && soaked)
         tmp += ", ";
 
-      else
-        {
-
+      else {
         if (stuffed || soaked)
           tmp += " and ";
 
@@ -3671,11 +3669,7 @@ static int tls(string str)
     to_string(cipher_info[TLS_PROT]),
 
     to_string(cipher_info[TLS_CIPHER]));
-  }
-
-  else
-    {
-
+  } else {
     printf("You are presently connected via an insecure telnet connection.\n");
   }
 

@@ -186,8 +186,10 @@ string * numbers;
 string convert_number(int n) {
   if (!pointerp(numbers))
     numbers = query_numbers();
+
   if (n > 9)
     return "lot of";
+
   return numbers[n];
 }
 
@@ -195,10 +197,13 @@ string * query_numbers() {
   if (!numbers) {
     if (object_name(this_object()) == "room/room")
       numbers = ({"no", "one", "two", "three", "four", "five",
-        "six", "seven", "eight", "nine" });
+
+      "six", "seven", "eight", "nine" });
+
     else
       numbers = "room/room"->query_numbers();
   }
+
   return numbers;
 }
 
