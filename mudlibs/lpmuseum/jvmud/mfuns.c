@@ -78,6 +78,14 @@ void input_to(string method, int noecho) {
   jvmud_capture_session_input(method, noecho);
 }
 
+string hash_password(string password) {
+  return jvmud_hash_password(password);
+}
+
+int verify_password(string password, string encoded_hash) {
+  return jvmud_verify_password(password, encoded_hash);
+}
+
 int living(mixed ob) {
   return jvmud_entity_commands_enabled(ob);
 }
@@ -138,8 +146,16 @@ void remove_call_out(string method) {
   jvmud_cancel_deferred_callback(method);
 }
 
+int restore_object(string path) {
+  return jvmud_restore_lpc_object_state(path);
+}
+
 void say(mixed value) {
   jvmud_emit_perceivable(jvmud_current_actor(), value);
+}
+
+int save_object(string path) {
+  return jvmud_save_lpc_object_state(path);
 }
 
 void set_heart_beat(int enabled) {

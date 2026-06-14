@@ -159,11 +159,11 @@ public final class RuntimeContext {
     }
 
     public void writeOutput(Object value) {
-        writeOutputToProjection(outputTarget(), value);
+        writeOutputToProjection(outputTarget(), value, false);
     }
 
     public void tellObject(Object target, Object value) {
-        writeOutputToProjection(target, value);
+        writeOutputToProjection(target, value, true);
     }
 
     public boolean messageSession(SessionId sessionId, Object value) {
@@ -222,7 +222,7 @@ public final class RuntimeContext {
 
         for (Object target : List.copyOf(inventoryFor(location))) {
             if (!isExcluded(target, excluded) && sessionsByPersona.containsKey(target)) {
-                writeOutputToProjection(target, value);
+                writeOutputToProjection(target, value, true);
             }
         }
     }
@@ -236,14 +236,44 @@ public final class RuntimeContext {
         return false;
     }
 
-    private void writeOutputToProjection(Object target, Object value) {
+    private void writeOutputToProjection(Object target, Object value, boolean playerBound) {
         SessionBinding binding = target != null ? sessionsByPersona.get(target) : null;
         if (binding != null) {
-            deliverToSession(binding, value);
+            if (!playerBound || receivesPlayerBoundMessages(target)) {
+                deliverToSession(binding, value);
+            }
         } else {
             String text = formattedMessageText(value);
             outputTranscript.append(text);
             outputSink.accept(text);
+        }
+    }
+
+    private boolean receivesPlayerBoundMessages(Object target) {
+        Object resolvedTarget = resolveInvocationTarget(target);
+        if (resolvedTarget == null) {
+            return true;
+        }
+
+        try {
+            InvocationPlan invocation = findOptionalInvocation(
+                    resolvedTarget.getClass(),
+                    "receives_player_bound_messages",
+                    new Object[0]);
+            Object allowed = withCurrentObject(resolvedTarget, () -> {
+                try {
+                    return invocation.method().invoke(resolvedTarget, invocation.arguments());
+                } catch (ReflectiveOperationException e) {
+                    throw new IllegalArgumentException(
+                            "Failed to call " + invocation.method().getName() + " on "
+                                    + objectIdOrDescription(resolvedTarget)
+                                    + causeSummary(e),
+                            e);
+                }
+            });
+            return Truth.isTruthy(allowed);
+        } catch (NoSuchMethodException e) {
+            return true;
         }
     }
 
@@ -540,6 +570,11 @@ public final class RuntimeContext {
 
     public boolean hasCapturedSessionInput(Object persona) {
         return pendingInputsByPersona.containsKey(persona);
+    }
+
+    public boolean capturedSessionInputNoEcho(Object persona) {
+        PendingSessionInput pendingInput = pendingInputsByPersona.get(persona);
+        return pendingInput != null && pendingInput.noEcho();
     }
 
     public Object deliverCapturedSessionInput(Object persona, String line) {

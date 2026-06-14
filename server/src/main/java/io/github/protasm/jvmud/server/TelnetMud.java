@@ -342,6 +342,16 @@ final class TelnetMud implements TelnetHost {
     }
 
     @Override
+    public synchronized boolean isCapturingInput(TelnetPersona persona) {
+        return isAttached(persona) && runtime.hasCapturedSessionInput(persona.actor());
+    }
+
+    @Override
+    public synchronized boolean isCapturingNoEchoInput(TelnetPersona persona) {
+        return isAttached(persona) && runtime.capturedSessionInputNoEcho(persona.actor());
+    }
+
+    @Override
     public synchronized boolean isAttached(TelnetPersona persona) {
         return persona != null && runtime.sessionRecord(persona.sessionId()).isPresent();
     }

@@ -16,6 +16,7 @@ final class TelnetSession implements Runnable {
     private static final int WONT = 252;
     private static final int DO = 253;
     private static final int DONT = 254;
+    private static final int ECHO = 1;
 
     private final Socket socket;
     private final TelnetHost mud;
@@ -34,6 +35,7 @@ final class TelnetSession implements Runnable {
                 PrintWriter out = new PrintWriter(new OutputStreamWriter(rawOut, StandardCharsets.UTF_8), true)) {
             session = new SessionState(mud.attachPersona(out, socket.getInetAddress().getHostAddress()));
             mud.printPromptIfReady(session.persona, out);
+            updateEchoMode(session, rawOut, out);
 
             StringBuilder line = new StringBuilder();
             int value;
@@ -45,7 +47,7 @@ final class TelnetSession implements Runnable {
                     continue;
                 }
                 if (value == '\n') {
-                    executeLine(session, out, line);
+                    executeLine(session, rawOut, out, line);
                     continue;
                 }
                 if (value == 8 || value == 127) {
@@ -67,11 +69,13 @@ final class TelnetSession implements Runnable {
         }
     }
 
-    private void executeLine(SessionState session, PrintWriter out, StringBuilder line) {
+    private void executeLine(SessionState session, OutputStream rawOut, PrintWriter out, StringBuilder line)
+            throws IOException {
         String commandLine = line.toString().trim();
         line.setLength(0);
-        if (commandLine.isBlank()) {
+        if (commandLine.isBlank() && !mud.isCapturingInput(session.persona)) {
             mud.printPromptIfReady(session.persona, out);
+            updateEchoMode(session, rawOut, out);
             return;
         }
 
@@ -87,6 +91,7 @@ final class TelnetSession implements Runnable {
         if (session.running) {
             mud.printPromptIfReady(session.persona, out);
         }
+        updateEchoMode(session, rawOut, out);
     }
 
     private void executeSlashCommand(SessionState session, PrintWriter out, String commandLine) {
@@ -163,10 +168,36 @@ final class TelnetSession implements Runnable {
         rawOut.flush();
     }
 
+    private void updateEchoMode(SessionState session, OutputStream rawOut, PrintWriter out) throws IOException {
+        if (session == null || session.detached || !session.running || !mud.isAttached(session.persona)) {
+            if (session != null && session.noEchoNegotiated) {
+                writeTelnetCommand(rawOut, out, WONT, ECHO);
+                session.noEchoNegotiated = false;
+            }
+            return;
+        }
+
+        boolean shouldSuppressEcho = mud.isCapturingNoEchoInput(session.persona);
+        if (shouldSuppressEcho == session.noEchoNegotiated) {
+            return;
+        }
+        writeTelnetCommand(rawOut, out, shouldSuppressEcho ? WILL : WONT, ECHO);
+        session.noEchoNegotiated = shouldSuppressEcho;
+    }
+
+    private void writeTelnetCommand(OutputStream rawOut, PrintWriter out, int command, int option) throws IOException {
+        out.flush();
+        rawOut.write(IAC);
+        rawOut.write(command);
+        rawOut.write(option);
+        rawOut.flush();
+    }
+
     private static final class SessionState {
         private final TelnetPersona persona;
         private boolean running = true;
         private boolean detached;
+        private boolean noEchoNegotiated;
 
         private SessionState(TelnetPersona persona) {
             this.persona = persona;

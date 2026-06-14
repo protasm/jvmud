@@ -1,5 +1,13 @@
 string display_name;
 string persona_name;
+string account_id;
+string password_hash;
+string email;
+string gender;
+string pending_password;
+int account_created;
+int password_attempts;
+int player_bound_messages_enabled;
 
 void reset(mixed first_load) {
   if (!display_name) {
@@ -8,22 +16,170 @@ void reset(mixed first_load) {
   if (!persona_name) {
     persona_name = "visitor";
   }
+  if (!gender) {
+    gender = "none";
+  }
+  if (!account_id) {
+    account_id = "";
+  }
+  if (!password_hash) {
+    password_hash = "";
+  }
+  if (!email) {
+    email = "";
+  }
+  if (!pending_password) {
+    pending_password = "";
+  }
 }
 
 void connect() {
-  enable_commands();
-  write("What is your name today? ");
-  input_to("choose_name");
+  player_bound_messages_enabled = 0;
+  write("Account ID: ");
+  input_to("choose_account_id");
 }
 
-void choose_name(mixed name) {
-  if (!name || strlen(name) == 0) {
-    persona_name = "visitor";
-  } else {
-    persona_name = lower_case(name);
+void choose_account_id(mixed value) {
+  value = normalize_account_id(value);
+  if (!valid_account_id(value)) {
+    write("Use letters, numbers, underscore, or dash for your account ID.\n");
+    write("Account ID: ");
+    input_to("choose_account_id");
+    return;
   }
-  display_name = capitalize(persona_name);
 
+  account_id = value;
+  if (restore_object("accounts/" + account_id) && account_created && strlen(password_hash) > 0) {
+    password_attempts = 0;
+    write("Password: ");
+    input_to("check_password", 1);
+    return;
+  }
+
+  account_created = 0;
+  password_hash = "";
+  email = "";
+  persona_name = "visitor";
+  display_name = "visitor";
+  gender = "none";
+  write("No LPMuseum account exists for " + account_id + ". Create it? (yes/no) ");
+  input_to("confirm_account_creation");
+}
+
+void confirm_account_creation(mixed value) {
+  value = lower_case(value);
+  if (value == "yes" || value == "y") {
+    write("Password: ");
+    input_to("choose_password", 1);
+    return;
+  }
+  if (value == "no" || value == "n") {
+    write("No account was created. Please visit LPMuseum again when you are ready.\n");
+    destruct(this_object());
+    return;
+  }
+  write("Please answer yes or no: ");
+  input_to("confirm_account_creation");
+}
+
+void choose_password(mixed value) {
+  mixed problem;
+
+  problem = password_problem(value);
+  if (problem) {
+    write(problem + "\n");
+    write("Password: ");
+    input_to("choose_password", 1);
+    return;
+  }
+
+  pending_password = value;
+  write("Password again: ");
+  input_to("confirm_password", 1);
+}
+
+void confirm_password(mixed value) {
+  if (value != pending_password) {
+    pending_password = "";
+    write("Those passwords did not match.\n");
+    write("Password: ");
+    input_to("choose_password", 1);
+    return;
+  }
+
+  password_hash = hash_password(value);
+  pending_password = "";
+  write("Email address (optional): ");
+  input_to("choose_email");
+}
+
+void choose_email(mixed value) {
+  if (!value || strlen(value) == 0) {
+    email = "";
+  } else if (!valid_email(value)) {
+    write("That email address does not look valid. Enter one address, or leave it blank.\n");
+    write("Email address (optional): ");
+    input_to("choose_email");
+    return;
+  } else {
+    email = value;
+  }
+
+  write("Persona name: ");
+  input_to("choose_persona_name");
+}
+
+void choose_persona_name(mixed value) {
+  if (!valid_persona_name(value)) {
+    write("Use 2-24 letters, numbers, spaces, apostrophes, or dashes for your Persona name.\n");
+    write("Persona name: ");
+    input_to("choose_persona_name");
+    return;
+  }
+
+  persona_name = lower_case(value);
+  display_name = capitalize(persona_name);
+  write("Gender (female/male/neutral/none/other): ");
+  input_to("choose_gender");
+}
+
+void choose_gender(mixed value) {
+  value = lower_case(value);
+  if (value != "female" && value != "male" && value != "neutral"
+      && value != "none" && value != "other") {
+    write("Please choose female, male, neutral, none, or other: ");
+    input_to("choose_gender");
+    return;
+  }
+
+  gender = value;
+  account_created = 1;
+  save_account();
+  enter_museum();
+}
+
+void check_password(mixed value) {
+  if (verify_password(value, password_hash)) {
+    password_attempts = 0;
+    enter_museum();
+    return;
+  }
+
+  password_attempts = password_attempts + 1;
+  if (password_attempts < 3) {
+    write("That password did not match. Please try again.\n");
+    write("Password: ");
+    input_to("check_password", 1);
+    return;
+  }
+
+  write("That password did not match. Please reconnect when you are ready to try again.\n");
+  destruct(this_object());
+}
+
+void enter_museum() {
+  player_bound_messages_enabled = 1;
+  enable_commands();
   write("Hi, " + display_name + "! Welcome to LPMuseum.\n");
   tell_place(environment(this_object()), display_name + " enters LPMuseum through the museum doors.\n");
   write("This is a native JVMud mudlib. Type help for museum commands.\n\n");
@@ -31,6 +187,152 @@ void choose_name(mixed name) {
 }
 
 void disconnect() {
+  save_account();
+}
+
+void save_account() {
+  if (account_created && strlen(account_id) > 0 && strlen(password_hash) > 0) {
+    pending_password = "";
+    save_object("accounts/" + account_id);
+  }
+}
+
+int receives_player_bound_messages() {
+  return player_bound_messages_enabled;
+}
+
+string normalize_account_id(mixed value) {
+  if (!value) {
+    return "";
+  }
+  return lower_case(value);
+}
+
+int valid_account_id(mixed value) {
+  int index;
+  int ch;
+
+  if (!value || strlen(value) < 3 || strlen(value) > 24) {
+    return 0;
+  }
+
+  index = 0;
+  while (index < strlen(value)) {
+    ch = value[index];
+    if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')
+        || ch == '_' || ch == '-')) {
+      return 0;
+    }
+    index = index + 1;
+  }
+  return 1;
+}
+
+mixed password_problem(mixed value) {
+  int index;
+  int ch;
+  int upper;
+  int lower;
+  int number;
+  int special;
+
+  if (!value || strlen(value) < 6) {
+    return "Password must be at least 6 characters.";
+  }
+  if (strlen(value) > 72) {
+    return "Password must be 72 characters or fewer.";
+  }
+
+  index = 0;
+  while (index < strlen(value)) {
+    ch = value[index];
+    if (ch >= 'A' && ch <= 'Z') {
+      upper = 1;
+    } else if (ch >= 'a' && ch <= 'z') {
+      lower = 1;
+    } else if (ch >= '0' && ch <= '9') {
+      number = 1;
+    } else if (is_password_special(ch)) {
+      special = 1;
+    } else {
+      return "Password may use letters, numbers, and ! @ # $ % ^ & * _ . ? + - only.";
+    }
+    index = index + 1;
+  }
+
+  if (!upper) {
+    return "Password must include an uppercase letter.";
+  }
+  if (!lower) {
+    return "Password must include a lowercase letter.";
+  }
+  if (!number) {
+    return "Password must include a number.";
+  }
+  if (!special) {
+    return "Password must include a special character.";
+  }
+  return 0;
+}
+
+int is_password_special(int ch) {
+  return ch == '!' || ch == '@' || ch == '#' || ch == '$' || ch == '%'
+      || ch == '^' || ch == '&' || ch == '*' || ch == '_' || ch == '.'
+      || ch == '?' || ch == '+' || ch == '-';
+}
+
+int valid_email(mixed value) {
+  int index;
+  int at;
+  int dot_after_at;
+  int ch;
+
+  at = -1;
+  dot_after_at = 0;
+  index = 0;
+  while (index < strlen(value)) {
+    ch = value[index];
+    if (ch == '@') {
+      if (at != -1 || index == 0 || index == strlen(value) - 1) {
+        return 0;
+      }
+      at = index;
+    } else if (ch == '.' && at != -1 && index > at + 1 && index < strlen(value) - 1) {
+      dot_after_at = 1;
+    } else if (!valid_email_char(ch)) {
+      return 0;
+    }
+    index = index + 1;
+  }
+  return at > 0 && dot_after_at;
+}
+
+int valid_email_char(int ch) {
+  return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+      || (ch >= '0' && ch <= '9') || ch == '@' || ch == '.'
+      || ch == '_' || ch == '%' || ch == '+' || ch == '-';
+}
+
+int valid_persona_name(mixed value) {
+  int index;
+  int ch;
+  int saw_letter_or_number;
+
+  if (!value || strlen(value) < 2 || strlen(value) > 24) {
+    return 0;
+  }
+
+  index = 0;
+  while (index < strlen(value)) {
+    ch = value[index];
+    if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) {
+      saw_letter_or_number = 1;
+    } else if (ch != ' ' && ch != '\'' && ch != '-') {
+      return 0;
+    }
+    index = index + 1;
+  }
+  return saw_letter_or_number;
 }
 
 void init() {
@@ -222,6 +524,7 @@ int move_player(mixed movement) {
 }
 
 int quit(mixed ignored) {
+  save_account();
   write("You step away from LPMuseum.\n");
   destruct(this_object());
   return 1;

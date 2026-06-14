@@ -113,6 +113,16 @@ final class MultiMudTelnetHost implements TelnetHost {
     }
 
     @Override
+    public synchronized boolean isCapturingInput(TelnetPersona persona) {
+        return persona != null && persona.mud().isCapturingInput(persona);
+    }
+
+    @Override
+    public synchronized boolean isCapturingNoEchoInput(TelnetPersona persona) {
+        return persona != null && persona.mud().isCapturingNoEchoInput(persona);
+    }
+
+    @Override
     public synchronized boolean isAttached(TelnetPersona persona) {
         return persona != null && persona.mud().isAttached(persona);
     }

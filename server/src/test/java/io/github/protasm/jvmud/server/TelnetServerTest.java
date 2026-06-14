@@ -82,24 +82,21 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                String initial = readUntilQuietAfterContains(socket, "What is your name today? ");
+                String initial = readUntilQuietAfterContains(socket, "Account ID: ");
                 assertTrue(initial.contains("Attached player 1 as persona/visitor#clone in place/concourse"), initial);
-                assertTrue(initial.contains("What is your name today? "), initial);
+                assertTrue(initial.contains("Account ID: "), initial);
 
-                socket.getOutputStream().write("protasm\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String greeting = readUntilQuietAfterContains(socket, "Welcome to LPMuseum.");
+                String greeting = createLpmuseumAccountAndEnter(socket, uniqueAccountId("protasm"), "Valid1!",
+                        "protasm", "neutral");
                 assertTrue(greeting.contains("Hi, Protasm! Welcome to LPMuseum."), greeting);
                 assertTrue(greeting.contains("Protasm enters LPMuseum through the museum doors."), greeting);
 
                 try (Socket second = new Socket("127.0.0.1", server.port())) {
                     second.setSoTimeout(5000);
-                    assertTrue(readUntilQuietAfterContains(second, "What is your name today? ")
+                    assertTrue(readUntilQuietAfterContains(second, "Account ID: ")
                             .contains("Attached player 2 as persona/visitor#clone"));
-                    second.getOutputStream().write("solfeggio\n".getBytes(StandardCharsets.UTF_8));
-                    second.getOutputStream().flush();
-                    assertTrue(readUntilQuietAfterContains(second, "Welcome to LPMuseum.")
-                            .contains("Hi, Solfeggio! Welcome to LPMuseum."));
+                    assertTrue(createLpmuseumAccountAndEnter(second, uniqueAccountId("solfeggio"), "Valid1!",
+                            "solfeggio", "other").contains("Hi, Solfeggio! Welcome to LPMuseum."));
                     assertTrue(readUntilQuietAfterContains(socket, "Solfeggio enters LPMuseum through the museum doors.")
                             .contains("Solfeggio enters LPMuseum through the museum doors."));
 
@@ -245,6 +242,196 @@ final class TelnetServerTest {
                 }
             }
         }
+    }
+
+    @Test
+    void lpmuseumRestoresAccountAndDisconnectsAfterThreeBadPasswords() throws Exception {
+        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+        String accountId = uniqueAccountId("returning");
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                assertTrue(createLpmuseumAccountAndEnter(socket, accountId, "Valid1!", "solfeggio", "female")
+                        .contains("Hi, Solfeggio! Welcome to LPMuseum."));
+                socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilSocketClosed(socket).contains("You step away from LPMuseum."));
+            }
+
+            Path savedAccount = museum.resolve("accounts").resolve(accountId + ".o");
+            assertSavedPlayerJsonFile(savedAccount);
+            String saved = Files.readString(savedAccount);
+            assertTrue(saved.contains("pbkdf2-sha256"), saved);
+            assertFalse(saved.contains("Valid1!"), saved);
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                socket.getOutputStream().write((accountId + "\n").getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String passwordPrompt = readUntilQuietAfterContains(socket, "Password: ");
+                assertFalse(passwordPrompt.contains("Create it?"), passwordPrompt);
+                assertFalse(passwordPrompt.contains("Password: > "), passwordPrompt);
+
+                socket.getOutputStream().write("Valid1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String welcomeBack = readUntilQuietAfterContains(socket, "Hi, Solfeggio! Welcome to LPMuseum.");
+                assertTrue(welcomeBack.contains("Hi, Solfeggio! Welcome to LPMuseum."), welcomeBack);
+                assertFalse(welcomeBack.contains("Email address"), welcomeBack);
+                assertFalse(welcomeBack.contains("Persona name"), welcomeBack);
+
+                socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilSocketClosed(socket).contains("You step away from LPMuseum."));
+            }
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                socket.getOutputStream().write((accountId + "\n").getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password: ").contains("Password: "));
+
+                socket.getOutputStream().write("wrong1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String firstBadPassword = readUntilQuietAfterContains(socket, "Password: ");
+                assertTrue(firstBadPassword.contains("That password did not match. Please try again."), firstBadPassword);
+                assertFalse(firstBadPassword.contains("> "), firstBadPassword);
+
+                socket.getOutputStream().write("wrong1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String secondBadPassword = readUntilQuietAfterContains(socket, "Password: ");
+                assertTrue(secondBadPassword.contains("That password did not match. Please try again."), secondBadPassword);
+                assertFalse(secondBadPassword.contains("> "), secondBadPassword);
+
+                socket.getOutputStream().write("wrong1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String closeTail = readUntilSocketClosed(socket);
+                assertTrue(closeTail.contains("Please reconnect when you are ready to try again."), closeTail);
+                assertFalse(closeTail.contains("> "), closeTail);
+                assertFalse(closeTail.contains("You can't do that."), closeTail);
+            }
+        }
+    }
+
+    @Test
+    void lpmuseumAccountCreationEnforcesPasswordPolicy() throws Exception {
+        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                socket.getOutputStream().write((uniqueAccountId("policy") + "\n").getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Create it? (yes/no) ").contains("Create it?"));
+                socket.getOutputStream().write("yes\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password: ").contains("Password: "));
+
+                assertPasswordRejected(socket, "Aa1!", "Password must be at least 6 characters.");
+                assertPasswordRejected(socket, "lowercase1!", "Password must include an uppercase letter.");
+                assertPasswordRejected(socket, "UPPERCASE1!", "Password must include a lowercase letter.");
+                assertPasswordRejected(socket, "NoNumber!", "Password must include a number.");
+                assertPasswordRejected(socket, "NoSpecial1", "Password must include a special character.");
+                assertPasswordRejected(socket, "Bad Space1!", "Password may use letters, numbers");
+
+                socket.getOutputStream().write("Good1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password again: ").contains("Password again: "));
+                socket.getOutputStream().write("Other1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String mismatch = readUntilQuietAfterContains(socket, "Password: ");
+                assertTrue(mismatch.contains("Those passwords did not match."), mismatch);
+
+                socket.getOutputStream().write("Good1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password again: ").contains("Password again: "));
+                socket.getOutputStream().write("Good1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Email address (optional): ")
+                        .contains("Email address (optional): "));
+                socket.getOutputStream().write("not-an-email\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Email address (optional): ")
+                        .contains("does not look valid"));
+                socket.getOutputStream().write("visitor@example.test\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Persona name: ").contains("Persona name: "));
+                socket.getOutputStream().write("Policy Persona\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Gender (female/male/neutral/none/other): ")
+                        .contains("Gender"));
+                socket.getOutputStream().write("neutral\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Hi, Policy persona! Welcome to LPMuseum.")
+                        .contains("Hi, Policy persona! Welcome to LPMuseum."));
+            }
+        }
+    }
+
+    @Test
+    void lpmuseumPasswordPromptsNegotiateNoEcho() throws Exception {
+        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                socket.getOutputStream().write((uniqueAccountId("echo") + "\n").getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Create it? (yes/no) ").contains("Create it?"));
+                socket.getOutputStream().write("yes\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String passwordPrompt = readUntilQuietAfterContains(socket, "Password: ");
+                assertTrue(containsTelnetCommand(passwordPrompt, 251, 1), passwordPrompt);
+                assertFalse(passwordPrompt.contains("Password: > "), passwordPrompt);
+
+                socket.getOutputStream().write("Valid1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password again: ").contains("Password again: "));
+                socket.getOutputStream().write("Valid1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String emailPrompt = readUntilQuietAfterContains(socket, "Email address (optional): ");
+                assertTrue(containsTelnetCommand(emailPrompt, 252, 1), emailPrompt);
+                assertFalse(emailPrompt.contains("> "), emailPrompt);
+            }
+        }
+    }
+
+    @Test
+    void lpmuseumSuppressesAmbientMessagesUntilAccountLoginCompletes() {
+        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+        TelnetMud mud = TelnetMud.boot(museum, MudlibBoot.DEFAULT_CONFIG_PATH);
+        StringWriter output = new StringWriter();
+        PrintWriter out = new PrintWriter(output, true);
+
+        TelnetPersona persona = mud.attachPersona(out, "127.0.0.1");
+
+        String initial = output.toString();
+        assertTrue(initial.contains("Account ID: "), initial);
+        assertFalse(initial.contains("Museum Security Staffer heads"), initial);
+
+        for (int i = 0; i < 30; i++) {
+            mud.advanceWorldTick();
+        }
+
+        String duringLogin = output.toString();
+        assertTrue(duringLogin.contains("Account ID: "), duringLogin);
+        assertFalse(duringLogin.contains("Museum Security Staffer heads"), duringLogin);
+
+        mud.detachPersona(persona);
     }
 
     @Test
@@ -1279,6 +1466,64 @@ final class TelnetServerTest {
         assertTrue(result.preloadedObjects().contains("obj/preload"));
         assertEquals("place/start", result.startingRoom());
         assertEquals("local/player", result.actorHandle());
+    }
+
+    private String uniqueAccountId(String prefix) {
+        String suffix = Long.toString(System.nanoTime(), 36);
+        return (prefix + suffix).toLowerCase();
+    }
+
+    private String createLpmuseumAccountAndEnter(
+            Socket socket,
+            String accountId,
+            String password,
+            String personaName,
+            String gender) throws Exception {
+        socket.getOutputStream().write((accountId + "\n").getBytes(StandardCharsets.UTF_8));
+        socket.getOutputStream().flush();
+        String creation = readUntilQuietAfterContains(socket, "Create it? (yes/no) ");
+        assertTrue(creation.contains("No LPMuseum account exists for " + accountId), creation);
+        assertFalse(creation.contains("> "), creation);
+
+        socket.getOutputStream().write("yes\n".getBytes(StandardCharsets.UTF_8));
+        socket.getOutputStream().flush();
+        String passwordPrompt = readUntilQuietAfterContains(socket, "Password: ");
+        assertTrue(passwordPrompt.contains("Password: "), passwordPrompt);
+        assertFalse(passwordPrompt.contains("Password: > "), passwordPrompt);
+
+        socket.getOutputStream().write((password + "\n").getBytes(StandardCharsets.UTF_8));
+        socket.getOutputStream().flush();
+        assertTrue(readUntilQuietAfterContains(socket, "Password again: ").contains("Password again: "));
+
+        socket.getOutputStream().write((password + "\n").getBytes(StandardCharsets.UTF_8));
+        socket.getOutputStream().flush();
+        assertTrue(readUntilQuietAfterContains(socket, "Email address (optional): ")
+                .contains("Email address (optional): "));
+
+        socket.getOutputStream().write("\n".getBytes(StandardCharsets.UTF_8));
+        socket.getOutputStream().flush();
+        assertTrue(readUntilQuietAfterContains(socket, "Persona name: ").contains("Persona name: "));
+
+        socket.getOutputStream().write((personaName + "\n").getBytes(StandardCharsets.UTF_8));
+        socket.getOutputStream().flush();
+        assertTrue(readUntilQuietAfterContains(socket, "Gender (female/male/neutral/none/other): ")
+                .contains("Gender"));
+
+        socket.getOutputStream().write((gender + "\n").getBytes(StandardCharsets.UTF_8));
+        socket.getOutputStream().flush();
+        return readUntilQuietAfterContains(socket, "Welcome to LPMuseum.");
+    }
+
+    private void assertPasswordRejected(Socket socket, String password, String expected) throws Exception {
+        socket.getOutputStream().write((password + "\n").getBytes(StandardCharsets.UTF_8));
+        socket.getOutputStream().flush();
+        String rejection = readUntilQuietAfterContains(socket, "Password: ");
+        assertTrue(rejection.contains(expected), rejection);
+        assertFalse(rejection.contains("Password: > "), rejection);
+    }
+
+    private boolean containsTelnetCommand(String text, int command, int option) {
+        return text.indexOf("" + (char) 255 + (char) command + (char) option) >= 0;
     }
 
     private String readUntilContains(Socket socket, String expected) throws Exception {

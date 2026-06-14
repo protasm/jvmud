@@ -1,2 +1,3 @@
 target/
 mudlibs/lp245/players/*.o
+mudlibs/lpmuseum/accounts/*.o

@@ -491,6 +491,12 @@ public final class LPCRuntime {
         return runtimeContext.hasCapturedSessionInput(persona);
     }
 
+    /** Returns whether the pending captured input should suppress terminal echo. */
+    public boolean capturedSessionInputNoEcho(Object persona) {
+        Objects.requireNonNull(persona, "persona");
+        return runtimeContext.capturedSessionInputNoEcho(persona);
+    }
+
     /** Delivers one captured input line to a persona. */
     public Object deliverCapturedSessionInput(Object persona, String line) {
         Objects.requireNonNull(persona, "persona");

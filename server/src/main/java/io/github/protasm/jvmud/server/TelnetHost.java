@@ -22,5 +22,9 @@ interface TelnetHost {
 
     void printPromptIfReady(TelnetPersona persona, PrintWriter out);
 
+    boolean isCapturingInput(TelnetPersona persona);
+
+    boolean isCapturingNoEchoInput(TelnetPersona persona);
+
     boolean isAttached(TelnetPersona persona);
 }
