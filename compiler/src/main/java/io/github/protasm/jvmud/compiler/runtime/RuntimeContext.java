@@ -620,45 +620,57 @@ public final class RuntimeContext {
     }
 
     public Object invokeObject(Object target, String methodName, Object... args) {
-        if (target == null) {
+        Object resolvedTarget = resolveInvocationTarget(target);
+        if (resolvedTarget == null) {
             return 0;
         }
 
         Object[] actualArgs = args == null ? new Object[0] : args;
         try {
-            InvocationPlan invocation = findInvocation(target.getClass(), methodName, actualArgs);
-            return withCurrentObject(target, () -> {
+            InvocationPlan invocation = findInvocation(resolvedTarget.getClass(), methodName, actualArgs);
+            return withCurrentObject(resolvedTarget, () -> {
                 try {
-                    return invocation.method().invoke(target, invocation.arguments());
+                    return invocation.method().invoke(resolvedTarget, invocation.arguments());
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException(
+                            "Failed to call " + describeInvocation(invocation, resolvedTarget)
+                                    + causeSummary(e),
+                            e);
                 } catch (ReflectiveOperationException e) {
                     throw new IllegalArgumentException(
-                            "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(target)
+                            "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(resolvedTarget)
                                     + causeSummary(e),
                             e);
                 }
             });
         } catch (NoSuchMethodException e) {
             throw new IllegalArgumentException(
-                    "Failed to call " + methodName + " on " + objectIdOrDescription(target)
+                    "Failed to call " + methodName + " on " + objectIdOrDescription(resolvedTarget)
                             + causeSummary(e),
                     e);
         }
     }
 
     public Object invokeOptionalObject(Object target, String methodName, Object... args) {
-        if (target == null) {
+        Object resolvedTarget = resolveInvocationTarget(target);
+        if (resolvedTarget == null) {
             return 0;
         }
 
         Object[] actualArgs = args == null ? new Object[0] : args;
         try {
-            InvocationPlan invocation = findOptionalInvocation(target.getClass(), methodName, actualArgs);
-            return withCurrentObject(target, () -> {
+            InvocationPlan invocation = findOptionalInvocation(resolvedTarget.getClass(), methodName, actualArgs);
+            return withCurrentObject(resolvedTarget, () -> {
                 try {
-                    return invocation.method().invoke(target, invocation.arguments());
+                    return invocation.method().invoke(resolvedTarget, invocation.arguments());
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException(
+                            "Failed to call " + describeInvocation(invocation, resolvedTarget)
+                                    + causeSummary(e),
+                            e);
                 } catch (ReflectiveOperationException e) {
                     throw new IllegalArgumentException(
-                            "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(target)
+                            "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(resolvedTarget)
                                     + causeSummary(e),
                             e);
                 }
@@ -669,6 +681,7 @@ public final class RuntimeContext {
     }
 
     private Object invokeObjectPreservingCurrentObject(Object target, String methodName, Object... args) {
+        target = resolveInvocationTarget(target);
         if (target == null) {
             return 0;
         }
@@ -678,6 +691,11 @@ public final class RuntimeContext {
             InvocationPlan invocation = findInvocation(target.getClass(), methodName, actualArgs);
             try {
                 return invocation.method().invoke(target, invocation.arguments());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                        "Failed to call " + describeInvocation(invocation, target)
+                                + causeSummary(e),
+                        e);
             } catch (ReflectiveOperationException e) {
                 throw new IllegalArgumentException(
                         "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(target)
@@ -1306,6 +1324,27 @@ public final class RuntimeContext {
         if (parameterType == boolean.class && arg instanceof Number number) {
             return number.intValue() != 0;
         }
+        if (parameterType == int.class && arg instanceof Number number) {
+            return number.intValue();
+        }
+        if (parameterType == long.class && arg instanceof Number number) {
+            return number.longValue();
+        }
+        if (parameterType == float.class && arg instanceof Number number) {
+            return number.floatValue();
+        }
+        if (parameterType == double.class && arg instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (parameterType == byte.class && arg instanceof Number number) {
+            return number.byteValue();
+        }
+        if (parameterType == short.class && arg instanceof Number number) {
+            return number.shortValue();
+        }
+        if (parameterType == char.class && arg instanceof Number number) {
+            return (char) number.intValue();
+        }
         if (!parameterType.isPrimitive()) {
             return arg;
         }
@@ -1348,6 +1387,13 @@ public final class RuntimeContext {
             return (char) 0;
         }
         return 0;
+    }
+
+    private Object resolveInvocationTarget(Object target) {
+        if (target instanceof String path) {
+            return loadOrGetObject(path);
+        }
+        return target;
     }
 
     private boolean hasMethod(Class<?> targetClass, String methodName, int arity) {
@@ -1483,6 +1529,33 @@ public final class RuntimeContext {
             message = cause.getClass().getSimpleName();
         }
         return ": " + message;
+    }
+
+    private String describeInvocation(InvocationPlan invocation, Object target) {
+        Method method = invocation.method();
+        StringBuilder builder = new StringBuilder(method.getName())
+                .append("/")
+                .append(method.getParameterCount())
+                .append(" on ")
+                .append(objectIdOrDescription(target))
+                .append(" with parameter types [");
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        for (int i = 0; i < parameterTypes.length; i++) {
+            if (i > 0) {
+                builder.append(", ");
+            }
+            builder.append(parameterTypes[i].getSimpleName());
+        }
+        builder.append("] and argument types [");
+        Object[] args = invocation.arguments();
+        for (int i = 0; i < args.length; i++) {
+            if (i > 0) {
+                builder.append(", ");
+            }
+            builder.append(args[i] == null ? "null" : args[i].getClass().getSimpleName());
+        }
+        builder.append("]");
+        return builder.toString();
     }
 
     private void removeCommandHandler(Object handler) {

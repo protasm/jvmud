@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
+import io.github.protasm.jvmud.compiler.exec.LPCLoadResult;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntimeException;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
@@ -48,6 +50,7 @@ import io.github.protasm.jvmud.runtime.WorldScheduler;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -65,6 +68,7 @@ final class MudlibCompatibilityScanTest {
     private static final Path MUDLIB_ROOT = REPO_ROOT.resolve("mudlibs").resolve("lp245");
     private static final Path MUDLIB_SOURCE_ROOT = MUDLIB_ROOT.resolve("source");
     private static final String CONFIG_PATH = "jvmud/lp245.config";
+    private static final String INIT_FILE_SOURCE = "room/init_file";
     private static final String PLAYER_SOURCE = "obj/player.c";
     private static final List<String> COMPATIBILITY_SET =
             List.of(
@@ -120,6 +124,25 @@ final class MudlibCompatibilityScanTest {
         LPCObjectHandle player = runtime.load(stripExtension(PLAYER_SOURCE));
 
         assertNotNull(player, "`obj/player.c` must define, verify, and instantiate through the JVM.");
+    }
+
+    @Test
+    void initFilePreloadCompatibilityRadarProducesReport() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        List<PreloadEntry> entries = readInitFilePreloads();
+        List<PreloadScanResult> results = new ArrayList<>();
+        for (PreloadEntry entry : entries) {
+            results.add(scanPreloadEntry(runtime, entry));
+        }
+
+        Path reportPath = writePreloadReport(results);
+
+        assertTrue(!entries.isEmpty(), "`" + INIT_FILE_SOURCE + "` should list preload objects.");
+        assertTrue(Files.exists(reportPath), "preload compatibility report should be written.");
     }
 
     @Test
@@ -273,6 +296,43 @@ final class MudlibCompatibilityScanTest {
     }
 
     @Test
+    void vanillaOrcValleyExposesAttackChatsForFortress() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        Object orcValley = runtime.loadOrGetObject("room/orc_vall");
+        Object chats = runtime.invokeObject(orcValley, "get_chats");
+
+        assertTrue(chats instanceof List<?>);
+        assertEquals("Orc says: Kill him!\n", ((List<?>) chats).get(0));
+    }
+
+    @Test
+    void vanillaFortressLoadsWithArmedOrcsBlockingTreasureRoom() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LPCObjectHandle fortress = runtime.load("room/fortress");
+        Object orc = runtime.present("orc", fortress.instance());
+
+        assertNotNull(orc);
+        assertEquals("An orc", runtime.invokeObject(orc, "short"));
+
+        Object player = runtime.cloneObject("obj/player");
+        runtime.withCommandActor(player, () -> runtime.invokeObject(player, "logon2", "fortresstest"));
+        runtime.moveObject(player, fortress.instance());
+        runtime.refreshCommandActions(player);
+
+        runtime.clearOutputTranscript();
+        assertEquals(1, runtime.dispatchCommand(player, "north"));
+        assertEquals("An orc bars your way.\n", runtime.outputTranscript());
+    }
+
+    @Test
     void vanillaPlayerCanPickUpBridgeStick() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
@@ -379,6 +439,90 @@ final class MudlibCompatibilityScanTest {
         appendPlayerRuntimeSurface(report, results.get(PLAYER_SOURCE));
 
         Files.writeString(reportPath, report.toString());
+    }
+
+    private static List<PreloadEntry> readInitFilePreloads() throws IOException {
+        List<String> lines = Files.readAllLines(MUDLIB_SOURCE_ROOT.resolve(INIT_FILE_SOURCE));
+        List<PreloadEntry> entries = new ArrayList<>();
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+            entries.add(new PreloadEntry(i + 1, line, stripSourceExtension(line)));
+        }
+        return entries;
+    }
+
+    private static PreloadScanResult scanPreloadEntry(LPCRuntime runtime, PreloadEntry entry) {
+        LPCLoadResult result = runtime.tryLoad(entry.runtimePath());
+        if (result.succeeded()) {
+            return new PreloadScanResult(entry, "loads", "", "");
+        }
+
+        Throwable error = result.error().orElseThrow();
+        if (error instanceof LPCRuntimeException runtimeException && !runtimeException.problems().isEmpty()) {
+            CompilationProblem first = runtimeException.problems().get(0);
+            return new PreloadScanResult(
+                    entry,
+                    "compile failure",
+                    first.getStage().toString(),
+                    problemSummary(first));
+        }
+
+        return new PreloadScanResult(
+                entry,
+                "runtime failure",
+                error.getClass().getSimpleName(),
+                summarizeThrowable(error));
+    }
+
+    private static Path writePreloadReport(List<PreloadScanResult> results) throws IOException {
+        Path reportPath = Path.of("target", "jvmud-init-file-preload-compatibility.md");
+        Files.createDirectories(reportPath.getParent());
+
+        long loaded = results.stream().filter(result -> result.status().equals("loads")).count();
+        long failed = results.size() - loaded;
+
+        StringBuilder report = new StringBuilder();
+        report.append("# JVMud LP245 Init-File Preload Compatibility Scan\n\n");
+        report.append("This report is informational. It walks `")
+                .append(INIT_FILE_SOURCE)
+                .append("` in order and captures the first current blocker for each preload object.\n\n");
+        report.append("- Entries: ").append(results.size()).append("\n");
+        report.append("- Loads: ").append(loaded).append("\n");
+        report.append("- Fails: ").append(failed).append("\n\n");
+        report.append("| Line | Preload Object | Runtime Path | Status | Stage / Kind | First Problem |\n");
+        report.append("| ---: | --- | --- | --- | --- | --- |\n");
+
+        for (PreloadScanResult result : results) {
+            PreloadEntry entry = result.entry();
+            report.append("| ")
+                    .append(entry.line())
+                    .append(" | `")
+                    .append(escape(entry.sourcePath()))
+                    .append("` | `")
+                    .append(escape(entry.runtimePath()))
+                    .append("` | ")
+                    .append(result.status())
+                    .append(" | ")
+                    .append(escape(result.stageOrKind()))
+                    .append(" | ")
+                    .append(escape(result.problem()))
+                    .append(" |\n");
+        }
+
+        Files.writeString(reportPath, report.toString());
+        return reportPath;
+    }
+
+    private static String summarizeThrowable(Throwable error) {
+        String message = error.getMessage();
+        if (message == null || message.isBlank()) {
+            Throwable cause = error.getCause();
+            message = cause == null ? "" : cause.getMessage();
+        }
+        return message == null ? "" : message.split("\\R", 2)[0];
     }
 
     private static void appendPlayerTracker(StringBuilder report, CompilationResult playerResult) throws IOException {
@@ -697,11 +841,25 @@ final class MudlibCompatibilityScanTest {
         return dot == -1 ? sourceName : sourceName.substring(0, dot);
     }
 
+    private static String stripSourceExtension(String sourceName) {
+        if (sourceName.endsWith(".c")) {
+            return sourceName.substring(0, sourceName.length() - 2);
+        }
+        if (sourceName.endsWith(".lpc")) {
+            return sourceName.substring(0, sourceName.length() - 4);
+        }
+        return sourceName;
+    }
+
     private static String escape(String value) {
         return value == null ? "" : value.replace("|", "\\|").replace("\n", " ");
     }
 
     private record SourceExcerpt(String sourceName, int lineNumber, String line) {}
+
+    private record PreloadEntry(int line, String sourcePath, String runtimePath) {}
+
+    private record PreloadScanResult(PreloadEntry entry, String status, String stageOrKind, String problem) {}
 
     private record RuntimeSurface(
             Set<String> globalFunctions,
