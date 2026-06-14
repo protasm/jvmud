@@ -17,6 +17,8 @@ public final class LPCFormatter {
             Pattern.compile("^(?:(?:[A-Za-z_][A-Za-z0-9_]*\\s+)|(?:[A-Za-z_][A-Za-z0-9_]*\\s*\\*\\s*))?[A-Za-z_][A-Za-z0-9_]*\\s*\\([^;]*\\)\\s*$");
     private static final Pattern CONTROL_HEADER =
             Pattern.compile("^(?:if|else\\s+if|else|for|while)\\b.*");
+    private static final Pattern SPLIT_CONTROL_HEADER =
+            Pattern.compile("^(?:if|else\\s+if|else|for|while)\\b.*|^}\\s*else(?:\\b.*)?$");
     private static final Pattern DECLARATION =
             Pattern.compile("^(?:int|string|mixed|void|object|mapping|float)(?:\\s+|\\s*\\*)[^;]*;\\s*(?://.*)?$");
     private static final Pattern CALL_STATEMENT =
@@ -40,9 +42,10 @@ public final class LPCFormatter {
 
     private List<FormattedLine> indentLines(String source) {
         String normalized = source.replace("\r\n", "\n").replace('\r', '\n').replace("\t", INDENT);
-        String[] rawLines = combineSplitMethodBraces(normalized.split("\n", -1));
+        String[] rawLines = combineSplitOpeningBraces(normalized.split("\n", -1));
         List<FormattedLine> result = new ArrayList<>();
         ScanState scanState = new ScanState();
+        ScanState spacingState = new ScanState();
         int blockIndent = 0;
         int singleLineIndents = 0;
         boolean inPreprocessorContinuation = false;
@@ -55,7 +58,7 @@ public final class LPCFormatter {
             if (lastSplitLine && rawLine.isEmpty())
                 continue;
 
-            String trimmed = rawLine.stripLeading();
+            String trimmed = normalizeCodeSpacing(rawLine.stripLeading(), spacingState);
             if (trimmed.isEmpty()) {
                 result.add(FormattedLine.blank());
                 continue;
@@ -101,15 +104,30 @@ public final class LPCFormatter {
         return result;
     }
 
-    private String[] combineSplitMethodBraces(String[] rawLines) {
+    private String[] combineSplitOpeningBraces(String[] rawLines) {
         List<String> combined = new ArrayList<>();
 
         for (int i = 0; i < rawLines.length; i++) {
             String current = rawLines[i];
-            if (i + 1 < rawLines.length && METHOD_DECLARATION.matcher(current.strip()).matches()) {
+            String strippedCurrent = current.strip();
+            if (i + 1 < rawLines.length && strippedCurrent.equals("}") && isElseHeader(rawLines[i + 1].strip())) {
+                String joinedElse = stripTrailingWhitespace(current) + " " + stripTrailingWhitespace(rawLines[i + 1]).stripLeading();
+                if (i + 2 < rawLines.length && isSplitControlHeader(joinedElse.strip())) {
+                    String next = stripTrailingWhitespace(rawLines[i + 2]).stripLeading();
+                    if (next.startsWith("{")) {
+                        addJoinedOpeningBrace(combined, joinedElse, next, true);
+                        i += 2;
+                        continue;
+                    }
+                }
+                combined.add(joinedElse);
+                i++;
+                continue;
+            }
+            if (i + 1 < rawLines.length && opensBlockOnFollowingLine(strippedCurrent)) {
                 String next = stripTrailingWhitespace(rawLines[i + 1]).stripLeading();
                 if (next.startsWith("{")) {
-                    combined.add(stripTrailingWhitespace(current) + " " + next);
+                    addJoinedOpeningBrace(combined, stripTrailingWhitespace(current), next, isSplitControlHeader(strippedCurrent));
                     i++;
                     continue;
                 }
@@ -119,6 +137,34 @@ public final class LPCFormatter {
         }
 
         return combined.toArray(String[]::new);
+    }
+
+    private boolean opensBlockOnFollowingLine(String line) {
+        return METHOD_DECLARATION.matcher(line).matches() || isSplitControlHeader(line);
+    }
+
+    private boolean isSplitControlHeader(String line) {
+        return SPLIT_CONTROL_HEADER.matcher(line).matches() && !line.contains("{") && !line.endsWith(";");
+    }
+
+    private boolean isElseHeader(String line) {
+        return line.equals("else") || line.startsWith("else if") || line.startsWith("else ");
+    }
+
+    private void addJoinedOpeningBrace(List<String> output, String current, String braceLine, boolean splitTrailingCode) {
+        if (!splitTrailingCode) {
+            output.add(current + " " + braceLine);
+            return;
+        }
+
+        String afterBrace = braceLine.substring(1).stripLeading();
+        if (afterBrace.isEmpty() || afterBrace.startsWith("//") || afterBrace.startsWith("/*") || afterBrace.contains("}")) {
+            output.add(current + " " + braceLine);
+            return;
+        }
+
+        output.add(current + " {");
+        output.add(afterBrace);
     }
 
     private List<FormattedLine> markMethodLeadingComments(List<FormattedLine> lines) {
@@ -295,6 +341,76 @@ public final class LPCFormatter {
         }
 
         return false;
+    }
+
+    private String normalizeCodeSpacing(String line, ScanState state) {
+        if (line.isEmpty() || state.inBlockComment()) {
+            updateBlockCommentState(line, state);
+            return line;
+        }
+
+        StringBuilder normalized = new StringBuilder();
+        boolean inString = false;
+        boolean escaped = false;
+        boolean pendingSpace = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            char next = i + 1 < line.length() ? line.charAt(i + 1) : '\0';
+
+            if (!inString && c == '/' && next == '/') {
+                if (pendingSpace) {
+                    normalized.append(' ');
+                    pendingSpace = false;
+                }
+                normalized.append(line.substring(i));
+                break;
+            }
+
+            if (!inString && c == '/' && next == '*') {
+                if (pendingSpace) {
+                    normalized.append(' ');
+                    pendingSpace = false;
+                }
+                normalized.append(line.substring(i));
+                if (!line.substring(i + 2).contains("*/"))
+                    state.setInBlockComment(true);
+                break;
+            }
+
+            if (!inString && c == ' ') {
+                pendingSpace = true;
+                continue;
+            }
+
+            if (pendingSpace) {
+                normalized.append(' ');
+                pendingSpace = false;
+            }
+
+            normalized.append(c);
+
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+
+            if (c == '"')
+                inString = true;
+        }
+
+        return normalized.toString();
+    }
+
+    private void updateBlockCommentState(String line, ScanState state) {
+        if (state.inBlockComment() && line.contains("*/"))
+            state.setInBlockComment(false);
     }
 
     private LineScan scanLine(String line, ScanState state) {

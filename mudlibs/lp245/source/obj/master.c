@@ -2166,9 +2166,7 @@ void inaugurate_master (int arg)
                 get_extra_wizinfo(0)[MUDWHO_INDEX] = mudwho_info;
               }
 
-              else
-                {
-
+              else {
                 mudwho_info = get_extra_wizinfo(0)[MUDWHO_INDEX];
               }
 

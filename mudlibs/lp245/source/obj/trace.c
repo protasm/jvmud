@@ -303,7 +303,7 @@ int Call(string str) {
   string with, what, item;
   int iwhat;
   object ob;
-  int ret;
+  mixed ret;
 
   if (!str)
     return 0;

@@ -406,6 +406,74 @@ final class LPCFormatterTest {
     }
 
     @Test
+    void joinsSplitControlOpeningBracesAndSplitsTrailingBodyCode() {
+        String source = """
+                sample() {
+                  if (ready)
+                  {
+                    bar();
+                  }
+                  else
+                  { xyzzy(); }
+                  if (again)
+                  { bar();
+                  }
+                  else if (other)
+                  {
+                    baz();
+                  }
+                }
+                """;
+
+        String expected = """
+                sample() {
+                  if (ready) {
+                    bar();
+                  } else { xyzzy(); }
+                  if (again) {
+                    bar();
+                  } else if (other) {
+                    baz();
+                  }
+                }
+                """;
+
+        assertEquals(expected, formatter.format(source));
+    }
+
+    @Test
+    void collapsesRepeatedCodeSpacesButKeepsStringsAndCommentsUntouched() {
+        String source = """
+                void  set_alias(string  a) {
+                \talias  =  "two  spaces";  // keep  comment  spacing
+                \t/* keep  block  comment  spacing */
+                }
+                """;
+
+        String expected = """
+                void set_alias(string a) {
+                  alias = "two  spaces"; // keep  comment  spacing
+                  /* keep  block  comment  spacing */
+                }
+                """;
+
+        assertEquals(expected, formatter.format(source));
+    }
+
+    @Test
+    void stripsTrailingWhitespaceFromAllLines() {
+        String source = "sample() {   \n  value = 1;  \n}\t\n";
+
+        String expected = """
+                sample() {
+                  value = 1;
+                }
+                """;
+
+        assertEquals(expected, formatter.format(source));
+    }
+
+    @Test
     void insertsBlankBeforeStandaloneReturnAfterAssignmentButKeepsAttachedGuardReturns() {
         String source = """
                 title() {

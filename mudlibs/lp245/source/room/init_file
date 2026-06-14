@@ -53,7 +53,6 @@ obj/stethoscope.c
 obj/team.c
 obj/torch.c
 obj/trace.c
-obj/trace2.c
 obj/wiz_bull_board.c
 obj/wiz_bull_board2.c
 players/lars/board.c

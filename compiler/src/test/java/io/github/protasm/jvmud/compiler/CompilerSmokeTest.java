@@ -109,6 +109,18 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void scannerKeepsEscapedQuotesInsideStringLiterals() {
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
+                string quoted() {
+                    return "\\"%s\\"";
+                }
+                """);
+
+        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
+        assertNotNull(result.getBytecode());
+    }
+
+    @Test
     void runtimeSupportsWhileLoopsAndArrayConcatAssignment() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/array_loop.c", """

@@ -318,10 +318,23 @@ public class Scanner {
     }
 
     private Token<String> stringLiteral() {
-        if (!ss.advanceTo('"'))
-            return errorToken("Unterminated string.");
+        boolean terminated = false;
+        while (!ss.atEnd()) {
+            char c = ss.consumeOneChar();
+            if (c == '\\') {
+                if (!ss.atEnd()) {
+                    ss.consumeOneChar();
+                }
+                continue;
+            }
+            if (c == '"') {
+                terminated = true;
+                break;
+            }
+        }
 
-        ss.advance();
+        if (!terminated)
+            return errorToken("Unterminated string.");
 
         return stringToken(T_STRING_LITERAL, unescapeStringLiteral(ss.readTrimmed()));
     }

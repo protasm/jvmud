@@ -45,9 +45,7 @@ void do_remove() {
 
   nr = sizeof(players);
 
-  for (j = 0 ; j < nr ; j += 2)
-    {
-
+  for (j = 0 ; j < nr ; j += 2) {
     if (players[j + 1] == 70) {
       remove_death_obj(players[j]);
       move_object(players[j], "/room/church");
@@ -75,9 +73,7 @@ void heart_beat() {
 
   nr = sizeof(players);
 
-  for (j = 0 ; j < nr ; j += 2)
-    {
-
+  for (j = 0 ; j < nr ; j += 2) {
     players[j + 1]++;
 
     if (players[j + 1] == 5) {
@@ -265,9 +261,7 @@ void add_player(object plobj) {
     i = sizeof(players);
     players = allocate(i + 2);
 
-    for (j = 0 ; j < i ; j ++)
-      {
-
+    for (j = 0 ; j < i ; j ++) {
       players[j] = oldlist[j];
     }
   }
@@ -309,9 +303,7 @@ void remove_player(object plobj) {
   oldlist = players;
   players = allocate(i - 2);
 
-  for (j = 0 ; j < i - 2 ; j += 2)
-    {
-
+  for (j = 0 ; j < i - 2 ; j += 2) {
     if (oldlist[j] == plobj)
       x = 2;
 

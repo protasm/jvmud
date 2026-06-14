@@ -309,6 +309,22 @@ final class MudlibCompatibilityScanTest {
     }
 
     @Test
+    void vanillaTraceLoadsAndLarsWorkroomContainsTracer() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LPCObjectHandle trace = runtime.load("obj/trace");
+        LPCObjectHandle workroom = runtime.load("players/lars/workroom");
+        Object tracer = runtime.present("tracer", workroom.instance());
+
+        assertEquals("General purpose object tracer", trace.invoke("short"));
+        assertNotNull(tracer);
+        assertEquals("General purpose object tracer", runtime.invokeObject(tracer, "short"));
+    }
+
+    @Test
     void vanillaFortressLoadsWithArmedOrcsBlockingTreasureRoom() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
