@@ -327,6 +327,11 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRArrayMutation arrayMutation) {
+            emitArrayMutation(mv, internalName, method, arrayMutation);
+            return;
+        }
+
         if (expression instanceof IRMappingLiteral mappingLiteral) {
             emitMappingLiteral(mv, internalName, method, mappingLiteral);
             return;
@@ -1007,6 +1012,20 @@ public final class BytecodeCompiler {
         emitExpression(mv, internalName, method, arraySet.value());
         boxIfNeeded(mv, arraySet.value().type());
         mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "set", "(ILjava/lang/Object;)Ljava/lang/Object;", true);
+    }
+
+    private void emitArrayMutation(MethodVisitor mv, String internalName, IRMethod method, IRArrayMutation mutation) {
+        emitExpression(mv, internalName, method, mutation.array());
+        boxIfNeeded(mv, mutation.array().type());
+        emitExpression(mv, internalName, method, mutation.index());
+        coerceValue(mv, mutation.index().type(), RuntimeTypes.INT);
+        pushInt(mv, mutation.delta());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeIndex.class),
+                "mutateNumber",
+                "(Ljava/lang/Object;II)Ljava/lang/Object;",
+                false);
     }
 
     private void emitSequence(MethodVisitor mv, String internalName, IRMethod method, IRSequence sequence) {

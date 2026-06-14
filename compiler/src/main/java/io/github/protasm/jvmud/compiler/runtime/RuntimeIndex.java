@@ -17,6 +17,17 @@ public final class RuntimeIndex {
         throw new IllegalArgumentException("Cannot index value: " + target);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Object mutateNumber(Object target, int index, int delta) {
+        if (target instanceof List list) {
+            Object oldValue = list.get(index);
+            int oldNumber = oldValue instanceof Number number ? number.intValue() : 0;
+            list.set(index, Integer.valueOf(oldNumber + delta));
+            return oldValue;
+        }
+        throw new IllegalArgumentException("Cannot mutate indexed value: " + target);
+    }
+
     public static int stringCharCode(String text, int index) {
         if (text == null || index < 0 || index >= text.length()) {
             return 0;

@@ -15,6 +15,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTParameters;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTStatement;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallEfun;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
@@ -67,6 +68,7 @@ public interface ASTVisitor {
         case ASTParameter parameter -> visitParameter(parameter);
         case ASTParameters parameters -> visitParameters(parameters);
         case ASTExprCallEfun exprCallEfun -> visitExprCallEfun(exprCallEfun);
+        case ASTExprArrayMutation exprArrayMutation -> visitExprArrayMutation(exprArrayMutation);
         case ASTExprCallMethod exprCallMethod -> visitExprCallMethod(exprCallMethod);
         case ASTExprDynamicInvoke exprDynamicInvoke -> visitExprDynamicInvoke(exprDynamicInvoke);
         case ASTExprFieldAccess exprFieldAccess -> visitExprFieldAccess(exprFieldAccess);
@@ -136,6 +138,8 @@ public interface ASTVisitor {
     default void visitStatement(ASTStatement statement) {}
 
     default void visitExprCallEfun(ASTExprCallEfun expr) {}
+
+    default void visitExprArrayMutation(ASTExprArrayMutation expr) {}
 
     default void visitExprCallMethod(ASTExprCallMethod expr) {}
 

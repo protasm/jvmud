@@ -145,6 +145,46 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsIndexedPostfixIncrementAndDecrement() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/indexed_postfix.c", """
+                mixed incremented() {
+                    mixed *values;
+
+                    values = {0, 0};
+                    values[0]++;
+                    values[1]--;
+
+                    return values[0] * 10 + values[1];
+                }
+                """);
+
+        assertEquals(9, object.invoke("incremented"));
+    }
+
+    @Test
+    void indexedPostfixMutationEvaluatesIndexExpressionOnce() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/indexed_postfix_once.c", """
+                int cursor;
+                mixed *values;
+
+                int next_index() {
+                    cursor++;
+                    return cursor - 1;
+                }
+
+                mixed value() {
+                    values = {0, 0};
+                    values[next_index()]++;
+                    return values[0] * 10 + cursor;
+                }
+                """);
+
+        assertEquals(11, object.invoke("value"));
+    }
+
+    @Test
     void runtimeCoercesMixedNumericOperandsBeforeJvmIntegerOpcodes() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/mixed_numeric.c", """

@@ -17,6 +17,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTStatement;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallEfun;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
@@ -377,6 +378,9 @@ public final class SemanticAnalyzer {
             return referencesLocal(store.target(), local)
                     || referencesLocal(store.index(), local)
                     || referencesLocal(store.value(), local);
+
+        if (expression instanceof ASTExprArrayMutation mutation)
+            return referencesLocal(mutation.target(), local) || referencesLocal(mutation.index(), local);
 
         if (expression instanceof ASTExprArrayAccess access)
             return referencesLocal(access.target(), local) || referencesLocal(access.index(), local);
@@ -749,6 +753,14 @@ public final class SemanticAnalyzer {
                     return store;
 
                 return new ASTExprArrayStore(store.line(), resolvedTarget, resolvedIndex, resolvedValue);
+            }
+
+            if (expression instanceof ASTExprArrayMutation mutation) {
+                ASTExpression resolvedTarget = resolveExpression(mutation.target(), context);
+                ASTExpression resolvedIndex = resolveExpression(mutation.index(), context);
+                if (resolvedTarget == mutation.target() && resolvedIndex == mutation.index())
+                    return mutation;
+                return new ASTExprArrayMutation(mutation.line(), resolvedTarget, resolvedIndex, mutation.delta());
             }
 
             if (expression instanceof ASTExprArrayAccess access) {

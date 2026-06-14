@@ -18,6 +18,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallEfun;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
@@ -191,6 +192,9 @@ public final class SemanticTypeChecker {
 
         if (expression instanceof ASTExprArrayStore store)
             return inferIndexStoreType(store, context);
+
+        if (expression instanceof ASTExprArrayMutation mutation)
+            return inferIndexMutationType(mutation, context);
 
         if (expression instanceof ASTExprOpUnary unary)
             return inferUnaryType(unary, context);
@@ -512,6 +516,23 @@ public final class SemanticTypeChecker {
                 new CompilationProblem(
                         CompilationStage.ANALYZE, "Assignment expects array or mapping target", store.line()));
         return valueType;
+    }
+
+    private LPCType inferIndexMutationType(ASTExprArrayMutation mutation, MethodContext context) {
+        LPCType targetType = inferExpressionType(mutation.target(), context);
+        LPCType indexType = inferExpressionType(mutation.index(), context);
+
+        if (targetType == LPCType.LPCARRAY) {
+            ensureAssignable(LPCType.LPCINT, indexType, mutation.line(), "Array index expects integer");
+            return LPCType.LPCMIXED;
+        }
+
+        if (targetType == LPCType.LPCMIXED || targetType == null)
+            return LPCType.LPCMIXED;
+
+        problems.add(new CompilationProblem(
+                CompilationStage.ANALYZE, "Indexed increment expects array target", mutation.line()));
+        return LPCType.LPCMIXED;
     }
 
     private boolean promoteIndexedStringTarget(ASTExpression target) {

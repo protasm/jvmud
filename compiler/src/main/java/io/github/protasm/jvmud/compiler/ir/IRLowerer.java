@@ -17,6 +17,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallEfun;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
@@ -536,6 +537,12 @@ public final class IRLowerer {
             IRExpression value = lowerExpression(arrayStore.value(), context, problems);
             return new IRArraySet(
                     arrayStore.line(), target, index, coerceIfNeeded(value, RuntimeTypes.MIXED), value.type());
+        }
+
+        if (expression instanceof ASTExprArrayMutation mutation) {
+            IRExpression target = lowerExpression(mutation.target(), context, problems);
+            IRExpression index = coerceIfNeeded(lowerExpression(mutation.index(), context, problems), RuntimeTypes.INT);
+            return new IRArrayMutation(mutation.line(), target, index, mutation.delta(), RuntimeTypes.MIXED);
         }
 
         if (expression instanceof ASTExprOpUnary unary) {

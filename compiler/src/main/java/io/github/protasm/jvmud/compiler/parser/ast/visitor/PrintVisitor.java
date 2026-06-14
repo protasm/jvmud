@@ -232,6 +232,15 @@ public final class PrintVisitor implements ASTVisitor {
     }
 
     @Override
+    public void visitExprArrayMutation(io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation expr) {
+        doOutput(String.format("%s[%+d]", expr.className(), expr.delta()));
+        indentLvl++;
+        expr.target().accept(this);
+        expr.index().accept(this);
+        indentLvl--;
+    }
+
+    @Override
     public void visitField(ASTField field) {
         doOutput(String.format("%s%s", field.className(), field.symbol()));
         indentLvl++;

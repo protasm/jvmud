@@ -139,6 +139,11 @@ public final class IRPrettyPrinter {
             return expression(set.array()) + "[" + expression(set.index()) + "] = " + expression(set.value())
                     + ":" + type(set.type());
         }
+        if (expression instanceof IRArrayMutation mutation) {
+            String op = mutation.delta() >= 0 ? "++" : "--";
+            return expression(mutation.array()) + "[" + expression(mutation.index()) + "]" + op
+                    + ":" + type(mutation.type());
+        }
         if (expression instanceof IRStringGet get) {
             return expression(get.string()) + "[" + expression(get.index()) + "]:" + type(get.type());
         }

@@ -55,7 +55,7 @@ void raise_dex();
 void raise_int();
 void raise_str();
 int too_high_average();
-void alas(string str);
+void alas(string what);
 string gnd_prn();
 
 /* some minor changes by Iggy. */
@@ -571,8 +571,8 @@ int query_drop_castle() {
   return 1;
 }
 
-void alas(string str) {
-  write("Sorry " + gnd_prn() + ", but you are already as " + str +
+void alas(string what) {
+  write("Sorry " + gnd_prn() + ", but you are already as " + what +
   "\nas any");
 
   if (this_player()->query_gender() == 0)

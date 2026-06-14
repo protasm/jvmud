@@ -74,7 +74,9 @@ int prevent_insert() {
   if (empty_container)
     return 0;
 
-  else {
+  else
+    {
+
     write("You don't want to ruin " + name + ".\n");
 
     return 1;

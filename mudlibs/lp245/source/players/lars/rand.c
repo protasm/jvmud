@@ -2,13 +2,12 @@ int get() { return 1; }
 string short() { return "true"; }
 void init() { add_action("test_random", "test"); }
 int test_random(string str) {
-   int i, *a, b, s, k, iterations, range;
+   int i, *a, b, s, iterations, range;
 
    if (sscanf(str, "%d %d", iterations, range) != 2) return 0;
    a = allocate(range);
    for (i = 0; i < iterations; i++) {
-      k = random(range);
-      a[k] = a[k] + 1;
+      a[random(range)]++;
       b++;
    }
    for (i = 0; i < range; i++) {
