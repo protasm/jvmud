@@ -325,6 +325,20 @@ final class MudlibCompatibilityScanTest {
     }
 
     @Test
+    void vanillaDeathRoomLoadsAndCreatesDeath() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        LPCObjectHandle deathRoom = runtime.load("room/death/death_room");
+        Object death = runtime.present("death", deathRoom.instance());
+
+        assertNotNull(death);
+        assertEquals("Death, clad in black", runtime.invokeObject(death, "short"));
+    }
+
+    @Test
     void vanillaFortressLoadsWithArmedOrcsBlockingTreasureRoom() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());

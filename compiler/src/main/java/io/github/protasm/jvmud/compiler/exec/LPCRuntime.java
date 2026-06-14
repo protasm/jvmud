@@ -949,7 +949,18 @@ public final class LPCRuntime {
                 trimmed = trimmed.substring(1);
             }
             if (!trimmed.isEmpty()) {
-                return baseIncludePath.resolve(trimmed).normalize();
+                Path baseCandidate = baseIncludePath.resolve(trimmed).normalize();
+                if (Files.exists(baseCandidate)) {
+                    return baseCandidate;
+                }
+                Path mudlibRoot = mudlibBoundary.mudlibRootPath().orElse(null);
+                if (mudlibRoot != null) {
+                    Path mudlibCandidate = mudlibRoot.resolve(trimmed).normalize();
+                    if (Files.exists(mudlibCandidate)) {
+                        return mudlibCandidate;
+                    }
+                }
+                return baseCandidate;
             }
         }
 
