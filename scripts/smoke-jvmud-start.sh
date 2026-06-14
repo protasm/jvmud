@@ -9,7 +9,10 @@ PORT=4000
 TMP_BASE=${TMPDIR:-/tmp}
 TMP_BASE=${TMP_BASE%/}
 LOG_FILE=$(mktemp "$TMP_BASE/jvmud-start-smoke.XXXXXX")
-SMOKE_PLAYER_FILE="mudlibs/lp245/players/smoketest.o"
+SMOKE_PLAYER_FILES=(
+  "mudlibs/lp245/players/smoketest.o"
+  "mudlibs/lp245/source/players/smoketest.o"
+)
 SERVER_PID=
 
 cleanup() {
@@ -20,14 +23,14 @@ cleanup() {
   fi
   if [[ "$status" -eq 0 ]]; then
     rm -f "$LOG_FILE"
-    rm -f "$SMOKE_PLAYER_FILE"
+    rm -f "${SMOKE_PLAYER_FILES[@]}"
   else
     echo "server log: $LOG_FILE" >&2
   fi
 }
 trap 'status=$?; cleanup "$status"; exit "$status"' EXIT
 
-rm -f "$SMOKE_PLAYER_FILE"
+rm -f "${SMOKE_PLAYER_FILES[@]}"
 
 ./jvmud-start mudlibs/lp245/jvmud/lp245.config >"$LOG_FILE" 2>&1 &
 SERVER_PID=$!

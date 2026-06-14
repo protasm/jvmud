@@ -11,17 +11,21 @@ import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
+import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
+import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
 import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.runtime.MudlibProjection;
 import io.github.protasm.jvmud.runtime.MudlibProjectionRole;
 import io.github.protasm.jvmud.runtime.WorldScheduler;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -57,6 +61,51 @@ final class CompilerSmokeTest {
         assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
         assertNotNull(result.getBytecode());
         assertTrue(result.getBytecode().length > 0);
+    }
+
+    @Test
+    void includeResolverAllowsParentTraversalWithinMudlibRoot() throws IOException {
+        Path roomDir = Files.createDirectories(tempDir.resolve("room"));
+        Path mineDir = Files.createDirectories(roomDir.resolve("mine"));
+        Files.writeString(roomDir.resolve("std.h"), "#define VALUE 42\n");
+        Path sourcePath = mineDir.resolve("tunnel.c");
+        Files.writeString(sourcePath, """
+                #include "../std.h"
+
+                int value() {
+                    return VALUE;
+                }
+                """);
+
+        RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(tempDir, List.of()));
+        CompilationResult result = new CompilationPipeline("java/lang/Object", context)
+                .run(sourcePath, Files.readString(sourcePath), "room/mine/tunnel", "/room/mine/tunnel.c",
+                        ParserOptions.defaults());
+
+        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
+        assertNotNull(result.getBytecode());
+    }
+
+    @Test
+    void includeResolverRejectsParentTraversalOutsideMudlibRoot() throws IOException {
+        Path roomDir = Files.createDirectories(tempDir.resolve("room"));
+        Path mineDir = Files.createDirectories(roomDir.resolve("mine"));
+        Path sourcePath = mineDir.resolve("escape.c");
+        Files.writeString(sourcePath, """
+                #include "../../../outside.h"
+
+                int value() {
+                    return 1;
+                }
+                """);
+
+        RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(tempDir, List.of()));
+        CompilationResult result = new CompilationPipeline("java/lang/Object", context)
+                .run(sourcePath, Files.readString(sourcePath), "room/mine/escape", "/room/mine/escape.c",
+                        ParserOptions.defaults());
+
+        assertTrue(result.getProblems().stream()
+                .anyMatch(problem -> problem.getMessage().contains("Error scanning source")));
     }
 
     @Test

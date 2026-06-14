@@ -89,7 +89,7 @@ public final class SearchPathIncludeResolver implements IncludeResolver {
       Path parent = resolveAgainstBase(includingFile.getParent());
 
       if (parent != null) {
-        Path maybe = tryRead(parent, lookupPath);
+        Path maybe = tryReadRelative(parent, lookupPath);
 
         if (maybe != null) return buildResolution(maybe);
       }
@@ -137,6 +137,20 @@ public final class SearchPathIncludeResolver implements IncludeResolver {
     Path candidate = anchoredRoot.resolve(includePath).normalize();
 
     if (!candidate.startsWith(anchoredRoot.normalize())) return null;
+
+    if (Files.isRegularFile(candidate)) return candidate;
+
+    return null;
+  }
+
+  private Path tryReadRelative(Path includingDirectory, String includePath) throws IOException {
+    if (includingDirectory == null) return null;
+
+    Path directory = resolveAgainstBase(includingDirectory);
+    Path candidate = directory.resolve(includePath).normalize();
+    Path cap = (baseIncludePath != null) ? baseIncludePath.normalize() : directory.normalize();
+
+    if (!candidate.startsWith(cap)) return null;
 
     if (Files.isRegularFile(candidate)) return candidate;
 
