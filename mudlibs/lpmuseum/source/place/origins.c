@@ -14,15 +14,22 @@ void init() {
 }
 
 void describe(object viewer) {
+  int occupant_count;
+
   write("Origins Gallery\n");
   write("This gallery names JVMud concepts before any exhibit vocabulary appears.\n");
-  write("An engine model rests in the center of the Place.\n");
+  write("\n");
   write("The concourse is south; the portal hall is east.\n");
+  occupant_count = 0;
   if (present("staffer", this_object())) {
+    write("\n");
     write("Museum Security Staffer\n");
+    occupant_count = occupant_count + 1;
   }
+  occupant_count = occupant_count + call_other(viewer, "list_present_personas", viewer);
+  write("\n");
+  write("An engine model rests in the center of the Place.\n");
   call_other(viewer, "list_vended_entities", viewer);
-  call_other(viewer, "list_present_personas", viewer);
 }
 
 void long(mixed str) {

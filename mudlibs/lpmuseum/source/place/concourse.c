@@ -26,16 +26,23 @@ void init() {
 }
 
 void describe(object viewer) {
+  int occupant_count;
+
   write("Grand Concourse of LPMuseum\n");
   write("Marble floors carry the hush of a museum for native JVMud mudlibs.\n");
   write("This is a complete starting Place: no exhibit mudlib is required.\n");
+  write("\n");
   write("North leads to Origins, east to the Creator Workshop, and west to the Archive.\n");
-  write("A directory and a docent are here.\n");
+  occupant_count = 0;
   if (present("staffer", this_object())) {
+    write("\n");
     write("Museum Security Staffer\n");
+    occupant_count = occupant_count + 1;
   }
+  occupant_count = occupant_count + call_other(viewer, "list_present_personas", viewer);
+  write("\n");
+  write("A directory and a docent are here.\n");
   call_other(viewer, "list_vended_entities", viewer);
-  call_other(viewer, "list_present_personas", viewer);
 }
 
 void long(mixed str) {

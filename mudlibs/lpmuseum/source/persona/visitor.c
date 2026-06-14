@@ -35,7 +35,7 @@ void reset(mixed first_load) {
 
 void connect() {
   player_bound_messages_enabled = 0;
-  write("Account ID: ");
+  write("Please enter your user ID: ");
   input_to("choose_account_id");
 }
 
@@ -43,7 +43,7 @@ void choose_account_id(mixed value) {
   value = normalize_account_id(value);
   if (!valid_account_id(value)) {
     write("Use letters, numbers, underscore, or dash for your account ID.\n");
-    write("Account ID: ");
+    write("Please enter your user ID: ");
     input_to("choose_account_id");
     return;
   }
@@ -620,32 +620,40 @@ int whoami(mixed ignored) {
   return 1;
 }
 
-void list_present_personas(object viewer) {
+int list_present_personas(object viewer) {
   object *connected;
   object persona;
   int index;
+  int count;
 
   connected = users();
   index = 0;
+  count = 0;
   while (index < sizeof(connected)) {
     persona = connected[index];
     if (persona != viewer && environment(persona) == environment(viewer)) {
       write(call_other(persona, "query_name") + " is here.\n");
+      count = count + 1;
     }
     index = index + 1;
   }
+  return count;
 }
 
-void list_vended_entities(object viewer) {
+int list_vended_entities(object viewer) {
   object place;
   object item;
+  int count;
 
   place = environment(viewer);
   item = first_inventory(place);
+  count = 0;
   while (item) {
     if (item != viewer && call_other(item, "is_vended_entity")) {
       write(call_other(item, "short") + "\n");
+      count = count + 1;
     }
     item = next_inventory(item);
   }
+  return count;
 }

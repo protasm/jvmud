@@ -12,15 +12,22 @@ void init() {
 }
 
 void describe(object viewer) {
+  int occupant_count;
+
   write("Archive\n");
   write("The Archive is deliberately independent of any exhibit mudlib content.\n");
   write("It demonstrates that LPMuseum can host its own Entities and player experience first.\n");
+  write("\n");
   write("The concourse is east.\n");
+  occupant_count = 0;
   if (present("staffer", this_object())) {
+    write("\n");
     write("Museum Security Staffer\n");
+    occupant_count = occupant_count + 1;
   }
+  occupant_count = occupant_count + call_other(viewer, "list_present_personas", viewer);
+  write("\n");
   call_other(viewer, "list_vended_entities", viewer);
-  call_other(viewer, "list_present_personas", viewer);
 }
 
 void long(mixed str) {

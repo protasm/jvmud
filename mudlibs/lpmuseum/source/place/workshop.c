@@ -15,19 +15,26 @@ void init() {
 }
 
 void describe(object viewer) {
+  int occupant_count;
+
   write("Creator Workshop\n");
   write("Benches here show how native JVMud mudlib authors can keep policy in LPC objects.\n");
   write("The Persona owns general commands; Places own exits; Entities own local affordances.\n");
   write("Try demo time, demo users, demo inventory, demo dispatch, or demo signal.\n");
+  write("\n");
   write("The concourse is west.\n");
+  occupant_count = 0;
+  if (present("staffer", this_object())) {
+    write("\n");
+    write("Museum Security Staffer\n");
+    occupant_count = occupant_count + 1;
+  }
+  occupant_count = occupant_count + call_other(viewer, "list_present_personas", viewer);
+  write("\n");
   if (present("vending machine", this_object())) {
     write("Entity Vending Machine\n");
   }
-  if (present("staffer", this_object())) {
-    write("Museum Security Staffer\n");
-  }
   call_other(viewer, "list_vended_entities", viewer);
-  call_other(viewer, "list_present_personas", viewer);
 }
 
 void long(mixed str) {

@@ -12,11 +12,22 @@ void init() {
 }
 
 void describe(object viewer) {
+  int occupant_count;
+
   write("Portal Hall\n");
   write("Mount points for exhibit mudlibs line the walls, but the hall belongs to LPMuseum.\n");
-  write("A quiet exhibit portal waits here as an Entity. Origins is west.\n");
+  write("\n");
+  write("Origins is west.\n");
+  occupant_count = 0;
+  if (present("staffer", this_object())) {
+    write("\n");
+    write("Museum Security Staffer\n");
+    occupant_count = occupant_count + 1;
+  }
+  occupant_count = occupant_count + call_other(viewer, "list_present_personas", viewer);
+  write("\n");
+  write("A quiet exhibit portal waits here as an Entity.\n");
   call_other(viewer, "list_vended_entities", viewer);
-  call_other(viewer, "list_present_personas", viewer);
 }
 
 void long(mixed str) {

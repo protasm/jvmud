@@ -82,9 +82,9 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                String initial = readUntilQuietAfterContains(socket, "Account ID: ");
+                String initial = readUntilQuietAfterContains(socket, "Please enter your user ID: ");
                 assertTrue(initial.contains("Attached player 1 as persona/visitor#clone in place/concourse"), initial);
-                assertTrue(initial.contains("Account ID: "), initial);
+                assertTrue(initial.contains("Please enter your user ID: "), initial);
 
                 String greeting = createLpmuseumAccountAndEnter(socket, uniqueAccountId("protasm"), "Valid1!",
                         "protasm", "neutral");
@@ -93,7 +93,7 @@ final class TelnetServerTest {
 
                 try (Socket second = new Socket("127.0.0.1", server.port())) {
                     second.setSoTimeout(5000);
-                    assertTrue(readUntilQuietAfterContains(second, "Account ID: ")
+                    assertTrue(readUntilQuietAfterContains(second, "Please enter your user ID: ")
                             .contains("Attached player 2 as persona/visitor#clone"));
                     assertTrue(createLpmuseumAccountAndEnter(second, uniqueAccountId("solfeggio"), "Valid1!",
                             "solfeggio", "other").contains("Hi, Solfeggio! Welcome to LPMuseum."));
@@ -104,6 +104,9 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
                 String concourse = readUntilQuietAfterContains(socket, "directory and a docent");
                 assertTrue(concourse.contains("Grand Concourse of LPMuseum"), concourse);
+                assertTrue(concourse.contains("mudlib is required.\n\nNorth leads"), concourse);
+                assertTrue(concourse.contains("the Archive.\n\nMuseum Security Staffer"), concourse);
+                assertTrue(concourse.contains("Solfeggio is here.\n\nA directory and a docent are here."), concourse);
                 assertTrue(concourse.contains("Museum Security Staffer"), concourse);
                 assertFalse(concourse.contains("soft blue jacket"), concourse);
                 assertFalse(concourse.contains("gentle patrol is driven"), concourse);
@@ -185,8 +188,9 @@ final class TelnetServerTest {
 
                 socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilQuietAfterContains(socket, "vended curio #1")
-                        .contains("vended curio #1"));
+                String workshopWithCurio = readUntilQuietAfterContains(socket, "vended curio #1");
+                assertTrue(workshopWithCurio.contains("Try demo time, demo users, demo inventory, demo dispatch, or demo signal.\n\nThe concourse is west."), workshopWithCurio);
+                assertTrue(workshopWithCurio.contains("Entity Vending Machine\nvended curio #1"), workshopWithCurio);
 
                 socket.getOutputStream().write("take curio\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -255,7 +259,7 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                assertTrue(readUntilQuietAfterContains(socket, "Please enter your user ID: ").contains("Please enter your user ID: "));
                 assertTrue(createLpmuseumAccountAndEnter(socket, accountId, "Valid1!", "solfeggio", "female")
                         .contains("Hi, Solfeggio! Welcome to LPMuseum."));
                 socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
@@ -271,7 +275,7 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                assertTrue(readUntilQuietAfterContains(socket, "Please enter your user ID: ").contains("Please enter your user ID: "));
                 socket.getOutputStream().write((accountId + "\n").getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 String passwordPrompt = readUntilQuietAfterContains(socket, "Password: ");
@@ -292,7 +296,7 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                assertTrue(readUntilQuietAfterContains(socket, "Please enter your user ID: ").contains("Please enter your user ID: "));
                 socket.getOutputStream().write((accountId + "\n").getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 assertTrue(readUntilQuietAfterContains(socket, "Password: ").contains("Password: "));
@@ -329,7 +333,7 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                assertTrue(readUntilQuietAfterContains(socket, "Please enter your user ID: ").contains("Please enter your user ID: "));
                 socket.getOutputStream().write((uniqueAccountId("policy") + "\n").getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 assertTrue(readUntilQuietAfterContains(socket, "Create it? (yes/no) ").contains("Create it?"));
@@ -388,7 +392,7 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                assertTrue(readUntilQuietAfterContains(socket, "Please enter your user ID: ").contains("Please enter your user ID: "));
                 socket.getOutputStream().write((uniqueAccountId("echo") + "\n").getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 assertTrue(readUntilQuietAfterContains(socket, "Create it? (yes/no) ").contains("Create it?"));
@@ -420,7 +424,7 @@ final class TelnetServerTest {
         TelnetPersona persona = mud.attachPersona(out, "127.0.0.1");
 
         String initial = output.toString();
-        assertTrue(initial.contains("Account ID: "), initial);
+        assertTrue(initial.contains("Please enter your user ID: "), initial);
         assertFalse(initial.contains("Museum Security Staffer heads"), initial);
 
         for (int i = 0; i < 30; i++) {
@@ -428,7 +432,7 @@ final class TelnetServerTest {
         }
 
         String duringLogin = output.toString();
-        assertTrue(duringLogin.contains("Account ID: "), duringLogin);
+        assertTrue(duringLogin.contains("Please enter your user ID: "), duringLogin);
         assertFalse(duringLogin.contains("Museum Security Staffer heads"), duringLogin);
 
         mud.detachPersona(persona);
