@@ -186,7 +186,7 @@ final class LPCFormatterTest {
                   return 3;
                 }
 
-                set_object(ob) {  /* NOTE: a string */
+                set_object(ob) { /* NOTE: a string */
                   object = ob;
                 }
 
@@ -413,12 +413,16 @@ final class LPCFormatterTest {
                   {
                     bar();
                   }
+
                   else
+
                   { xyzzy(); }
                   if (again)
                   { bar();
                   }
+
                   else if (other)
+
                   {
                     baz();
                   }

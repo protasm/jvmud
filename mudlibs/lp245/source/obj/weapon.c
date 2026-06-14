@@ -43,18 +43,18 @@ string info;
 
 string query_name() { return name_of_weapon; }
 
-void  long() {
+void long() {
   write(long_desc);
 }
 
-void  reset(int arg) {
+void reset(int arg) {
   if (arg)
     return;
 
   wielded = 0; value = 0;
 }
 
-void  init() {
+void init() {
   if (read_msg) {
     add_action("read", "read");
   }

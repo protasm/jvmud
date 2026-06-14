@@ -110,25 +110,28 @@ public final class LPCFormatter {
         for (int i = 0; i < rawLines.length; i++) {
             String current = rawLines[i];
             String strippedCurrent = current.strip();
-            if (i + 1 < rawLines.length && strippedCurrent.equals("}") && isElseHeader(rawLines[i + 1].strip())) {
-                String joinedElse = stripTrailingWhitespace(current) + " " + stripTrailingWhitespace(rawLines[i + 1]).stripLeading();
-                if (i + 2 < rawLines.length && isSplitControlHeader(joinedElse.strip())) {
-                    String next = stripTrailingWhitespace(rawLines[i + 2]).stripLeading();
+            int elseIndex = nextNonBlankIndex(rawLines, i + 1);
+            if (elseIndex < rawLines.length && strippedCurrent.equals("}") && isElseHeader(rawLines[elseIndex].strip())) {
+                String joinedElse = stripTrailingWhitespace(current) + " " + stripTrailingWhitespace(rawLines[elseIndex]).stripLeading();
+                int braceIndex = nextNonBlankIndex(rawLines, elseIndex + 1);
+                if (braceIndex < rawLines.length && isSplitControlHeader(joinedElse.strip())) {
+                    String next = stripTrailingWhitespace(rawLines[braceIndex]).stripLeading();
                     if (next.startsWith("{")) {
                         addJoinedOpeningBrace(combined, joinedElse, next, true);
-                        i += 2;
+                        i = braceIndex;
                         continue;
                     }
                 }
                 combined.add(joinedElse);
-                i++;
+                i = elseIndex;
                 continue;
             }
-            if (i + 1 < rawLines.length && opensBlockOnFollowingLine(strippedCurrent)) {
-                String next = stripTrailingWhitespace(rawLines[i + 1]).stripLeading();
+            int braceIndex = nextNonBlankIndex(rawLines, i + 1);
+            if (braceIndex < rawLines.length && opensBlockOnFollowingLine(strippedCurrent)) {
+                String next = stripTrailingWhitespace(rawLines[braceIndex]).stripLeading();
                 if (next.startsWith("{")) {
                     addJoinedOpeningBrace(combined, stripTrailingWhitespace(current), next, isSplitControlHeader(strippedCurrent));
-                    i++;
+                    i = braceIndex;
                     continue;
                 }
             }
@@ -137,6 +140,13 @@ public final class LPCFormatter {
         }
 
         return combined.toArray(String[]::new);
+    }
+
+    private int nextNonBlankIndex(String[] rawLines, int start) {
+        int index = start;
+        while (index < rawLines.length && stripTrailingWhitespace(rawLines[index]).strip().isEmpty())
+            index++;
+        return index;
     }
 
     private boolean opensBlockOnFollowingLine(String line) {

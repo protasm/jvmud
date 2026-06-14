@@ -83,7 +83,7 @@ int prevent_insert() {
 
 int id(string str) {
   if (full)
-    return  str == name || str == alt_name || str == alias;
+    return str == name || str == alt_name || str == alias;
 
   else
     return str == empty_container;
@@ -95,10 +95,9 @@ string short() {
       return name;
 
     return short_desc;
-  }
+  } else
 
-  else
-    return "An empty " + empty_container;
+  return "An empty " + empty_container;
 }
 
 void long() {
@@ -108,10 +107,8 @@ void long() {
 
     else
       write(long_desc);
-  }
-
-  else
-    write(short() + "\n");
+  } else
+  write(short() + "\n");
 }
 
 int get() {
@@ -197,7 +194,7 @@ void set_strength(int s) {
   strength = s;
 }
 
-void  set_alias(string a) {
+void set_alias(string a) {
   alias = a;
 }
 
@@ -213,7 +210,7 @@ void set_drinker_mess(string dm) {
   drinker_mess = dm;
 }
 
-void set_empty_container(string  ec) {
+void set_empty_container(string ec) {
   empty_container = ec;
 }
 
@@ -228,10 +225,9 @@ int query_value() {
 
     else
       return min_cost();
-  }
+  } else
 
-  else
-    return 10;
+  return 10;
 }
 
 int query_weight() {

@@ -16,8 +16,8 @@ void reset(int arg) {
 }
 
 void init() {
-  object  ob;
-  int  does_exist;
+  object ob;
+  int does_exist;
 
   if(this_player()) {
     if(

@@ -203,7 +203,7 @@ player that this has occurred.
 
 */
 
-int this_door(string  str) {
+int this_door(string str) {
   string type;
 
   if ( !str)
@@ -264,10 +264,8 @@ int go( string str) {
     go_door();
 
     return 1;
-  }
-
-  else
-    if ( tmp == 1 )
+  } else
+  if ( tmp == 1 )
     return 1;
 
   else
@@ -287,7 +285,7 @@ void open_door() {
   if ( is_locked )
     write("You can't open the " + direction + " door, it's locked!\n");
 
-  else  {
+  else {
     write("You open the " + direction + " door.\n");
     set_closed( 0);
     partner_door->set_closed(is_closed);
@@ -330,10 +328,8 @@ int open( string str) {
     open_door();
 
     return 1;
-  }
-
-  else
-    if ( tmp == 1 )
+  } else
+  if ( tmp == 1 )
     return 1;
 
   else
@@ -352,10 +348,8 @@ int close( string str) {
     close_door();
 
     return 1;
-  }
-
-  else
-    if ( tmp == 1 )
+  } else
+  if ( tmp == 1 )
     return 1;
 
   else
@@ -431,7 +425,7 @@ object get_key(string type) {
       tmp_num += 1;
       str = ob->query_type();
 
-      if  ( ( str == k_type ) || ( ! k_type ) )
+      if ( ( str == k_type ) || ( ! k_type ) )
         return ob;
     }
 
@@ -443,7 +437,7 @@ object get_key(string type) {
   return ob;
 }
 
-int this_key(string  str) {
+int this_key(string str) {
   string type;
 
   if ( !str)
@@ -458,10 +452,8 @@ int this_key(string  str) {
       write("You haven't got a key!\n");
 
       return 1;
-    }
-
-    else
-      which_key();
+    } else
+    which_key();
 
     return 1;
   }
@@ -476,7 +468,7 @@ int this_key(string  str) {
   return 0;
 }
 
-void unlock_door(object  key) {
+void unlock_door(object key) {
   string str;
 
   if ( ! is_locked ){
@@ -492,10 +484,8 @@ void unlock_door(object  key) {
     write("You unlock the " + direction + " door.\n");
     set_locked( 0);
     partner_door->set_locked(is_locked);
-  }
-
-  else
-    write("The key doesn't fit!\n");
+  } else
+  write("The key doesn't fit!\n");
 
   return;
 }
@@ -537,7 +527,7 @@ int unlock( string str) {
   return 0;
 }
 
-void lock_door(object  key) {
+void lock_door(object key) {
   string str;
   int tmp;
 
@@ -554,10 +544,8 @@ void lock_door(object  key) {
     write("\nYou lock the " + direction + " door.\n");
     set_locked( 1);
     partner_door->set_locked(is_locked);
-  }
-
-  else
-    write("The key doesn't fit!\n");
+  } else
+  write("The key doesn't fit!\n");
 
   return;
 }

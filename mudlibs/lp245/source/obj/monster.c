@@ -34,18 +34,18 @@ string short_desc, long_desc, alias, alt_name, race;
 int move_at_reset, aggressive;
 object kill_ob;
 
-status healing;    /* True if this monster is healing itself. */
+status healing; /* True if this monster is healing itself. */
 
-string * chat_head;  /* Vector with all chat strings. */
+string * chat_head; /* Vector with all chat strings. */
 int chat_chance;
 
-string * a_chat_head;  /* Vector with all a_chat strings. */
+string * a_chat_head; /* Vector with all a_chat strings. */
 int a_chat_chance;
 
 object talk_ob;
-string * talk_func;  /* Vector of functions. */
-string * talk_match;  /* Vector of strings. */
-string * talk_type;  /* Vector of types. */
+string * talk_func; /* Vector of functions. */
+string * talk_match; /* Vector of strings. */
+string * talk_type; /* Vector of types. */
 string the_text;
 int have_text;
 
@@ -132,7 +132,7 @@ void heart_beat() {
 
   if (kill_ob && present(kill_ob, environment(this_object()))) {
     if (random(2) == 1)
-      return;    /* Delay attack some */
+      return; /* Delay attack some */
 
     attack_object(kill_ob);
 
@@ -224,18 +224,18 @@ void set_name(string n) {
 
   set_living_name(n);
 
-  alignment = 0;    /* Neutral monster */
+  alignment = 0; /* Neutral monster */
   cap_name = capitalize(n);
   short_desc = cap_name;
   long_desc = "You see nothing special.\n";
 }
 
-void  set_level(int l) {
+void set_level(int l) {
   level = l;
   Str = l; Int = l; Con = l; Dex = l;
   weapon_class = level/2 + 3;
   armour_class = level/4;
-  hit_point = 50 + (level - 1) * 8;  /* Same as a player */
+  hit_point = 50 + (level - 1) * 8; /* Same as a player */
   max_hp = hit_point;
   spell_points = max_hp;
   experience = "room/adv_guild"->query_cost(l-1);
@@ -251,19 +251,19 @@ void set_alt_name(string a) { alt_name = a; }
 /* Optional */
 void set_race(string r) { race = r; }
 /* optional */
-void  set_hp(int hp) { max_hp = hp; hit_point = hp; }
+void set_hp(int hp) { max_hp = hp; hit_point = hp; }
 /* optional. Can only be lowered */
 void set_ep(int ep) { if (ep < experience) experience = ep; }
 /* optional */
 void set_al(int al) { alignment = al; }
 /* optional */
-void  set_short(string sh) { short_desc = sh; long_desc = short_desc + "\n";}
+void set_short(string sh) { short_desc = sh; long_desc = short_desc + "\n";}
 /* optional */
-void  set_long(string lo) { long_desc = lo; }
+void set_long(string lo) { long_desc = lo; }
 /* optional */
-void  set_wc(int wc) { if (wc > weapon_class) weapon_class = wc; }
+void set_wc(int wc) { if (wc > weapon_class) weapon_class = wc; }
 /* optional */
-void  set_ac(int ac) { if (ac > armour_class) armour_class = ac; }
+void set_ac(int ac) { if (ac > armour_class) armour_class = ac; }
 /* optional */
 void set_move_at_reset() { move_at_reset = 1; }
 
@@ -271,7 +271,7 @@ void set_move_at_reset() { move_at_reset = 1; }
 * 0: Peaceful.
 * 1: Attack on sight.
 */
-void  set_aggressive(int a) {
+void set_aggressive(int a) {
   aggressive = a;
 }
 /*
@@ -280,12 +280,12 @@ void  set_aggressive(int a) {
 /*
 * The percent chance of casting a spell.
 */
-void  set_chance(int c) {
+void set_chance(int c) {
   spell_chance = c;
 }
 
 /* Message to the victim. */
-void  set_spell_mess1(string m) {
+void set_spell_mess1(string m) {
   spell_mess1 = m;
 }
 
@@ -316,8 +316,8 @@ void init_command(string cmd) {
   command(cmd);
 }
 
-void  load_chat(int chance, string * strs) {
-  sizeof(strs);    /* Just ensure that it is an array. */
+void load_chat(int chance, string * strs) {
+  sizeof(strs); /* Just ensure that it is an array. */
 
   chat_head = strs;
   chat_chance = chance;
@@ -326,7 +326,7 @@ void  load_chat(int chance, string * strs) {
 /* Load attack chat */
 
 void load_a_chat(int chance, string *strs) {
-  sizeof(strs);    /* Just ensure that it is an array. */
+  sizeof(strs); /* Just ensure that it is an array. */
 
   a_chat_head = strs;
   a_chat_chance = chance;
@@ -348,11 +348,11 @@ void set_match(object ob, string * func, string * type, string * match) {
   say("talk match length " + sizeof(func) + "\n");
 }
 
-void  set_dead_ob(object ob) {
+void set_dead_ob(object ob) {
   dead_ob = ob;
 }
 
-void  second_life() {
+void second_life() {
   if(dead_ob)
     return dead_ob->monster_died(this_object());
 }
@@ -424,7 +424,7 @@ object query_create_room() { return create_room; }
 
 string query_race() { return race; }
 
-void  test_match(string str) {
+void test_match(string str) {
   string who, str1, type, match, func;
   int i;
 
@@ -455,7 +455,7 @@ void  test_match(string str) {
 /*
 * The monster will heal itself slowly.
 */
-void  heal_slowly() {
+void heal_slowly() {
   hit_point += 120 / (INTERVAL_BETWEEN_HEALING * 2);
 
   if (hit_point > max_hp)

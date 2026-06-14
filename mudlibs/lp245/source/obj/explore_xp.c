@@ -115,10 +115,8 @@ void init() {
 
       this_player()->add_exp( AmountOfPlayerXP());
       AddPlayerToList( this_player()->query_name());
-    }
-
-    else
-      if ( FailMessage)
+    } else
+    if ( FailMessage)
       tell_object( this_player(), FailMessage);
   }
 }

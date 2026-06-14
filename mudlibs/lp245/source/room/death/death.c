@@ -7,7 +7,7 @@ inherit "obj/monster";
 * Function name: init
 * Description:   Init Death
 */
-void  init() {
+void init() {
   ::init();
 
   add_action("take_it", "take");

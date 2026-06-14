@@ -32,7 +32,7 @@ void reset(int arg) {
   weapon_class = WEAPON_CLASS_OF_HANDS;
   max_hp = 300;
   hit_point = 300;
-  experience = 100;           /* Changed due to a bug.  Styles.  */
+  experience = 100; /* Changed due to a bug.  Styles.  */
 
   enable_commands();
 
@@ -50,7 +50,7 @@ void catch_tell(string str) {
   from = this_player();
 
   if (!from)
-    return;  /* Not from a real player. */
+    return; /* Not from a real player. */
 
   if (sscanf(str, "%sello%s", a, b) == 2 ||
     sscanf(str, "%s hi%s", a, b) == 2 ||

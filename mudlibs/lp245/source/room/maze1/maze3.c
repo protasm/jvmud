@@ -10,7 +10,7 @@ void long() {
 }
 
 void reset() {
-  exit_num = random(4);  /* "grin" */
+  exit_num = random(4); /* "grin" */
 }
 
 void init() {

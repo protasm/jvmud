@@ -69,7 +69,7 @@ int prevent_insert() {
 }
 
 int id(string str) {
-  return  str == name || str == alt_name || str == alias;
+  return str == name || str == alt_name || str == alias;
 }
 
 string short() {

@@ -166,10 +166,8 @@ static void _move_hook_fun (object item, object dest)
       raise_error(sprintf("%O->exit() destructed item %s before move.\n"
 
     , env, name));
-  }
-
-  else
-    name = object_name(item);
+  } else
+  name = object_name(item);
 
   /* This is the actual move of the object. */
 
@@ -523,7 +521,7 @@ void inaugurate_master (int arg)
               )
               );
 
-              set_driver_hook(H_CLEAN_UP,     "clean_up");
+              set_driver_hook(H_CLEAN_UP, "clean_up");
 
               set_driver_hook(H_MODIFY_COMMAND,
               ([ "e":"east", "w":"west", "s":"south", "n":"north"
@@ -1694,7 +1692,7 @@ void inaugurate_master (int arg)
             // If strict-euids, the function must exist and return a string.
 
             //---------------------------------------------------------------------------
-            mixed valid_read  (string path, string euid, string fun, object caller)
+            mixed valid_read (string path, string euid, string fun, object caller)
 
             // Validate a reading/writing file operation.
             //
@@ -1855,7 +1853,7 @@ void inaugurate_master (int arg)
 
                 if ( user = GETUID(previous_object()) ) {
                   if ( path[0 .. sizeof(user)+7] == "players/" + user
-                    &&  sscanf(path, ".%s", user) == 0)
+                    && sscanf(path, ".%s", user) == 0)
 
                   return ADD_SLASH(path);
                 } else {
@@ -1864,9 +1862,9 @@ void inaugurate_master (int arg)
                   user = user[1..];
 #endif
                   if ( user[0..3] == "obj/"
-                    ||  user[0..4] == "room/"
+                    || user[0..4] == "room/"
 
-                  ||  user[0..3] == "std/"  )
+                  || user[0..3] == "std/" )
 
                   return ADD_SLASH(path);
                 }
@@ -1881,7 +1879,7 @@ void inaugurate_master (int arg)
 
                 if (caller == this_object()) return 1;
                 if (path[0..3] == "log/"
-                  && !(   sizeof(regexp(({path[4..33]}), "/"))
+                  && !( sizeof(regexp(({path[4..33]}), "/"))
 
                 || path[4] == '.'
                 || sizeof(path) > 34
@@ -1899,11 +1897,11 @@ void inaugurate_master (int arg)
                 case "rename_from":
                 case "rename_to":
 
-                if ((   efun::object_name(caller) == SIMUL_EFUN_FILE
+                if (( efun::object_name(caller) == SIMUL_EFUN_FILE
                   || efun::object_name(caller) == SPARE_SIMUL_EFUN_FILE)
 
                 && path[0..3] == "log/"
-                && !(   sizeof(regexp(({path[4..33]}), "/"))
+                && !( sizeof(regexp(({path[4..33]}), "/"))
                 || path[4] == '.'
                 || sizeof(path) > 34
                 ) ) {
@@ -2164,9 +2162,7 @@ void inaugurate_master (int arg)
                 );
 
                 get_extra_wizinfo(0)[MUDWHO_INDEX] = mudwho_info;
-              }
-
-              else {
+              } else {
                 mudwho_info = get_extra_wizinfo(0)[MUDWHO_INDEX];
               }
 

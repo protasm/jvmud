@@ -62,7 +62,7 @@ void long() {
   write("     Special of the house: 50 coins\n");
   write("     Firebreather        : 150 coins\n\n");
   /* write("     Potion of healing   : 200 coins\n\n"); */
-  write("The only obvious exit is to " +  "west" + ".\n");
+  write("The only obvious exit is to " + "west" + ".\n");
 }
 
 int order(string str) {
@@ -83,9 +83,7 @@ int order(string str) {
     heal = 0;
     value = 12;
     strength = 2;
-  }
-
-  else if (str == "special" || str == "special of the house") {
+  } else if (str == "special" || str == "special of the house") {
     name = "special";
     short_desc = "A special of the house";
     mess = "A tingling feeling goes through your body";

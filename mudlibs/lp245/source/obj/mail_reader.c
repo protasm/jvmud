@@ -1,11 +1,11 @@
 #define NAME "room/post_dir/"
 
-string messages;    /* The big string of all messages. */
-int new_mail;      /* Flag if there is any new mail. */
+string messages; /* The big string of all messages. */
+int new_mail; /* Flag if there is any new mail. */
 
-static string * arr_messages;  /* the result of explode on 'messages' */
-static int loaded;    /* Flag if this users mailbox is loaded */
-static int curr_mess;    /* Current message number */
+static string * arr_messages; /* the result of explode on 'messages' */
+static int loaded; /* Flag if this users mailbox is loaded */
+static int curr_mess; /* Current message number */
 static string new_message, new_subject, new_dest, new_cc;
 
 static int is_reading;

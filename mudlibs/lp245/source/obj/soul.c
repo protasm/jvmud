@@ -582,9 +582,7 @@ int knee(string str) {
     who);
 
     write("You hit " + str + " with your knee.\n");
-  }
-
-  else {
+  } else {
     tell_object(who, cap_name + " tries to knee you, without much effect.\n");
     say(cap_name + " tries to knee " + str + ", without much effect.\n", who);
     write("You try to knee " + str + ". Not very effective though.\n");

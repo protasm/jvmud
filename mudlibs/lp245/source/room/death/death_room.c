@@ -74,7 +74,7 @@ void heart_beat() {
   nr = sizeof(players);
 
   for (j = 0 ; j < nr ; j += 2) {
-    players[j + 1]++;
+    players[j + 1] = players[j + 1] + 1;
 
     if (players[j + 1] == 5) {
       SPEAK("IT IS TIME\n");
@@ -155,7 +155,7 @@ void heart_beat() {
 
       if(align < 200) {
         SPEAK("OH WHAT A NICE FELLOW WE HAVE HERE. ALWAYS WALKING THE NARROW\n" +
-        "ROAD, DID YOU? WELL, YOU'LL NEVER KNOW WHAT THE OTHER ROAD IS LIKE\n"  +
+        "ROAD, DID YOU? WELL, YOU'LL NEVER KNOW WHAT THE OTHER ROAD IS LIKE\n" +
         "NOW! HAHAHA!\n\n");
         continue;
       }
@@ -264,10 +264,8 @@ void add_player(object plobj) {
     for (j = 0 ; j < i ; j ++) {
       players[j] = oldlist[j];
     }
-  }
-
-  else
-    players = allocate(2);
+  } else
+  players = allocate(2);
 
   players[i] = plobj;
   players[i + 1] = 0;

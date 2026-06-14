@@ -88,7 +88,7 @@ void init() {
 }
 
 int read(string str) {
-  if (str != name_of_container &&  str != alt_name && str != alias_name)
+  if (str != name_of_container && str != alt_name && str != alias_name)
     return 0;
 
   write(read_msg);

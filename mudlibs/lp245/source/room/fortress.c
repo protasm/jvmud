@@ -30,7 +30,7 @@ void extra_reset() {
         class = 5;
         value = 8;
         weight = 1;
-        alt_name = "knife";  /* JnA: 901127 axes != knives */
+        alt_name = "knife"; /* JnA: 901127 axes != knives */
       }
 
       if (n == 1) {

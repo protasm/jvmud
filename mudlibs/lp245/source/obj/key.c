@@ -5,7 +5,7 @@ string short() {
   return "A " + type + " key";
 }
 
-int set_key_data(string  str) {
+int set_key_data(string str) {
   if ( sscanf(str, "%s %s", type, code) == 2)
     return 1;
 
@@ -16,7 +16,7 @@ void long() {
   write("\nThis a " + type + " key, wonder where it fits?\n");
 }
 
-int id(string  strang) {
+int id(string strang) {
   if ( ( strang == "key" )||( strang == type + " key")||( strang == "H_key") )
     return 1;
 

@@ -11,7 +11,7 @@
 string new_head, new_text, tmp_head, tmp_text;
 int msg_num;
 
-static string  *messages, *headers;
+static string *messages, *headers;
 static int line, looked_at;
 static object curr_writer;
 
@@ -371,7 +371,7 @@ int move_msg(string what_msg) {
   headers[note] + "'.\n");
 
   ind = note;
-  movemesg = headers[ind] + "\n**\n"  + messages[ind] + "\n**\n";
+  movemesg = headers[ind] + "\n**\n" + messages[ind] + "\n**\n";
 
   while (ind < msg_num - 1) {
     messages[ind] = messages[ind + 1];

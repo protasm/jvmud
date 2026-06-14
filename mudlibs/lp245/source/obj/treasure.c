@@ -53,7 +53,7 @@ void set_alias(string str) {
   alias_name = str;
 }
 
-void  set_short(string str) {
+void set_short(string str) {
   short_desc = str;
   long_desc = "You see nothing special.\n";
 }
@@ -66,11 +66,11 @@ void set_value(int v) {
   value = v;
 }
 
-void  set_weight(int w) {
+void set_weight(int w) {
   local_weight = w;
 }
 
-void  set_read(string str) {
+void set_read(string str) {
   read_msg = str;
 }
 
@@ -98,7 +98,7 @@ void init() {
 }
 
 int read(string str) {
-  if (str != name &&  str != alias_name)
+  if (str != name && str != alias_name)
     return 0;
 
   write(read_msg);

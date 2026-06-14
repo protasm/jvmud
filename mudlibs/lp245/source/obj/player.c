@@ -9,34 +9,34 @@
 #define WIZ 1
 #define ARCH 0
 
-static object myself;                /* Ourselfs. */
+static object myself; /* Ourselfs. */
 
-string title;                /* Our official title. Wiz's can change it. */
-string password;        /* This players crypted password. */
+string title; /* Our official title. Wiz's can change it. */
+string password; /* This players crypted password. */
 
-static string password2;        /* Temporary when setting new password */
+static string password2; /* Temporary when setting new password */
 
 string al_title;
-int intoxicated;        /* How many ticks to stay intoxicated. */
-int stuffed;                /* How many ticks to stay stuffed */
-int soaked;                /* How many ticks to stay soaked */
+int intoxicated; /* How many ticks to stay intoxicated. */
+int stuffed; /* How many ticks to stay stuffed */
+int soaked; /* How many ticks to stay soaked */
 int headache, max_headache;
-string called_from_ip;        /* IP number was used last time */
-string quests;                /* A list of all quests */
+string called_from_ip; /* IP number was used last time */
+string quests; /* A list of all quests */
 
-static int time_to_save;        /* Time to autosave. */
+static int time_to_save; /* Time to autosave. */
 
-static mixed saved_where;     /* Temp... */
+static mixed saved_where; /* Temp... */
 
-string mailaddr;        /* Email address of player */
+string mailaddr; /* Email address of player */
 
-static string it;                /* Last thing referenced. */
+static string it; /* Last thing referenced. */
 
-int tot_value;                /* Saved values of this player. */
+int tot_value; /* Saved values of this player. */
 
-static string current_path;        /* Current directory */
+static string current_path; /* Current directory */
 
-string access_list;        /* What extra directories can be modified */
+string access_list; /* What extra directories can be modified */
 int stats_is_updated;
 
 #define MAX_SCAR        10
@@ -174,7 +174,7 @@ static void try_throw_out(string str)
     write("Points restored from the other object.\n");
 
   else
-    destruct(other_copy);        /* Is this really needed ? */
+    destruct(other_copy); /* Is this really needed ? */
 
   other_copy = 0;
 
@@ -259,7 +259,7 @@ static void logon2(string str) {
   /*
   * Don't do this before the restore !
   */
-  name = str;                        /* Must be here for a new player. */
+  name = str; /* Must be here for a new player. */
   dead = ghost;
   myself = this_player();
 
@@ -529,7 +529,7 @@ void set_level(int lev) {
   object scroll;
 
   if (lev > 21 || lev < level && level >= 20) {
-    illegal_patch("set_level");                /* NOPE ! */
+    illegal_patch("set_level"); /* NOPE ! */
 
     return;
   }
@@ -1637,7 +1637,7 @@ static void new_password(string p)
     return;
   }
 
-  password = crypt(password, 0);        /* Generate new seed. */
+  password = crypt(password, 0); /* Generate new seed. */
 
   "room/adv_guild"->advance(0);
 
@@ -1703,19 +1703,13 @@ static void getgender(string gender_string) {
   if (gender_string[0] == 'm') {
     write("Welcome, Sir!\n");
     set_male();
-  }
-
-  else if (gender_string[0] == 'f') {
+  } else if (gender_string[0] == 'f') {
     write("Welcome, Madam!\n");
     set_female();
-  }
-
-  else if (gender_string[0] == 'o') {
+  } else if (gender_string[0] == 'o') {
     write("Welcome, Creature!\n");
     set_neuter();
-  }
-
-  else {
+  } else {
     write("Sorry, but that is too weird for this game!\n");
     write("Are you, male, female or other (type m, f or o): ");
     input_to("getgender");
@@ -2258,7 +2252,7 @@ static void change_password2(string str)
     return;
   }
 
-  password = crypt(password2, 0);        /* Generate new seed */
+  password = crypt(password2, 0); /* Generate new seed */
   password2 = 0;
 
   write("Password changed.\n");
@@ -3245,7 +3239,7 @@ mixed valid_read(string str, int lvl) {
 
   write("Bad file name: " + str + "\n");
 
-  return 0;                /* Should not happen */
+  return 0; /* Should not happen */
 }
 
 static int wiz_score_list(string arg) {
@@ -3510,7 +3504,7 @@ static int cd(string str) {
 
 #define CHUNK 16
 
-static string more_file;        /* Used by the more command */
+static string more_file; /* Used by the more command */
 static int more_line;
 
 int more(string str) {
@@ -3675,9 +3669,7 @@ static int tls(string str)
     to_string(cipher_info[TLS_PROT]),
 
     to_string(cipher_info[TLS_CIPHER]));
-  }
-
-  else {
+  } else {
     printf("You are presently connected via an insecure telnet connection.\n");
   }
 

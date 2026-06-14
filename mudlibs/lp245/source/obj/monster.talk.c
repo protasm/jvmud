@@ -34,7 +34,7 @@ string short_desc, long_desc, alias, alt_name, race;
 int move_at_reset, aggressive;
 object kill_ob;
 
-status healing;    /* True if this monster is healing itself. */
+status healing; /* True if this monster is healing itself. */
 
 object chat_head;
 int chat_chance;
@@ -132,7 +132,7 @@ void heart_beat() {
 
   if (kill_ob && present(kill_ob, environment(this_object()))) {
     if (random(2) == 1)
-      return;    /* Delay attack some */
+      return; /* Delay attack some */
 
     attack_object(kill_ob);
 
@@ -197,7 +197,7 @@ int busy_catch_tell;
 void catch_tell(string str) {
   string who;
 
-  if (busy_catch_tell)  /* Should not happen, but does ! */
+  if (busy_catch_tell) /* Should not happen, but does ! */
     return;
 
   busy_catch_tell = 1;
@@ -225,7 +225,7 @@ void catch_tell(string str) {
 
 void set_name(string n) {
   name = n;
-  alignment = 0;    /* Neutral monster */
+  alignment = 0; /* Neutral monster */
   cap_name = capitalize(n);
   short_desc = cap_name;
   long_desc = "You see nothing special.\n";
@@ -235,7 +235,7 @@ void set_level(int l) {
   level = l;
   weapon_class = level / 2 + 3;
   armour_class = level / 4;
-  hit_point = 50 + (level - 1) * 8;  /* Same as a player */
+  hit_point = 50 + (level - 1) * 8; /* Same as a player */
   max_hp = hit_point;
   spell_points = max_hp;
   experience = "room/adv_guild"->query_cost(l-1);

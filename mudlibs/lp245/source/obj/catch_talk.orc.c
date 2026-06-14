@@ -30,7 +30,7 @@ void set_function(string f) {
 /*
 * The object to call.
 */
-void set_object(string ob) {  /* NOTE: a string */
+void set_object(string ob) { /* NOTE: a string */
   ob_str = ob;
 }
 

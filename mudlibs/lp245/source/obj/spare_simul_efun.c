@@ -231,12 +231,12 @@ varargs mixed snoop(mixed snoopee)
     write("Busy.\n");
 
     break;
-    case  0:
+    case 0:
 
     write("Failed.\n");
 
     break;
-    case  1:
+    case 1:
 
     write("Ok.\n");
 
@@ -581,10 +581,8 @@ varargs void add_worth(int value, object ob)
     if (!env) {
       env = previous_object();
       specific = 0;
-    }
-
-    else
-      specific = 1;
+    } else
+    specific = 1;
 
     if (objectp(ob)) {
       /* Quick check: is ob there or not? */
@@ -617,7 +615,7 @@ varargs void add_worth(int value, object ob)
       if (found->id(str) && ++i == num)
         break;
 
-      if (!found)  /* may happen */
+      if (!found) /* may happen */
         break;
     }
 
@@ -645,7 +643,7 @@ varargs void add_worth(int value, object ob)
       if (found->id(str) && ++i == num)
         break;
 
-      if (!found)  /* may happen */
+      if (!found) /* may happen */
         break;
     }
 
@@ -744,10 +742,7 @@ varargs void add_worth(int value, object ob)
 #if !__EFUN_DEFINED__(extract)
 
   //---------------------------------------------------------------------------
-  mixed extract (mixed data, varargs mixed*from_to)
-
-  {
-
+  mixed extract (mixed data, varargs mixed*from_to) {
     int from, to;
 
     if (!stringp(data) && !pointerp(data)) {

@@ -11,9 +11,9 @@
 int level;
 int door_is_open;
 int time_to_close_door;
-int dest;    /* Where we are going. */
-int moving_time;  /* How long we are going to move. */
-int delay_to_reset;  /* Move back to origin automatically after a delay. */
+int dest; /* Where we are going. */
+int moving_time; /* How long we are going to move. */
+int delay_to_reset; /* Move back to origin automatically after a delay. */
 
 void init() {
   add_action("press", "press");

@@ -11,7 +11,7 @@
 string new_head, new_text, tmp_head, tmp_text;
 int msg_num;
 
-static string  *messages, *headers;
+static string *messages, *headers;
 static int line, looked_at;
 static object curr_writer;
 

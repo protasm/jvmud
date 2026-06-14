@@ -31,46 +31,46 @@
 *
 */
 
-int time_to_heal;  /* Count down variable. */
-int money;    /* Amount of money on player. */
-string name;    /* Name of object. */
-string msgin, msgout;  /* Messages when entering or leaving a room. */
-int is_npc, brief;  /* Flags. */
-int level;    /* Level of monster. */
+int time_to_heal; /* Count down variable. */
+int money; /* Amount of money on player. */
+string name; /* Name of object. */
+string msgin, msgout; /* Messages when entering or leaving a room. */
+int is_npc, brief; /* Flags. */
+int level; /* Level of monster. */
 
-static int armour_class;  /* What armour class of monster. */
+static int armour_class; /* What armour class of monster. */
 
-int hit_point;    /* Number of hit points of monster. */
+int hit_point; /* Number of hit points of monster. */
 int max_hp, max_sp;
-int experience;    /* Experience points of monster. */
-string mmsgout;    /* Message when leaving magically. */
-string mmsgin;    /* Message when arriving magically. */
+int experience; /* Experience points of monster. */
+string mmsgout; /* Message when leaving magically. */
+string mmsgin; /* Message when arriving magically. */
 
-static object attacker_ob;  /* Name of player attacking us. */
-static object alt_attacker_ob;  /* Name of other player also attacking us. */
-static int weapon_class;  /* How good weapon. Used to calculate damage. */
-static object name_of_weapon;  /* To see if we are wielding a weapon. */
-static object head_armour;  /* What armour we have. */
+static object attacker_ob; /* Name of player attacking us. */
+static object alt_attacker_ob; /* Name of other player also attacking us. */
+static int weapon_class; /* How good weapon. Used to calculate damage. */
+static object name_of_weapon; /* To see if we are wielding a weapon. */
+static object head_armour; /* What armour we have. */
 
-int ghost;    /* Used for monsters that can leave a ghost. */
+int ghost; /* Used for monsters that can leave a ghost. */
 
-static int local_weight;  /* weight of items */
-static object hunted, hunter;  /* used in the hunt mode */
-static int hunting_time;  /* How long we will stay in hunting mode. */
-static string cap_name;  /* Capital version of "name". */
+static int local_weight; /* weight of items */
+static object hunted, hunter; /* used in the hunt mode */
+static int hunting_time; /* How long we will stay in hunting mode. */
+static string cap_name; /* Capital version of "name". */
 
-int spell_points;  /* Current spell points. */
+int spell_points; /* Current spell points. */
 
 static string spell_name;
 static int spell_cost, spell_dam;
 
-int age;    /* Number of heart beats of this character. */
-int is_invis;    /* True when player is invisible */
-int frog;    /* If the player is a frog */
-int whimpy;    /* Automatically run when low on HP */
-string auto_load;  /* Special automatically loaded objects. */
-int dead;    /* Are we alive or dead? */
-string flags;    /* Bit field of flags */
+int age; /* Number of heart beats of this character. */
+int is_invis; /* True when player is invisible */
+int frog; /* If the player is a frog */
+int whimpy; /* Automatically run when low on HP */
+string auto_load; /* Special automatically loaded objects. */
+int dead; /* Are we alive or dead? */
+string flags; /* Bit field of flags */
 
 /*
 * All characters have an aligment, depending on how good or chaotic
@@ -78,7 +78,7 @@ string flags;    /* Bit field of flags */
 * This value is updated when killing other players.
 */
 int alignment;
-int gender;  /* 0 means neuter ("it"), 1 male ("he"),  2 female ("she") */
+int gender; /* 0 means neuter ("it"), 1 male ("he"),  2 female ("she") */
 
 /*
 * Character stat variables.
@@ -283,7 +283,7 @@ int hit_player(int dam) {
   }
 
   if(dead)
-    return 0;  /* Or someone who is dead */
+    return 0; /* Or someone who is dead */
 
   dam -= random(armour_class + 1);
 
@@ -323,7 +323,7 @@ int hit_player(int dam) {
 
     say(cap_name + " died.\n");
 
-    experience = 2 * experience / 3;  /* Nice, isn't it ? */
+    experience = 2 * experience / 3; /* Nice, isn't it ? */
     hit_point = 10;
     /* The player killing us will update his alignment ! */
     /* If he exist */
@@ -762,7 +762,7 @@ int add_weight(int w) {
   return 1;
 }
 
-void  heal_self(int h) {
+void heal_self(int h) {
   if (h <= 0)
     return;
 
@@ -792,7 +792,7 @@ void attack_object(object ob) {
   if (ob->query_ghost())
     return;
 
-  set_heart_beat(1);  /* For monsters, start the heart beat */
+  set_heart_beat(1); /* For monsters, start the heart beat */
 
   if (attacker_ob == ob) {
     attack();
@@ -909,7 +909,7 @@ void show_age() {
   if (i/1800) {
     write(i/1800 + " hours ");
 
-    i = i  - (i/1800)*1800;
+    i = i - (i/1800)*1800;
   }
 
   if (i/30) {
@@ -1049,7 +1049,7 @@ int query_wc() {
   return weapon_class;
 }
 
-int  query_ac() {
+int query_ac() {
   return armour_class;
 }
 
@@ -1241,7 +1241,7 @@ void set_con(int i) {
   max_hp = 42 + Con * 8;
 }
 
-void  set_dex(int i) {
+void set_dex(int i) {
   if (i<1 || i > 20)
     return;
 

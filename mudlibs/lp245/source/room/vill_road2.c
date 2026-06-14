@@ -2,7 +2,7 @@ inherit "room/room";
 
 object harry;
 int count;
-string * chat_str;  /* This variable is only initialized once. */
+string * chat_str; /* This variable is only initialized once. */
 string * a_chat_str;
 string * action, * type, * match;
 

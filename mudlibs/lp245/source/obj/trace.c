@@ -68,7 +68,7 @@ static object find_item(object prev, string str) {
     return find_player(tmp);
 
   if (sscanf(str, "/%s", tmp) == 1) {
-    load_object(tmp);  /* Force load */
+    load_object(tmp); /* Force load */
 
     return find_object(tmp);
   }

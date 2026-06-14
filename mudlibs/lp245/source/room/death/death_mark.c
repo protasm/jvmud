@@ -1,7 +1,7 @@
 /* start_mark.c */
 /* Mrpr 901122 */
 
-void  start_death();
+void start_death();
 
 /*
 * Function name: init
@@ -45,14 +45,12 @@ void start_death() {
 
         return;
       }
-    }
+    } else
 
-    else
-      return;
-  }
-
-  else
     return;
+  } else
+
+  return;
 
   say("You see a dark shape gathering some mist... or maybe you're just imagining that.\n");
 

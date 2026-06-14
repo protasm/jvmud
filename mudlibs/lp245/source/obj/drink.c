@@ -1,7 +1,7 @@
 string short_desc, name, message;
 int value, strength, heal;
 int full;
-int pub_drink;    /* Drinks from the pub can't be removed from pub */
+int pub_drink; /* Drinks from the pub can't be removed from pub */
 
 int set_value(string str) {
   if (sscanf(str, "%s#%s#%s#%d#%d#%d", name, short_desc, message,

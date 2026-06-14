@@ -26,18 +26,18 @@ and bug reports etc should be sent to me
 
 #include "debug.h"
 
-string  owner;
-string  * list_ab;
-string  * list_cmd;
-string  * list_history;
+string owner;
+string * list_ab;
+string * list_cmd;
+string * list_history;
 
 #define MAX_HISTORY  20
-int  history_pos;
-int  history_offset;
-int  no_history_add;
+int history_pos;
+int history_offset;
+int no_history_add;
 
-int  refreshing;
-int  needs_refresh;
+int refreshing;
+int needs_refresh;
 
 int refresh(object obj);
 int contains(string str, object obj);
@@ -90,9 +90,9 @@ string query_name() {
   return owner + "'s quicktyper";
 }
 
-object  ob;  /* used to hold this_player() */
+object ob; /* used to hold this_player() */
 
-void reset(int  arg) {
+void reset(int arg) {
   if(is_debug) {
     write("reset(" + arg + ")\n");
     write(VERSION + "\n");
@@ -117,7 +117,7 @@ void reset(int  arg) {
 }
 
 void init_alias_list() {
-  object  obj;
+  object obj;
 
 #if 0
   if(!list_ab && this_player()) {
@@ -159,8 +159,8 @@ void init_alias_list() {
 }
 
 void init() {
-  int  i;
-  object  obj;
+  int i;
+  object obj;
 
   if(is_debug) {
     write("init()\n");
@@ -191,7 +191,7 @@ void init() {
     /* let wizards have some additional information commands */
     if(this_player()->query_level() >= 20) {
       add_action("version", "ver");
-      add_action("debug_toggle", "debug");     /* declared in debug.h */
+      add_action("debug_toggle", "debug"); /* declared in debug.h */
     }
 
     i = 0;
@@ -235,7 +235,7 @@ int do_refresh() {
 }
 
 int refresh(object obj) {
-  int  may_need_warning;
+  int may_need_warning;
 
   may_need_warning = 0;
 
@@ -261,7 +261,7 @@ int refresh(object obj) {
     tell_object(obj, "back again\n");
   }
 
-  if(may_need_warning && obj->query_level() > 19)  {
+  if(may_need_warning && obj->query_level() > 19) {
     tell_object(obj, "Quicktyper: Your inventory has been rearranged.\n");
   }
 
@@ -271,11 +271,11 @@ int refresh(object obj) {
   return 1;
 }
 
-int  wrapped;
+int wrapped;
 
 int do_old(string verb, string str) {
-  int  pos;
-  string  temp;
+  int pos;
+  string temp;
 
   if(is_debug) {
     write("verb=" + verb + "\n");
@@ -411,8 +411,8 @@ int do_old(string verb, string str) {
 }
 
 int history() {
-  int  i;
-  int  number;
+  int i;
+  int number;
 
   owner = this_player()->query_name();
 
@@ -449,15 +449,15 @@ int history() {
   return 1;
 }
 
-string  last_cmd_added;
-string  last_str_added;
+string last_cmd_added;
+string last_str_added;
 
-int  counter;
+int counter;
 #define COUNT_UNTIL_REFRESH  40
 
 int history_add(string str) {
-  string  verb;
-  int  i;
+  string verb;
+  int i;
 
   if(is_debug) {
     write("history_add\n");
@@ -488,7 +488,7 @@ int history_add(string str) {
     write("str=" + str + "\n");
   }
 
-  if(verb == 0 ||  verb =="") {
+  if(verb == 0 || verb =="") {
     return 0;
   }
 
@@ -523,7 +523,7 @@ int history_add(string str) {
 
   while(i < sizeof(list_ab)) {
     if(list_ab[i] == verb) {
-      return 0;  /* dont add aliases to the list */
+      return 0; /* dont add aliases to the list */
     }
 
     i += 1;
@@ -549,7 +549,7 @@ int history_add(string str) {
 }
 
 string short() {
-  int  temp;
+  int temp;
 
   return owner + "'s quicktyper";
 }
@@ -572,8 +572,8 @@ int version(string str) {
 }
 
 int alias(string str) {
-  int  i;
-  string  ab, cmd;
+  int i;
+  string ab, cmd;
 
   owner = this_player()->query_name();
 
@@ -702,16 +702,16 @@ int get() {
 }
 
 int drop() {
-  return 1;  /* cant drop ! */
+  return 1; /* cant drop ! */
 }
 
 int query_value() {
-  return 0;  /* no value */
+  return 0; /* no value */
 }
 
 string query_auto_load() {
-  string  temp;
-  int  i, count;
+  string temp;
+  int i, count;
 
   i = 0;
   count = 0;
@@ -724,7 +724,7 @@ string query_auto_load() {
     i += 1;
   }
 
-  temp = FILE_NAME + ":"  + count + ";";
+  temp = FILE_NAME + ":" + count + ";";
   i = 0;
 
   while(i < sizeof(list_ab)) {
@@ -739,8 +739,8 @@ string query_auto_load() {
 }
 
 int do_it(string str) {
-  int  i;
-  string  verb;
+  int i;
+  string verb;
 
   if(is_debug) {
     write("query_verb=" + query_verb() + "\n");
@@ -794,10 +794,10 @@ int do_it(string str) {
 }
 
 void init_arg(string arg) {
-  int  temp;
-  int  count, place;
-  string  ab, cmd;
-  string  the_rest;
+  int temp;
+  int count, place;
+  string ab, cmd;
+  string the_rest;
 
   if(is_debug) write("init_arg(" + arg + ")\n");
 
@@ -825,14 +825,14 @@ void init_arg(string arg) {
 
 /* do one ore more commands */
 
-string  org_cmds;
-string  more_cmds;
-int  first_call;
-int  paused;
+string org_cmds;
+string more_cmds;
+int first_call;
+int paused;
 
-void  heart_beat() {
-  string  the_rest;
-  string  cmd;
+void heart_beat() {
+  string the_rest;
+  string cmd;
 
   if(ob && more_cmds && more_cmds != "") {
     if(sscanf(more_cmds, "%s,%s", cmd, the_rest) == 2) {
@@ -873,8 +873,8 @@ void  heart_beat() {
   }
 }
 
-int do_cmd(string  str) {
-  if(!str || str == "")  {
+int do_cmd(string str) {
+  if(!str || str == "") {
     if(more_cmds) {
       set_heart_beat(0);
       write("Paused. Use \"resume to continue\"\n");
@@ -936,16 +936,16 @@ int resume() {
 /* check to see if an object "obj" contains another object "str" */
 
 int contains(string str, object obj) {
-  object  ob;
+  object ob;
 
   if(!str || str == "") return 0;
 
   ob = first_inventory(obj);
 
-  if(!ob) return 0;  /* of cource it didn't contain */
+  if(!ob) return 0; /* of cource it didn't contain */
   while(ob) {
     if(ob->id(str)) {
-      return 1;  /* we found it */
+      return 1; /* we found it */
     }
     /* could add an recursive call here to check
     for items in items !*/
@@ -953,7 +953,7 @@ int contains(string str, object obj) {
     ob = next_inventory(ob);
   }
 
-  return 0;  /* not found */
+  return 0; /* not found */
 }
 
 /* --- end of quicktyper.c */

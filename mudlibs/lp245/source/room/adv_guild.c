@@ -43,7 +43,7 @@ int next_level;
 int next_exp;
 int level;
 int exp;
-string title;         /* now with arrays. :) */
+string title; /* now with arrays. :) */
 object player_ob;
 string banished_by;
 
@@ -64,9 +64,9 @@ string gnd_prn();
 void get_level(int str) {
   level = str;
 
-  next_exp   = get_next_exp(level);
+  next_exp = get_next_exp(level);
   next_level = level + 1 ;
-  title      = get_new_title(level);
+  title = get_new_title(level);
 }
 
 string *male_title_str, *fem_title_str, *neut_title_str;
@@ -76,72 +76,72 @@ string get_new_title(int str) {
   if (!male_title_str){
     male_title_str = allocate(20);
 
-    male_title_str[19]  ="the apprentice Wizard";
-    male_title_str[18]  ="the grand master sorcerer";
-    male_title_str[17]  ="the master sorcerer";
-    male_title_str[16]  ="the apprentice sorcerer";
-    male_title_str[15]  ="the warlock";
-    male_title_str[14]  ="the enchanter";
-    male_title_str[13]  ="the magician";
-    male_title_str[12]  ="the apprentice magician";
-    male_title_str[11]  ="the conjurer";
-    male_title_str[10]  ="the champion";
-    male_title_str[9]  ="the warrior";
-    male_title_str[8]  ="the great adventurer";
-    male_title_str[7]  ="the experienced adventurer";
-    male_title_str[6]  ="the small adventurer";
-    male_title_str[5]  ="the experienced fighter";
-    male_title_str[4]  ="the small fighter";
-    male_title_str[3]  ="the master ranger";
-    male_title_str[2]  ="the lowrank ranger";
-    male_title_str[1]  ="the simple wanderer";
-    male_title_str[0]  ="the utter novice";
+    male_title_str[19] ="the apprentice Wizard";
+    male_title_str[18] ="the grand master sorcerer";
+    male_title_str[17] ="the master sorcerer";
+    male_title_str[16] ="the apprentice sorcerer";
+    male_title_str[15] ="the warlock";
+    male_title_str[14] ="the enchanter";
+    male_title_str[13] ="the magician";
+    male_title_str[12] ="the apprentice magician";
+    male_title_str[11] ="the conjurer";
+    male_title_str[10] ="the champion";
+    male_title_str[9] ="the warrior";
+    male_title_str[8] ="the great adventurer";
+    male_title_str[7] ="the experienced adventurer";
+    male_title_str[6] ="the small adventurer";
+    male_title_str[5] ="the experienced fighter";
+    male_title_str[4] ="the small fighter";
+    male_title_str[3] ="the master ranger";
+    male_title_str[2] ="the lowrank ranger";
+    male_title_str[1] ="the simple wanderer";
+    male_title_str[0] ="the utter novice";
 
     fem_title_str = allocate(20);
 
-    fem_title_str[19]  ="the apprentice Wizard";
-    fem_title_str[18]  ="the grand master sorceress";
-    fem_title_str[17]  ="the master sorceress";
-    fem_title_str[16]  ="the apprentice sorceress";
-    fem_title_str[15]  ="the witch";
-    fem_title_str[14]  ="the enchantress";
-    fem_title_str[13]  ="the magicienne";
-    fem_title_str[12]  ="the apprentice magicienne";
-    fem_title_str[11]  ="the conjuress";
-    fem_title_str[10]  ="the deadly amazon";
-    fem_title_str[9]  ="the amazon";
-    fem_title_str[8]  ="the great adventuress";
-    fem_title_str[7]  ="the experienced adventuress";
-    fem_title_str[6]  ="the small adventuress";
-    fem_title_str[5]  ="the charming siren";
-    fem_title_str[4]  ="the siren";
-    fem_title_str[3]  ="the master ranger";
-    fem_title_str[2]  ="the lowrank ranger";
-    fem_title_str[1]  ="the simple wanderer";
-    fem_title_str[0]  ="the utter novice";
+    fem_title_str[19] ="the apprentice Wizard";
+    fem_title_str[18] ="the grand master sorceress";
+    fem_title_str[17] ="the master sorceress";
+    fem_title_str[16] ="the apprentice sorceress";
+    fem_title_str[15] ="the witch";
+    fem_title_str[14] ="the enchantress";
+    fem_title_str[13] ="the magicienne";
+    fem_title_str[12] ="the apprentice magicienne";
+    fem_title_str[11] ="the conjuress";
+    fem_title_str[10] ="the deadly amazon";
+    fem_title_str[9] ="the amazon";
+    fem_title_str[8] ="the great adventuress";
+    fem_title_str[7] ="the experienced adventuress";
+    fem_title_str[6] ="the small adventuress";
+    fem_title_str[5] ="the charming siren";
+    fem_title_str[4] ="the siren";
+    fem_title_str[3] ="the master ranger";
+    fem_title_str[2] ="the lowrank ranger";
+    fem_title_str[1] ="the simple wanderer";
+    fem_title_str[0] ="the utter novice";
 
     neut_title_str = allocate(20);
 
-    neut_title_str[19]  ="the apprentice Wizard";
-    neut_title_str[18]  ="the ferocious tyrannosaur";
-    neut_title_str[17]  ="the small tyrannosaur";
-    neut_title_str[16]  ="the vicious dragon";
-    neut_title_str[15]  ="the devious dragon";
-    neut_title_str[14]  ="the small dragon";
-    neut_title_str[13]  ="the powerful demon";
-    neut_title_str[12]  ="the small demon";
-    neut_title_str[11]  ="the beholder";
-    neut_title_str[10]  ="the great monster";
-    neut_title_str[9]  ="the experienced monster";
-    neut_title_str[8]  ="the medium monster";
-    neut_title_str[7]  ="the small monster";
-    neut_title_str[6]  ="the threatening shadow";
-    neut_title_str[5]  ="the shadow";
-    neut_title_str[4]  ="the wraith";
-    neut_title_str[3]  ="the bugbear";
-    neut_title_str[2]  ="the furry creature";
-    neut_title_str[1]  ="the simple creature";
-    neut_title_str[0]  ="the utter creature";
+    neut_title_str[19] ="the apprentice Wizard";
+    neut_title_str[18] ="the ferocious tyrannosaur";
+    neut_title_str[17] ="the small tyrannosaur";
+    neut_title_str[16] ="the vicious dragon";
+    neut_title_str[15] ="the devious dragon";
+    neut_title_str[14] ="the small dragon";
+    neut_title_str[13] ="the powerful demon";
+    neut_title_str[12] ="the small demon";
+    neut_title_str[11] ="the beholder";
+    neut_title_str[10] ="the great monster";
+    neut_title_str[9] ="the experienced monster";
+    neut_title_str[8] ="the medium monster";
+    neut_title_str[7] ="the small monster";
+    neut_title_str[6] ="the threatening shadow";
+    neut_title_str[5] ="the shadow";
+    neut_title_str[4] ="the wraith";
+    neut_title_str[3] ="the bugbear";
+    neut_title_str[2] ="the furry creature";
+    neut_title_str[1] ="the simple creature";
+    neut_title_str[0] ="the utter creature";
   }
 
   if (!player_ob || !player_ob->query_gender())
@@ -161,26 +161,26 @@ int get_next_exp(int str) {
   if(!exp_str){
     exp_str = allocate(20);
 
-    exp_str[19]  = 1000000;
-    exp_str[18]  =  666666;
-    exp_str[17]  =  444444;
-    exp_str[16]  =  296296;
-    exp_str[15]  =  197530;
-    exp_str[14]  =  131687;
-    exp_str[13]  =   97791;
-    exp_str[12]  =   77791;
-    exp_str[11]  =   58527;
-    exp_str[10]  =   39018;
-    exp_str[9]  =   26012;
-    exp_str[8]  =   17341;
-    exp_str[7]  =   11561;
-    exp_str[6]  =    7707;
-    exp_str[5]  =    5138;
-    exp_str[4]  =    3425;
-    exp_str[3]  =    2283;
-    exp_str[2]  =    1522;
-    exp_str[1]  =    1014;
-    exp_str[0]  =     676;
+    exp_str[19] = 1000000;
+    exp_str[18] = 666666;
+    exp_str[17] = 444444;
+    exp_str[16] = 296296;
+    exp_str[15] = 197530;
+    exp_str[14] = 131687;
+    exp_str[13] = 97791;
+    exp_str[12] = 77791;
+    exp_str[11] = 58527;
+    exp_str[10] = 39018;
+    exp_str[9] = 26012;
+    exp_str[8] = 17341;
+    exp_str[7] = 11561;
+    exp_str[6] = 7707;
+    exp_str[5] = 5138;
+    exp_str[4] = 3425;
+    exp_str[3] = 2283;
+    exp_str[2] = 1522;
+    exp_str[1] = 1014;
+    exp_str[0] = 676;
   }
 
   return exp_str[str];
@@ -401,10 +401,8 @@ void raise_con() {
   if (raise_cost(lvl, 1)) {
     this_player()->set_con(lvl + 1);
     write("Ok.\n");
-  }
-
-  else
-    write("You don't have enough experience.\n");
+  } else
+  write("You don't have enough experience.\n");
 }
 
 void raise_dex() {
@@ -424,10 +422,8 @@ void raise_dex() {
   if (raise_cost(lvl, 1)) {
     this_player()->set_dex(lvl + 1);
     write("Ok.\n");
-  }
-
-  else
-    write("You don't have enough experience.\n");
+  } else
+  write("You don't have enough experience.\n");
 }
 
 void raise_int() {
@@ -447,10 +443,8 @@ void raise_int() {
   if (raise_cost(lvl, 1)) {
     this_player()->set_int(lvl + 1);
     write("Ok.\n");
-  }
-
-  else
-    write("You don't have enough experience.\n");
+  } else
+  write("You don't have enough experience.\n");
 }
 
 void raise_str() {
@@ -470,17 +464,15 @@ void raise_str() {
   if (raise_cost(lvl, 1)) {
     this_player()->set_str(lvl + 1);
     write("Ok.\n");
-  }
-
-  else
-    write("You don't have enough experience.\n");
+  } else
+  write("You don't have enough experience.\n");
 }
 
 /*
 * Compute cost for raising a stat one level. 'base' is the level that
 * you have now, but never less than 1.
 */
-int raise_cost(int base, int  action) {
+int raise_cost(int base, int action) {
   int cost, saldo;
 
   if (base >= 20)

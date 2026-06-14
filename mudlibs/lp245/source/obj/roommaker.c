@@ -14,16 +14,16 @@ also known as Anders Ripa email: ripa@cd.chalmers.se
 #define  VERSION    "101"
 #define  VERSION_DATE  "901026"
 
-string  short_string;
-string  long_text;
-string  old_long_text;
-int  room_light;
-string  out_file_name;
-string  out_file_name_c;
-int  dir_cnt;
-string  * dir_array;
+string short_string;
+string long_text;
+string old_long_text;
+int room_light;
+string out_file_name;
+string out_file_name_c;
+int dir_cnt;
+string * dir_array;
 
-int  in_edit;
+int in_edit;
 
 static int edit_room(string str);
 static int edit_dirs(string str);
@@ -38,7 +38,7 @@ static void add(string str);
 
 static
 int make(string str) {
-  string  temp1, temp2;
+  string temp1, temp2;
 
   if(!str) {
     write("usage: make filename\n");
@@ -54,7 +54,7 @@ int make(string str) {
     return 1;
   }
 
-  in_edit = 0;  /* not currently editing */
+  in_edit = 0; /* not currently editing */
 
   out_file_name = "/players/" + this_player()->query_real_name() + "/" + str ;
   out_file_name_c = out_file_name + ".c";
@@ -77,9 +77,9 @@ int make(string str) {
 
 static
 int check_file_ok(string str) {
-  object  ob;
+  object ob;
   string * temp_dir;
-  int  i;
+  int i;
 
   if(str) {
     str = lower_case(str);
@@ -87,7 +87,7 @@ int check_file_ok(string str) {
     str = "";
   }
   if(str == "y" || str == "yes") {
-    load_object(out_file_name);  /* force a load */
+    load_object(out_file_name); /* force a load */
 
     ob = find_object(out_file_name);
 
@@ -109,8 +109,8 @@ int check_file_ok(string str) {
       }
 
       if(!dir_array) {
-        dir_cnt = 0;  /* start wit the first direction command */
-        dir_array = allocate(40);  /* up to 20 command/room pairs (exits) */
+        dir_cnt = 0; /* start wit the first direction command */
+        dir_array = allocate(40); /* up to 20 command/room pairs (exits) */
       } else {
         i = 0;
 
@@ -132,7 +132,7 @@ int check_file_ok(string str) {
       }
 
       room_light = ob->query_light();
-      in_edit = 1;  /* currently editing */
+      in_edit = 1; /* currently editing */
 
       edit_room(0);
 
@@ -193,8 +193,8 @@ int set_short(string str) {
 
 static
 int set_long(string str) {
-  int     long_ok;
-  int  i;
+  int long_ok;
+  int i;
 
   if(!str) {
     str = "**";
@@ -218,11 +218,11 @@ int set_long(string str) {
 
   if(!long_text && str == "**") {
     long_text = short_string + ".\n";
-    long_ok = 1;  /* we have a complete long comment */
+    long_ok = 1; /* we have a complete long comment */
   }
 
   if(str == "**") {
-    long_ok = 1;  /* the long comment is fixed */
+    long_ok = 1; /* the long comment is fixed */
   }
 
   if(!long_ok) {
@@ -237,8 +237,8 @@ int set_long(string str) {
     return 1;
   } else {
     if(!dir_array) {
-      dir_cnt = 0;  /* start wit the first direction command */
-      dir_array = allocate(40);  /* up to 20 command/room pairs (exits) */
+      dir_cnt = 0; /* start wit the first direction command */
+      dir_array = allocate(40); /* up to 20 command/room pairs (exits) */
     } else {
       if(!in_edit) {
         i = 0;
@@ -248,7 +248,7 @@ int set_long(string str) {
           i += 1;
         }
 
-        dir_cnt = 0;  /* start wit the first direction command */
+        dir_cnt = 0; /* start wit the first direction command */
       }
     }
     write("direction " + (1 + dir_cnt/2) + " command (end with **): ");
@@ -342,7 +342,7 @@ int set_dir_file(string str) {
 
 static
 int set_light_level(string str) {
-  int  level;
+  int level;
 
   if(str && str == "~q") {
     write("aborted.\n");
@@ -374,10 +374,10 @@ int set_light_level(string str) {
 
 static
 int edit_room(string str) {
-  int  sel;
-  int  match;
+  int sel;
+  int match;
 
-  in_edit = 1;  /* currently editing */
+  in_edit = 1; /* currently editing */
 
   if(!str) str = "";
 
@@ -444,7 +444,7 @@ void show_help() {
 
 static
 int do_edit(string str) {
-  int  sel;
+  int sel;
 
   if(sizeof(str) >= 1) {
     sel = str[0];
@@ -487,11 +487,11 @@ int do_edit(string str) {
   return 0;
 }
 
-int  edit_dir_num;
+int edit_dir_num;
 
 static
 int edit_dirs(string str) {
-  int  num, sel;
+  int num, sel;
 
   if(str && str != "") {
     sel = str[0];
@@ -624,7 +624,7 @@ void help_dirs() {
 
 static
 void show_dirs(int arg) {
-  int  i;
+  int i;
 
   i = 0;
 
@@ -656,14 +656,14 @@ int show_room() {
   return 1;
 }
 
-string  file_text;
+string file_text;
 
 static
 void do_file() {
-  int  i;
-  object  ob;
-  string  slask;
-  int  ret;
+  int i;
+  object ob;
+  string slask;
+  int ret;
   string * longs;
 
   file_text = "";
@@ -683,7 +683,7 @@ void do_file() {
 
   if(longs) {
     i = 0;
-    slask = "\\nx";  /* this is uggly to get a backslash and "n" into the file created */
+    slask = "\\nx"; /* this is uggly to get a backslash and "n" into the file created */
 
     add_line("    long_desc = ");
 
@@ -696,7 +696,7 @@ void do_file() {
 
       add("\"");
       add(longs[i]);
-      add(slask[0..0]);  /* uggly */
+      add(slask[0..0]); /* uggly */
       add("n\"");
 
       if(i == sizeof(longs)-1) {
