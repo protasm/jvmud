@@ -104,11 +104,10 @@ void long() {
   if (full) {
     if (!long_desc)
       write(short() + ".\n");
-
     else
       write(long_desc);
   } else
-  write(short() + "\n");
+    write(short() + "\n");
 }
 
 int get() {
