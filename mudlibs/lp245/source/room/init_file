@@ -162,7 +162,6 @@ room/pub2.c
 room/quest_room.c
 room/ravine.c
 room/ruin.c
-room/rum2.c
 room/sea.c
 room/sea_bottom.c
 room/shop.c
@@ -272,7 +271,6 @@ room/sub/after_trap.c
 room/sub/door_trap.c
 room/sunalley1.c
 room/sunalley2.c
-room/test.c
 room/vill_green.c
 room/vill_road1.c
 room/vill_road2.c

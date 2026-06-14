@@ -34,7 +34,7 @@ final class LPCFormatterTest {
                 \tif (!east_door_open)
                 \t\twrite("The door is closed\\n");
                 \tif (east_door_open)
-                \t\tmove_object(this_player(), "room/rum2");
+                \t\tmove_object(this_player(), "room/clearing");
                 }
                 sesam() {
                 \twrite("An amiga materialises!\\n");
@@ -96,7 +96,7 @@ final class LPCFormatterTest {
     }
 
     @Test
-    void sortsTopLevelMethodsAlphabeticallyWithoutCrossingPreprocessorBarriers() {
+    void preservesTopLevelMethodOrder() {
         String source = """
                 int counter;
                 #define LIMIT 3
@@ -119,6 +119,10 @@ final class LPCFormatterTest {
                 int counter;
                 #define LIMIT 3
 
+                zed() {
+                  return 3;
+                }
+
                 // comment for alpha
                 alpha() {
                   return 1;
@@ -127,17 +131,13 @@ final class LPCFormatterTest {
                 mixed *middle() {
                   return ({ 2 });
                 }
-
-                zed() {
-                  return 3;
-                }
                 """;
 
         assertEquals(expected, formatter.format(source));
     }
 
     @Test
-    void doesNotMoveMethodsAcrossTopLevelDefineBarriers() {
+    void preservesMethodOrderAroundTopLevelDefineBarriers() {
         String source = """
                 zed() {
                 \treturn CHUNK;
@@ -154,7 +154,9 @@ final class LPCFormatterTest {
                 zed() {
                   return CHUNK;
                 }
+
                 #define CHUNK 20
+
                 alpha() {
                   return CHUNK;
                 }
@@ -164,7 +166,7 @@ final class LPCFormatterTest {
     }
 
     @Test
-    void sortsOldStyleMethodsByMethodNameNotArgumentName() {
+    void preservesOldStyleMethodOrder() {
         String source = """
                 zed() {
                 \treturn 3;
@@ -180,16 +182,16 @@ final class LPCFormatterTest {
                 """;
 
         String expected = """
-                alpha() {
-                  return 1;
+                zed() {
+                  return 3;
                 }
 
                 set_object(ob) {  /* NOTE: a string */
                   object = ob;
                 }
 
-                zed() {
-                  return 3;
+                alpha() {
+                  return 1;
                 }
                 """;
 
@@ -197,7 +199,7 @@ final class LPCFormatterTest {
     }
 
     @Test
-    void movesTopLevelFieldsToBeginningSortedByFieldName() {
+    void preservesTopLevelFieldOrderAndPosition() {
         String source = """
                 zed() {
                     object local;
@@ -217,14 +219,6 @@ final class LPCFormatterTest {
                 """;
 
         String expected = """
-                int amount;
-                object owner;
-                string title;
-
-                alpha() {
-                  return amount;
-                }
-
                 zed() {
                   object local;
 
@@ -232,13 +226,22 @@ final class LPCFormatterTest {
 
                   return local;
                 }
+
+                string title;
+                int amount;
+
+                alpha() {
+                  return amount;
+                }
+
+                object owner;
                 """;
 
         assertEquals(expected, formatter.format(source));
     }
 
     @Test
-    void keepsLeadingPreambleBeforeSortedFields() {
+    void preservesPreambleAndTopLevelFieldOrder() {
         String source = """
                 #include "std.h"
                 string title;
@@ -251,8 +254,8 @@ final class LPCFormatterTest {
 
         String expected = """
                 #include "std.h"
-                int amount;
                 string title;
+                int amount;
 
                 alpha() {
                   return amount;
@@ -282,6 +285,7 @@ final class LPCFormatterTest {
                     short() {\\
                         return NAME;\\
                     }
+
                 zed() {
                   return 2;
                 }
@@ -460,41 +464,6 @@ final class LPCFormatterTest {
 
     private String expectedFormattedRoom() {
         return """
-                close_door() {
-                  east_door_open = 0;
-
-                  write("Ok.\\n");
-                }
-
-                door_open() {
-                  return east_door_open;
-                }
-
-                fac(n) {
-                  if (n <= 0)
-                    return 1;
-
-                  return n * fac(n-1);
-                }
-
-                go_east() {
-                  if (!east_door_open)
-                    write("The door is closed\\n");
-
-                  if (east_door_open)
-                    move_object(this_player(), "room/rum2");
-                }
-
-                hit() {
-                  if (!name) {
-                    write("Hit what ?\\n");
-
-                    return;
-                  }
-
-                  call_other(name, "hit_player", 3);
-                }
-
                 long() { //untyped methods are a compiler error in JVMud, not a formatter issue.
                   if (east_door_open) //replace tabs with 4 spaces
                     write("An empty room with an open door to the east.\\n");
@@ -517,10 +486,18 @@ final class LPCFormatterTest {
                   write("Ok.\\n");
                 }
 
-                power() {
-                  amiga_power = 1;
+                close_door() {
+                  east_door_open = 0;
 
-                  write("The screen lights up.\\n");
+                  write("Ok.\\n");
+                }
+
+                go_east() {
+                  if (!east_door_open)
+                    write("The door is closed\\n");
+
+                  if (east_door_open)
+                    move_object(this_player(), "room/clearing");
                 }
 
                 sesam() {
@@ -529,6 +506,50 @@ final class LPCFormatterTest {
                   amiga_present = 1;
 
                   add_action("power", "power");
+                }
+
+                power() {
+                  amiga_power = 1;
+
+                  write("The screen lights up.\\n");
+                }
+
+                door_open() {
+                  return east_door_open;
+                }
+
+                summon() {
+                  name = clone_object("obj/player");
+
+                  write("Summoning a player...\\n");
+                  write(name);
+                  write(", His hp is ");
+                  write(call_other(name, "condition", 0));
+                  write("\\n");
+                }
+
+                hit() {
+                  if (!name) {
+                    write("Hit what ?\\n");
+
+                    return;
+                  }
+
+                  call_other(name, "hit_player", 3);
+                }
+
+                fac(n) {
+                  if (n <= 0)
+                    return 1;
+
+                  return n * fac(n-1);
+                }
+
+                test() {
+                  a = a + 1;
+
+                  //this is okay
+                  write("Fac "); write(a); write(" is "); write(fac(a)); write("\\n");
                 }
 
                 short() {
@@ -543,23 +564,6 @@ final class LPCFormatterTest {
                   }
 
                   return 0;
-                }
-
-                summon() {
-                  name = clone_object("obj/player");
-
-                  write("Summoning a player...\\n");
-                  write(name);
-                  write(", His hp is ");
-                  write(call_other(name, "condition", 0));
-                  write("\\n");
-                }
-
-                test() {
-                  a = a + 1;
-
-                  //this is okay
-                  write("Fac "); write(a); write(" is "); write(fac(a)); write("\\n");
                 }
                 """;
     }

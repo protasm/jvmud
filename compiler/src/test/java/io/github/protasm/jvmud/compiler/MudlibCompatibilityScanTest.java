@@ -78,7 +78,6 @@ final class MudlibCompatibilityScanTest {
                     PLAYER_SOURCE,
                     "obj/torch.c",
                     "room/hump.c",
-                    "room/test.c",
                     "room/vill_green.c",
                     "room/vill_road1.c",
                     "room/vill_road2.c",

@@ -33,12 +33,12 @@ final class LPCFormatterCliTest {
         assertEquals(0, result.exitCode());
         assertTrue(result.out().contains("formatted " + source));
         assertEquals("""
-                alpha() {
-                  return 1;
-                }
-
                 zed() {
                   return 2;
+                }
+
+                alpha() {
+                  return 1;
                 }
                 """, Files.readString(source));
     }

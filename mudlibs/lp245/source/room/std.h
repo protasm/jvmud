@@ -10,7 +10,7 @@
 void reset(int arg) { EXTRA_RESET if (arg) return; set_light(LIGHT); }\
 string short() {\
     if (set_light(0))\
-	return SH;\
+  return SH;\
     return "dark room";\
 }\
 \
@@ -39,7 +39,7 @@ void long(string str) {\
 void reset(int arg) { EXTRA_RESET if (arg) return; set_light(LIGHT); }\
 string short() {\
     if (set_light(0))\
-	return SH;\
+  return SH;\
     return "dark room";\
 }\
 \
@@ -75,7 +75,7 @@ void long(string str) {\
 void reset(int arg) { EXTRA_RESET if (arg) return; set_light(LIGHT); }\
 string short() {\
     if (set_light(0))\
-	return SH;\
+  return SH;\
     return "dark room";\
 }\
 \
@@ -112,14 +112,14 @@ void long(string str) {\
     EXTRA_LONG\
     write(LO);\
     write("There are three obvious exits, " + DIR1 + ", " + DIR2 +\
-	  " and " + DIR3 + ".\n");\
+    " and " + DIR3 + ".\n");\
 }
 
 #define FOUR_EXIT(DEST1, DIR1, DEST2, DIR2, DEST3, DIR3, DEST4, DIR4, SH, LO, LIGHT)\
 void reset(int arg) { EXTRA_RESET if (arg) return; set_light(LIGHT); }\
 string short() {\
     if (set_light(0))\
-	return SH;\
+  return SH;\
     return "dark room";\
 }\
 \
@@ -163,5 +163,5 @@ void long(string str) {\
     EXTRA_LONG\
     write(LO);\
     write("There are four obvious exits, " + DIR1 + ", " + DIR2 + ", " +\
-	  DIR3 + " and " + DIR4 + ".\n");\
+    DIR3 + " and " + DIR4 + ".\n");\
 }

@@ -5,10 +5,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class LPCFormatter {
@@ -21,8 +19,6 @@ public final class LPCFormatter {
             Pattern.compile("^(?:if|else\\s+if|else|for|while)\\b.*");
     private static final Pattern DECLARATION =
             Pattern.compile("^(?:int|string|mixed|void|object|mapping|float)(?:\\s+|\\s*\\*)[^;]*;\\s*(?://.*)?$");
-    private static final Pattern FIELD_DECLARATION_NAME =
-            Pattern.compile("^(?:int|string|mixed|void|object|mapping|float)(?:\\s+|\\s*\\*)\\s*([A-Za-z_][A-Za-z0-9_]*)");
     private static final Pattern CALL_STATEMENT =
             Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*(?:\\s*->\\s*[A-Za-z_][A-Za-z0-9_]*)?\\s*\\(.*\\)\\s*;.*$");
 
@@ -30,7 +26,7 @@ public final class LPCFormatter {
         if (source == null)
             throw new IllegalArgumentException("Source text cannot be null.");
 
-        List<FormattedLine> lines = sortTopLevelMethods(sortTopLevelFieldsWithinOrderingBarriers(indentLines(source)));
+        List<FormattedLine> lines = markMethodLeadingComments(indentLines(source));
         return spaceLines(lines);
     }
 
@@ -125,186 +121,37 @@ public final class LPCFormatter {
         return combined.toArray(String[]::new);
     }
 
-    private List<FormattedLine> sortTopLevelFields(List<FormattedLine> lines) {
-        List<FormattedLine> prefix = new ArrayList<>();
-        List<FieldDeclaration> fields = new ArrayList<>();
-        List<FormattedLine> rest = new ArrayList<>();
-        boolean seenMethod = false;
+    private List<FormattedLine> markMethodLeadingComments(List<FormattedLine> lines) {
+        List<FormattedLine> marked = new ArrayList<>(lines);
 
-        for (FormattedLine line : lines) {
-            if (isTopLevelMethodHeader(line))
-                seenMethod = true;
-
-            if (!seenMethod && isTopLevelPreamble(line)) {
-                prefix.add(line);
-            } else if (isTopLevelFieldDeclaration(line)) {
-                fields.add(new FieldDeclaration(fieldName(line), line));
-            } else {
-                rest.add(line);
-            }
-        }
-
-        fields.sort(Comparator.comparing(FieldDeclaration::name));
-
-        List<FormattedLine> sorted = new ArrayList<>(trimTrailingBlanks(prefix));
-        for (FieldDeclaration field : fields)
-            sorted.add(field.line());
-
-        sorted.addAll(trimLeadingBlanks(rest));
-        return sorted;
-    }
-
-    private List<FormattedLine> sortTopLevelFieldsWithinOrderingBarriers(List<FormattedLine> lines) {
-        List<FormattedLine> sorted = new ArrayList<>();
-        List<FormattedLine> segment = new ArrayList<>();
-
-        for (FormattedLine line : lines) {
-            if (isTopLevelOrderingBarrier(line)) {
-                sorted.addAll(sortTopLevelFields(segment));
-                segment.clear();
-                sorted.add(line);
+        for (int i = 0; i < marked.size(); i++) {
+            FormattedLine line = marked.get(i);
+            if (line.kind() != LineKind.BLOCK_COMMENT && line.kind() != LineKind.COMMENT)
                 continue;
+
+            int commentEnd = i;
+            if (line.kind() == LineKind.BLOCK_COMMENT) {
+                while (commentEnd + 1 < marked.size()) {
+                    FormattedLine nextCommentLine = marked.get(commentEnd + 1);
+                    if (nextCommentLine.kind() != LineKind.COMMENT && nextCommentLine.kind() != LineKind.BLOCK_COMMENT)
+                        break;
+                    commentEnd++;
+                    if (nextCommentLine.content().strip().endsWith("*/"))
+                        break;
+                }
             }
 
-            segment.add(line);
+            int next = commentEnd + 1;
+            while (next < marked.size() && marked.get(next).isBlank())
+                next++;
+
+            if (next < marked.size()
+                    && marked.get(next).kind() == LineKind.METHOD_HEADER
+                    && marked.get(next).indent() == line.indent())
+                marked.set(i, line.asMethodLeading());
         }
 
-        sorted.addAll(sortTopLevelFields(segment));
-        return sorted;
-    }
-
-    private boolean isTopLevelPreamble(FormattedLine line) {
-        return line.indent() == 0
-                && (line.kind() == LineKind.PREPROCESSOR || line.content().strip().startsWith("inherit "));
-    }
-
-    private boolean isTopLevelOrderingBarrier(FormattedLine line) {
-        if (line.indent() != 0)
-            return false;
-
-        return line.kind() == LineKind.PREPROCESSOR || line.content().strip().startsWith("inherit ");
-    }
-
-    private boolean isTopLevelFieldDeclaration(FormattedLine line) {
-        return line.indent() == 0 && line.kind() == LineKind.DECLARATION;
-    }
-
-    private String fieldName(FormattedLine line) {
-        Matcher matcher = FIELD_DECLARATION_NAME.matcher(line.content().strip());
-        if (!matcher.find())
-            throw new IllegalStateException("Cannot extract field name from: " + line.content());
-
-        return matcher.group(1);
-    }
-
-    private List<FormattedLine> sortTopLevelMethods(List<FormattedLine> lines) {
-        List<FormattedLine> sorted = new ArrayList<>();
-        List<FormattedLine> segment = new ArrayList<>();
-
-        for (FormattedLine line : lines) {
-            if (isTopLevelOrderingBarrier(line)) {
-                sorted.addAll(sortTopLevelMethodsInSegment(segment));
-                segment.clear();
-                sorted.add(line);
-                continue;
-            }
-
-            segment.add(line);
-        }
-
-        sorted.addAll(sortTopLevelMethodsInSegment(segment));
-        return sorted;
-    }
-
-    private List<FormattedLine> sortTopLevelMethodsInSegment(List<FormattedLine> lines) {
-        List<FormattedLine> prefix = new ArrayList<>();
-        List<FormattedLine> pending = new ArrayList<>();
-        List<MethodBlock> methods = new ArrayList<>();
-        boolean seenMethod = false;
-
-        for (int i = 0; i < lines.size(); i++) {
-            FormattedLine line = lines.get(i);
-
-            if (!isTopLevelMethodHeader(line)) {
-                if (seenMethod)
-                    pending.add(line);
-                else
-                    prefix.add(line);
-                continue;
-            }
-
-            List<FormattedLine> methodLines = new ArrayList<>();
-            if (seenMethod) {
-                methodLines.addAll(trimLeadingBlanks(pending));
-                pending.clear();
-            }
-            if (!methodLines.isEmpty())
-                methodLines.set(0, methodLines.get(0).asMethodLeading());
-
-            int braceDepth = 0;
-            ScanState methodScanState = new ScanState();
-            do {
-                FormattedLine methodLine = lines.get(i);
-                methodLines.add(methodLine);
-                LineScan scan = scanLine(methodLine.content().stripLeading(), methodScanState);
-                braceDepth += scan.openBraces() - scan.closeBraces();
-                i++;
-            } while (i < lines.size() && braceDepth > 0);
-
-            i--;
-            methods.add(new MethodBlock(methodName(line), methodLines));
-            seenMethod = true;
-        }
-
-        methods.sort(Comparator.comparing(MethodBlock::name));
-
-        List<FormattedLine> sorted = new ArrayList<>(trimTrailingBlanks(prefix));
-        for (MethodBlock method : methods)
-            sorted.addAll(method.lines());
-        sorted.addAll(trimLeadingBlanks(pending));
-
-        return sorted;
-    }
-
-    private boolean isTopLevelMethodHeader(FormattedLine line) {
-        return line.indent() == 0 && line.kind() == LineKind.METHOD_HEADER;
-    }
-
-    private String methodName(FormattedLine line) {
-        String header = line.content().strip();
-        Matcher matcher = METHOD_HEADER.matcher(header);
-        if (!matcher.matches())
-            throw new IllegalStateException("Cannot extract method name from: " + line.content());
-
-        String declarationPrefix = header.substring(0, header.indexOf('(')).strip();
-        int nameEnd = declarationPrefix.length();
-        while (nameEnd > 0 && !Character.isJavaIdentifierPart(declarationPrefix.charAt(nameEnd - 1)))
-            nameEnd--;
-
-        int nameStart = nameEnd;
-        while (nameStart > 0 && Character.isJavaIdentifierPart(declarationPrefix.charAt(nameStart - 1)))
-            nameStart--;
-
-        if (nameStart == nameEnd)
-            throw new IllegalStateException("Cannot extract method name from: " + line.content());
-
-        return declarationPrefix.substring(nameStart, nameEnd);
-    }
-
-    private List<FormattedLine> trimLeadingBlanks(List<FormattedLine> lines) {
-        int start = 0;
-        while (start < lines.size() && lines.get(start).isBlank())
-            start++;
-
-        return new ArrayList<>(lines.subList(start, lines.size()));
-    }
-
-    private List<FormattedLine> trimTrailingBlanks(List<FormattedLine> lines) {
-        int end = lines.size();
-        while (end > 0 && lines.get(end - 1).isBlank())
-            end--;
-
-        return new ArrayList<>(lines.subList(0, end));
+        return marked;
     }
 
     private String spaceLines(List<FormattedLine> lines) {
@@ -572,12 +419,6 @@ public final class LPCFormatter {
     }
 
     private record LineScan(String code, int openBraces, int closeBraces) {
-    }
-
-    private record MethodBlock(String name, List<FormattedLine> lines) {
-    }
-
-    private record FieldDeclaration(String name, FormattedLine line) {
     }
 
     private static final class ScanState {
