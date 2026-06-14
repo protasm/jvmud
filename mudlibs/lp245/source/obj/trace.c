@@ -303,6 +303,12 @@ int Call(string str) {
   string with, what, item;
   int iwhat;
   object ob;
+  /*
+  * JVMud preservation note:
+  * The upstream LP245 source declared this as `int ret`, but call_other() may
+  * return arrays, strings, objects, or ints and the code below tests all of
+  * those cases. Keep the original bug visible while using the real mixed type.
+  */
   mixed ret;
 
   if (!str)

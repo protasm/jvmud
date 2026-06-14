@@ -1921,6 +1921,63 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void inheritedMudlibObjectCanDelegateToSharedObjectByStringPath() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                string object_name(mixed ob) {
+                    return jvmud_entity_id(ob);
+                }
+
+                int pointerp(mixed value) {
+                    return jvmud_is_array(value);
+                }
+
+                object this_object() {
+                    return jvmud_current_entity();
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/room.c"), """
+                string *numbers;
+
+                string convert_number(int n) {
+                    if (!pointerp(numbers))
+                        numbers = query_numbers();
+                    if (n > 9)
+                        return "lot of";
+                    return numbers[n];
+                }
+
+                string *query_numbers() {
+                    if (!numbers) {
+                        if (object_name(this_object()) == "room/room")
+                            numbers = ({"no", "one", "two", "three"});
+                        else
+                            numbers = "room/room"->query_numbers();
+                    }
+                    return numbers;
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
+                inherit "room/room";
+
+                string visible_exits() {
+                    return convert_number(3);
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .build());
+        LPCObjectHandle child = runtime.load(tempDir.resolve("room/village/vill_green.c"));
+
+        assertEquals("three", child.invoke("visible_exits"));
+    }
+
+    @Test
     void runtimeUsesBoundaryMudlibRootForAbsoluteInherits() throws Exception {
         Path mudlibRoot = tempDir.resolve("realms");
         Files.createDirectories(mudlibRoot.resolve("areas"));

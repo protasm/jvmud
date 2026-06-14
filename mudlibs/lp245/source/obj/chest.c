@@ -30,6 +30,12 @@ int get() { return 1; }
 
 int can_put_and_get() { return chest_is_open; }
 
+/*
+* JVMud preservation note:
+* The upstream LP245 source declared this as `void add_weight(int w)`, but the
+* function returns 0 on failure and callers use that success/failure value.
+* Keep the original bug visible here while giving the function its real type.
+*/
 int add_weight(int w) {
   if (w + local_weight > 8)
     return 0;
