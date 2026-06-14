@@ -146,10 +146,8 @@ string get_new_title(int str) {
 
   if (!player_ob || !player_ob->query_gender())
     return neut_title_str[str];
-
   else if (player_ob->query_gender() == 1)
     return male_title_str[str];
-
   else
     return fem_title_str[str];
 }
@@ -228,7 +226,6 @@ int cost_for_level() {
 
   if (cost)
     write("Str: " + cost + " experience points.\n");
-
   else
     write("Str: Not possible.\n");
 
@@ -236,7 +233,6 @@ int cost_for_level() {
 
   if (cost)
     write("Con: " + cost + " experience points.\n");
-
   else
     write("Con: Not possible.\n");
 
@@ -244,7 +240,6 @@ int cost_for_level() {
 
   if (cost)
     write("Dex: " + cost + " experience points.\n");
-
   else
     write("Dex: Not possible.\n");
 
@@ -252,7 +247,6 @@ int cost_for_level() {
 
   if (cost)
     write("Int: " + cost + " experience points.\n");
-
   else
     write("Int: Not possible.\n");
 
@@ -560,7 +554,6 @@ int list_quests(string num) {
 
   if (num && (sscanf(num, "%d", qnumber) == 1))
     "room/quest_room"->list(qnumber);
-
   else
     "room/quest_room"->count();
 
@@ -577,7 +570,6 @@ void alas(string what) {
 
   if (this_player()->query_gender() == 0)
     write("thing could possibly hope to get.\n");
-
   else
     write("one could possibly hope to get.\n");
 }
@@ -606,10 +598,8 @@ string gnd_prn() {
 
   if (gnd == 1)
     return "sir";
-
   else if (gnd == 2)
     return "madam";
-
   else
     return "best creature";
 }

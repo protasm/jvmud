@@ -161,6 +161,10 @@ public final class LPCFormatter {
         return line.equals("else") || line.startsWith("else if") || line.startsWith("else ");
     }
 
+    private boolean isElseBranch(String code) {
+        return code.startsWith("} else") || isElseHeader(code);
+    }
+
     private void addJoinedOpeningBrace(List<String> output, String current, String braceLine, boolean splitTrailingCode) {
         if (!splitTrailingCode) {
             output.add(current + " " + braceLine);
@@ -222,6 +226,9 @@ public final class LPCFormatter {
                 appendBlank(output);
                 continue;
             }
+
+            if (line.kind() == LineKind.ELSE)
+                removeTrailingBlank(output);
 
             if (previousMeaningful != null && needsBlankBefore(previousMeaningful, line))
                 appendBlank(output);
@@ -294,7 +301,7 @@ public final class LPCFormatter {
         if (line.stripLeading().startsWith("/*"))
             return LineKind.BLOCK_COMMENT;
 
-        if (code.startsWith("} else"))
+        if (isElseBranch(code))
             return LineKind.ELSE;
 
         if (closesControlBlock)
@@ -479,6 +486,11 @@ public final class LPCFormatter {
     private void appendBlank(List<String> output) {
         if (!output.isEmpty() && !output.get(output.size() - 1).isEmpty())
             output.add("");
+    }
+
+    private void removeTrailingBlank(List<String> output) {
+        if (!output.isEmpty() && output.get(output.size() - 1).isEmpty())
+            output.remove(output.size() - 1);
     }
 
     private String stripTrailingWhitespace(String line) {

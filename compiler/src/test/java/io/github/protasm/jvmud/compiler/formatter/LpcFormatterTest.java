@@ -446,6 +446,52 @@ final class LPCFormatterTest {
     }
 
     @Test
+    void removesBlankLinesSeparatingIfElseBranches() {
+        String source = """
+                sample() {
+                  if (ready) {
+                    first();
+
+                    return;
+
+                  } else {
+                    second();
+                  }
+
+                  if (other)
+                    return 1;
+
+                  else if (fallback)
+                    return 2;
+
+                  else
+                    return 3;
+                }
+                """;
+
+        String expected = """
+                sample() {
+                  if (ready) {
+                    first();
+
+                    return;
+                  } else {
+                    second();
+                  }
+
+                  if (other)
+                    return 1;
+                  else if (fallback)
+                    return 2;
+                  else
+                    return 3;
+                }
+                """;
+
+        assertEquals(expected, formatter.format(source));
+    }
+
+    @Test
     void collapsesRepeatedCodeSpacesButKeepsStringsAndCommentsUntouched() {
         String source = """
                 void  set_alias(string  a) {

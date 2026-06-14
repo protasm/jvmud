@@ -37,13 +37,11 @@ int count(int silently) {
   if (!silently) {
     if (i == 0)
       write("You have solved all quests!\n");
-
     else {
       write("You have " + i + " quests unsolved.\n");
 
       if (i - FREE_QUESTS <= 0)
         write("You don't have to solve any more quests.\n");
-
       else
         write("You must solve " + (i - FREE_QUESTS) + " of these.\n");
     }

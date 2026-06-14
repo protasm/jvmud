@@ -60,7 +60,6 @@ void loop() {
 
   if (curr_mess < 1 || curr_mess > sizeof(arr_messages)/2)
     tmp = " (no current) ";
-
   else
     tmp = " (current: " + curr_mess + ") ";
 
@@ -228,7 +227,6 @@ void delete() {
 
   if (sizeof(arr_messages) == 2)
     messages = "";
-
   else
     messages = implode(arr_messages, "\n**\n") + "\n**\n";
 
@@ -238,7 +236,6 @@ void delete() {
 
   if (messages == "")
     arr_messages = 0;
-
   else
     arr_messages = explode(messages, "\n**\n");
 }

@@ -242,13 +242,11 @@ int Dump(string str) {
 
       if (sizeof(t) < 8)
         t += "\t\t";
-
       else if (sizeof(t) < 16)
         t += "\t";
 
       if (objectp(tmp))
         tmp = object_name(tmp);
-
       else if (pointerp(tmp))
         tmp = "<ARRAY>";
 
@@ -316,11 +314,9 @@ int Call(string str) {
 
   if (sscanf(str, "%s %s %d", item, with, what) == 3)
     iwhat = 1;
-
   else if (sscanf(str, "%s %s %s", item, with, what) != 3) {
     if (sscanf(str, "%s %s", item, with) == 2)
       iwhat = 0;
-
     else
       return 0;
   }
@@ -334,13 +330,10 @@ int Call(string str) {
 
   if (intp(ret))
     write("Got int " + ret + "\n");
-
   else if (pointerp(ret))
     write("Array of size " + sizeof(ret) + "\n");
-
   else if (stringp(ret))
     write("String: '" + ret + "'\n");
-
   else if (objectp(ret)) {
     write("Object: "); write(ret);
     write("\n");

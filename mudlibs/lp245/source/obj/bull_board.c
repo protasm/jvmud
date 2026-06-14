@@ -23,7 +23,6 @@ void long() {
 
   if (num_messages == 1)
     write(" note:\n\n");
-
   else
     write(" notes:\n\n");
 

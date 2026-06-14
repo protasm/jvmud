@@ -82,7 +82,6 @@ string short() {
 void long() {
   if(!long)
     write(short() + ".\n");
-
   else
     write(long);
 }
@@ -113,7 +112,6 @@ int eat(string str) {
 
   if (eating_mess)
     say(capitalize(this_player()->query_name()) + eating_mess);
-
   else
     say(capitalize(this_player()->query_name()) + " eats " + short + ".\n");
 
@@ -173,7 +171,6 @@ void set_eater_mess(string em) {
 int query_value() {
   if (value)
     return value;
-
   else
     return min_cost();
 }

@@ -35,7 +35,6 @@ void show_menu() {
 
   if(!(cm||mm||rmm))
     Speak("We have completely sold out...come back later.");
-
   else {
     write("1: Commonor's Meal     ");write(cm);write(" at 20 gp\n");
     write("2: Merchant's Meal     ");write(mm);write(" at 50 gp\n");
@@ -61,7 +60,6 @@ int no_food() {
 
   if(cm||mm||rmm)
     Speak("Why don't you try something else ?");
-
   else
     Speak("Why don't you come back later ?");
 

@@ -36,7 +36,6 @@ void long() {
 
   if (msg_num == 1)
     write(" note :\n\n");
-
   else
     write(" notes :\n\n");
   /*

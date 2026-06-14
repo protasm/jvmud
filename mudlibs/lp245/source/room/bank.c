@@ -111,7 +111,6 @@ int unlock(string str) {
   if (!present("bank key", this_player())) {
     if (present("key", this_player()))
       write("You don't have the right key.\n");
-
     else
       write("You need a key.\n");
 

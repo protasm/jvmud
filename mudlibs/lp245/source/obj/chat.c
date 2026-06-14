@@ -36,7 +36,6 @@ int chat(int nr) {
 
   if (next)
     return next->chat(nr);
-
   else
     return 0;
 }

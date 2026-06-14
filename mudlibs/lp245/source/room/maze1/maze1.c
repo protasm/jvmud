@@ -23,7 +23,6 @@ void init() {
 int e0() {
   if (exit_num == 0)
     this_player()->move_player("north#room/maze1/maze2");
-
   else
     this_player()->move_player("north#room/well");
 
@@ -33,7 +32,6 @@ int e0() {
 int e1() {
   if (exit_num == 1)
     this_player()->move_player("south#room/maze1/maze2");
-
   else
     this_player()->move_player("south#room/well");
 
@@ -43,7 +41,6 @@ int e1() {
 int e2() {
   if (exit_num == 2)
     this_player()->move_player("east#room/maze1/maze2");
-
   else
     this_player()->move_player("east#room/well");
 
@@ -53,7 +50,6 @@ int e2() {
 int e3() {
   if (exit_num == 3)
     this_player()->move_player("west#room/maze1/maze2");
-
   else
     this_player()->move_player("west#room/well");
 

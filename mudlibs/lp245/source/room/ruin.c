@@ -3,7 +3,6 @@
 int id(string str) {
   if (str == "ruin")
     return 1;
-
   else
     return 0;
 }

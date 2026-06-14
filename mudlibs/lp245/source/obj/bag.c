@@ -6,7 +6,6 @@ void long() {
 
   if (first_inventory(this_object()))
     write("There is something in it.\n");
-
   else
     write("You can put things in it.\n");
 }

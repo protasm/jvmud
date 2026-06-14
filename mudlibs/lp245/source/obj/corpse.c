@@ -102,7 +102,6 @@ int search(string str) {
 
   if (!search_obj(ob))
     write("\tNothing.\n");
-
   else
     write("\n");
 

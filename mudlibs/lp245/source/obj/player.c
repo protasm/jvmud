@@ -172,7 +172,6 @@ static void try_throw_out(string str)
 
   if (restore_object("players/" + name))
     write("Points restored from the other object.\n");
-
   else
     destruct(other_copy); /* Is this really needed ? */
 
@@ -265,7 +264,6 @@ static void logon2(string str) {
 
   if (is_invis)
     cap_name = "Someone";
-
   else
     cap_name = capitalize(name);
 
@@ -278,7 +276,6 @@ static void logon2(string str) {
   */
   if (level != -1)
     input_to("check_password", 1);
-
   else
     input_to("new_password", 1);
 
@@ -462,11 +459,9 @@ int score(string arg) {
 
       if (stuffed && soaked)
         tmp += ", ";
-
       else {
         if (stuffed || soaked)
           tmp += " and ";
-
         else
           tmp += ".\n";
       }
@@ -477,7 +472,6 @@ int score(string arg) {
 
       if (soaked)
         tmp += " and ";
-
       else
         tmp += ".\n";
     }
@@ -753,7 +747,6 @@ int teleport(string dest) {
 
     if (brief)
       write(ob->short() + ".\n");
-
     else
       ob->long();
 
@@ -1369,7 +1362,6 @@ static int in_room(string str)
 
   if (old_room)
     move_object(myself, old_room);
-
   else
     write("Could not go back again.\n");
 
@@ -1509,7 +1501,6 @@ int look(string str) {
     if (!living(ob)) {
       if (weight >= 5)
         write("It looks very heavy.\n");
-
       else if (weight >= 3)
         write("It looks heavy.\n");
     }
@@ -1582,7 +1573,6 @@ static void check_password(string p)
 
   if (password == 0)
     write("You have no password ! Set it with the 'password' cmd.\n");
-
   else if (name != "guest" && crypt(p, password) != password) {
     write("Wrong password!\n");
     destruct(myself);
@@ -1783,7 +1773,6 @@ static void move_player_to_start3(mixed where) {
 
   if (where)
     move_object(myself, where);
-
   else {
     move_object(myself, "room/church");
     load_auto_obj(auto_load);
@@ -1794,7 +1783,6 @@ static void move_player_to_start3(mixed where) {
 
   if (!is_invis)
     say(cap_name + " enters the game.\n");
-
   else
     write("YOU ARE INVISIBLE !\n\n");
 
@@ -1999,25 +1987,19 @@ int list_peoples() {
 
     if (a / 43200 > 9)
       write(a / 43200 + " D");
-
     else if (a / 43200 > 0)
       write(a / 43200 + "  D");
-
     else if (a / 1800 > 9)
       write(a / 1800 + " h");
-
     else if (a / 1800 > 0)
       write(a / 1800 + "  h");
-
     else if (a / 30 > 9)
       write(a / 30 + " m");
-
     else
       write(a / 30 + "  m");
 
     if (query_idle(list[i]) >= 5 * 60)
       write(" I\t");
-
     else
       write("\t");
 
@@ -2365,7 +2347,6 @@ static int toggle_whimpy()
 
   if (whimpy)
     write("Wimpy mode.\n");
-
   else
     write("Brave mode.\n");
 
@@ -2379,7 +2360,6 @@ int toggle_brief() {
 
   if (brief)
     write("Brief mode.\n");
-
   else
     write("Verbose mode.\n");
 
@@ -2554,7 +2534,6 @@ static int trans(string str)
     out = ob->query_name() +
 
   " arrives in a puff of smoke.\n";
-
   else
     out = ob->query_name() + " " + out + ".\n";
 
@@ -2689,7 +2668,6 @@ int spell_missile(string str) {
 
   if (!str)
     ob = attacker_ob;
-
   else
     ob = present(lower_case(str), environment(this_player()));
 
@@ -2721,7 +2699,6 @@ int spell_shock(string str) {
 
   if (!str)
     ob = attacker_ob;
-
   else
     ob = present(lower_case(str), environment(this_player()));
 
@@ -2753,7 +2730,6 @@ int spell_fire_ball(string str) {
 
   if (!str)
     ob = attacker_ob;
-
   else
     ob = present(lower_case(str), environment(this_player()));
 
@@ -2781,7 +2757,6 @@ static int spell_zap(string str)
 
   if (!str)
     ob = attacker_ob;
-
   else
     ob = present(lower_case(str), environment(this_player()));
 
@@ -2810,16 +2785,12 @@ int give_object(string str) {
 
   if (sscanf(str, "%d coins to %s", coins, dest) == 2)
     item = 0;
-
   else if ( sscanf(str, "1 coin to %s", dest) == 1)
     coins = 1;
-
   else if ( sscanf(str, "coin to %s", dest) == 1)
     coins = 1;
-
   else if (sscanf(str, "one coin to %s", dest) == 1)
     coins = 1;
-
   else if (sscanf(str, "%s to %s", item, dest) != 2) {
     write("Give what to whom ?\n");
 
@@ -3169,7 +3140,6 @@ mixed valid_write(string str) {
 
     if (current_path != "")
       str = "/" + current_path + "/" + str;
-
     else
       str = "/" + str;
   }
@@ -3224,7 +3194,6 @@ mixed valid_read(string str, int lvl) {
   if (str[0] != '/'){
     if (current_path == "")
       str = "/" + str;
-
     else
       str = "/" + current_path + "/" + str;
   }
@@ -3246,7 +3215,6 @@ static int wiz_score_list(string arg) {
 
   if (arg)
     wizlist(arg);
-
   else
     wizlist();
 
@@ -3301,7 +3269,6 @@ int compute_values(object ob) {
 void save_me(int value_items) {
   if (value_items)
     tot_value = compute_values(first_inventory(this_object()));
-
   else
     tot_value = 0;
 
@@ -3421,7 +3388,6 @@ int set_quest(string q) {
 #endif /* LOG_SET_QUEST */
   if (quests == 0)
     quests = q;
-
   else
     quests = quests + "#" + q;
 
@@ -3450,7 +3416,6 @@ int who() {
 
     if (sh == 0 && level >= 20)
       write("(" + list[i]->query_real_name() + ")\n");
-
     else if (sh)
       write(sh + "\n");
 
@@ -3479,19 +3444,15 @@ static int cd(string str) {
 
     if (i == 0)
       current_path = "";
-
     else
       current_path = current_path[0..i-1];
   } else if (!str)
   current_path = "players/" + name;
-
   else if (str == "/")
     current_path = "";
-
   else if (str[0] != '/') {
     if (current_path == "")
       current_path = str;
-
     else
       current_path += "/" + str;
   } else {
@@ -3530,7 +3491,6 @@ static void even_more(string str) {
 
   if (str == "" || str == "d")
     more_line += CHUNK;
-
   else if (str == "q") {
     write("Ok.\n");
 
@@ -3565,7 +3525,6 @@ int makedir(string str) {
 
   if (mkdir(str))
     write("Ok.\n");
-
   else
     write("Fail.\n");
 
@@ -3578,7 +3537,6 @@ int removedir(string str) {
 
   if (rmdir(str))
     write("Ok.\n");
-
   else
     write("Fail.\n");
 

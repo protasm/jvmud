@@ -11,7 +11,6 @@ void long(string str) {
   if (str == "door") {
     if ("room/bank"->query_door())
       write("The door is closed.\n");
-
     else
       write("The door is open.\n");
 

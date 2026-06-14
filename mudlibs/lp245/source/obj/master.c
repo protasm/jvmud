@@ -1225,7 +1225,6 @@ void inaugurate_master (int arg)
                 filter(users(), #'tell_object,
 
               "Game driver shouts: LPmud shutting down immediately.\n");
-
               else
                 filter(users(), #'tell_object,
 

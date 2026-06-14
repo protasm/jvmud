@@ -36,13 +36,11 @@ void set_name(string str) {
   }
   if ( TmpString = creator( this_object()) || ( TmpString = creator( previous_object())))
     SaveName = "players/"+TmpString+"/";
-
   else
     SaveName = "obj/";
 
   if ( str)
     SaveName=SaveName+str;
-
   else
     SaveName=SaveName+DEFAULT_FILE_NAME;
 
@@ -65,7 +63,6 @@ int id(string str) {
 string short() {
   if ( this_player() && this_player()->query_level() >= 20)
     return "A player logger, name: <"+SaveName+">";
-
   else
     return 0;
 }
@@ -73,7 +70,6 @@ string short() {
 int PlayerHasVisited( string str) {
   if ( str)
     return sscanf( SaveString, "%s"+DELIMITER+str+DELIMITER, str);
-
   else
     return 0;
 }
@@ -109,7 +105,6 @@ void init() {
     if (! PlayerHasVisited( this_player()->query_name())) {
       if ( OKMessage)
         tell_object( this_player(), OKMessage);
-
       else
         tell_object( this_player(), "You feel more experienced.\n");
 

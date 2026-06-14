@@ -71,13 +71,11 @@ void long(string str) {
 
     if (!dest_dir)
       write("    No obvious exits.\n");
-
     else {
       i = 1;
 
       if (sizeof(dest_dir) == 2)
         write("    There is one obvious exit:");
-
       else
         write("    There are " + convert_number(sizeof(dest_dir)/2) +
 
@@ -90,7 +88,6 @@ void long(string str) {
 
         if (i == sizeof(dest_dir) - 1)
           write(" and");
-
         else if (i < sizeof(dest_dir))
           write(",");
       }
@@ -199,7 +196,6 @@ string * query_numbers() {
       numbers = ({"no", "one", "two", "three", "four", "five",
 
       "six", "seven", "eight", "nine" });
-
     else
       numbers = "room/room"->query_numbers();
   }

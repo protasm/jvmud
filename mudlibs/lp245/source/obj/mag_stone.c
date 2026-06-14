@@ -21,7 +21,6 @@ int drop() {
 
   if (gived == 2)
     return 1;
-
   else
     return 0;
 }
@@ -93,25 +92,19 @@ int list_peoples() {
 
     if (a / 43200 > 9)
       write(a / 43200 + " D");
-
     else if (a / 43200 > 0)
       write(a / 43200 + "  D");
-
     else if (a / 1800 > 9)
       write(a / 1800 + " h");
-
     else if (a / 1800 > 0)
       write(a / 1800 + "  h");
-
     else if (a / 30 > 9)
       write(a / 30 + " m");
-
     else
       write(a / 30 + "  m");
 
     if (query_idle(list[i]) >= 5 * 60)
       write(" I\t");
-
     else
       write("\t");
 

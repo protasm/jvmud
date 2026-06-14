@@ -73,7 +73,6 @@ void out_of_fuel() {
 
   if (set_light(-1) == 0)
     say("There is darkness as a " + name + " goes dark.\n");
-
   else
     say("The " + name + " goes dark.\n");
 

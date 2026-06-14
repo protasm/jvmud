@@ -17,7 +17,6 @@ void long() {
 
   if (chest_is_open)
     write("It is open.\n");
-
   else
     write("It is closed.\n");
 }

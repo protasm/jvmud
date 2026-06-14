@@ -862,7 +862,6 @@ void heart_beat() {
 
       tell_object(ob, "Done.\n");
     }
-
   } else {
     ob = 0;
     more_cmds = 0;

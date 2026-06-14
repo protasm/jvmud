@@ -89,13 +89,10 @@ void random_move() {
 
   if (n == 0)
     command("west");
-
   else if (n == 1)
     command("east");
-
   else if (n == 2)
     command("south");
-
   else if (n == 3)
     command("north");
 }
@@ -401,7 +398,6 @@ void pick_any_obj() {
 
       if (ob->weapon_class())
         ob->wield(ob->query_name());
-
       else if (ob->armour_class())
         ob->wear(ob->query_name());
 
@@ -460,7 +456,6 @@ void heal_slowly() {
 
   if (hit_point < max_hp || spell_points < max_hp)
     call_out("heal_slowly", 120);
-
   else
     healing = 0;
 }

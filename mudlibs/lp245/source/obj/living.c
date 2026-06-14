@@ -181,10 +181,8 @@ void move_player(string dir_dest, object optional_dest_ob) {
 
     if (ghost)
       say(NAME_OF_GHOST + " " + msgout + " " + dir + ".\n");
-
     else if (dir == "X" && !is_invis)
       say(cap_name + " " + mmsgout + ".\n");
-
     else if (!is_invis)
       say(cap_name + " " + msgout + " " + dir + ".\n");
   }
@@ -207,10 +205,8 @@ void move_player(string dir_dest, object optional_dest_ob) {
 
     if (ghost)
       say(NAME_OF_GHOST + " " + msgin + ".\n");
-
     else if (dir == "X" && !is_invis)
       say(cap_name + " " + mmsgin + ".\n");
-
     else if (!is_invis)
       say(cap_name + " " + msgin + ".\n");
   }
@@ -234,7 +230,6 @@ void move_player(string dir_dest, object optional_dest_ob) {
 
   if (brief)
     write(ob->short() + ".\n");
-
   else
     ob->long();
 
@@ -269,7 +264,6 @@ int hit_player(int dam) {
 
   if (!attacker_ob && this_player() != this_object())
     attacker_ob = this_player();
-
   else if (!alt_attacker_ob && attacker_ob != this_player() &&
     this_player() != this_object())
 
@@ -477,7 +471,6 @@ void stop_wearing(string name) {
 
   if(head_armour && objectp(head_armour))
     armour_class = head_armour->tot_ac();
-
   else {
     armour_class = 0;
     head_armour = 0;
@@ -1069,7 +1062,6 @@ int reduce_hit_point(int dam) {
         log_file("REDUCE_HP", " " + object_name(o) + ", " +
 
       o->short() + " (" + creator(o) + ")\n");
-
       else
         log_file("REDUCE_HP", " ??\n");
     }
@@ -1105,10 +1097,8 @@ int set_female() { return gender = 2; }
 string query_gender_string() {
   if (!gender)
     return "neuter";
-
   else if (gender == 1)
     return "male";
-
   else
     return "female";
 }
@@ -1116,10 +1106,8 @@ string query_gender_string() {
 string query_pronoun() {
   if (!gender)
     return "it";
-
   else if (gender == 1)
     return "he";
-
   else
     return "she";
 }
@@ -1127,10 +1115,8 @@ string query_pronoun() {
 string query_possessive() {
   if (!gender)
     return "its";
-
   else if (gender == 1)
     return "his";
-
   else
     return "her";
 }
@@ -1138,10 +1124,8 @@ string query_possessive() {
 string query_objective() {
   if (!gender)
     return "it";
-
   else if (gender == 1)
     return "him";
-
   else
     return "her";
 }

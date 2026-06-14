@@ -43,7 +43,6 @@ void long(string str) {
 
     if (j == 1)
       write("1 day ");
-
     else if (j > 0)
       write(j + " days ");
 
@@ -52,7 +51,6 @@ void long(string str) {
 
     if (j == 1)
       write("1 hour ");
-
     else if (j > 0)
       write(j + " hours ");
 
@@ -61,7 +59,6 @@ void long(string str) {
 
     if (j == 1)
       write("1 minute ");
-
     else if (j > 0)
       write(j + " minutes ");
 
@@ -69,7 +66,6 @@ void long(string str) {
 
     if (i == 1)
       write("1 second");
-
     else if (i > 0)
       write(i + " seconds");
 
@@ -94,7 +90,6 @@ void long(string str) {
       "room/elevator"->query_level(0))
 
     write("The door is open.\n");
-
     else
       write("The door is closed.\n");
 

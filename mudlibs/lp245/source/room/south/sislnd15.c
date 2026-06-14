@@ -51,7 +51,6 @@ int west() {
 int look(string str) {
   if (str != "at monument")
     return 0;
-
   else {
     write("The monument is very old and is crumbling.\n" +
     "Affixed to the side of the monument is a corroded old plaque which reads:\n" +

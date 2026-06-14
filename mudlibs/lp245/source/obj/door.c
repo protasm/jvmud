@@ -16,7 +16,6 @@ void set_closed( int val) {
 
     if ( val)
       tell_room( environment( this_object()),"closes.\n");
-
     else
       tell_room( environment( this_object()),"opens.\n");
   }
@@ -184,7 +183,6 @@ void which_door() {
 
       if ( tmp_num == num_door )
         write(" or the " + str + " door.\n");
-
       else
         write( ", the " + str + " door");
     }
@@ -212,7 +210,6 @@ int this_door(string str) {
   if ( (sscanf(str, "%s", type) == 1) && ( type == "door" ) ) {
     if ( number_of_doors() == 1)
       return 2;
-
     else
       which_door();
 
@@ -267,7 +264,6 @@ int go( string str) {
   } else
   if ( tmp == 1 )
     return 1;
-
   else
     return 0;
 }
@@ -284,7 +280,6 @@ void open_door() {
 
   if ( is_locked )
     write("You can't open the " + direction + " door, it's locked!\n");
-
   else {
     write("You open the " + direction + " door.\n");
     set_closed( 0);
@@ -306,7 +301,6 @@ void close_door() {
 
   if ( is_locked )
     write("You can't close the " + direction + " door, it's locked!\n");
-
   else {
     write("You close the " + direction + " door.\n");
     set_closed(1);
@@ -331,7 +325,6 @@ int open( string str) {
   } else
   if ( tmp == 1 )
     return 1;
-
   else
     return 0;
 }
@@ -351,7 +344,6 @@ int close( string str) {
   } else
   if ( tmp == 1 )
     return 1;
-
   else
     return 0;
 }
@@ -394,7 +386,6 @@ void which_key() {
 
       if ( tmp_num == num_key )
         write(" or the " + str + " key.\n");
-
       else
         write( ", the " + str + " key");
     }
@@ -446,7 +437,6 @@ int this_key(string str) {
   if ( (sscanf(str, "%s", type) == 1) && ( type == "key" ) ) {
     if ( number_of_keys() == 1)
       return 2;
-
     else
       if ( number_of_keys() == 0) {
       write("You haven't got a key!\n");

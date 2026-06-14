@@ -44,7 +44,6 @@ int test_match(string str) {
 
   if (next)
     return next->test_match(str);
-
   else
     return 0;
 }

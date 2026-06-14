@@ -21,7 +21,6 @@ void init() {
 void input(string str) {
   if (str == "" || str == "d")
     line += CHUNK;
-
   else if (str == "q") {
     write("Ok.\n");
 

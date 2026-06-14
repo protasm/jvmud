@@ -73,7 +73,6 @@ void reset(int arg) {
 int prevent_insert() {
   if (empty_container)
     return 0;
-
   else {
     write("You don't want to ruin " + name + ".\n");
 
@@ -84,7 +83,6 @@ int prevent_insert() {
 int id(string str) {
   if (full)
     return str == name || str == alt_name || str == alias;
-
   else
     return str == empty_container;
 }
@@ -107,7 +105,7 @@ void long() {
     else
       write(long_desc);
   } else
-    write(short() + "\n");
+  write(short() + "\n");
 }
 
 int get() {
@@ -158,7 +156,6 @@ int drink(string str) {
 
   if (drinking_mess)
     say(p_name + drinking_mess);
-
   else
     say(p_name + " drinks " + short_desc + ".\n");
 
@@ -221,7 +218,6 @@ int query_value() {
   if (full) {
     if (value)
       return value;
-
     else
       return min_cost();
   } else

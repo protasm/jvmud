@@ -25,7 +25,6 @@ void long(string str) {
       "room/elevator"->query_level())
 
     write("The door is open.\n");
-
     else
       write("The door is closed.\n");
 

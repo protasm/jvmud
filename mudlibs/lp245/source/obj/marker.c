@@ -201,11 +201,9 @@ int i_call(string str) {
 
   if (sscanf(str, "%s %d", with, what) == 2)
     iwhat = 1;
-
   else if (sscanf(str, "%s %s", with, what) != 2) {
     if (sscanf(str, "%s", with) == 1)
       iwhat = 0;
-
     else
       return 0;
   }

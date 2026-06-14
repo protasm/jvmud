@@ -377,7 +377,6 @@ varargs void add_worth(int value, object ob)
       b[WL_COST] / 1000 + (b[WL_GIGACOST] % 1000) * 1000000000,
       b[WL_HEART_BEATS], b[WL_EXTRA], b[WL_ARRAY_TOTAL]
       );
-
       else
         printf("%-15s %5d %2d%% (%d)\t[%4dk,%5d] %6d %d\n",
 
@@ -951,7 +950,6 @@ varargs void add_worth(int value, object ob)
     if (index > -1) {
       if (index + 1 < sizeof(txt))
         txt = txt[index+1..];
-
       else
         txt = "";
     }
