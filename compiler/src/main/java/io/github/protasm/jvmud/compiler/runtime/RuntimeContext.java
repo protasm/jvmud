@@ -1040,6 +1040,17 @@ public final class RuntimeContext {
         return currentObjectStack.get().peek();
     }
 
+    public Object previousObject() {
+        Deque<Object> stack = currentObjectStack.get();
+        if (stack.size() < 2) {
+            return stack.peek();
+        }
+
+        java.util.Iterator<Object> iterator = stack.iterator();
+        iterator.next();
+        return iterator.next();
+    }
+
     public Object currentCommandActor() {
         return commandActorStack.get().peek();
     }

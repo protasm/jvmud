@@ -676,6 +676,7 @@ final class MudlibCompatibilityScanTest {
         case "log_file" -> support("Stubbed", "Mudlib mfun accepts the call and discards text until log policy exists.");
         case "move_object" -> support("Implemented", "RuntimeContext moves objects between inventories with cycle checks.");
         case "present" -> support("Partial", "RuntimeContext searches inventory by identity or id method.");
+        case "previous_object" -> support("Implemented", "Returns the caller object from RuntimeContext's current-object stack, with current object fallback.");
         case "query_idle" -> support("Implemented", "Reads idle time from the bound session/persona record.");
         case "query_ip_number" -> support("Implemented", "Reads the remote address from the bound session/persona record.");
         case "query_verb" -> support("Implemented", "Backed by the active command dispatch verb.");
@@ -707,7 +708,6 @@ final class MudlibCompatibilityScanTest {
                 "ls",
                 "mkdir",
                 "move_player",
-                "previous_object",
                 "rm",
                 "rmdir",
                 "shout",

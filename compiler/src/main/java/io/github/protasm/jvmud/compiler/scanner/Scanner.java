@@ -32,6 +32,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_LESS_EQUAL
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_MINUS;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_PERCENT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS_PLUS;
@@ -243,6 +244,8 @@ public class Scanner {
                 return token(T_SLASH);
         case '*':
             return token(ss.match('=') ? T_STAR_EQUAL : T_STAR);
+        case '%':
+            return token(T_PERCENT);
         case '~':
             return token(T_TILDE);
         case '.':

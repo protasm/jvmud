@@ -52,10 +52,12 @@ int cat(string path) {
   mixed text;
 
   text = jvmud_read_mudlib_text(path);
+
   if (!stringp(text))
     return 0;
 
   write(text);
+
   return 1;
 }
 
@@ -219,6 +221,10 @@ object present(mixed id, mixed container) {
   return jvmud_find_entity(id, container);
 }
 
+object previous_object() {
+  return jvmud_previous_entity();
+}
+
 string query_verb() {
   return jvmud_current_verb();
 }
@@ -310,6 +316,7 @@ void tell_room(mixed room, mixed value) {
 
 int transfer(mixed ob, mixed destination) {
   jvmud_move_entity(ob, destination);
+
   return 0;
 }
 
@@ -332,6 +339,7 @@ int valid_name(mixed name) {
     return 0;
 
   lowered = lower_case(name);
+
   if (strlen(lowered) < 2)
     return 0;
 

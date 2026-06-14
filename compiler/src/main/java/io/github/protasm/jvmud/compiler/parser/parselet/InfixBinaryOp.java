@@ -12,6 +12,7 @@ import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_GE;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_GT;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_LE;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_LT;
+import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_MOD;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_MULT;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_OR;
 import static io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_SHL;
@@ -45,6 +46,8 @@ public class InfixBinaryOp implements InfixParselet {
             return new ASTExprOpBinary(line, left, right, BOP_MULT);
         case T_SLASH:
             return new ASTExprOpBinary(line, left, right, BOP_DIV);
+        case T_PERCENT:
+            return new ASTExprOpBinary(line, left, right, BOP_MOD);
         case T_DBL_PIPE:
             return new ASTExprOpBinary(line, left, right, BOP_OR);
         case T_DBL_AMP:

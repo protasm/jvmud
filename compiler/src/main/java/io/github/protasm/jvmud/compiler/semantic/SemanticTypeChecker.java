@@ -324,7 +324,7 @@ public final class SemanticTypeChecker {
             ensureNumericOperands(leftType, rightType, expr.line(), "Addition expects numeric operands");
             return LPCType.LPCINT;
         }
-        case BOP_SUB, BOP_MULT, BOP_DIV -> {
+        case BOP_SUB, BOP_MULT, BOP_DIV, BOP_MOD -> {
             ensureNumericOperands(leftType, rightType, expr.line(), op + " expects numeric operands");
             return LPCType.LPCINT;
         }
@@ -424,11 +424,11 @@ public final class SemanticTypeChecker {
             }
         }
 
-        if (expectedTypes != null && arguments.size() != expectedTypes.size()) {
+        if (expectedTypes != null && arguments.size() > expectedTypes.size()) {
             problems.add(
                     new CompilationProblem(
                             CompilationStage.ANALYZE,
-                            "Argument count mismatch: expected " + expectedTypes.size() + " but found " + arguments.size(),
+                            "Argument count mismatch: expected at most " + expectedTypes.size() + " but found " + arguments.size(),
                             arguments.line()));
         }
     }

@@ -61,6 +61,7 @@ import io.github.protasm.jvmud.compiler.token.Token;
 import io.github.protasm.jvmud.compiler.token.TokenType;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
@@ -1037,8 +1038,8 @@ public final class SemanticAnalyzer {
             return objectScope.resolveAll(name).stream()
                     .map(ScopedSymbol::method)
                     .filter(Objects::nonNull)
-                    .filter(method -> parameterCount(method) == arity)
-                    .reduce((first, second) -> second)
+                    .filter(method -> parameterCount(method) >= arity)
+                    .min(Comparator.comparingInt(SemanticAnalyzer::parameterCount))
                     .orElse(null);
         }
 

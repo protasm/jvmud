@@ -210,6 +210,38 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsModuloExpressions() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/modulo.c", """
+                int remainder(int seconds) {
+                    return seconds % 60;
+                }
+                """);
+
+        assertEquals(31, object.invoke("remainder", 91));
+    }
+
+    @Test
+    void directMethodCallsMayOmitTrailingArguments() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/optional_arg.c", """
+                string seen;
+
+                void remember(string label, object optional_target) {
+                    if (!optional_target)
+                        seen = label;
+                }
+
+                string value() {
+                    remember("defaulted");
+                    return seen;
+                }
+                """);
+
+        assertEquals("defaulted", object.invoke("value"));
+    }
+
+    @Test
     void runtimeEvaluatesLogicalOrFalseWhenBothOperandsAreFalse() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/logical_or.c", """
@@ -1290,6 +1322,50 @@ final class CompilerSmokeTest {
         player.invoke("make_commandable");
 
         assertEquals(true, player.invoke("is_registered"));
+    }
+
+    @Test
+    void previousObjectReportsCallingObjectAcrossMfunInvocation() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                mixed call_other(mixed target, string method) {
+                    return jvmud_invoke_entity(target, method);
+                }
+
+                string object_name(mixed ob) {
+                    return jvmud_entity_id(ob);
+                }
+
+                object previous_object() {
+                    return jvmud_previous_entity();
+                }
+                """);
+        Files.writeString(tempDir.resolve("target.c"), """
+                string caller_name() {
+                    return object_name(previous_object());
+                }
+
+                string self_name() {
+                    return object_name(previous_object());
+                }
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                string value() {
+                    return call_other("target", "caller_name");
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .build());
+
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+        LPCObjectHandle target = runtime.load(tempDir.resolve("target.c"));
+
+        assertEquals("caller", caller.invoke("value"));
+        assertEquals("target", target.invoke("self_name"));
     }
 
     @Test

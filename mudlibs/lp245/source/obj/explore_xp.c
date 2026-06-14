@@ -34,7 +34,18 @@ void set_name(string str) {
 
     return;
   }
-  if ( TmpString = creator( this_object()) || ( TmpString = creator( previous_object())))
+  /*
+  * JVMud preservation note:
+  * The upstream LP245 source wrote this as:
+  *
+  *   if ( TmpString = creator( this_object()) || ( TmpString = creator( previous_object())))
+  *
+  * That assigns the boolean result of `||` into a string local under normal
+  * operator precedence. Parenthesizing the first assignment preserves the
+  * intended "first non-empty creator" behavior while keeping the original
+  * expression visible for historical reference.
+  */
+  if (( TmpString = creator( this_object())) || ( TmpString = creator( previous_object())))
     SaveName = "players/"+TmpString+"/";
   else
     SaveName = "obj/";

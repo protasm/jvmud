@@ -511,6 +511,7 @@ public final class BytecodeCompiler {
         case BOP_SUB -> mv.visitInsn(ISUB);
         case BOP_MULT -> mv.visitInsn(IMUL);
         case BOP_DIV -> mv.visitInsn(IDIV);
+        case BOP_MOD -> mv.visitInsn(IREM);
         case BOP_BIT_OR, BOP_BIT_AND, BOP_BIT_XOR, BOP_SHL, BOP_SHR -> mv.visitInsn(op.opcode());
         case BOP_GT, BOP_GE, BOP_LT, BOP_LE, BOP_EQ, BOP_NE -> emitComparison(mv, op);
         default -> throw new UnsupportedOperationException("Unsupported operator: " + op);
@@ -723,6 +724,21 @@ public final class BytecodeCompiler {
             if (parameterTypes != null && i < parameterTypes.size()) {
                 coerceValue(mv, argument.type(), parameterTypes.get(i));
             }
+        }
+
+        if (parameterTypes != null) {
+            for (int i = arguments.size(); i < parameterTypes.size(); i++) {
+                emitDefaultArgument(mv, parameterTypes.get(i));
+            }
+        }
+    }
+
+    private void emitDefaultArgument(MethodVisitor mv, RuntimeType type) {
+        switch (type.kind()) {
+        case INT, STATUS -> pushInt(mv, 0);
+        case FLOAT -> mv.visitInsn(FCONST_0);
+        case VOID -> throw new BytecodeCompileException("Cannot pass a default value for void parameter.");
+        default -> mv.visitInsn(ACONST_NULL);
         }
     }
 

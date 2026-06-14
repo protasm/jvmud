@@ -69,6 +69,8 @@ public final class EngineEfuns {
                 (runtime, args) -> emitPerceivableAt(runtime, args[0], args[1])));
         efuns.add(efun("jvmud_current_entity", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.currentObject()));
+        efuns.add(efun("jvmud_previous_entity", LPCType.LPCOBJECT, List.of(),
+                (runtime, args) -> runtime.previousObject()));
         efuns.add(efun("jvmud_current_actor", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.currentCommandActor() != null
                         ? runtime.currentCommandActor()

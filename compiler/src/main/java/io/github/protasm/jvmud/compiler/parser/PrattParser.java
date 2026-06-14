@@ -33,6 +33,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_LESS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_PERCENT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PIPE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_QUESTION;
@@ -103,6 +104,7 @@ public class PrattParser {
         tokenTypeToRule.put(T_PLUS, new ParseRule(null, new InfixBinaryOp(), PREC_TERM));
         tokenTypeToRule.put(T_STAR, new ParseRule(null, new InfixBinaryOp(), PREC_FACTOR));
         tokenTypeToRule.put(T_SLASH, new ParseRule(null, new InfixBinaryOp(), PREC_FACTOR));
+        tokenTypeToRule.put(T_PERCENT, new ParseRule(null, new InfixBinaryOp(), PREC_FACTOR));
 
         tokenTypeToRule.put(T_DBL_PIPE, new ParseRule(null, new InfixBinaryOp(), PREC_OR));
         tokenTypeToRule.put(T_DBL_AMP, new ParseRule(null, new InfixBinaryOp(), PREC_AND));
