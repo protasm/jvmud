@@ -2,7 +2,7 @@
 #include "tune.h"
 
 #undef EXTRA_RESET
-#define EXTRA_RESET set_light(1); extra_reset(arg);
+#define EXTRA_RESET extra_reset(arg);
 
 void extra_reset(int arg) {
   object ob;
