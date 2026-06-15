@@ -34,147 +34,65 @@ void reset(mixed first_load) {
 }
 
 void connect() {
-  player_bound_messages_enabled = 0;
-  write("Please enter your user ID: ");
-  input_to("choose_account_id");
+  player_bound_messages_enabled = 1;
 }
 
-void choose_account_id(mixed value) {
-  value = normalize_account_id(value);
-  if (!valid_account_id(value)) {
-    write("Use letters, numbers, underscore, or dash for your account ID.\n");
-    write("Please enter your user ID: ");
-    input_to("choose_account_id");
-    return;
-  }
-
-  account_id = value;
-  if (restore_object("accounts/" + account_id) && account_created && strlen(password_hash) > 0) {
-    password_attempts = 0;
-    write("Password: ");
-    input_to("check_password", 1);
-    return;
-  }
-
-  account_created = 0;
-  password_hash = "";
-  email = "";
-  persona_name = "visitor";
-  display_name = "visitor";
-  gender = "none";
-  write("No LPMuseum account exists for " + account_id + ". Create it? (yes/no) ");
-  input_to("confirm_account_creation");
+void configure_account(mixed user_id, mixed persona, mixed account_gender, mixed account_email, mixed account_password_hash) {
+  account_id = user_id;
+  persona_name = lower_case(persona);
+  display_name = capitalize(persona_name);
+  gender = account_gender;
+  email = account_email;
+  password_hash = account_password_hash;
+  account_created = 1;
+  pending_password = "";
+  password_attempts = 0;
 }
 
-void confirm_account_creation(mixed value) {
-  value = lower_case(value);
-  if (value == "yes" || value == "y") {
-    write("Password: ");
-    input_to("choose_password", 1);
-    return;
-  }
-  if (value == "no" || value == "n") {
-    write("No account was created. Please visit LPMuseum again when you are ready.\n");
-    destruct(this_object());
-    return;
-  }
-  write("Please answer yes or no: ");
-  input_to("confirm_account_creation");
+void start_password_change(mixed value) {
+  write("Current password: ");
+  input_to("verify_current_password_for_change", 1);
 }
 
-void choose_password(mixed value) {
+void verify_current_password_for_change(mixed value) {
+  if (!verify_password(value, password_hash)) {
+    write("That password did not match. Password unchanged.\n");
+    return;
+  }
+
+  write("New password: ");
+  input_to("choose_replacement_password", 1);
+}
+
+void choose_replacement_password(mixed value) {
   mixed problem;
 
   problem = password_problem(value);
   if (problem) {
     write(problem + "\n");
-    write("Password: ");
-    input_to("choose_password", 1);
+    write("New password: ");
+    input_to("choose_replacement_password", 1);
     return;
   }
 
   pending_password = value;
-  write("Password again: ");
-  input_to("confirm_password", 1);
+  write("New password again: ");
+  input_to("confirm_replacement_password", 1);
 }
 
-void confirm_password(mixed value) {
+void confirm_replacement_password(mixed value) {
   if (value != pending_password) {
     pending_password = "";
     write("Those passwords did not match.\n");
-    write("Password: ");
-    input_to("choose_password", 1);
+    write("New password: ");
+    input_to("choose_replacement_password", 1);
     return;
   }
 
   password_hash = hash_password(value);
   pending_password = "";
-  write("Email address (optional): ");
-  input_to("choose_email");
-}
-
-void choose_email(mixed value) {
-  if (!value || strlen(value) == 0) {
-    email = "";
-  } else if (!valid_email(value)) {
-    write("That email address does not look valid. Enter one address, or leave it blank.\n");
-    write("Email address (optional): ");
-    input_to("choose_email");
-    return;
-  } else {
-    email = value;
-  }
-
-  write("Persona name: ");
-  input_to("choose_persona_name");
-}
-
-void choose_persona_name(mixed value) {
-  if (!valid_persona_name(value)) {
-    write("Use 2-24 letters, numbers, spaces, apostrophes, or dashes for your Persona name.\n");
-    write("Persona name: ");
-    input_to("choose_persona_name");
-    return;
-  }
-
-  persona_name = lower_case(value);
-  display_name = capitalize(persona_name);
-  write("Gender (female/male/neutral/none/other): ");
-  input_to("choose_gender");
-}
-
-void choose_gender(mixed value) {
-  value = lower_case(value);
-  if (value != "female" && value != "male" && value != "neutral"
-      && value != "none" && value != "other") {
-    write("Please choose female, male, neutral, none, or other: ");
-    input_to("choose_gender");
-    return;
-  }
-
-  gender = value;
-  account_created = 1;
   save_account();
-  enter_museum();
-}
-
-void check_password(mixed value) {
-  if (verify_password(value, password_hash)) {
-    password_attempts = 0;
-    enter_museum();
-    return;
-  }
-
-  password_attempts = password_attempts + 1;
-  if (password_attempts < 3) {
-    write("That password did not match. Please try again.\n");
-    write("Password: ");
-    input_to("check_password", 1);
-    return;
-  }
-
-  write("That password did not match. Please reconnect when you are ready to try again.\n");
-  destruct(this_object());
+  write("Password changed.\n");
 }
 
 void enter_museum() {
@@ -361,6 +279,8 @@ void init() {
   add_action("help", "help");
   add_action("who", "who");
   add_action("whoami", "whoami");
+  add_action("password_command", "password");
+  add_action("email_command", "email");
   add_action("quit", "quit");
   add_action("quit", "exit");
   add_action("say_command", "say");
@@ -617,6 +537,44 @@ int who(mixed ignored) {
 
 int whoami(mixed ignored) {
   write("You are " + display_name + ", a JVMud Player with this Telnet Session bound to a museum Persona.\n");
+  return 1;
+}
+
+int password_command(mixed arg) {
+  if (arg == "change") {
+    start_password_change(arg);
+    return 1;
+  }
+
+  write("Your password is set. Use 'password change' to change it.\n");
+  return 1;
+}
+
+int email_command(mixed arg) {
+  if (!arg || strlen(arg) == 0) {
+    if (strlen(email) == 0) {
+      write("No email address is set. Use 'email name@example.com' to add one.\n");
+    } else {
+      write("Email address: " + email + "\n");
+    }
+    return 1;
+  }
+
+  if (arg == "clear") {
+    email = "";
+    save_account();
+    write("Email address cleared.\n");
+    return 1;
+  }
+
+  if (!valid_email(arg)) {
+    write("That email address does not look valid.\n");
+    return 1;
+  }
+
+  email = arg;
+  save_account();
+  write("Email address updated.\n");
   return 1;
 }
 

@@ -83,8 +83,8 @@ final class TelnetServerTest {
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
                 String initial = readUntilQuietAfterContains(socket, "Please enter your user ID: ");
-                assertTrue(initial.contains("Attached player 1 as persona/visitor#clone in place/concourse"), initial);
                 assertTrue(initial.contains("Please enter your user ID: "), initial);
+                assertFalse(initial.contains("Attached player"), initial);
 
                 String greeting = createLpmuseumAccountAndEnter(socket, uniqueAccountId("protasm"), "Valid1!",
                         "protasm", "neutral");
@@ -93,8 +93,8 @@ final class TelnetServerTest {
 
                 try (Socket second = new Socket("127.0.0.1", server.port())) {
                     second.setSoTimeout(5000);
-                    assertTrue(readUntilQuietAfterContains(second, "Please enter your user ID: ")
-                            .contains("Attached player 2 as persona/visitor#clone"));
+                    assertFalse(readUntilQuietAfterContains(second, "Please enter your user ID: ")
+                            .contains("Attached player"));
                     assertTrue(createLpmuseumAccountAndEnter(second, uniqueAccountId("solfeggio"), "Valid1!",
                             "solfeggio", "other").contains("Hi, Solfeggio! Welcome to LPMuseum."));
                     assertTrue(readUntilQuietAfterContains(socket, "Solfeggio enters LPMuseum through the museum doors.")
@@ -289,6 +289,59 @@ final class TelnetServerTest {
                 assertFalse(welcomeBack.contains("Email address"), welcomeBack);
                 assertFalse(welcomeBack.contains("Persona name"), welcomeBack);
 
+                socket.getOutputStream().write("email\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "No email address is set.")
+                        .contains("No email address is set."));
+
+                socket.getOutputStream().write("email solfeggio@example.test\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Email address updated.")
+                        .contains("Email address updated."));
+
+                socket.getOutputStream().write("email\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Email address: solfeggio@example.test")
+                        .contains("Email address: solfeggio@example.test"));
+
+                socket.getOutputStream().write("password\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Use 'password change' to change it.")
+                        .contains("Your password is set."));
+
+                socket.getOutputStream().write("password change\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Current password: ")
+                        .contains("Current password: "));
+                socket.getOutputStream().write("Valid1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "New password: ")
+                        .contains("New password: "));
+                socket.getOutputStream().write("Changed1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "New password again: ")
+                        .contains("New password again: "));
+                socket.getOutputStream().write("Changed1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password changed.")
+                        .contains("Password changed."));
+
+                socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilSocketClosed(socket).contains("You step away from LPMuseum."));
+            }
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "Please enter your user ID: ")
+                        .contains("Please enter your user ID: "));
+                socket.getOutputStream().write((accountId + "\n").getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password: ").contains("Password: "));
+                socket.getOutputStream().write("Changed1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Hi, Solfeggio! Welcome to LPMuseum.")
+                        .contains("Hi, Solfeggio! Welcome to LPMuseum."));
                 socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 assertTrue(readUntilSocketClosed(socket).contains("You step away from LPMuseum."));
