@@ -4,6 +4,7 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -11,6 +12,7 @@ import java.util.Objects;
 /** Telnet host that can route one listener across multiple booted mudlib instances. */
 final class MultiMudTelnetHost implements TelnetHost {
     private final Map<String, TelnetMud> mudsByGameId = new LinkedHashMap<>();
+    private final Map<String, TelnetPersona> suspendedDefaultPersonasBySession = new HashMap<>();
     private final TelnetMud defaultMud;
     private int nextSessionId = 1;
 
@@ -95,14 +97,46 @@ final class MultiMudTelnetHost implements TelnetHost {
             out.println("The exhibit portal flickers, but no destination answers.");
             return;
         }
-        persona.mud().detachPersona(persona, false);
+
+        TelnetMud sourceMud = persona.mud();
+        if (destinationMud == defaultMud && sourceMud != defaultMud) {
+            TelnetPersona suspended = suspendedDefaultPersonasBySession.remove(persona.sessionId());
+            if (suspended == null) {
+                out.println("The return portal flickers, but your museum Persona does not answer.");
+                return;
+            }
+            sourceMud.detachPersona(persona, true);
+            out.println("The return portal opens.");
+            persona.replaceWith(defaultMud.resumePersona(suspended, out, persona.remoteAddress()));
+            return;
+        }
+
+        if (sourceMud == defaultMud) {
+            suspendedDefaultPersonasBySession.put(persona.sessionId(), snapshot(persona));
+            sourceMud.suspendPersonaForTransfer(persona);
+        } else {
+            sourceMud.detachPersona(persona, false);
+        }
         out.println("The exhibit portal opens.");
         TelnetPersona replacement = destinationMud.attachVisitingPersona(
                 persona.sessionId(),
                 out,
                 persona.remoteAddress(),
-                persona.name());
+                persona.userId(),
+                persona.gender());
         persona.replaceWith(replacement);
+    }
+
+    private TelnetPersona snapshot(TelnetPersona persona) {
+        return new TelnetPersona(
+                persona.mud(),
+                persona.sessionId(),
+                persona.objectId(),
+                persona.name(),
+                persona.userId(),
+                persona.gender(),
+                persona.actor(),
+                persona.remoteAddress());
     }
 
     @Override

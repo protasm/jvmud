@@ -104,6 +104,18 @@ void enter_museum() {
   look(0);
 }
 
+void return_from_exhibit() {
+  object place;
+
+  player_bound_messages_enabled = 1;
+  enable_commands();
+  write("You step back into LPMuseum as " + display_name + ".\n\n");
+  place = environment(this_object());
+  if (place) {
+    call_other(place, "describe", this_object());
+  }
+}
+
 void disconnect() {
   save_account();
 }

@@ -180,7 +180,7 @@ final class TelnetMud implements TelnetHost {
         }
 
         int id = nextPersonaId++;
-        TelnetPersona persona = attachMudlibPlayer(id, sessionId, out, remoteAddress, announceConnection);
+        TelnetPersona persona = attachMudlibPlayer(id, sessionId, out, remoteAddress, announceConnection, null, "");
         if (persona != null) {
             return persona;
         }
@@ -191,9 +191,41 @@ final class TelnetMud implements TelnetHost {
             String sessionId,
             PrintWriter out,
             String remoteAddress,
-            String name) {
+            String userId,
+            String gender) {
         int id = nextPersonaId++;
-        return attachHostPersona(id, sessionId, out, remoteAddress, name, false);
+        TelnetPersona persona = attachMudlibPlayer(id, sessionId, out, remoteAddress, false, userId, gender);
+        if (persona != null) {
+            return persona;
+        }
+        return attachHostPersona(id, sessionId, out, remoteAddress, userId, false);
+    }
+
+    synchronized void suspendPersonaForTransfer(TelnetPersona persona) {
+        if (persona != null && isAttached(persona)) {
+            runtime.unbindSession(persona.sessionId());
+        }
+    }
+
+    synchronized TelnetPersona resumePersona(TelnetPersona suspended, PrintWriter out, String remoteAddress) {
+        MudlibProjection projection = new LegacyPlayerObjectAdapter(playerObjectPath)
+                .combinedProjection(suspended.actor());
+        runtime.bindSession(suspended.sessionId(), suspended.actor(), remoteAddress, text -> {
+            out.print(text);
+            out.flush();
+        }, projection);
+        runtime.clearOutputTranscript();
+        runtime.invokeOptionalObject(suspended.actor(), "return_from_exhibit");
+        runtime.clearOutputTranscript();
+        return new TelnetPersona(
+                this,
+                suspended.sessionId(),
+                suspended.objectId(),
+                suspended.name(),
+                suspended.userId(),
+                suspended.gender(),
+                suspended.actor(),
+                remoteAddress);
     }
 
     private boolean usesLpmuseumPlayerLogin() {
@@ -259,7 +291,8 @@ final class TelnetMud implements TelnetHost {
         runtime.invokeObject(actor, "save_account");
         runtime.invokeObject(actor, "enter_museum");
         runtime.clearOutputTranscript();
-        return new TelnetPersona(this, sessionId, objectId, account.personaName(), actor, remoteAddress);
+        return new TelnetPersona(this, sessionId, objectId, account.personaName(), account.accountId(), account.gender(), actor,
+                remoteAddress);
     }
 
     private TelnetPersona attachMudlibPlayer(
@@ -267,7 +300,9 @@ final class TelnetMud implements TelnetHost {
             String sessionId,
             PrintWriter out,
             String remoteAddress,
-            boolean announceConnection) {
+            boolean announceConnection,
+            String visitingUserId,
+            String visitingGender) {
         if (playerObjectPath == null) {
             return null;
         }
@@ -296,8 +331,15 @@ final class TelnetMud implements TelnetHost {
                 messagePlayerForSession(sessionId, "Attached " + name + " as " + objectId
                         + " in " + startingPlacePath + ".\n");
             }
-            invokePlayerSessionConnected(actor);
-            return new TelnetPersona(this, sessionId, objectId, name, actor, remoteAddress);
+            if (visitingUserId != null) {
+                runtime.invokeOptionalObject(actor, "jvmud_exhibit_logon", visitingUserId, visitingGender);
+                runtime.clearOutputTranscript();
+                name = visitingUserId;
+            } else {
+                invokePlayerSessionConnected(actor);
+            }
+            return new TelnetPersona(this, sessionId, objectId, name, visitingUserId != null ? visitingUserId : name,
+                    visitingGender, actor, remoteAddress);
         } catch (RuntimeException | LinkageError e) {
             System.err.println("Could not attach mudlib player object " + playerObjectPath
                     + "; falling back to host persona: " + e.getMessage());

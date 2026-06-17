@@ -17,8 +17,10 @@ import io.github.protasm.jvmud.runtime.MudlibProjectionRole;
 import io.github.protasm.jvmud.runtime.Place;
 import io.github.protasm.jvmud.runtime.World;
 import io.github.protasm.jvmud.runtime.WorldRuntime;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -73,7 +75,7 @@ final class TelnetServerTest {
 
     @Test
     void lpmuseumIsDefaultStandaloneNativeMudlib() throws Exception {
-        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+        Path museum = lpmuseumTestRoot();
 
         try (TelnetServer server = new TelnetServer(
                 "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
@@ -235,6 +237,8 @@ final class TelnetServerTest {
                 socket.getOutputStream().write("enter portal\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 String portal = readUntilQuietAfterContains(socket, "No exhibit is mounted here yet.");
+                assertTrue(portal.contains("The portal hums and points toward the Vanilla LPMUD 2.4.5 exhibit."),
+                        portal);
                 assertTrue(portal.contains("The portal is quiet."), portal);
                 assertFalse(portal.contains("The exhibit portal opens."), portal);
 
@@ -249,8 +253,70 @@ final class TelnetServerTest {
     }
 
     @Test
+    void lpmuseumPortalConnectsToLp245ExhibitWithMuseumUserIdAndNoPassword() throws Exception {
+        Path museum = mountedLpmuseumTestRoot();
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "Please enter your user ID: ")
+                        .contains("Please enter your user ID: "));
+                String greeting = createLpmuseumAccountAndEnter(socket, "protasm", "Valid1!",
+                        "Museum Persona", "female");
+                assertTrue(greeting.contains("Hi, Museum persona! Welcome to LPMuseum."), greeting);
+
+                socket.getOutputStream().write("go north\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Origins Gallery").contains("Origins Gallery"));
+
+                socket.getOutputStream().write("go east\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Portal Hall").contains("Portal Hall"));
+
+                socket.getOutputStream().write("enter portal\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String lp245Entry = readUntilQuietAfterContains(socket, "> ");
+                assertTrue(lp245Entry.contains("The exhibit portal opens."), lp245Entry);
+                assertTrue(lp245Entry.contains("What is your name: protasm"), lp245Entry);
+                assertTrue(lp245Entry.contains("Version: "), lp245Entry);
+                assertFalse(lp245Entry.contains("Password:"), lp245Entry);
+                assertFalse(lp245Entry.contains("Please enter your email address"), lp245Entry);
+                assertFalse(lp245Entry.contains("Are you, male, female or other"), lp245Entry);
+                assertFalse(lp245Entry.contains("Attached player"), lp245Entry);
+
+                socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String church = readUntilQuietAfterContains(socket, "You are in the local village church.");
+                assertTrue(church.contains("You are in the local village church."), church);
+                assertTrue(church.contains("> "), church);
+
+                socket.getOutputStream().write("enter portal\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String returned = readUntilQuietAfterContains(socket, "You step back into LPMuseum as Museum persona.");
+                assertTrue(returned.contains("The museum return portal hums."), returned);
+                assertTrue(returned.contains("The return portal opens."), returned);
+                assertTrue(returned.contains("You step back into LPMuseum as Museum persona."), returned);
+                assertFalse(returned.contains("Please enter your user ID:"), returned);
+
+                socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String returnedLook = readUntilQuietAfterContains(socket, "Portal Hall");
+                assertTrue(returnedLook.contains("A quiet exhibit portal waits here as an Entity."), returnedLook);
+
+                socket.getOutputStream().write("exa me\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String self = readUntilQuietAfterContains(socket, "You are Museum persona");
+                assertTrue(self.contains("You are Museum persona, a visiting Persona exploring LPMuseum."), self);
+            }
+        }
+    }
+
+    @Test
     void lpmuseumRestoresAccountAndDisconnectsAfterThreeBadPasswords() throws Exception {
-        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+        Path museum = lpmuseumTestRoot();
         String accountId = uniqueAccountId("returning");
 
         try (TelnetServer server = new TelnetServer(
@@ -378,7 +444,7 @@ final class TelnetServerTest {
 
     @Test
     void lpmuseumAccountCreationEnforcesPasswordPolicy() throws Exception {
-        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+        Path museum = lpmuseumTestRoot();
 
         try (TelnetServer server = new TelnetServer(
                 "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
@@ -437,7 +503,7 @@ final class TelnetServerTest {
 
     @Test
     void lpmuseumPasswordPromptsNegotiateNoEcho() throws Exception {
-        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+        Path museum = lpmuseumTestRoot();
 
         try (TelnetServer server = new TelnetServer(
                 "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
@@ -468,8 +534,8 @@ final class TelnetServerTest {
     }
 
     @Test
-    void lpmuseumSuppressesAmbientMessagesUntilAccountLoginCompletes() {
-        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+    void lpmuseumSuppressesAmbientMessagesUntilAccountLoginCompletes() throws Exception {
+        Path museum = lpmuseumTestRoot();
         TelnetMud mud = TelnetMud.boot(museum, MudlibBoot.DEFAULT_CONFIG_PATH);
         StringWriter output = new StringWriter();
         PrintWriter out = new PrintWriter(output, true);
@@ -492,8 +558,8 @@ final class TelnetServerTest {
     }
 
     @Test
-    void lpmuseumStafferPatrolsNoMoreThanEveryThirtyTicks() {
-        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+    void lpmuseumStafferPatrolsNoMoreThanEveryThirtyTicks() throws Exception {
+        Path museum = lpmuseumTestRoot();
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(museum)
                 .build());
@@ -519,8 +585,8 @@ final class TelnetServerTest {
     }
 
     @Test
-    void lpmuseumVendedEntitiesExpireAfterTwoMinutes() {
-        Path museum = repositoryRoot().resolve("mudlibs/lpmuseum");
+    void lpmuseumVendedEntitiesExpireAfterTwoMinutes() throws Exception {
+        Path museum = lpmuseumTestRoot();
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(museum)
                 .build());
@@ -1528,6 +1594,53 @@ final class TelnetServerTest {
     private String uniqueAccountId(String prefix) {
         String suffix = Long.toString(System.nanoTime(), 36);
         return (prefix + suffix).toLowerCase();
+    }
+
+    private Path lpmuseumTestRoot() throws IOException {
+        Path source = repositoryRoot().resolve("mudlibs/lpmuseum");
+        Path target = tempDir.resolve("lpmuseum-" + Long.toString(System.nanoTime(), 36));
+        copyMudlibTreeWithoutSavedAccounts(source, target);
+        return target;
+    }
+
+    private Path mountedLpmuseumTestRoot() throws IOException {
+        Path sourceRoot = repositoryRoot().resolve("mudlibs");
+        Path targetRoot = tempDir.resolve("mounted-" + Long.toString(System.nanoTime(), 36));
+        copyMudlibTreeWithoutSavedAccounts(sourceRoot.resolve("lpmuseum"), targetRoot.resolve("lpmuseum"));
+        copyMudlibTreeWithoutSavedAccounts(sourceRoot.resolve("lp245"), targetRoot.resolve("lp245"));
+        return targetRoot.resolve("lpmuseum");
+    }
+
+    private void copyMudlibTreeWithoutSavedAccounts(Path source, Path target) throws IOException {
+        try (var paths = Files.walk(source)) {
+            paths.forEach(path -> copyMudlibPathWithoutSavedAccounts(source, target, path));
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+
+    private void copyMudlibPathWithoutSavedAccounts(Path source, Path target, Path path) {
+        Path relative = source.relativize(path);
+        if (isSavedAccountFile(relative)) {
+            return;
+        }
+
+        Path destination = target.resolve(relative.toString());
+        try {
+            if (Files.isDirectory(path)) {
+                Files.createDirectories(destination);
+            } else {
+                Files.copy(path, destination);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private boolean isSavedAccountFile(Path relative) {
+        return relative.getNameCount() == 2
+                && "accounts".equals(relative.getName(0).toString())
+                && relative.getFileName().toString().endsWith(".o");
     }
 
     private String createLpmuseumAccountAndEnter(

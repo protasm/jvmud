@@ -131,6 +131,88 @@ static int logon() {
   return 1;
 }
 
+int jvmud_exhibit_logon(string exhibit_name, string exhibit_gender) {
+
+  time_to_save = 500;
+  write("Lars says: Let's get a body for your character ...\n");
+  cat("/WELCOME");
+  write("Version: " + version() + "\n");
+  write("What is your name: " + exhibit_name + "\n");
+
+  if (!exhibit_name || exhibit_name == "") {
+    destruct(this_object());
+
+    return 1;
+  }
+
+  if (name != "logon") {
+    illegal_patch("jvmud_exhibit_logon " + name);
+    destruct(this_object());
+
+    return 1;
+  }
+
+  exhibit_name = lower_case(exhibit_name);
+
+  if (!valid_name(exhibit_name)) {
+    destruct(this_object());
+
+    return 1;
+  }
+
+  if (restore_object("banish/" + exhibit_name)) {
+    write("That name is reserved.\n");
+    destruct(this_object());
+
+    return 1;
+  }
+
+  if (!restore_object("players/" + exhibit_name)) {
+    write("New character.\n");
+    "room/adv_guild"->advance(0);
+    set_level(1); set_str(1); set_con(1); set_int(1); set_dex(1);
+    hit_point = max_hp;
+  }
+
+  time_to_save = age + 500;
+  name = exhibit_name;
+  dead = ghost;
+  myself = this_object();
+
+  if (is_invis)
+    cap_name = "Someone";
+  else
+    cap_name = capitalize(name);
+
+  local_weight = 0;
+  armour_class = 0;
+  name_of_weapon = 0;
+  weapon_class = 0;
+  attacker_ob = 0;
+  alt_attacker_ob = 0;
+
+  if (!mailaddr || mailaddr == "")
+    mailaddr = "none";
+
+  exhibit_gender = lower_case(exhibit_gender);
+  if (exhibit_gender == "male")
+    set_male();
+  else if (exhibit_gender == "female")
+    set_female();
+  else if (gender == -1)
+    set_neuter();
+
+  move_player_to_start(0);
+  if (!present("museum return portal", environment(this_object())))
+    move_object(clone_object("obj/museum_return_portal"), environment(this_object()));
+  write("A museum return portal shimmers here.\n");
+#ifdef LOG_ENTER
+  log_file("ENTER", cap_name + ", " + ctime(time())[4..15]+ " (museum exhibit).\n");
+#endif
+
+  return 1;
+}
+
 object other_copy;
 
 static void try_throw_out(string str)
