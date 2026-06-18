@@ -47,6 +47,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.DeclarationModifiers;
 import io.github.protasm.jvmud.compiler.parser.ast.DeclarationModifiers.Visibility;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTStatement;
@@ -464,6 +465,37 @@ public class Parser {
         tokens.consume(T_RIGHT_PAREN, "Expect ')' after method arguments.");
 
         return args;
+    }
+
+    public ASTExpression protectedEval(int line) {
+        tokens.consume(T_LEFT_PAREN, "Expect '(' after protected evaluation.");
+
+        List<ASTExpression> expressions = new ArrayList<>();
+        boolean suppressLogging = false;
+
+        while (!tokens.check(T_RIGHT_PAREN) && !tokens.isAtEnd()) {
+            if (tokens.check(T_IDENTIFIER) && "nolog".equals(tokens.current().lexeme())
+                    && tokens.peek(1).type() == T_RIGHT_PAREN) {
+                suppressLogging = true;
+                tokens.advance();
+                break;
+            }
+
+            expressions.add(expression());
+
+            if (!tokens.match(T_SEMICOLON))
+                break;
+        }
+
+        tokens.consume(T_RIGHT_PAREN, "Expect ')' after protected evaluation.");
+
+        if (expressions.isEmpty())
+            throw new ParseException("Protected evaluation requires an expression.", tokens.previous());
+
+        ASTExpression body = expressions.size() == 1
+                ? expressions.get(0)
+                : new ASTExprSequence(line, expressions);
+        return new ASTExprProtectedEval(line, body, suppressLogging);
     }
 
         private ASTStmtBlock block(boolean isMethodBody) {

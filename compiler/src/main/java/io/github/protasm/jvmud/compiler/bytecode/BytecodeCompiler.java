@@ -45,7 +45,7 @@ public final class BytecodeCompiler {
             throw new BytecodeCompileException("TypedIR cannot be null.");
 
         IRObject object = typedIr.object();
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+        ClassWriter cw = new SafeClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
 
         String internalName = object.name();
         String parentName =
@@ -400,6 +400,11 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRProtectedEval protectedEval) {
+            emitProtectedEval(mv, internalName, method, protectedEval);
+            return;
+        }
+
         if (expression instanceof IRCoerce coerce) {
             emitCoerce(mv, internalName, method, coerce);
         }
@@ -451,9 +456,10 @@ public final class BytecodeCompiler {
     }
 
     private void emitFieldStore(MethodVisitor mv, String internalName, IRMethod method, IRFieldStore fieldStore) {
-        mv.visitVarInsn(ALOAD, 0);
         emitExpression(mv, internalName, method, fieldStore.value());
-        mv.visitInsn(DUP_X1);
+        dupForStore(mv, fieldStore.field().type());
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitInsn(SWAP);
         // Writes route to the declared owner to keep parent storage distinct from any child
         // shadows without reintroducing initialization here (managed by the engine).
         mv.visitFieldInsn(
@@ -1062,6 +1068,38 @@ public final class BytecodeCompiler {
         }
     }
 
+    private void emitProtectedEval(
+            MethodVisitor mv, String internalName, IRMethod method, IRProtectedEval protectedEval) {
+        Label start = new Label();
+        Label end = new Label();
+        Label handler = new Label();
+        Label done = new Label();
+        int throwableSlot = scratchObjectSlot(method);
+
+        mv.visitTryCatchBlock(start, end, handler, Type.getInternalName(Throwable.class));
+
+        mv.visitLabel(start);
+        emitExpression(mv, internalName, method, protectedEval.body());
+        if (protectedEval.body().type().kind() != RuntimeValueKind.VOID)
+            mv.visitInsn(POP);
+        mv.visitLabel(end);
+        pushInt(mv, 0);
+        boxIfNeeded(mv, RuntimeTypes.INT);
+        mv.visitJumpInsn(GOTO, done);
+
+        mv.visitLabel(handler);
+        mv.visitVarInsn(ASTORE, throwableSlot);
+        mv.visitVarInsn(ALOAD, throwableSlot);
+        mv.visitMethodInsn(
+                INVOKEVIRTUAL,
+                Type.getInternalName(Throwable.class),
+                "getMessage",
+                "()Ljava/lang/String;",
+                false);
+
+        mv.visitLabel(done);
+    }
+
     private void emitMappingLiteral(MethodVisitor mv, String internalName, IRMethod method, IRMappingLiteral literal) {
         mv.visitTypeInsn(NEW, "java/util/HashMap");
         mv.visitInsn(DUP);
@@ -1267,5 +1305,20 @@ public final class BytecodeCompiler {
     private void emitMixedZero(MethodVisitor mv) {
         pushInt(mv, 0);
         mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+    }
+
+    private static final class SafeClassWriter extends ClassWriter {
+        SafeClassWriter(int flags) {
+            super(flags);
+        }
+
+        @Override
+        protected String getCommonSuperClass(String type1, String type2) {
+            try {
+                return super.getCommonSuperClass(type1, type2);
+            } catch (TypeNotPresentException | LinkageError e) {
+                return OBJECT_INTERNAL_NAME;
+            }
+        }
     }
 }

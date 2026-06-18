@@ -32,6 +32,9 @@ public class PrefixIdentifier implements PrefixParselet {
         int line = parser.currLine();
         String identifier = parser.tokens().previous().lexeme();
 
+        if ("catch".equals(identifier) && parser.tokens().check(T_LEFT_PAREN))
+            return parser.protectedEval(line);
+
         if (parser.tokens().check(T_LEFT_PAREN)) {
             ASTArguments args = parser.arguments();
             return new ASTExprUnresolvedCall(line, identifier, args);

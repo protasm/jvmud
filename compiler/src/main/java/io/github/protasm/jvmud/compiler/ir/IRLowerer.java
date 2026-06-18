@@ -35,6 +35,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
@@ -577,6 +578,12 @@ public final class IRLowerer {
             for (ASTExpression nested : sequence.expressions())
                 expressions.add(lowerExpression(nested, context, problems));
             return new IRSequence(sequence.line(), expressions, runtimeType(sequence.lpcType()));
+        }
+
+        if (expression instanceof ASTExprProtectedEval protectedEval) {
+            IRExpression body = lowerExpression(protectedEval.body(), context, problems);
+            return new IRProtectedEval(
+                    protectedEval.line(), body, protectedEval.suppressLogging(), RuntimeTypes.MIXED);
         }
 
         if (expression instanceof ASTExprTernary ternary) {

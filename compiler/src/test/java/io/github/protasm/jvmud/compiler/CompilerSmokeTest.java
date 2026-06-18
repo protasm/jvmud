@@ -723,6 +723,55 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void ldmudCatchCompatibilityReturnsZeroAfterProtectedSuccess() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/catch_success.c", """
+                int value;
+                mixed error;
+
+                int run() {
+                    error = catch(value = 42);
+                    return error ? -1 : value;
+                }
+                """);
+
+        assertEquals(42, object.invoke("run"));
+    }
+
+    @Test
+    void ldmudCatchCompatibilityCapturesRuntimeFailure() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/catch_failure.c", """
+                mixed error;
+
+                int run() {
+                    int denominator = 0;
+                    error = catch(1 / denominator);
+                    return error ? 42 : 0;
+                }
+                """);
+
+        assertEquals(42, object.invoke("run"));
+    }
+
+    @Test
+    void ldmudCatchCompatibilityAcceptsSequenceBodyAndNologFlag() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/catch_nolog.c", """
+                int value;
+                mixed error;
+
+                int run() {
+                    int denominator = 0;
+                    error = catch(value = 12; value = value / denominator; nolog);
+                    return error ? value : -1;
+                }
+                """);
+
+        assertEquals(12, object.invoke("run"));
+    }
+
+    @Test
     void preprocessorRecognizesIndentedConditionalsInsideFunctionBodies() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/indented_conditional.c", """

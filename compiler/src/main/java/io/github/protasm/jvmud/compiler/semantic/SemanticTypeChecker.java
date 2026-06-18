@@ -34,6 +34,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
@@ -204,6 +205,11 @@ public final class SemanticTypeChecker {
 
         if (expression instanceof ASTExprSequence sequence)
             return inferSequenceType(sequence, context);
+
+        if (expression instanceof ASTExprProtectedEval protectedEval) {
+            inferExpressionType(protectedEval.body(), context);
+            return LPCType.LPCMIXED;
+        }
 
         if (expression instanceof ASTExprTernary ternary)
             return inferTernaryType(ternary, context);

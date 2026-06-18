@@ -25,6 +25,7 @@ public sealed interface IRExpression extends IRNode
                 IRMappingLiteral,
                 IRMappingMerge,
                 IRMappingSet,
+                IRProtectedEval,
                 IRSequence,
                 IRSlice,
                 IRStringGet,

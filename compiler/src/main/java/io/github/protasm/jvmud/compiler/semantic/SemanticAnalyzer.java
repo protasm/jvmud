@@ -34,6 +34,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
@@ -419,6 +420,9 @@ public final class SemanticAnalyzer {
 
         if (expression instanceof ASTExprSequence sequence)
             return sequence.expressions().stream().anyMatch(expr -> referencesLocal(expr, local));
+
+        if (expression instanceof ASTExprProtectedEval protectedEval)
+            return referencesLocal(protectedEval.body(), local);
 
         if (expression instanceof ASTExprTernary ternary) {
             return referencesLocal(ternary.condition(), local)
@@ -909,6 +913,14 @@ public final class SemanticAnalyzer {
                 if (!changed)
                     return sequence;
                 return new ASTExprSequence(sequence.line(), resolvedExpressions);
+            }
+
+            if (expression instanceof ASTExprProtectedEval protectedEval) {
+                ASTExpression resolvedBody = resolveExpression(protectedEval.body(), context);
+                if (resolvedBody == protectedEval.body())
+                    return protectedEval;
+                return new ASTExprProtectedEval(
+                        protectedEval.line(), resolvedBody, protectedEval.suppressLogging());
             }
 
             if (expression instanceof ASTExprTernary ternary) {
