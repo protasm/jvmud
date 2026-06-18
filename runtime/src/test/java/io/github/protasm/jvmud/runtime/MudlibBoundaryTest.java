@@ -107,6 +107,7 @@ final class MudlibBoundaryTest {
                 preload_objects = obj/torch, obj/money.c
                 handled_lifecycle_events = scheduled-tick
                 lifecycle.object_loaded = reset
+                lifecycle.object_source_missing = compile_object
                 lifecycle.object_destruction_requested = prepare_destruct
                 lifecycle.interaction_scope_started = init
                 lifecycle.player_connected = player_connected
@@ -136,6 +137,9 @@ final class MudlibBoundaryTest {
         assertTrue(boundary.preloadObjectPaths().contains("obj/money"));
         assertTrue(boundary.handles(MudlibLifecycleEvent.SCHEDULED_TICK));
         assertEquals("reset", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED).orElseThrow());
+        assertEquals(
+                "compile_object",
+                boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_SOURCE_MISSING).orElseThrow());
         assertEquals(
                 "prepare_destruct",
                 boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_DESTRUCTION_REQUESTED).orElseThrow());

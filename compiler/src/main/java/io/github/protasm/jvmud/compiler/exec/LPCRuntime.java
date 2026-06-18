@@ -74,6 +74,7 @@ public final class LPCRuntime {
     private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
     private boolean notifyingCompilationError;
     private boolean notifyingTimedRuntimeError;
+    private boolean notifyingObjectSourceMissing;
     private boolean notifyingObjectDestructionRequested;
 
     public LPCRuntime(LPCRuntimeConfig config) {
@@ -153,9 +154,16 @@ public final class LPCRuntime {
     /** Loads, compiles, instantiates, registers, and initializes one source file. */
     public LPCObjectHandle load(Path sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
-        CompilationResult result = compile(sourcePath);
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
         String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
+        if (!Files.exists(normalized)) {
+            Object supplied = notifyObjectSourceMissing(objectId);
+            if (supplied != null) {
+                return new LPCObjectHandle(this, objectId, supplied.getClass(), supplied);
+            }
+        }
+
+        CompilationResult result = compile(normalized);
 
         if (!result.getProblems().isEmpty()) {
             throw compilationFailure(objectId, result.getProblems());
@@ -1169,6 +1177,51 @@ public final class LPCRuntime {
         return new LPCRuntimeException(message, problems);
     }
 
+    /**
+     * Gives the mudlib a chance to satisfy a shared-object path whose source file is absent.
+     *
+     * <p>This is intentionally phrased as a missing-source hook rather than a virtual-object
+     * primitive. JVMud only knows that normal source lookup failed for {@code objectId}. If the
+     * mudlib returns an already-registered runtime object, that object becomes the canonical shared
+     * object for {@code objectId}; future {@link #loadOrGetObject(String)} calls return it from the
+     * object table before touching the filesystem or notifying the mudlib again. Returning LPC
+     * false, or returning a non-object scalar by mistake, keeps the ordinary source-not-found path,
+     * including compile-error notification.</p>
+     */
+    private Object notifyObjectSourceMissing(String objectId) {
+        String methodName = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_SOURCE_MISSING).orElse(null);
+        String boundaryObjectPath = mudlibBoundary.boundaryObjectPath().orElse(null);
+        if (methodName == null || boundaryObjectPath == null || notifyingObjectSourceMissing) {
+            return null;
+        }
+
+        String normalizedObjectId = normalizeInternalName(objectId);
+        String normalizedBoundaryPath = normalizeInternalName(boundaryObjectPath);
+        if (normalizedBoundaryPath.equals(normalizedObjectId)) {
+            return null;
+        }
+
+        notifyingObjectSourceMissing = true;
+        try {
+            Object handler = loadOrGetObject(normalizedBoundaryPath);
+            Object supplied = invokeOptionalObject(handler, methodName, normalizedObjectId);
+            clearOutputTranscript();
+            if (isLpcFalse(supplied)) {
+                return null;
+            }
+            if (runtimeContext.objectId(supplied) == null) {
+                return null;
+            }
+            runtimeContext.registerObject(normalizedObjectId, supplied);
+            return supplied;
+        } catch (RuntimeException | LinkageError ignored) {
+            clearOutputTranscript();
+            return null;
+        } finally {
+            notifyingObjectSourceMissing = false;
+        }
+    }
+
     private void notifyCompilationError(String objectId, String message) {
         String methodName = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.LOG_ERROR).orElse(null);
         String boundaryObjectPath = mudlibBoundary.boundaryObjectPath().orElse(null);
@@ -1249,6 +1302,10 @@ public final class LPCRuntime {
         } finally {
             notifyingObjectDestructionRequested = false;
         }
+    }
+
+    private boolean isLpcFalse(Object value) {
+        return value == null || Integer.valueOf(0).equals(value);
     }
 
     private String normalizeInternalName(String internalName) {

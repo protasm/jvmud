@@ -408,9 +408,26 @@ public final class RuntimeContext {
         return false;
     }
 
+    /**
+     * Binds an engine object to a mudlib object path.
+     *
+     * <p>An object has one canonical mudlib path for APIs such as {@code file_name()}.
+     * Rebinding removes the object's previous canonical path, and replacing an existing
+     * path clears the old occupant's reverse lookup. This lets a mudlib-created object
+     * serve a requested missing source path without retaining its temporary clone id as
+     * the canonical identity.</p>
+     */
     public void registerObject(String name, Object object) {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(object, "object");
+        String previousName = objectIds.get(object);
+        if (previousName != null && !previousName.equals(name) && objects.get(previousName) == object) {
+            objects.remove(previousName);
+        }
+        Object previousObject = objects.get(name);
+        if (previousObject != null && previousObject != object) {
+            objectIds.remove(previousObject);
+        }
         objects.put(name, object);
         objectIds.put(object, name);
     }

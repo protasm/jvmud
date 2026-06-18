@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,6 +12,7 @@ import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
+import io.github.protasm.jvmud.compiler.exec.LPCRuntimeException;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
@@ -1169,6 +1171,68 @@ final class CompilerSmokeTest {
         assertEquals(0, logger.invoke("bad_path"));
         assertEquals("first\nsecond\n", Files.readString(sourceRoot.resolve("log/RUNTIME")));
         assertFalse(Files.exists(tempDir.resolve("outside")));
+    }
+
+    @Test
+    void missingObjectSourceCanBeSuppliedByMudlibBoundary() throws Exception {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.loadSource("jvmud/mudlib.c", """
+                object compile_object(string filename) {
+                    object ob;
+
+                    if (filename != "room/generated")
+                        return 0;
+
+                    ob = jvmud_spawn_entity("obj/template");
+                    jvmud_invoke_entity(ob, "set_label", filename);
+
+                    return ob;
+                }
+                """);
+        runtime.loadSource("obj/template.c", """
+                string label;
+
+                void set_label(string value) {
+                    label = value;
+                }
+
+                string query_label() {
+                    return label;
+                }
+                """);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .boundaryObjectPath("jvmud/mudlib")
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_SOURCE_MISSING, "compile_object")
+                .build());
+
+        Object supplied = runtime.loadOrGetObject("room/generated");
+        Object again = runtime.loadOrGetObject("room/generated");
+
+        assertSame(supplied, again);
+        assertEquals("room/generated", runtime.objectId(supplied));
+        assertEquals("room/generated", runtime.invokeObject(supplied, "query_label"));
+    }
+
+    @Test
+    void missingObjectSourceFailureContinuesWhenMudlibDeclines() throws Exception {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.loadSource("jvmud/mudlib.c", """
+                object compile_object(string filename) {
+                    return 0;
+                }
+                """);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .boundaryObjectPath("jvmud/mudlib")
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_SOURCE_MISSING, "compile_object")
+                .build());
+
+        LPCRuntimeException exception = assertThrows(
+                LPCRuntimeException.class,
+                () -> runtime.loadOrGetObject("room/missing"));
+
+        assertTrue(exception.getMessage().contains("Source file not found"), exception.getMessage());
     }
 
     @Test

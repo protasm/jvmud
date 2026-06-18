@@ -4,6 +4,17 @@ package io.github.protasm.jvmud.runtime;
 public enum MudlibLifecycleEvent {
     OBJECT_LOADED,
     OBJECT_ACTIVATED,
+    /**
+     * A shared object path was requested, no object was already registered for that path,
+     * and no source file could be found for it.
+     *
+     * <p>Mudlibs can map this event to a method that receives the normalized requested
+     * object path and may return an object to satisfy that path. JVMud then binds the
+     * returned object to the requested path so later shared-object loads return the same
+     * object without asking the mudlib again. Returning LPC false lets normal source-missing
+     * failure handling continue.</p>
+     */
+    OBJECT_SOURCE_MISSING,
     OBJECT_DESTRUCTION_REQUESTED,
     OBJECT_DESTROYED,
     ENTITY_ARRIVED_AT_PLACE,

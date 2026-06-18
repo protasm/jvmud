@@ -12,6 +12,10 @@ void log_error(mixed file, mixed err) {
   jvmud_append_mudlib_text("/log/COMPILER", err + "\n");
 }
 
+mixed compile_object(mixed filename) {
+  return 0;
+}
+
 mixed prepare_destruct(mixed ob) {
   object item;
   object super;

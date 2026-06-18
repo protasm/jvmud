@@ -27,11 +27,156 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
 /**
- * Registers the core LPC-facing engine functions needed by compiled mudlib objects.
+ * Defines and registers JVMud's built-in LPC-facing engine functions.
  *
- * <p>The functions in this class use JVMud engine vocabulary. Legacy LP driver names stay in
- * mudlib-side compatibility objects, where they can delegate to engine operations such as output
- * delivery, entity identity, location containment, command dispatch, and scheduling.</p>
+ * <p>These functions are the lowest-level operations that compiled mudlib code can ask the JVMud
+ * engine to perform. They intentionally use JVMud engine vocabulary: {@code Entity} identity,
+ * location containment, command dispatch, session input capture, scheduler callbacks, and
+ * perceivable output. Legacy LP driver names belong in mudlib-side compatibility objects, where
+ * they can delegate to these engine operations without turning LPC compatibility terms into the
+ * engine's own model.</p>
+ *
+ * <p>Most users should treat this class as the authoritative catalog of core efuns. Each entry
+ * created by the internal catalog builder has a name, LPC return type, LPC parameter types, and a Java
+ * implementation that receives the active {@link RuntimeContext}. The same catalog can be
+ * installed into a raw generated-code context with {@link #registerCore(RuntimeContext)} or into a
+ * host-facing {@link LPCRuntime} with {@link #registerCore(LPCRuntime)}.</p>
+ *
+ * <h2>Output and perception</h2>
+ * <ul>
+ *   <li>{@code jvmud_write(mixed message) : void} writes to the current execution output sink.</li>
+ *   <li>{@code jvmud_send_to_entity(object entity, mixed message) : void} delivers text directly
+ *       to an entity-backed recipient.</li>
+ *   <li>{@code jvmud_emit_perceivable(mixed emitter, mixed message) : void} emits near an entity
+ *       or path-resolved object.</li>
+ *   <li>{@code jvmud_emit_perceivable_except(mixed emitter, mixed message, mixed excluded) : void}
+ *       emits near an entity while suppressing one recipient.</li>
+ *   <li>{@code jvmud_emit_perceivable_at(mixed location, mixed message) : void} emits at a
+ *       location or path-resolved object.</li>
+ * </ul>
+ *
+ * <h2>Current execution context</h2>
+ * <ul>
+ *   <li>{@code jvmud_current_entity() : object} returns the currently executing LPC object.</li>
+ *   <li>{@code jvmud_previous_entity() : object} returns the previous LPC object in the current
+ *       call chain, where one is available.</li>
+ *   <li>{@code jvmud_current_actor() : object} returns the active command actor, falling back to
+ *       the current object outside command dispatch.</li>
+ *   <li>{@code jvmud_current_verb() : string} returns the verb being dispatched for the current
+ *       command.</li>
+ * </ul>
+ *
+ * <h2>Command dispatch and interactions</h2>
+ * <ul>
+ *   <li>{@code jvmud_dispatch_entity_command(mixed actor, string commandLine) : mixed} dispatches
+ *       a command as an entity or path-resolved object.</li>
+ *   <li>{@code jvmud_enable_commands() : void} enables command handling for the current object.</li>
+ *   <li>{@code jvmud_add_action(string methodName) : void} remembers a method as a command
+ *       action without registering a verb.</li>
+ *   <li>{@code jvmud_add_action(string methodName, string verb) : void} remembers an action method
+ *       and registers a verb.</li>
+ *   <li>{@code jvmud_add_action(string methodName, string verb, status prefix) : void} registers
+ *       a verb, optionally as a prefix verb.</li>
+ *   <li>{@code jvmud_add_verb(string verb) : void} registers a verb for the current interaction
+ *       scope.</li>
+ * </ul>
+ *
+ * <h2>Time, scheduling, and randomness</h2>
+ * <ul>
+ *   <li>{@code jvmud_time() : int} returns Unix epoch seconds.</li>
+ *   <li>{@code jvmud_format_time(int epochSeconds) : string} formats epoch seconds using the
+ *       host's default time zone.</li>
+ *   <li>{@code jvmud_random(int max) : int} returns a value in {@code [0, max)}, or {@code 0} when
+ *       {@code max <= 0}.</li>
+ *   <li>{@code jvmud_schedule_recurring_tick(int enabled, int intervalSeconds) : void} schedules
+ *       or disables recurring ticks for the current object.</li>
+ *   <li>{@code jvmud_schedule_deferred_callback(string methodName, int delaySeconds) : void}
+ *       schedules a one-shot callback on the current object.</li>
+ *   <li>{@code jvmud_schedule_deferred_callback(string methodName, int delaySeconds, mixed arg) :
+ *       void} schedules a one-shot callback with one argument.</li>
+ *   <li>{@code jvmud_cancel_deferred_callback(string methodName) : int} cancels matching deferred
+ *       callbacks and returns the runtime's cancellation count/status.</li>
+ * </ul>
+ *
+ * <h2>Entity identity, lookup, containment, and lifecycle</h2>
+ * <ul>
+ *   <li>{@code jvmud_entity_id(mixed entity) : string} returns an engine object identifier.</li>
+ *   <li>{@code jvmud_spawn_entity(string path) : object} clones an LPC object.</li>
+ *   <li>{@code jvmud_move_entity(mixed entity, mixed destination) : void} moves an entity or
+ *       path-resolved object.</li>
+ *   <li>{@code jvmud_find_entity(string id) : object} searches for an entity in the default
+ *       location scope.</li>
+ *   <li>{@code jvmud_find_entity(mixed id, mixed location) : object} searches for an entity inside
+ *       a location or container.</li>
+ *   <li>{@code jvmud_entity_location() : object} returns the current object's location.</li>
+ *   <li>{@code jvmud_entity_location(mixed entity) : object} returns another entity's location.</li>
+ *   <li>{@code jvmud_first_entity_at(mixed location) : object} returns the first entity in a
+ *       location or container.</li>
+ *   <li>{@code jvmud_next_entity_at(mixed entity) : object} returns the next entity in the same
+ *       inventory walk.</li>
+ *   <li>{@code jvmud_destroy_entity(object entity) : void} destroys an LPC object and removes its
+ *       engine-side entity state.</li>
+ * </ul>
+ *
+ * <h2>Aliases and command capability</h2>
+ * <ul>
+ *   <li>{@code jvmud_bind_entity_alias(object entity, string alias, mixed location) : void} binds a
+ *       lookup alias in a location scope.</li>
+ *   <li>{@code jvmud_find_entity_alias(string alias, mixed location) : object} resolves an alias in
+ *       a location scope.</li>
+ *   <li>{@code jvmud_entity_has_alias(mixed entity, string alias) : status} reports whether an
+ *       entity has an alias.</li>
+ *   <li>{@code jvmud_entity_commands_enabled(mixed entity) : status} reports whether command
+ *       handling is enabled for an entity.</li>
+ * </ul>
+ *
+ * <h2>Session, users, persistence, and security helpers</h2>
+ * <ul>
+ *   <li>{@code jvmud_users() : array} returns the active user/player objects known to the runtime.</li>
+ *   <li>{@code jvmud_query_idle(mixed user) : int} returns idle time for a user/player object.</li>
+ *   <li>{@code jvmud_query_ip_number(mixed user) : mixed} returns the user's remote IP address, or
+ *       the runtime's false/null value when unavailable.</li>
+ *   <li>{@code jvmud_capture_session_input(string methodName, int echo) : void} routes the next
+ *       session input line to a method on the current object.</li>
+ *   <li>{@code jvmud_transfer_player_to_game(string gameId) : status} asks the host to transfer
+ *       the current player to another registered game.</li>
+ *   <li>{@code jvmud_save_lpc_object_state(string path) : status} persists the current object's LPC
+ *       fields.</li>
+ *   <li>{@code jvmud_restore_lpc_object_state(string path) : status} restores the current object's
+ *       LPC fields.</li>
+ *   <li>{@code jvmud_hash_password(string password) : string} returns a PBKDF2-SHA256 password
+ *       hash string.</li>
+ *   <li>{@code jvmud_verify_password(string password, string encodedHash) : status} verifies a
+ *       password against a hash created by {@code jvmud_hash_password}.</li>
+ * </ul>
+ *
+ * <h2>Text, collections, invocation, and compatibility helpers</h2>
+ * <ul>
+ *   <li>{@code jvmud_read_mudlib_text(string path) : mixed} reads a mudlib-relative text file.</li>
+ *   <li>{@code jvmud_append_mudlib_text(string path, mixed text) : status} appends text to a
+ *       mudlib-relative file.</li>
+ *   <li>{@code jvmud_size(mixed value) : int} returns the size of a string, collection, mapping, or
+ *       array.</li>
+ *   <li>{@code jvmud_lowercase_text(mixed value) : string} lowercases text.</li>
+ *   <li>{@code jvmud_capitalize_text(mixed value) : string} capitalizes the first character of
+ *       text.</li>
+ *   <li>{@code jvmud_extract_text(mixed value, int from) : string} extracts text from an inclusive
+ *       start index through the end.</li>
+ *   <li>{@code jvmud_extract_text(mixed value, int from, int to) : string} extracts text using
+ *       inclusive start and end indexes.</li>
+ *   <li>{@code jvmud_is_string(mixed value) : status} reports whether a value is Java-backed LPC
+ *       string data.</li>
+ *   <li>{@code jvmud_is_array(mixed value) : status} reports whether a value is Java-backed LPC
+ *       array data.</li>
+ *   <li>{@code allocate(int size) : array} returns a zero-filled LPC array of non-negative size.</li>
+ *   <li>{@code sscanf(mixed input, mixed format, mixed ...captures) : int} is registered for
+ *       arities 3 through 8.</li>
+ *   <li>{@code jvmud_invoke_entity(mixed target, string methodName, mixed ...args) : mixed}
+ *       invokes an optional method on an entity or path-resolved object; this overload is
+ *       registered for arities 2 through 6.</li>
+ *   <li>{@code jvmud_set_light(int delta) : int} adjusts the current runtime light level and
+ *       returns the resulting value.</li>
+ * </ul>
  */
 public final class EngineEfuns {
     private static final int PASSWORD_ITERATIONS = 210_000;
@@ -41,7 +186,16 @@ public final class EngineEfuns {
 
     private EngineEfuns() {}
 
-    /** Registers the core efun set directly into a generated-code runtime context. */
+    /**
+     * Registers the complete core efun set directly into a generated-code runtime context.
+     *
+     * <p>Use this when tests or lower-level runtime code already have the {@link RuntimeContext}
+     * that generated bytecode will use. The supplied context receives fresh {@link Efun}
+     * instances, including all overloads listed in this class-level catalog.</p>
+     *
+     * @param context runtime context that should resolve built-in efuns
+     * @throws NullPointerException if {@code context} is {@code null}
+     */
     public static void registerCore(RuntimeContext context) {
         Objects.requireNonNull(context, "context");
 
@@ -50,7 +204,15 @@ public final class EngineEfuns {
         }
     }
 
-    /** Registers the core efun set into a host-facing LPC runtime. */
+    /**
+     * Registers the complete core efun set into a host-facing LPC runtime.
+     *
+     * <p>This is the usual entry point for embedding JVMud through {@link LPCRuntime}; the runtime
+     * forwards registration to its active {@link RuntimeContext}.</p>
+     *
+     * @param runtime host-facing runtime whose generated LPC objects should see the core efuns
+     * @throws NullPointerException if {@code runtime} is {@code null}
+     */
     public static void registerCore(LPCRuntime runtime) {
         Objects.requireNonNull(runtime, "runtime");
 
