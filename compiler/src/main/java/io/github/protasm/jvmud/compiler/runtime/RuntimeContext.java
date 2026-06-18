@@ -80,9 +80,12 @@ public final class RuntimeContext {
     private Function<String, Object> objectFactory = path -> null;
     private Function<String, Object> objectLoader = path -> null;
     private Function<String, Object> mudlibTextReader = path -> 0;
+    private BiFunction<String, Object, Integer> mudlibTextAppender = (path, text) -> 0;
     private BiFunction<Object, String, Integer> playerTransferHandler = (actor, gameId) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateSaver = (path, object) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateRestorer = (path, object) -> 0;
+    private TimedRuntimeErrorHandler timedRuntimeErrorHandler = (target, context, operation, error) -> {};
+    private Function<Object, Object> objectDestructionRequestedHandler = target -> 0;
     private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
     private WorldScheduler scheduler = new WorldScheduler();
     private String mfunObjectPath;
@@ -128,6 +131,10 @@ public final class RuntimeContext {
         this.mudlibTextReader = (mudlibTextReader != null) ? mudlibTextReader : path -> 0;
     }
 
+    public void setMudlibTextAppender(BiFunction<String, Object, Integer> mudlibTextAppender) {
+        this.mudlibTextAppender = (mudlibTextAppender != null) ? mudlibTextAppender : (path, text) -> 0;
+    }
+
     public void setPlayerTransferHandler(BiFunction<Object, String, Integer> playerTransferHandler) {
         this.playerTransferHandler = (playerTransferHandler != null)
                 ? playerTransferHandler
@@ -140,6 +147,18 @@ public final class RuntimeContext {
 
     public void setLPCObjectStateRestorer(BiFunction<String, Object, Integer> lpcObjectStateRestorer) {
         this.lpcObjectStateRestorer = (lpcObjectStateRestorer != null) ? lpcObjectStateRestorer : (path, object) -> 0;
+    }
+
+    public void setTimedRuntimeErrorHandler(TimedRuntimeErrorHandler timedRuntimeErrorHandler) {
+        this.timedRuntimeErrorHandler = timedRuntimeErrorHandler != null
+                ? timedRuntimeErrorHandler
+                : (target, context, operation, error) -> {};
+    }
+
+    public void setObjectDestructionRequestedHandler(Function<Object, Object> objectDestructionRequestedHandler) {
+        this.objectDestructionRequestedHandler = objectDestructionRequestedHandler != null
+                ? objectDestructionRequestedHandler
+                : target -> 0;
     }
 
     public void setMfunObjectPath(String mfunObjectPath) {
@@ -611,6 +630,10 @@ public final class RuntimeContext {
         return mudlibTextReader.apply(path);
     }
 
+    public int appendMudlibText(String path, Object text) {
+        return mudlibTextAppender.apply(path, text);
+    }
+
     public int transferCurrentPlayerToGame(String gameId) {
         String normalizedGameId = normalizeRegistryText(gameId);
         if (normalizedGameId == null) {
@@ -911,6 +934,10 @@ public final class RuntimeContext {
         if (object == null) {
             return;
         }
+        Object preparation = objectDestructionRequestedHandler.apply(object);
+        if (!isLpcFalse(preparation)) {
+            return;
+        }
 
         SessionBinding binding = sessionsByPersona.get(object);
         if (binding != null) {
@@ -936,6 +963,10 @@ public final class RuntimeContext {
         if (id != null) {
             objects.remove(id);
         }
+    }
+
+    private boolean isLpcFalse(Object value) {
+        return value == null || Integer.valueOf(0).equals(value);
     }
 
     public void scheduleDeferredCallback(String methodName, int delaySeconds, Object... args) {
@@ -1044,6 +1075,9 @@ public final class RuntimeContext {
         RuntimeContextHolder.setCurrent(this);
         try {
             invokeObject(target, methodName);
+        } catch (RuntimeException | LinkageError e) {
+            cancelRecurringTick(target);
+            timedRuntimeErrorHandler.onError(target, "scheduled_tick", methodName, e);
         } finally {
             RuntimeContextHolder.setCurrent(previous);
         }
@@ -1066,9 +1100,16 @@ public final class RuntimeContext {
         RuntimeContextHolder.setCurrent(this);
         try {
             invokeObject(target, methodName, args);
+        } catch (RuntimeException | LinkageError e) {
+            timedRuntimeErrorHandler.onError(target, "deferred_callback", methodName, e);
         } finally {
             RuntimeContextHolder.setCurrent(previous);
         }
+    }
+
+    @FunctionalInterface
+    public interface TimedRuntimeErrorHandler {
+        void onError(Object target, String context, String operation, Throwable error);
     }
 
     public Object currentObject() {

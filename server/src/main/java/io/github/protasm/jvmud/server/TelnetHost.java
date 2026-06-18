@@ -14,6 +14,8 @@ interface TelnetHost {
 
     void advanceWorldTick();
 
+    void shutdown(Object reason);
+
     TelnetPersona attachPersona(PrintWriter out, String remoteAddress);
 
     void detachPersona(TelnetPersona persona);

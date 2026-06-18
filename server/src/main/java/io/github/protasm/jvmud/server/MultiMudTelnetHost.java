@@ -69,6 +69,13 @@ final class MultiMudTelnetHost implements TelnetHost {
     }
 
     @Override
+    public synchronized void shutdown(Object reason) {
+        for (TelnetMud mud : mudsByGameId.values()) {
+            mud.shutdown(reason);
+        }
+    }
+
+    @Override
     public synchronized TelnetPersona attachPersona(PrintWriter out, String remoteAddress) {
         return defaultMud.attachPersona("telnet/" + nextSessionId++, out, remoteAddress, true);
     }

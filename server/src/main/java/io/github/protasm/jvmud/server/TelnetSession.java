@@ -116,7 +116,8 @@ final class TelnetSession implements Runnable {
                 out.println("You can't do that.");
             }
         } catch (RuntimeException e) {
-            out.println("Error: " + e.getMessage());
+            out.println("Something goes wrong.");
+            System.err.println("Unhandled telnet command error: " + e.getMessage());
         }
     }
 

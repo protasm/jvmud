@@ -616,7 +616,8 @@ public final class SemanticAnalyzer {
 
     private void resolveIdentifiers(
             ASTObject astObject, SemanticScope objectScope, CompilationUnit parentUnit, List<CompilationProblem> problems) {
-        IdentifierResolver resolver = new IdentifierResolver(objectScope, parentUnit, runtimeContext, problems);
+        IdentifierResolver resolver =
+                new IdentifierResolver(astObject.name(), objectScope, parentUnit, runtimeContext, problems);
 
         for (ASTField field : astObject.fields()) {
             if (field.initializer() != null)
@@ -659,16 +660,19 @@ public final class SemanticAnalyzer {
     }
 
     private static final class IdentifierResolver {
+        private final String currentObjectName;
         private final SemanticScope objectScope;
         private final CompilationUnit parentUnit;
         private final RuntimeContext runtimeContext;
         private final List<CompilationProblem> problems;
 
         IdentifierResolver(
+                String currentObjectName,
                 SemanticScope objectScope,
                 CompilationUnit parentUnit,
                 RuntimeContext runtimeContext,
                 List<CompilationProblem> problems) {
+            this.currentObjectName = currentObjectName;
             this.objectScope = objectScope;
             this.parentUnit = parentUnit;
             this.runtimeContext = runtimeContext;
@@ -1039,8 +1043,13 @@ public final class SemanticAnalyzer {
                     .map(ScopedSymbol::method)
                     .filter(Objects::nonNull)
                     .filter(method -> parameterCount(method) >= arity)
-                    .min(Comparator.comparingInt(SemanticAnalyzer::parameterCount))
+                    .min(Comparator.comparingInt(SemanticAnalyzer::parameterCount)
+                            .thenComparingInt(this::currentObjectPreference))
                     .orElse(null);
+        }
+
+        private int currentObjectPreference(ASTMethod method) {
+            return Objects.equals(method.ownerName(), currentObjectName) ? 0 : 1;
         }
 
         private ScopedSymbol resolveScopedSymbol(String name) {

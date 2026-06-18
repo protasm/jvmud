@@ -92,6 +92,8 @@ final class TelnetServerTest {
                         "protasm", "neutral");
                 assertTrue(greeting.contains("Hi, Protasm! Welcome to LPMuseum."), greeting);
                 assertTrue(greeting.contains("Protasm enters LPMuseum through the museum doors."), greeting);
+                assertTrue(greeting.contains("Grand Concourse of LPMuseum"), greeting);
+                assertTrue(greeting.contains("A directory and a docent are here."), greeting);
 
                 try (Socket second = new Socket("127.0.0.1", server.port())) {
                     second.setSoTimeout(5000);
@@ -293,6 +295,44 @@ final class TelnetServerTest {
                 assertTrue(church.contains("You are in the local village church."), church);
                 assertTrue(church.contains("> "), church);
 
+                socket.getOutputStream().write("say this is cool\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String say = readUntilQuietAfterContains(socket, "Ok.");
+                assertTrue(say.contains("Ok."), say);
+                assertFalse(say.contains("You can't do that."), say);
+
+                socket.getOutputStream().write("help\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String help = readUntilQuietAfterContains(socket, "brief");
+                assertTrue(help.contains("brief"), help);
+                assertFalse(help.contains("You can't do that."), help);
+
+                socket.getOutputStream().write("exa portal\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String examine = readUntilQuietAfterContains(socket, "The portal leads back to LPMuseum.");
+                assertTrue(examine.contains("The portal leads back to LPMuseum."), examine);
+                assertFalse(examine.contains("You can't do that."), examine);
+
+                try (Socket second = new Socket("127.0.0.1", server.port())) {
+                    second.setSoTimeout(5000);
+                    assertTrue(readUntilQuietAfterContains(second, "Please enter your user ID: ")
+                            .contains("Please enter your user ID: "));
+                    assertTrue(createLpmuseumAccountAndEnter(second, "solfeggio", "Valid1!",
+                            "Solfeggio", "neutral").contains("Hi, Solfeggio! Welcome to LPMuseum."));
+
+                    second.getOutputStream().write("go north\ngo east\nenter portal\n".getBytes(StandardCharsets.UTF_8));
+                    second.getOutputStream().flush();
+                    String secondLp245Entry = readUntilQuietAfterContains(second, "> ");
+                    assertTrue(secondLp245Entry.contains("What is your name: solfeggio"), secondLp245Entry);
+
+                    second.getOutputStream().write("exa protasm\n".getBytes(StandardCharsets.UTF_8));
+                    second.getOutputStream().flush();
+                    String playerExamine = readUntilQuietAfterContains(second, "Protasm the title less");
+                    assertTrue(playerExamine.contains("Protasm the title less"), playerExamine);
+                    assertFalse(playerExamine.contains("Error:"), playerExamine);
+                    assertFalse(playerExamine.contains("You can't do that."), playerExamine);
+                }
+
                 socket.getOutputStream().write("enter portal\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 String returned = readUntilQuietAfterContains(socket, "You step back into LPMuseum as Museum persona.");
@@ -352,6 +392,8 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
                 String welcomeBack = readUntilQuietAfterContains(socket, "Hi, Solfeggio! Welcome to LPMuseum.");
                 assertTrue(welcomeBack.contains("Hi, Solfeggio! Welcome to LPMuseum."), welcomeBack);
+                assertTrue(welcomeBack.contains("Grand Concourse of LPMuseum"), welcomeBack);
+                assertTrue(welcomeBack.contains("A directory and a docent are here."), welcomeBack);
                 assertFalse(welcomeBack.contains("Email address"), welcomeBack);
                 assertFalse(welcomeBack.contains("Persona name"), welcomeBack);
 
@@ -911,6 +953,172 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
             }
         }
+    }
+
+    @Test
+    void runtimeErrorsCanBeHandledByMudlibBoundaryObject() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                mudlib_object = jvmud/mudlib
+                mfun_object = jvmud/mfuns
+                player_object = obj/test_player
+                player_prompt = "> "
+                initial_place = room/start
+                lifecycle.object_loaded = reset
+                lifecycle.interaction_scope_started = init
+                lifecycle.runtime_error = runtime_error
+                """);
+        Files.writeString(tempDir.resolve("jvmud/mudlib.c"), """
+                void runtime_error(mixed actor, mixed context, mixed operation, mixed detail) {
+                    jvmud_send_to_entity(actor, "A velvet curtain falls over the machinery.\\n");
+                    jvmud_append_mudlib_text("/log/RUNTIME", context + ":" + operation + ":" + detail + "\\n");
+                }
+                """);
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.writeString(tempDir.resolve("obj/test_player.c"), """
+                void init() {
+                    add_action("boom", "boom");
+                }
+
+                int boom(mixed arg) {
+                    int divisor;
+
+                    return 1 / divisor;
+                }
+                """);
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void long(mixed str) {
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilContains(socket, "Attached player 1").contains("Attached player 1"));
+
+                socket.getOutputStream().write("boom\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String output = readUntilQuietAfterContains(socket, "A velvet curtain falls over the machinery.");
+                assertTrue(output.contains("A velvet curtain falls over the machinery."), output);
+                assertFalse(output.contains("Error:"), output);
+                assertFalse(output.contains("/ by zero"), output);
+            }
+        }
+
+        String log = Files.readString(tempDir.resolve("log/RUNTIME"));
+        assertTrue(log.contains("command:boom"), log);
+        assertTrue(log.contains("/ by zero"), log);
+    }
+
+    @Test
+    void compileErrorsCanBeLoggedByMudlibBoundaryObject() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                mudlib_object = jvmud/mudlib
+                mfun_object = jvmud/mfuns
+                player_object = obj/test_player
+                player_prompt = "> "
+                initial_place = room/start
+                lifecycle.object_loaded = reset
+                lifecycle.interaction_scope_started = init
+                lifecycle.log_error = log_error
+                lifecycle.runtime_error = runtime_error
+                """);
+        Files.writeString(tempDir.resolve("jvmud/mudlib.c"), """
+                void log_error(mixed file, mixed err) {
+                    jvmud_append_mudlib_text("/log/COMPILER", file + "\\n");
+                    jvmud_append_mudlib_text("/log/COMPILER", err + "\\n");
+                }
+
+                void runtime_error(mixed actor, mixed context, mixed operation, mixed detail) {
+                    jvmud_send_to_entity(actor, "Your sensitive mind notices a wrongness in the fabric of space.\\n");
+                    jvmud_append_mudlib_text("/log/RUNTIME", context + ":" + operation + ":" + detail + "\\n");
+                }
+                """);
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.writeString(tempDir.resolve("obj/test_player.c"), """
+                void init() {
+                    add_action("loadbroken", "loadbroken");
+                }
+
+                int loadbroken(mixed arg) {
+                    jvmud_spawn_entity("obj/broken");
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/broken.c"), """
+                int broken() {
+                    return 1
+                }
+                """);
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void long(mixed str) {
+                    write("Start room.\\n");
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilContains(socket, "Attached player 1").contains("Attached player 1"));
+
+                socket.getOutputStream().write("loadbroken\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String output = readUntilQuietAfterContains(socket, "Your sensitive mind notices a wrongness");
+                assertTrue(output.contains("Your sensitive mind notices a wrongness in the fabric of space."), output);
+                assertFalse(output.contains("Compilation failed:"), output);
+                assertFalse(output.contains("Expect ';' after return statement"), output);
+            }
+        }
+
+        String compilerLog = Files.readString(tempDir.resolve("log/COMPILER"));
+        assertTrue(compilerLog.contains("/obj/broken"), compilerLog);
+        assertTrue(compilerLog.contains("Compilation failed:"), compilerLog);
+        assertTrue(compilerLog.contains("Expect ';' after return statement"), compilerLog);
+        String runtimeLog = Files.readString(tempDir.resolve("log/RUNTIME"));
+        assertTrue(runtimeLog.contains("command:loadbroken"), runtimeLog);
+    }
+
+    @Test
+    void serverShutdownCanNotifyMudlibBoundaryObject() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                mudlib_object = jvmud/mudlib
+                mfun_object = jvmud/mfuns
+                initial_place = room/start
+                lifecycle.object_loaded = reset
+                lifecycle.server_shutdown = notify_shutdown
+                """);
+        Files.writeString(tempDir.resolve("jvmud/mudlib.c"), """
+                void notify_shutdown(mixed reason) {
+                    if (reason) {
+                        jvmud_append_mudlib_text("/log/SHUTDOWN", "PANIC! " + reason + "\\n");
+                    } else {
+                        jvmud_append_mudlib_text("/log/SHUTDOWN", "LPmud shutting down immediately.\\n");
+                    }
+                }
+                """);
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void long(mixed str) {
+                    write("Start room.\\n");
+                }
+                """);
+
+        TelnetServer server = new TelnetServer("127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH);
+        server.start();
+        server.close();
+        server.close();
+
+        assertEquals("LPmud shutting down immediately.\n", Files.readString(tempDir.resolve("log/SHUTDOWN")));
     }
 
     @Test

@@ -199,6 +199,7 @@ string lower_case(mixed value) {
 }
 
 void log_file(mixed file, mixed text) {
+  jvmud_append_mudlib_text("/log/" + file, text);
 }
 
 void move_object(mixed ob, mixed destination) {

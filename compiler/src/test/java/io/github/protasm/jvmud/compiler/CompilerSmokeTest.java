@@ -342,6 +342,29 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void unqualifiedMethodCallPrefersChildDefinitionOverInheritedPrototype() throws Exception {
+        Files.writeString(tempDir.resolve("base.c"), """
+                string short();
+                """);
+        Files.writeString(tempDir.resolve("child.c"), """
+                inherit "base";
+
+                string describe() {
+                    return short();
+                }
+
+                string short() {
+                    return "child short";
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        Object child = runtime.loadOrGetObject("child");
+
+        assertEquals("child short", runtime.invokeObject(child, "describe"));
+    }
+
+    @Test
     void parserAcceptsRepeatedArrayFieldDeclarators() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/array_field_declarators.c", """
@@ -1118,6 +1141,106 @@ final class CompilerSmokeTest {
 
         assertEquals("COMMUNICATIONS:\n", runtime.readMudlibText("/doc/help"));
         assertEquals(0, runtime.readMudlibText("../source/doc/help"));
+    }
+
+    @Test
+    void runtimeAppendsMudlibTextUnderConfiguredSourceRoot() throws Exception {
+        Path configRoot = tempDir.resolve("jvmud");
+        Path sourceRoot = tempDir.resolve("source");
+        Files.createDirectories(configRoot);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(configRoot).build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mudlibRootPath(sourceRoot)
+                .build());
+        EngineEfuns.registerCore(runtime);
+        LPCObjectHandle logger = runtime.loadSource("logger.c", """
+                int log_it(string value) {
+                    return jvmud_append_mudlib_text("/log/RUNTIME", value + "\\n");
+                }
+
+                int bad_path() {
+                    return jvmud_append_mudlib_text("../outside", "nope\\n");
+                }
+                """);
+
+        assertEquals(1, logger.invoke("log_it", "first"));
+        assertEquals(1, logger.invoke("log_it", "second"));
+        assertEquals(0, logger.invoke("bad_path"));
+        assertEquals("first\nsecond\n", Files.readString(sourceRoot.resolve("log/RUNTIME")));
+        assertFalse(Files.exists(tempDir.resolve("outside")));
+    }
+
+    @Test
+    void objectDestructionCanNotifyMudlibBeforeCleanup() throws Exception {
+        LPCRuntime runtime = destructionRuntime("""
+                mixed prepare_destruct(mixed ob) {
+                    jvmud_append_mudlib_text("/log/DESTRUCT", "prepare " + jvmud_entity_id(ob) + "\\n");
+                    return 0;
+                }
+                """);
+        LPCObjectHandle object = runtime.loadSource("obj/victim.c", """
+                void destroy_self() {
+                    jvmud_destroy_entity(jvmud_current_entity());
+                }
+                """);
+
+        object.invoke("destroy_self");
+
+        assertNull(runtime.objectId(object.instance()));
+        assertEquals("prepare obj/victim\n", Files.readString(tempDir.resolve("log/DESTRUCT")));
+    }
+
+    @Test
+    void objectDestructionCanBeVetoedByMudlib() throws Exception {
+        LPCRuntime runtime = destructionRuntime("""
+                mixed prepare_destruct(mixed ob) {
+                    jvmud_append_mudlib_text("/log/DESTRUCT", "veto " + jvmud_entity_id(ob) + "\\n");
+                    return 1;
+                }
+                """);
+        LPCObjectHandle object = runtime.loadSource("obj/vetoed.c", """
+                void destroy_self() {
+                    jvmud_destroy_entity(jvmud_current_entity());
+                }
+                """);
+
+        object.invoke("destroy_self");
+
+        assertEquals("obj/vetoed", runtime.objectId(object.instance()));
+        assertEquals("veto obj/vetoed\n", Files.readString(tempDir.resolve("log/DESTRUCT")));
+    }
+
+    @Test
+    void objectDestructionPreparationCanMoveContentsBeforeCleanup() throws Exception {
+        LPCRuntime runtime = destructionRuntime("""
+                mixed prepare_destruct(mixed ob) {
+                    object item;
+                    object super;
+
+                    super = jvmud_entity_location(ob);
+                    if (super) {
+                        while (item = jvmud_first_entity_at(ob))
+                            jvmud_move_entity(item, super);
+                    }
+
+                    return 0;
+                }
+                """);
+        LPCObjectHandle room = runtime.loadSource("room/workshop.c", "");
+        LPCObjectHandle box = runtime.loadSource("obj/box.c", """
+                void destroy_self() {
+                    jvmud_destroy_entity(jvmud_current_entity());
+                }
+                """);
+        LPCObjectHandle gem = runtime.loadSource("obj/gem.c", "");
+        runtime.moveObject(box.instance(), room.instance());
+        runtime.moveObject(gem.instance(), box.instance());
+
+        box.invoke("destroy_self");
+
+        assertNull(runtime.objectId(box.instance()));
+        assertEquals(room.instance(), runtime.environment(gem.instance()));
     }
 
     @Test
@@ -2577,6 +2700,75 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void recurringTickFailureNotifiesMudlibAndCancelsHeartbeat() throws Exception {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntimeWithErrorHandlers(scheduler);
+        LPCObjectHandle object = runtime.loadSource("smoke/failing_tick.c", """
+                int beats;
+
+                void start() {
+                    set_heart_beat(1);
+                }
+
+                void heart_beat() {
+                    int divisor;
+
+                    beats += 1;
+                    beats = beats / divisor;
+                }
+
+                int query_beats() {
+                    return beats;
+                }
+                """);
+
+        object.invoke("start");
+        scheduler.advanceTo(1);
+        scheduler.advanceTo(3);
+
+        assertEquals(1, object.invoke("query_beats"));
+        String runtimeLog = Files.readString(tempDir.resolve("log/RUNTIME"));
+        assertTrue(runtimeLog.contains("context=scheduled_tick operation=heart_beat"), runtimeLog);
+        assertTrue(runtimeLog.contains("/ by zero"), runtimeLog);
+        String heartBeatLog = Files.readString(tempDir.resolve("log/HEART_BEAT"));
+        assertEquals(1, countOccurrences(heartBeatLog, "culprit=smoke/failing_tick"));
+        assertTrue(heartBeatLog.contains("/ by zero"), heartBeatLog);
+    }
+
+    @Test
+    void deferredCallbackFailureNotifiesMudlibRuntimeError() throws Exception {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntimeWithErrorHandlers(scheduler);
+        LPCObjectHandle object = runtime.loadSource("smoke/failing_callout.c", """
+                int calls;
+
+                void start() {
+                    call_out("finish", 2);
+                }
+
+                void finish() {
+                    int divisor;
+
+                    calls += 1;
+                    calls = calls / divisor;
+                }
+
+                int query_calls() {
+                    return calls;
+                }
+                """);
+
+        object.invoke("start");
+        scheduler.advanceTo(2);
+
+        assertEquals(1, object.invoke("query_calls"));
+        String runtimeLog = Files.readString(tempDir.resolve("log/RUNTIME"));
+        assertTrue(runtimeLog.contains("context=deferred_callback operation=finish"), runtimeLog);
+        assertTrue(runtimeLog.contains("/ by zero"), runtimeLog);
+        assertFalse(Files.exists(tempDir.resolve("log/HEART_BEAT")));
+    }
+
+    @Test
     void localsDefaultToZeroAcrossControlFlowBranches() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
@@ -2941,6 +3133,63 @@ final class CompilerSmokeTest {
                 .temporalTickIntervalSeconds(defaultIntervalSeconds)
                 .build());
         return runtime;
+    }
+
+    private LPCRuntime temporalRuntimeWithErrorHandlers(WorldScheduler scheduler) {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.setScheduler(scheduler);
+        runtime.loadSource("jvmud/mfuns.c", """
+                void set_heart_beat(int enabled) {
+                    jvmud_schedule_recurring_tick(enabled, 0);
+                }
+
+                void call_out(string method, int delay) {
+                    jvmud_schedule_deferred_callback(method, delay);
+                }
+                """);
+        runtime.loadSource("jvmud/mudlib.c", """
+                void runtime_error(mixed actor, mixed context, mixed operation, mixed detail) {
+                    jvmud_append_mudlib_text("/log/RUNTIME", "context=" + context + " operation=" + operation + "\\n");
+                    jvmud_append_mudlib_text("/log/RUNTIME", detail + "\\n");
+                }
+
+                mixed heart_beat_error(mixed culprit, mixed err, mixed prg, mixed curobj, mixed line) {
+                    jvmud_append_mudlib_text("/log/HEART_BEAT", "culprit=" + curobj + " program=" + prg + " line=" + line + "\\n");
+                    jvmud_append_mudlib_text("/log/HEART_BEAT", err + "\\n");
+                    return 0;
+                }
+                """);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .boundaryObjectPath("jvmud/mudlib")
+                .temporalTickMethod("heart_beat")
+                .temporalTickIntervalSeconds(1)
+                .lifecycleMethod(MudlibLifecycleEvent.RUNTIME_ERROR, "runtime_error")
+                .lifecycleMethod(MudlibLifecycleEvent.SCHEDULED_TICK_ERROR, "heart_beat_error")
+                .build());
+        return runtime;
+    }
+
+    private LPCRuntime destructionRuntime(String mudlibSource) {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.loadSource("jvmud/mudlib.c", mudlibSource);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .boundaryObjectPath("jvmud/mudlib")
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_DESTRUCTION_REQUESTED, "prepare_destruct")
+                .build());
+        return runtime;
+    }
+
+    private int countOccurrences(String text, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(needle, index)) != -1) {
+            count++;
+            index += needle.length();
+        }
+        return count;
     }
 
     private String tickingObjectSource(int intervalSeconds) {

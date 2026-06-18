@@ -54,6 +54,7 @@ final class TelnetMud implements TelnetHost {
     private final boolean showRuler;
     private final String playerSessionConnectedMethod;
     private final String playerSessionDisconnectedMethod;
+    private final String runtimeErrorMethod;
     private final MudlibBootResult bootResult;
     private final Map<Object, String> requestedTransfers = new IdentityHashMap<>();
     private TransferHandler transferHandler = (mud, actor, gameId) -> 0;
@@ -72,6 +73,7 @@ final class TelnetMud implements TelnetHost {
             boolean showRuler,
             String playerSessionConnectedMethod,
             String playerSessionDisconnectedMethod,
+            String runtimeErrorMethod,
             MudlibBootResult bootResult) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
@@ -85,6 +87,7 @@ final class TelnetMud implements TelnetHost {
         this.showRuler = showRuler;
         this.playerSessionConnectedMethod = playerSessionConnectedMethod;
         this.playerSessionDisconnectedMethod = playerSessionDisconnectedMethod;
+        this.runtimeErrorMethod = runtimeErrorMethod;
         this.bootResult = Objects.requireNonNull(bootResult, "bootResult");
     }
 
@@ -118,6 +121,7 @@ final class TelnetMud implements TelnetHost {
                 boundary.showRuler(),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_DISCONNECTED).orElse(null),
+                boundary.lifecycleMethod(MudlibLifecycleEvent.RUNTIME_ERROR).orElse(null),
                 result);
         runtime.setPlayerTransferHandler((actor, targetGameId) ->
                 mud.transferHandler.requestTransfer(mud, actor, targetGameId));
@@ -159,6 +163,25 @@ final class TelnetMud implements TelnetHost {
     public synchronized void advanceWorldTick() {
         worldRuntime.scheduler().advanceBy(1);
         runtime.clearOutputTranscript();
+    }
+
+    @Override
+    public synchronized void shutdown(Object reason) {
+        String methodName = bootResult.mudlibBoundary().lifecycleMethod(MudlibLifecycleEvent.SERVER_SHUTDOWN).orElse(null);
+        if (methodName == null) {
+            return;
+        }
+        Object handler = errorHandlerObject(null);
+        if (handler == null) {
+            return;
+        }
+        try {
+            runtime.invokeOptionalObject(handler, methodName, reason);
+        } catch (RuntimeException | LinkageError e) {
+            System.err.println("Ignoring mudlib shutdown lifecycle failure: " + e.getMessage());
+        } finally {
+            runtime.clearOutputTranscript();
+        }
     }
 
     String startingPlacePath() {
@@ -290,6 +313,7 @@ final class TelnetMud implements TelnetHost {
                 account.passwordHash());
         runtime.invokeObject(actor, "save_account");
         runtime.invokeObject(actor, "enter_museum");
+        forceLookCommand(actor);
         runtime.clearOutputTranscript();
         return new TelnetPersona(this, sessionId, objectId, account.personaName(), account.accountId(), account.gender(), actor,
                 remoteAddress);
@@ -332,7 +356,8 @@ final class TelnetMud implements TelnetHost {
                         + " in " + startingPlacePath + ".\n");
             }
             if (visitingUserId != null) {
-                runtime.invokeOptionalObject(actor, "jvmud_exhibit_logon", visitingUserId, visitingGender);
+                runtime.withCommandActor(actor, () ->
+                        runtime.invokeOptionalObject(actor, "jvmud_exhibit_logon", visitingUserId, visitingGender));
                 runtime.clearOutputTranscript();
                 name = visitingUserId;
             } else {
@@ -400,6 +425,12 @@ final class TelnetMud implements TelnetHost {
         runtime.clearOutputTranscript();
     }
 
+    private void forceLookCommand(Object actor) {
+        runtime.refreshCommandActions(actor);
+        runtime.dispatchCommand(actor, "look");
+        runtime.clearOutputTranscript();
+    }
+
     @Override
     public synchronized void detachPersona(TelnetPersona persona) {
         detachPersona(persona, true);
@@ -436,6 +467,14 @@ final class TelnetMud implements TelnetHost {
 
     @Override
     public synchronized Object dispatch(TelnetPersona persona, PrintWriter out, String commandLine) {
+        try {
+            return dispatchUnchecked(persona, out, commandLine);
+        } catch (RuntimeException | LinkageError e) {
+            return handleRuntimeError(persona, out, "command", commandLine, e);
+        }
+    }
+
+    private Object dispatchUnchecked(TelnetPersona persona, PrintWriter out, String commandLine) {
         if (persona.actor() instanceof LpmuseumLoginSession login) {
             LpmuseumLoginSession.Result result = login.handle(commandLine, out);
             if (result.replacement().isPresent()) {
@@ -475,6 +514,56 @@ final class TelnetMud implements TelnetHost {
             runtime.clearOutputTranscript();
         }
         return result;
+    }
+
+    private Object handleRuntimeError(
+            TelnetPersona persona,
+            PrintWriter out,
+            String context,
+            String operation,
+            Throwable error) {
+        runtime.clearOutputTranscript();
+        if (runtimeErrorMethod != null && invokeRuntimeErrorHandler(persona, context, operation, error)) {
+            return 1;
+        }
+        out.println("Something goes wrong.");
+        System.err.println("Unhandled mudlib runtime error during " + context + " '" + operation + "': "
+                + error.getMessage());
+        return 1;
+    }
+
+    private boolean invokeRuntimeErrorHandler(
+            TelnetPersona persona,
+            String context,
+            String operation,
+            Throwable error) {
+        try {
+            Object handler = errorHandlerObject(persona);
+            if (handler == null) {
+                return false;
+            }
+            runtime.invokeOptionalObject(
+                    handler,
+                    runtimeErrorMethod,
+                    persona.actor(),
+                    context,
+                    operation,
+                    error.getMessage());
+            runtime.clearOutputTranscript();
+            return true;
+        } catch (RuntimeException | LinkageError handlerFailure) {
+            System.err.println("Mudlib error handler failed: " + handlerFailure.getMessage());
+            runtime.clearOutputTranscript();
+            return false;
+        }
+    }
+
+    private Object errorHandlerObject(TelnetPersona persona) {
+        String boundaryObjectPath = bootResult.mudlibBoundary().boundaryObjectPath().orElse(null);
+        if (boundaryObjectPath != null) {
+            return runtime.loadOrGetObject(boundaryObjectPath);
+        }
+        return persona != null ? persona.actor() : null;
     }
 
     @Override

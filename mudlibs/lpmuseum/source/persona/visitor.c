@@ -101,7 +101,6 @@ void enter_museum() {
   write("Hi, " + display_name + "! Welcome to LPMuseum.\n");
   tell_place(environment(this_object()), display_name + " enters LPMuseum through the museum doors.\n");
   write("This is a native JVMud mudlib. Type help for museum commands.\n\n");
-  look(0);
 }
 
 void return_from_exhibit() {

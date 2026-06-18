@@ -30,6 +30,7 @@ public final class TelnetServer implements AutoCloseable {
     private ServerSocket serverSocket;
     private Thread acceptThread;
     private volatile boolean running;
+    private boolean shutdownNotified;
 
     public TelnetServer(String bindAddress, int port, Path mudlibRoot, String configObjectPath) {
         this.bindAddress = Objects.requireNonNull(bindAddress, "bindAddress");
@@ -197,6 +198,10 @@ public final class TelnetServer implements AutoCloseable {
         if (worldClock != null) {
             worldClock.close();
             worldClock = null;
+        }
+        if (mud != null && !shutdownNotified) {
+            shutdownNotified = true;
+            mud.shutdown(0);
         }
         if (serverSocket != null) {
             try {

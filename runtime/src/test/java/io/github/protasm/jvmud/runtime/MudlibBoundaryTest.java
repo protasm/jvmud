@@ -107,9 +107,14 @@ final class MudlibBoundaryTest {
                 preload_objects = obj/torch, obj/money.c
                 handled_lifecycle_events = scheduled-tick
                 lifecycle.object_loaded = reset
+                lifecycle.object_destruction_requested = prepare_destruct
                 lifecycle.interaction_scope_started = init
                 lifecycle.player_connected = player_connected
                 lifecycle.player-bound = player_bound
+                lifecycle.log_error = log_error
+                lifecycle.runtime_error = runtime_error
+                lifecycle.scheduled_tick_error = heart_beat_error
+                lifecycle.server_shutdown = notify_shutdown
                 temporal_tick_method = heart_beat
                 temporal_tick_interval = 0.25
                 """);
@@ -131,9 +136,16 @@ final class MudlibBoundaryTest {
         assertTrue(boundary.preloadObjectPaths().contains("obj/money"));
         assertTrue(boundary.handles(MudlibLifecycleEvent.SCHEDULED_TICK));
         assertEquals("reset", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED).orElseThrow());
+        assertEquals(
+                "prepare_destruct",
+                boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_DESTRUCTION_REQUESTED).orElseThrow());
         assertEquals("init", boundary.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElseThrow());
         assertEquals("player_connected", boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElseThrow());
         assertEquals("player_bound", boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_OBJECT_BOUND).orElseThrow());
+        assertEquals("log_error", boundary.lifecycleMethod(MudlibLifecycleEvent.LOG_ERROR).orElseThrow());
+        assertEquals("runtime_error", boundary.lifecycleMethod(MudlibLifecycleEvent.RUNTIME_ERROR).orElseThrow());
+        assertEquals("heart_beat_error", boundary.lifecycleMethod(MudlibLifecycleEvent.SCHEDULED_TICK_ERROR).orElseThrow());
+        assertEquals("notify_shutdown", boundary.lifecycleMethod(MudlibLifecycleEvent.SERVER_SHUTDOWN).orElseThrow());
         assertEquals("heart_beat", boundary.temporalTickMethod().orElseThrow());
         assertEquals(Duration.ofMillis(250), boundary.temporalTickInterval());
         assertEquals(0, boundary.temporalTickIntervalSeconds());

@@ -109,6 +109,9 @@ public final class EngineEfuns {
                 (runtime, args) -> runtime.queryIpNumber(args[0])));
         efuns.add(efun("jvmud_read_mudlib_text", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.readMudlibText(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_append_mudlib_text", LPCType.LPCSTATUS,
+                List.of(LPCType.LPCSTRING, LPCType.LPCMIXED),
+                (runtime, args) -> runtime.appendMudlibText(String.valueOf(args[0]), args[1])));
         efuns.add(efun("jvmud_transfer_player_to_game", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.transferCurrentPlayerToGame(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_save_lpc_object_state", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),

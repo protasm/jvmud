@@ -72,6 +72,9 @@ public final class LPCRuntime {
     private final List<Path> includeSearchPaths;
     private final boolean useBoundaryMudlibRootForIncludes;
     private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
+    private boolean notifyingCompilationError;
+    private boolean notifyingTimedRuntimeError;
+    private boolean notifyingObjectDestructionRequested;
 
     public LPCRuntime(LPCRuntimeConfig config) {
         Objects.requireNonNull(config, "config");
@@ -82,8 +85,11 @@ public final class LPCRuntime {
         this.runtimeContext.setObjectFactory(this::cloneObject);
         this.runtimeContext.setObjectLoader(this::loadOrGetObject);
         this.runtimeContext.setMudlibTextReader(this::readMudlibText);
+        this.runtimeContext.setMudlibTextAppender(this::appendMudlibText);
         this.runtimeContext.setLPCObjectStateSaver(this::saveLPCObjectState);
         this.runtimeContext.setLPCObjectStateRestorer(this::restoreLPCObjectState);
+        this.runtimeContext.setTimedRuntimeErrorHandler(this::notifyTimedRuntimeError);
+        this.runtimeContext.setObjectDestructionRequestedHandler(this::notifyObjectDestructionRequested);
         this.classLoader = new LPCRuntimeClassLoader(config.parentClassLoader());
         this.pipeline = new CompilationPipeline(config.parentInternalName(), runtimeContext, config.compilationObserver());
     }
@@ -152,7 +158,7 @@ public final class LPCRuntime {
         String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
 
         if (!result.getProblems().isEmpty()) {
-            throw new LPCRuntimeException(formatProblems(result.getProblems()), result.getProblems());
+            throw compilationFailure(objectId, result.getProblems());
         }
 
         CompilationUnit compilationUnit = result.getCompilationUnit();
@@ -184,11 +190,17 @@ public final class LPCRuntime {
 
         try {
             if (!Files.exists(normalized)) {
-                throw new LPCRuntimeException("Source file not found: " + normalized);
+                String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
+                String message = "Source file not found: " + normalized;
+                notifyCompilationError(objectId, message);
+                throw new LPCRuntimeException(message);
             }
             source = Files.readString(normalized);
         } catch (IOException e) {
-            throw new LPCRuntimeException("Failed to read source file: " + normalized, e);
+            String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
+            String message = "Failed to read source file: " + normalized;
+            notifyCompilationError(objectId, message + ": " + e.getMessage());
+            throw new LPCRuntimeException(message, e);
         }
 
         String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
@@ -227,7 +239,7 @@ public final class LPCRuntime {
                 pipeline.run(null, source, jvmInternalName(objectId), displayPath, ParserOptions.defaults());
 
         if (!result.getProblems().isEmpty()) {
-            throw new LPCRuntimeException(formatProblems(result.getProblems()), result.getProblems());
+            throw compilationFailure(objectId, result.getProblems());
         }
 
         CompilationUnit compilationUnit = result.getCompilationUnit();
@@ -324,6 +336,32 @@ public final class LPCRuntime {
         }
         try {
             return Files.readString(resolved);
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    /** Appends text to a mudlib-rooted file, returning LP-style success. */
+    public int appendMudlibText(String path, Object text) {
+        Objects.requireNonNull(path, "path");
+        Path resolved = resolveMudlibTextPath(path);
+        if (resolved == null) {
+            resolved = resolveMudlibStoragePath(path);
+        }
+        if (resolved == null) {
+            return 0;
+        }
+        try {
+            Path parent = resolved.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.writeString(
+                    resolved,
+                    String.valueOf(text),
+                    java.nio.file.StandardOpenOption.CREATE,
+                    java.nio.file.StandardOpenOption.APPEND);
+            return 1;
         } catch (IOException e) {
             return 0;
         }
@@ -911,7 +949,7 @@ public final class LPCRuntime {
         CompilationResult result =
                 pipeline.run(sourcePath, source, internalName, "/" + objectId, ParserOptions.defaults());
         if (!result.getProblems().isEmpty()) {
-            throw new LPCRuntimeException(formatProblems(result.getProblems()), result.getProblems());
+            throw compilationFailure(objectId, result.getProblems());
         }
 
         CompilationUnit compilationUnit = result.getCompilationUnit();
@@ -1125,6 +1163,94 @@ public final class LPCRuntime {
         return builder.toString();
     }
 
+    private LPCRuntimeException compilationFailure(String objectId, List<CompilationProblem> problems) {
+        String message = formatProblems(problems);
+        notifyCompilationError(objectId, message);
+        return new LPCRuntimeException(message, problems);
+    }
+
+    private void notifyCompilationError(String objectId, String message) {
+        String methodName = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.LOG_ERROR).orElse(null);
+        String boundaryObjectPath = mudlibBoundary.boundaryObjectPath().orElse(null);
+        if (methodName == null || boundaryObjectPath == null || notifyingCompilationError) {
+            return;
+        }
+
+        String normalizedObjectId = normalizeInternalName(objectId);
+        String normalizedBoundaryPath = normalizeInternalName(boundaryObjectPath);
+        if (normalizedBoundaryPath.equals(normalizedObjectId)) {
+            return;
+        }
+
+        notifyingCompilationError = true;
+        try {
+            Object handler = loadOrGetObject(normalizedBoundaryPath);
+            invokeOptionalObject(handler, methodName, "/" + normalizedObjectId, message);
+            clearOutputTranscript();
+        } catch (RuntimeException | LinkageError ignored) {
+            clearOutputTranscript();
+        } finally {
+            notifyingCompilationError = false;
+        }
+    }
+
+    private void notifyTimedRuntimeError(Object target, String context, String operation, Throwable error) {
+        String boundaryObjectPath = mudlibBoundary.boundaryObjectPath().orElse(null);
+        if (boundaryObjectPath == null || notifyingTimedRuntimeError) {
+            return;
+        }
+
+        notifyingTimedRuntimeError = true;
+        try {
+            Object handler = loadOrGetObject(boundaryObjectPath);
+            String detail = error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName();
+            String objectId = runtimeContext.objectId(target);
+            if (objectId == null) {
+                objectId = String.valueOf(target);
+            }
+
+            String runtimeErrorMethod = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.RUNTIME_ERROR).orElse(null);
+            if (runtimeErrorMethod != null) {
+                invokeOptionalObject(handler, runtimeErrorMethod, target, context, operation, detail);
+                clearOutputTranscript();
+            }
+
+            if ("scheduled_tick".equals(context)) {
+                String scheduledTickErrorMethod =
+                        mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.SCHEDULED_TICK_ERROR).orElse(null);
+                if (scheduledTickErrorMethod != null) {
+                    invokeOptionalObject(handler, scheduledTickErrorMethod, target, detail, objectId, objectId, 0);
+                    clearOutputTranscript();
+                }
+            }
+        } catch (RuntimeException | LinkageError ignored) {
+            clearOutputTranscript();
+        } finally {
+            notifyingTimedRuntimeError = false;
+        }
+    }
+
+    private Object notifyObjectDestructionRequested(Object target) {
+        String methodName = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_DESTRUCTION_REQUESTED).orElse(null);
+        String boundaryObjectPath = mudlibBoundary.boundaryObjectPath().orElse(null);
+        if (methodName == null || boundaryObjectPath == null || notifyingObjectDestructionRequested) {
+            return 0;
+        }
+
+        notifyingObjectDestructionRequested = true;
+        try {
+            Object handler = loadOrGetObject(boundaryObjectPath);
+            Object result = invokeOptionalObject(handler, methodName, target);
+            clearOutputTranscript();
+            return result;
+        } catch (RuntimeException | LinkageError e) {
+            clearOutputTranscript();
+            return 1;
+        } finally {
+            notifyingObjectDestructionRequested = false;
+        }
+    }
+
     private String normalizeInternalName(String internalName) {
         String normalized = internalName;
         while (normalized.startsWith("/")) {
@@ -1179,7 +1305,7 @@ public final class LPCRuntime {
                 pipeline.run(unit.sourcePath(), unit.source(), unit.sourceName(), unit.displayPath(), ParserOptions.defaults());
 
         if (!result.getProblems().isEmpty()) {
-            throw new LPCRuntimeException(formatProblems(result.getProblems()), result.getProblems());
+            throw compilationFailure(internalName, result.getProblems());
         }
 
         byte[] bytecode = result.getBytecode();
