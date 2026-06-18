@@ -1,0 +1,46 @@
+{
+  "format" : "jvmud.lpc-object-state",
+  "version" : 1,
+  "fields" : {
+    "obj.mail_reader.messages" : {
+      "type" : "string",
+      "value" : "Protasm\n**\nSubj: You are a wimpy girl\n\nCc: solfeggio\nDate: Jun 18\n\nAnd I know it for sure, bro.  ha ha ha\n\n**\n"
+    },
+    "obj.mail_reader.new_mail" : {
+      "type" : "int",
+      "value" : 1
+    },
+    "obj.mail_reader.arr_messages" : {
+      "type" : "null",
+      "value" : null
+    },
+    "obj.mail_reader.loaded" : {
+      "type" : "int",
+      "value" : 0
+    },
+    "obj.mail_reader.curr_mess" : {
+      "type" : "int",
+      "value" : 0
+    },
+    "obj.mail_reader.new_message" : {
+      "type" : "string",
+      "value" : "And I know it for sure, bro.  ha ha ha\n"
+    },
+    "obj.mail_reader.new_subject" : {
+      "type" : "string",
+      "value" : "Subj: You are a wimpy girl\n"
+    },
+    "obj.mail_reader.new_dest" : {
+      "type" : "string",
+      "value" : "solfeggio"
+    },
+    "obj.mail_reader.new_cc" : {
+      "type" : "string",
+      "value" : "look"
+    },
+    "obj.mail_reader.is_reading" : {
+      "type" : "int",
+      "value" : 0
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "format" : "jvmud.lpc-object-state",
+  "version" : 1,
+  "fields" : {
+    "obj.bull_board.messages" : {
+      "type" : "string",
+      "value" : "nullSolfeggio is a girl(Protasm, Jun 18):\n**\nAnd I know for sure.\n\n**\n"
+    },
+    "obj.bull_board.new_hd" : {
+      "type" : "string",
+      "value" : ""
+    },
+    "obj.bull_board.new_body" : {
+      "type" : "string",
+      "value" : ""
+    },
+    "obj.bull_board.num_messages" : {
+      "type" : "int",
+      "value" : 1
+    },
+    "obj.bull_board.who" : {
+      "type" : "null",
+      "value" : null
+    }
+  }
+}

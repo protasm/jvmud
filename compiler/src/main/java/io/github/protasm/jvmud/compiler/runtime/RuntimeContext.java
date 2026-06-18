@@ -49,6 +49,8 @@ public final class RuntimeContext {
     private IncludeResolver includeResolver;
     private final Map<String, Object> objects = new LinkedHashMap<>();
     private final Map<Object, String> objectIds = new IdentityHashMap<>();
+    private final Set<Object> destroyedObjects =
+            Collections.newSetFromMap(new IdentityHashMap<>());
     private final Map<Object, Object> environments = new IdentityHashMap<>();
     private final Map<Object, List<Object>> inventories = new IdentityHashMap<>();
     private final Map<String, Map<String, Object>> entityAliases = new LinkedHashMap<>();
@@ -428,6 +430,7 @@ public final class RuntimeContext {
         if (previousObject != null && previousObject != object) {
             objectIds.remove(previousObject);
         }
+        destroyedObjects.remove(object);
         objects.put(name, object);
         objectIds.put(object, name);
     }
@@ -458,6 +461,10 @@ public final class RuntimeContext {
 
     public String objectId(Object object) {
         return objectIds.get(object);
+    }
+
+    public boolean isDestroyedObject(Object object) {
+        return destroyedObjects.contains(object);
     }
 
     public Object cloneObject(String sourcePath) {
@@ -980,6 +987,7 @@ public final class RuntimeContext {
         if (id != null) {
             objects.remove(id);
         }
+        destroyedObjects.add(object);
     }
 
     private boolean isLpcFalse(Object value) {
@@ -1504,6 +1512,9 @@ public final class RuntimeContext {
     private Object resolveInvocationTarget(Object target) {
         if (target instanceof String path) {
             return loadOrGetObject(path);
+        }
+        if (destroyedObjects.contains(target)) {
+            return null;
         }
         return target;
     }

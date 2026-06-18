@@ -25,6 +25,11 @@ public final class Truth {
             return false;
         }
 
+        RuntimeContext context = RuntimeContextHolder.current();
+        if (context != null && context.isDestroyedObject(value)) {
+            return false;
+        }
+
         if (value instanceof Boolean b) {
             return b;
         }

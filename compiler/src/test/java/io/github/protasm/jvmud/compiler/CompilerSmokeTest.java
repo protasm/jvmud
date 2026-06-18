@@ -2753,6 +2753,53 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void destructedObjectReferencesAreFalseAndIgnoreOptionalCalls() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle victim = runtime.loadSource("smoke/doomed.c", """
+                string query_name() {
+                    return "Doomed";
+                }
+                """);
+        LPCObjectHandle observer = runtime.loadSource("smoke/observer.c", """
+                object victim;
+                int branch;
+                mixed response;
+
+                void set_victim(object ob) {
+                    victim = ob;
+                }
+
+                void check_victim() {
+                    if (victim)
+                        branch = 1;
+                    else
+                        branch = 2;
+
+                    response = victim->query_name();
+                }
+
+                int query_branch() {
+                    return branch;
+                }
+
+                mixed query_response() {
+                    return response;
+                }
+                """);
+
+        observer.invoke("set_victim", victim.instance());
+        observer.invoke("check_victim");
+        assertEquals(1, observer.invoke("query_branch"));
+        assertEquals("Doomed", observer.invoke("query_response"));
+
+        runtime.destructObject(victim.instance());
+        observer.invoke("check_victim");
+
+        assertEquals(2, observer.invoke("query_branch"));
+        assertEquals(0, observer.invoke("query_response"));
+    }
+
+    @Test
     void destructCancelsDeferredCallback() {
         WorldScheduler scheduler = new WorldScheduler();
         LPCRuntime runtime = temporalRuntime(scheduler, 1);

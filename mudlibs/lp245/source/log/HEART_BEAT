@@ -1,0 +1,2 @@
+culprit=obj/player#clone1 program=obj/player#clone1 line=0
+Failed to call heart_beat on obj/player#clone1: Unknown function 'intp' with arity 1
