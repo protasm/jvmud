@@ -12,10 +12,47 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Reads JVMud-native mudlib boundary declarations from a simple manifest file. */
+/**
+ * Reads JVMud-native mudlib boundary declarations from a simple manifest file.
+ *
+ * <p>The manifest is intentionally small: each non-comment line is a {@code key = value} or
+ * {@code key: value} declaration, with comma-separated values accepted where a key supports
+ * multiple entries. Lifecycle hooks are declared either as bare handled events:</p>
+ *
+ * <pre>{@code
+ * handled_lifecycle_events = scheduled_tick
+ * }</pre>
+ *
+ * <p>or as event-to-method mappings:</p>
+ *
+ * <pre>{@code
+ * lifecycle.object_loaded = reset
+ * lifecycle.interaction_scope_started = init
+ * lifecycle.player_session_connected = logon
+ * }</pre>
+ *
+ * <p>The {@code lifecycle.} key suffix is parsed with {@link #lifecycleEvent(String)}, so manifest
+ * authors may use lower-case names, hyphens, or spaces. The resulting event stays JVMud-native;
+ * the value remains the mudlib's method name.</p>
+ */
 public final class MudlibBoundaryConfigReader {
     private MudlibBoundaryConfigReader() {}
 
+    /**
+     * Reads and normalizes a mudlib boundary manifest.
+     *
+     * <p>{@code mudlibRoot} is the fallback filesystem root for mudlib-absolute LPC paths. If the
+     * manifest declares {@code mudlib_root}, relative values are resolved against the manifest
+     * file's directory.</p>
+     *
+     * @param mudlibRoot fallback mudlib root directory
+     * @param configPath manifest path relative to {@code mudlibRoot}
+     * @return immutable boundary metadata
+     * @throws IOException if the manifest cannot be read
+     * @throws IllegalArgumentException if a line, enum name, boolean, duration, or bounded integer
+     *         value is invalid
+     * @throws NullPointerException if either argument is {@code null}
+     */
     public static MudlibBoundary read(Path mudlibRoot, String configPath) throws IOException {
         Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         Objects.requireNonNull(configPath, "configPath");
@@ -48,6 +85,19 @@ public final class MudlibBoundaryConfigReader {
         return builder.build();
     }
 
+    /**
+     * Parses a lifecycle event name from mudlib configuration.
+     *
+     * <p>Names are trimmed, hyphens and spaces become underscores, and matching is case-insensitive.
+     * A few older boundary names are accepted as aliases so existing manifests keep working while
+     * the public contract uses the current {@link MudlibLifecycleEvent} names.</p>
+     *
+     * @param name manifest event name, such as {@code object_loaded} or {@code interaction scope
+     *        started}
+     * @return matching lifecycle event
+     * @throws IllegalArgumentException if the normalized name is not a known event or alias
+     * @throws NullPointerException if {@code name} is {@code null}
+     */
     public static MudlibLifecycleEvent lifecycleEvent(String name) {
         String normalized = normalizeLifecycleEventName(name);
         return switch (normalized) {

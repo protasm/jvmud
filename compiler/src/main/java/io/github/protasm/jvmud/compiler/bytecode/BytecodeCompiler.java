@@ -128,7 +128,7 @@ public final class BytecodeCompiler {
 
     private void emitFieldInitializers(MethodVisitor mv, String internalName, List<IRField> fields) {
         for (IRField field : fields) {
-            if (field.initializer() == null)
+            if (field.initializer() == null && field.type().kind() != RuntimeValueKind.MIXED)
                 continue;
 
             // Field initializers are part of the object definition and run exactly once per
@@ -136,7 +136,11 @@ public final class BytecodeCompiler {
             // invoking any mudlib-defined hooks here; mudlib policy remains explicit and
             // user-controlled.
             mv.visitVarInsn(ALOAD, 0);
-            emitExpression(mv, internalName, null, field.initializer());
+            if (field.initializer() == null) {
+                emitMixedZero(mv);
+            } else {
+                emitExpression(mv, internalName, null, field.initializer());
+            }
             mv.visitFieldInsn(PUTFIELD, field.ownerInternalName(), field.name(), descriptor(field.type()));
         }
     }
@@ -180,6 +184,10 @@ public final class BytecodeCompiler {
             case FLOAT -> {
                 mv.visitInsn(FCONST_0);
                 mv.visitVarInsn(FSTORE, local.slot());
+            }
+            case MIXED -> {
+                emitMixedZero(mv);
+                mv.visitVarInsn(ASTORE, local.slot());
             }
             case VOID -> {}
             default -> {
@@ -1254,5 +1262,10 @@ public final class BytecodeCompiler {
             mv.visitIntInsn(SIPUSH, value);
         else
             mv.visitLdcInsn(value);
+    }
+
+    private void emitMixedZero(MethodVisitor mv) {
+        pushInt(mv, 0);
+        mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
     }
 }

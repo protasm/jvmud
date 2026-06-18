@@ -2851,6 +2851,35 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void mixedLocalsDefaultToZeroForArithmeticCompatibility() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+
+        LPCObjectHandle object = runtime.loadSource("smoke/default_mixed_local.c", """
+                int value() {
+                    mixed unset;
+                    return unset + 4;
+                }
+                """);
+
+        assertEquals(4, object.invoke("value"));
+    }
+
+    @Test
+    void mixedFieldsDefaultToZeroForArithmeticCompatibility() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+
+        LPCObjectHandle object = runtime.loadSource("smoke/default_mixed_field.c", """
+                mixed unset;
+
+                int value() {
+                    return unset + 4;
+                }
+                """);
+
+        assertEquals(4, object.invoke("value"));
+    }
+
+    @Test
     void primitiveArgumentsAreBoxedForExplicitMixedMethodParameters() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 

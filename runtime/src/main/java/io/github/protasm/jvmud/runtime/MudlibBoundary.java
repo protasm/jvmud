@@ -15,6 +15,17 @@ import java.util.Set;
  *
  * <p>The paths recorded here point to mudlib objects that perform translation. This class does not
  * implement legacy LP engine behavior and does not define engine concepts using legacy names.</p>
+ *
+ * <p>Lifecycle hooks are registered here as mappings from {@link MudlibLifecycleEvent} values to
+ * mudlib method names. The event is the JVMud-native contract; the method name is mudlib policy.
+ * For example, an LP245 compatibility boundary can map {@link MudlibLifecycleEvent#OBJECT_LOADED}
+ * to {@code reset} and {@link MudlibLifecycleEvent#INTERACTION_SCOPE_STARTED} to {@code init}
+ * without making those legacy method names part of the engine ontology.</p>
+ *
+ * <p>A mapping is optional. When an event occurs and no method is configured, JVMud skips the
+ * mudlib call and continues the engine-owned operation. When a method is configured, the runtime
+ * invokes it on the event's target object or on the configured boundary object, depending on the
+ * event definition.</p>
  */
 public final class MudlibBoundary {
     public static final int DEFAULT_MAX_LINE_LENGTH = 80;
@@ -144,22 +155,53 @@ public final class MudlibBoundary {
         return Math.toIntExact(temporalTickInterval.getSeconds());
     }
 
-    /** Returns lifecycle events the mudlib has declared interest in handling. */
+    /**
+     * Returns lifecycle events the mudlib has declared interest in handling.
+     *
+     * <p>This set includes events declared with {@link Builder#handle(MudlibLifecycleEvent)} and
+     * events that have explicit method mappings through {@link Builder#lifecycleMethod(
+     * MudlibLifecycleEvent, String)}. A declared event without a method mapping is useful as
+     * boundary metadata, but JVMud can only invoke hooks that also have a mapped method.</p>
+     *
+     * @return immutable lifecycle event declarations
+     */
     public Set<MudlibLifecycleEvent> lifecycleEvents() {
         return lifecycleEvents;
     }
 
-    /** Returns explicit lifecycle event-to-method mappings declared by the mudlib. */
+    /**
+     * Returns explicit lifecycle event-to-method mappings declared by the mudlib.
+     *
+     * <p>Keys are JVMud-native event names. Values are LPC method names to invoke when those events
+     * are delivered.</p>
+     *
+     * @return immutable map from lifecycle event to mudlib method name
+     */
     public Map<MudlibLifecycleEvent, String> lifecycleMethods() {
         return lifecycleMethods;
     }
 
-    /** Returns the configured mudlib method for an event, if one was declared. */
+    /**
+     * Returns the configured mudlib method for an event, if one was declared.
+     *
+     * @param event lifecycle event to inspect
+     * @return configured mudlib method name, or empty when the event has no method mapping
+     * @throws NullPointerException if {@code event} is {@code null}
+     */
     public Optional<String> lifecycleMethod(MudlibLifecycleEvent event) {
         return Optional.ofNullable(lifecycleMethods.get(Objects.requireNonNull(event, "event")));
     }
 
-    /** Returns whether the mudlib declares any handler for an event. */
+    /**
+     * Returns whether the mudlib declares any interest in an event.
+     *
+     * <p>This is broader than {@link #lifecycleMethod(MudlibLifecycleEvent)}: it is true for both a
+     * bare event declaration and an explicit event-to-method mapping.</p>
+     *
+     * @param event lifecycle event to inspect
+     * @return true when the event was declared or mapped
+     * @throws NullPointerException if {@code event} is {@code null}
+     */
     public boolean handles(MudlibLifecycleEvent event) {
         Objects.requireNonNull(event, "event");
         return lifecycleEvents.contains(event) || lifecycleMethods.containsKey(event);
@@ -377,13 +419,35 @@ public final class MudlibBoundary {
             return temporalTickInterval(Duration.ofSeconds(temporalTickIntervalSeconds));
         }
 
-        /** Declares interest in a lifecycle event without naming a specific method. */
+        /**
+         * Declares interest in a lifecycle event without naming a specific method.
+         *
+         * <p>This records boundary intent and makes {@link MudlibBoundary#handles(
+         * MudlibLifecycleEvent)} return true, but it does not by itself give JVMud a method to
+         * invoke. Use {@link #lifecycleMethod(MudlibLifecycleEvent, String)} for hooks that should
+         * actually call into LPC code.</p>
+         *
+         * @param event lifecycle event the mudlib understands
+         * @return this builder
+         * @throws NullPointerException if {@code event} is {@code null}
+         */
         public Builder handle(MudlibLifecycleEvent event) {
             lifecycleEvents.add(Objects.requireNonNull(event, "event"));
             return this;
         }
 
-        /** Maps a lifecycle event to a mudlib method name. Blank method names remove the mapping. */
+        /**
+         * Maps a lifecycle event to a mudlib method name.
+         *
+         * <p>The event remains JVMud-native while the method name is mudlib-specific. Blank method
+         * names remove any existing mapping. Nonblank names also mark the event as handled so
+         * {@link MudlibBoundary#handles(MudlibLifecycleEvent)} remains true.</p>
+         *
+         * @param event lifecycle event to map
+         * @param methodName mudlib method name to invoke for the event
+         * @return this builder
+         * @throws NullPointerException if {@code event} is {@code null}
+         */
         public Builder lifecycleMethod(MudlibLifecycleEvent event, String methodName) {
             Objects.requireNonNull(event, "event");
             String normalized = normalizeOptionalText(methodName);
