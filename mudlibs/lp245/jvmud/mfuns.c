@@ -194,6 +194,10 @@ status living(mixed ob) {
   return jvmud_entity_commands_enabled(ob);
 }
 
+status intp(mixed value) {
+  return jvmud_is_int(value);
+}
+
 string lower_case(mixed value) {
   return jvmud_lowercase_text(value);
 }
@@ -208,6 +212,10 @@ void move_object(mixed ob, mixed destination) {
 
 object next_inventory(mixed ob) {
   return jvmud_next_entity_at(ob);
+}
+
+status objectp(mixed value) {
+  return jvmud_is_object(value);
 }
 
 status pointerp(mixed value) {

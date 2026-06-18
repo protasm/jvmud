@@ -2277,6 +2277,34 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void coreTypePredicatesReportIntsAndLiveObjects() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/type_predicates.c", """
+                int int_status(mixed value) {
+                    return jvmud_is_int(value);
+                }
+
+                int object_status(mixed value) {
+                    return jvmud_is_object(value);
+                }
+
+                mixed *array_value() {
+                    return ({ 1, 2 });
+                }
+                """);
+
+        assertEquals(1, object.invoke("int_status", 7));
+        assertEquals(0, object.invoke("int_status", "7"));
+        assertEquals(0, object.invoke("int_status", object.invoke("array_value")));
+        assertEquals(1, object.invoke("object_status", object.instance()));
+        assertEquals(0, object.invoke("object_status", "smoke/type_predicates"));
+        runtime.destructObject(object.instance());
+        assertEquals(0, object.invoke("object_status", object.instance()));
+    }
+
+    @Test
     void runtimeUsesBoundaryMudlibRootForAbsoluteInherits() throws Exception {
         Path mudlibRoot = tempDir.resolve("realms");
         Files.createDirectories(mudlibRoot.resolve("areas"));
@@ -2477,6 +2505,70 @@ final class CompilerSmokeTest {
         mover.invoke("move_actor", actor.instance());
 
         assertEquals(1, actor.invoke("visible_light"));
+    }
+
+    @Test
+    void currentObjectSeesInventoryLightInDarkEnvironment() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+
+        LPCObjectHandle room = runtime.loadSource("smoke/dark_room.c", "");
+        LPCObjectHandle actor = runtime.loadSource("smoke/light_actor.c", """
+                int visible_light() {
+                    return jvmud_set_light(0);
+                }
+                """);
+        LPCObjectHandle torch = runtime.loadSource("smoke/torch.c", """
+                void light() {
+                    jvmud_set_light(1);
+                }
+                """);
+
+        runtime.moveObject(actor.instance(), room.instance());
+        runtime.moveObject(torch.instance(), actor.instance());
+        torch.invoke("light");
+
+        assertEquals(1, actor.invoke("visible_light"));
+    }
+
+    @Test
+    void inventoryLightDoesNotPassThroughOpaqueContainers() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+
+        LPCObjectHandle room = runtime.loadSource("smoke/dark_room.c", "");
+        LPCObjectHandle actor = runtime.loadSource("smoke/light_actor.c", """
+                int visible_light() {
+                    return jvmud_set_light(0);
+                }
+                """);
+        LPCObjectHandle box = runtime.loadSource("smoke/opaque_box.c", """
+                void make_opaque() {
+                    jvmud_set_entity_translucent(jvmud_current_entity(), 0);
+                }
+
+                int is_translucent() {
+                    return jvmud_entity_translucent(jvmud_current_entity());
+                }
+                """);
+        LPCObjectHandle torch = runtime.loadSource("smoke/torch.c", """
+                void light() {
+                    jvmud_set_light(1);
+                }
+                """);
+
+        runtime.moveObject(actor.instance(), room.instance());
+        runtime.moveObject(box.instance(), actor.instance());
+        runtime.moveObject(torch.instance(), box.instance());
+        torch.invoke("light");
+
+        assertEquals(1, box.invoke("is_translucent"));
+        assertEquals(1, actor.invoke("visible_light"));
+
+        box.invoke("make_opaque");
+
+        assertEquals(0, box.invoke("is_translucent"));
+        assertEquals(0, actor.invoke("visible_light"));
     }
 
     @Test

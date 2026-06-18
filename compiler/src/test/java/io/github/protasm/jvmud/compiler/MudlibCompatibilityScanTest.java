@@ -2,6 +2,7 @@ package io.github.protasm.jvmud.compiler;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -380,6 +381,31 @@ final class MudlibCompatibilityScanTest {
                 () -> runtime.inspectObject(player).fields().toString());
         assertEquals(1, runtime.withCommandActor(player, () -> runtime.invokeObject(player, "pick_up", "stick")));
         assertNotNull(runtime.present("stick", player), runtime.outputTranscript());
+
+        runtime.refreshCommandActions(player);
+        runtime.clearOutputTranscript();
+        assertEquals(1, runtime.dispatchCommand(player, "light stick"));
+
+        LPCObjectHandle well = runtime.load("room/well");
+        runtime.moveObject(player, well.instance());
+        runtime.clearOutputTranscript();
+        runtime.withCommandActor(player, () -> runtime.invokeObject(player, "look", (Object) null));
+
+        assertFalse(runtime.outputTranscript().contains("It is too dark."), runtime.outputTranscript());
+        assertTrue(runtime.outputTranscript().contains("You are down the well."), runtime.outputTranscript());
+    }
+
+    @Test
+    void vanillaPlayerCanUpdateAlignmentThroughIntPredicate() throws IOException {
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(boundary);
+
+        Object player = runtime.cloneObject("obj/player");
+        runtime.withCommandActor(player, () -> runtime.invokeObject(player, "logon2", "aligntest"));
+
+        assertDoesNotThrow(() -> runtime.invokeObject(player, "add_alignment", 10));
     }
 
     @Test
@@ -670,11 +696,13 @@ final class MudlibCompatibilityScanTest {
         case "find_living" -> support("Partial", "Looks up objects registered through set_living_name.");
         case "find_player" -> support("Stubbed", "Mudlib mfun currently returns 0; real connected-player lookup remains future work.");
         case "input_to" -> support("Partial", "Captures the next line of bound session input for a persona; no-echo handling remains transport work.");
+        case "intp" -> support("Implemented", "Mudlib mfun delegates to JVMud integer type checking.");
         case "next_inventory" -> support("Implemented", "RuntimeContext can walk sibling inventory links.");
         case "living" -> support("Partial", "Returns true for objects that have called enable_commands.");
         case "lower_case" -> support("Implemented", "Mudlib mfun delegates to JVMud text lowercasing.");
         case "log_file" -> support("Stubbed", "Mudlib mfun accepts the call and discards text until log policy exists.");
         case "move_object" -> support("Implemented", "RuntimeContext moves objects between inventories with cycle checks.");
+        case "objectp" -> support("Implemented", "Mudlib mfun delegates to JVMud live-object type checking.");
         case "present" -> support("Partial", "RuntimeContext searches inventory by identity or id method.");
         case "previous_object" -> support("Implemented", "Returns the caller object from RuntimeContext's current-object stack, with current object fallback.");
         case "query_idle" -> support("Implemented", "Reads idle time from the bound session/persona record.");
@@ -703,7 +731,6 @@ final class MudlibCompatibilityScanTest {
                 "file_size",
                 "filter_objects",
                 "find_object",
-                "intp",
                 "localcmd",
                 "ls",
                 "mkdir",

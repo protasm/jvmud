@@ -56,6 +56,8 @@ public final class RuntimeContext {
     private final Map<String, Map<String, Object>> entityAliases = new LinkedHashMap<>();
     private final Map<Object, Map<String, String>> aliasesByEntity = new IdentityHashMap<>();
     private final Map<Object, Integer> lightLevels = new IdentityHashMap<>();
+    private final Set<Object> opaqueEntities =
+            Collections.newSetFromMap(new IdentityHashMap<>());
     private final Set<Object> commandEnabledEntities =
             Collections.newSetFromMap(new IdentityHashMap<>());
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
@@ -935,6 +937,21 @@ public final class RuntimeContext {
         return commandEnabledEntities.contains(object) ? 1 : 0;
     }
 
+    public void setEntityTranslucent(Object object, boolean translucent) {
+        if (object == null) {
+            return;
+        }
+        if (translucent) {
+            opaqueEntities.remove(object);
+        } else {
+            opaqueEntities.add(object);
+        }
+    }
+
+    public boolean entityTranslucent(Object object) {
+        return object == null || !opaqueEntities.contains(object);
+    }
+
     public Object firstInventory(Object container) {
         List<Object> inventory = inventoryFor(container);
         return inventory.isEmpty() ? null : inventory.get(0);
@@ -978,6 +995,7 @@ public final class RuntimeContext {
         moveObject(object, null);
         inventories.remove(object);
         lightLevels.remove(object);
+        opaqueEntities.remove(object);
         removeEntityAliases(object);
         commandEnabledEntities.remove(object);
         commandActions.remove(object);
@@ -1329,11 +1347,35 @@ public final class RuntimeContext {
     }
 
     private int visibleLight(Object object) {
-        int light = 0;
-        Object current = object;
+        return visibleLight(object, Collections.newSetFromMap(new IdentityHashMap<>()));
+    }
+
+    private int visibleLight(Object object, Set<Object> visited) {
+        Object root = outermostEnvironment(object);
+        return visibleLightIn(root, visited);
+    }
+
+    private Object outermostEnvironment(Object object) {
+        Object root = object;
+        Object current = environments.get(object);
         while (current != null) {
-            light += lightLevels.getOrDefault(current, 0);
+            root = current;
             current = environments.get(current);
+        }
+        return root;
+    }
+
+    private int visibleLightIn(Object object, Set<Object> visited) {
+        if (object == null || !visited.add(object)) {
+            return 0;
+        }
+
+        int light = lightLevels.getOrDefault(object, 0);
+        if (!entityTranslucent(object)) {
+            return light;
+        }
+        for (Object child : inventoryFor(object)) {
+            light += visibleLightIn(child, visited);
         }
         return light;
     }

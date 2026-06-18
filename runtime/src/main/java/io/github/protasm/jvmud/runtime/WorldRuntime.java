@@ -125,6 +125,18 @@ public final class WorldRuntime {
         return entities.get(id);
     }
 
+    /** Returns whether light and other ambient perception can pass through an entity container. */
+    public boolean translucent(Entity entity) {
+        ensureKnownEntity(entity);
+        return entity.translucent();
+    }
+
+    /** Sets whether light and other ambient perception can pass through an entity container. */
+    public void setTranslucent(Entity entity, boolean translucent) {
+        ensureKnownEntity(entity);
+        entity.setTranslucent(translucent);
+    }
+
     /**
      * Removes a known entity from this world runtime.
      *

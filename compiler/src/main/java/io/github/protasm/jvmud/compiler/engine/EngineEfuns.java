@@ -128,6 +128,11 @@ import javax.crypto.spec.PBEKeySpec;
  *       entity has an alias.</li>
  *   <li>{@code jvmud_entity_commands_enabled(mixed entity) : status} reports whether command
  *       handling is enabled for an entity.</li>
+ *   <li>{@code jvmud_set_entity_translucent(mixed entity, status translucent) : void} controls
+ *       whether ambient perception such as light passes through an entity container. Entities are
+ *       translucent by default.</li>
+ *   <li>{@code jvmud_entity_translucent(mixed entity) : status} reports whether an entity is
+ *       currently translucent.</li>
  * </ul>
  *
  * <h2>Session, users, persistence, and security helpers</h2>
@@ -166,6 +171,10 @@ import javax.crypto.spec.PBEKeySpec;
  *       inclusive start and end indexes.</li>
  *   <li>{@code jvmud_is_string(mixed value) : status} reports whether a value is Java-backed LPC
  *       string data.</li>
+ *   <li>{@code jvmud_is_int(mixed value) : status} reports whether a value is Java-backed LPC
+ *       integer data.</li>
+ *   <li>{@code jvmud_is_object(mixed value) : status} reports whether a value is a live runtime
+ *       object.</li>
  *   <li>{@code jvmud_is_array(mixed value) : status} reports whether a value is Java-backed LPC
  *       array data.</li>
  *   <li>{@code allocate(int size) : array} returns a zero-filled LPC array of non-negative size.</li>
@@ -308,6 +317,12 @@ public final class EngineEfuns {
                 }));
         efuns.add(efun("jvmud_is_string", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof String ? 1 : 0));
+        efuns.add(efun("jvmud_is_int", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> args[0] instanceof Number number
+                        && !(number instanceof Float)
+                        && !(number instanceof Double) ? 1 : 0));
+        efuns.add(efun("jvmud_is_object", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.objectId(args[0]) != null ? 1 : 0));
         efuns.add(efun("jvmud_is_array", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof List<?> ? 1 : 0));
         for (int arity = 3; arity <= 8; arity++) {
@@ -342,6 +357,14 @@ public final class EngineEfuns {
                 (runtime, args) -> runtime.entityHasAlias(args[0], args[1])));
         efuns.add(efun("jvmud_entity_commands_enabled", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.entityCommandsEnabled(args[0])));
+        efuns.add(efun("jvmud_set_entity_translucent", LPCType.LPCVOID,
+                List.of(LPCType.LPCMIXED, LPCType.LPCSTATUS),
+                (runtime, args) -> {
+                    runtime.setEntityTranslucent(args[0], Truth.isTruthy(args[1]));
+                    return null;
+                }));
+        efuns.add(efun("jvmud_entity_translucent", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.entityTranslucent(args[0]) ? 1 : 0));
         efuns.add(efun("jvmud_first_entity_at", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.firstInventory(args[0])));
         efuns.add(efun("jvmud_next_entity_at", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),

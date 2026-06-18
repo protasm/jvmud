@@ -9,6 +9,7 @@ public final class Entity implements Location {
     private final String id;
     private final String displayName;
     private final EnumSet<Capability> capabilities;
+    private boolean translucent = true;
 
     Entity(String id, String displayName, Set<Capability> capabilities) {
         this.id = requireIdentifier(id, "id");
@@ -34,6 +35,14 @@ public final class Entity implements Location {
 
     public Set<Capability> capabilities() {
         return Set.copyOf(capabilities);
+    }
+
+    public boolean translucent() {
+        return translucent;
+    }
+
+    void setTranslucent(boolean translucent) {
+        this.translucent = translucent;
     }
 
     private static String requireIdentifier(String value, String name) {

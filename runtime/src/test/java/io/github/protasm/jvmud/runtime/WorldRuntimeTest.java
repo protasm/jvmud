@@ -67,6 +67,19 @@ final class WorldRuntimeTest {
     }
 
     @Test
+    void entityContainersAreTranslucentByDefaultButCanBeOpaque() {
+        WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
+        Place green = runtime.createPlace("room/village/vill_green", "Village Green");
+        Entity bag = runtime.createEntity("obj/bag", "bag", green);
+
+        assertTrue(runtime.translucent(bag));
+
+        runtime.setTranslucent(bag, false);
+
+        assertTrue(!runtime.translucent(bag));
+    }
+
+    @Test
     void rejectsContainmentCycles() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
         Place green = runtime.createPlace("room/village/vill_green", "Village Green");
