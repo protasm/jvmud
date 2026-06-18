@@ -13,6 +13,7 @@ import static io.github.protasm.jvmud.compiler.parser.PrattParser.Precedence.PRE
 import static io.github.protasm.jvmud.compiler.parser.PrattParser.Precedence.PREC_TERM;
 import static io.github.protasm.jvmud.compiler.parser.PrattParser.Precedence.PREC_TERNARY;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_APOSTROPHE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_BANG;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_BANG_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET;
@@ -24,6 +25,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_FLOAT_LITERAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_GREATER;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_HASH;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_IDENTIFIER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_INT_LITERAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_BRACE;
@@ -51,12 +53,14 @@ import java.util.Map;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixBinaryOp;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixIndex;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixInvoke;
+import io.github.protasm.jvmud.compiler.parser.parselet.InfixQualifiedCall;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixTernary;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixIdentifier;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixLParen;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixLiteral;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixArrayLiteral;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixNumber;
+import io.github.protasm.jvmud.compiler.parser.parselet.PrefixQuotedReference;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixString;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixSuperCall;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixUnaryOp;
@@ -97,6 +101,9 @@ public class PrattParser {
         tokenTypeToRule.put(T_LEFT_BRACKET, new ParseRule(null, new InfixIndex(), Precedence.PREC_CALL));
         tokenTypeToRule.put(T_RIGHT_ARROW, new ParseRule(null, new InfixInvoke(), Precedence.PREC_CALL));
 
+        tokenTypeToRule.put(T_APOSTROPHE, new ParseRule(new PrefixQuotedReference(false), null, PREC_NONE));
+        tokenTypeToRule.put(T_HASH, new ParseRule(new PrefixQuotedReference(true), null, PREC_NONE));
+
         tokenTypeToRule.put(T_BANG, new ParseRule(new PrefixUnaryOp(), null, PREC_NONE));
         tokenTypeToRule.put(T_TILDE, new ParseRule(new PrefixUnaryOp(), null, PREC_NONE));
 
@@ -130,7 +137,7 @@ public class PrattParser {
         tokenTypeToRule.put(T_FLOAT_LITERAL, new ParseRule(new PrefixNumber(), null, PREC_NONE));
         tokenTypeToRule.put(T_STRING_LITERAL, new ParseRule(new PrefixString(), null, PREC_NONE));
         tokenTypeToRule.put(T_TRUE, new ParseRule(new PrefixLiteral(), null, PREC_NONE));
-        tokenTypeToRule.put(T_SUPER, new ParseRule(new PrefixSuperCall(), null, PREC_NONE));
+        tokenTypeToRule.put(T_SUPER, new ParseRule(new PrefixSuperCall(), new InfixQualifiedCall(), Precedence.PREC_CALL));
 
     }
 

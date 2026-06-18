@@ -51,6 +51,7 @@ final class RealmsMudCompatibilityScanTest {
 
         RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(sourceRoot, List.of()));
         EngineEfuns.registerCore(context);
+        context.setMudlibBoundary(boundary);
         context.setMfunObjectPath(boundary.mfunObjectPath().orElse(null));
         CompilationPipeline pipeline = new CompilationPipeline("java/lang/Object", context);
         Map<String, CompilationResult> results = new LinkedHashMap<>();

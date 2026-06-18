@@ -43,11 +43,13 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedCall;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedIdentifier;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedParentCall;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedQualifiedCall;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
@@ -342,6 +344,12 @@ public final class SemanticAnalyzer {
             return;
         }
 
+        if (statement instanceof ASTStmtForeach stmtForeach) {
+            inspectInitializerExpression(stmtForeach.iterable(), problems);
+            validateInitializers(stmtForeach.body(), problems);
+            return;
+        }
+
         if (statement instanceof ASTStmtWhile stmtWhile) {
             validateInitializers(stmtWhile.body(), problems);
             return;
@@ -387,6 +395,9 @@ public final class SemanticAnalyzer {
             return referencesArguments(call.arguments(), local);
 
         if (expression instanceof ASTExprCallEfun call)
+            return referencesArguments(call.arguments(), local);
+
+        if (expression instanceof ASTExprUnresolvedQualifiedCall call)
             return referencesArguments(call.arguments(), local);
 
         if (expression instanceof ASTExprArrayStore store)
@@ -812,6 +823,9 @@ public final class SemanticAnalyzer {
             if (expression instanceof ASTExprUnresolvedParentCall unresolvedParentCall)
                 return resolveParentCall(unresolvedParentCall, context);
 
+            if (expression instanceof ASTExprUnresolvedQualifiedCall unresolvedQualifiedCall)
+                return resolveQualifiedCall(unresolvedQualifiedCall, context);
+
             if (expression instanceof ASTExprUnresolvedInvoke unresolvedInvoke)
                 return resolveInvoke(unresolvedInvoke, context);
 
@@ -1022,7 +1036,7 @@ public final class SemanticAnalyzer {
             if (method != null)
                 return new ASTExprCallMethod(unresolvedCall.line(), method, resolvedArgs);
 
-            Efun efun = runtimeContext.resolveEfun(unresolvedCall.name(), resolvedArgs.size());
+            Efun efun = resolveDirectEfun(unresolvedCall.name(), resolvedArgs.size());
 
             if (efun != null)
                 return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
@@ -1033,6 +1047,41 @@ public final class SemanticAnalyzer {
                             "Unrecognized method or function '" + unresolvedCall.name() + "'.",
                             unresolvedCall.line()));
             return new ASTExprNull(unresolvedCall.line());
+        }
+
+        private ASTExpression resolveQualifiedCall(
+                ASTExprUnresolvedQualifiedCall unresolvedCall, LocalResolutionContext context) {
+            ASTArguments resolvedArgs = resolveArguments(unresolvedCall.arguments(), context);
+
+            if (!"efun".equals(unresolvedCall.qualifier())) {
+                problems.add(
+                        new CompilationProblem(
+                                CompilationStage.ANALYZE,
+                                "Unsupported qualified call prefix '" + unresolvedCall.qualifier() + "'.",
+                                unresolvedCall.line()));
+                return new ASTExprNull(unresolvedCall.line());
+            }
+
+            Efun efun = resolveDirectEfun(unresolvedCall.name(), resolvedArgs.size());
+
+            if (efun != null)
+                return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
+
+            problems.add(
+                    new CompilationProblem(
+                            CompilationStage.ANALYZE,
+                            "Unrecognized efun '" + unresolvedCall.name() + "'.",
+                            unresolvedCall.line()));
+            return new ASTExprNull(unresolvedCall.line());
+        }
+
+        private Efun resolveDirectEfun(String name, int arity) {
+            Efun efun = runtimeContext.resolveEfun(name, arity);
+            if (efun != null)
+                return efun;
+
+            String engineName = runtimeContext.directEfunName(name);
+            return name.equals(engineName) ? null : runtimeContext.resolveEfun(engineName, arity);
         }
 
         private ASTExpression resolveParentCall(
@@ -1255,6 +1304,24 @@ public final class SemanticAnalyzer {
                         && resolvedBody == stmtFor.body())
                     return stmtFor;
                 return new ASTStmtFor(stmtFor.line(), resolvedInit, resolvedCondition, resolvedUpdate, resolvedBody);
+            }
+
+            if (statement instanceof ASTStmtForeach stmtForeach) {
+                ASTExpression resolvedIterable = resolveExpression(stmtForeach.iterable(), context);
+                context.pushScope();
+                context.declare(List.of(stmtForeach.keyLocal()));
+                if (stmtForeach.valueLocal() != null)
+                    context.declare(List.of(stmtForeach.valueLocal()));
+                ASTStatement resolvedBody = resolveStatement(stmtForeach.body(), context);
+                context.popScope();
+                if (resolvedIterable == stmtForeach.iterable() && resolvedBody == stmtForeach.body())
+                    return stmtForeach;
+                return new ASTStmtForeach(
+                        stmtForeach.line(),
+                        stmtForeach.keyLocal(),
+                        stmtForeach.valueLocal(),
+                        resolvedIterable,
+                        resolvedBody);
             }
 
             if (statement instanceof ASTStmtWhile stmtWhile) {

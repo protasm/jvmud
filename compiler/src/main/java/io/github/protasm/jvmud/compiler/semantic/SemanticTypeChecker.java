@@ -23,6 +23,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFunctionReference;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFalse;
@@ -37,6 +38,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
@@ -44,6 +46,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
@@ -110,6 +113,12 @@ public final class SemanticTypeChecker {
             return;
         }
 
+        if (statement instanceof ASTStmtForeach stmtForeach) {
+            inferExpressionType(stmtForeach.iterable(), context);
+            checkStatement(stmtForeach.body(), context);
+            return;
+        }
+
         if (statement instanceof ASTStmtWhile stmtWhile) {
             inferExpressionType(stmtWhile.condition(), context);
             checkStatement(stmtWhile.body(), context);
@@ -158,6 +167,8 @@ public final class SemanticTypeChecker {
             return LPCType.LPCARRAY;
         if (expression instanceof ASTExprMappingLiteral)
             return LPCType.LPCMAPPING;
+        if (expression instanceof ASTExprSymbolLiteral || expression instanceof ASTExprFunctionReference)
+            return LPCType.LPCMIXED;
 
         if (expression instanceof ASTExprLocalAccess access)
             return valueType(access.local().symbol());

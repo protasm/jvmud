@@ -4,6 +4,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_BANG;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_BANG_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_APOSTROPHE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COLON;
@@ -20,6 +21,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_GREATER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_GREATER_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_HASH;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_IDENTIFIER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_INT_LITERAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_BRACE;
@@ -183,7 +185,11 @@ public class Scanner {
         case '"':
             return stringLiteral();
         case '\'':
+            if (isAlpha(ss.peek()) && ss.peekNext() != '\'')
+                return token(T_APOSTROPHE);
             return characterLiteral();
+        case '#':
+            return token(T_HASH);
         case '&':
             if (ss.match('&'))
                 return token(T_DBL_AMP);

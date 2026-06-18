@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -116,6 +117,7 @@ final class MudlibBoundaryTest {
                 lifecycle.runtime_error = runtime_error
                 lifecycle.scheduled_tick_error = heart_beat_error
                 lifecycle.server_shutdown = notify_shutdown
+                direct_efun.sizeof = jvmud_size
                 temporal_tick_method = heart_beat
                 temporal_tick_interval = 0.25
                 """);
@@ -150,6 +152,8 @@ final class MudlibBoundaryTest {
         assertEquals("runtime_error", boundary.lifecycleMethod(MudlibLifecycleEvent.RUNTIME_ERROR).orElseThrow());
         assertEquals("heart_beat_error", boundary.lifecycleMethod(MudlibLifecycleEvent.SCHEDULED_TICK_ERROR).orElseThrow());
         assertEquals("notify_shutdown", boundary.lifecycleMethod(MudlibLifecycleEvent.SERVER_SHUTDOWN).orElseThrow());
+        assertEquals("jvmud_size", boundary.directEfunAlias("sizeof").orElseThrow());
+        assertEquals(Map.of("sizeof", "jvmud_size"), boundary.directEfunAliases());
         assertEquals("heart_beat", boundary.temporalTickMethod().orElseThrow());
         assertEquals(Duration.ofMillis(250), boundary.temporalTickInterval());
         assertEquals(0, boundary.temporalTickIntervalSeconds());

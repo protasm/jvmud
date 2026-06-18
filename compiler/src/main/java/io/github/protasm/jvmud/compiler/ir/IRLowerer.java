@@ -22,6 +22,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFunctionReference;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFalse;
@@ -38,15 +39,18 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
+import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
@@ -281,6 +285,10 @@ public final class IRLowerer {
             return lowerForStatement(forStmt, current, context, problems);
         }
 
+        if (statement instanceof ASTStmtForeach foreachStmt) {
+            return lowerForeachStatement(foreachStmt, current, context, problems);
+        }
+
         if (statement instanceof ASTStmtWhile whileStmt) {
             return lowerWhileStatement(whileStmt, current, context, problems);
         }
@@ -378,6 +386,100 @@ public final class IRLowerer {
         return mergeBlock;
     }
 
+    private BlockBuilder lowerForeachStatement(
+            ASTStmtForeach foreachStmt,
+            BlockBuilder current,
+            MethodContext context,
+            List<CompilationProblem> problems) {
+        IRLocal sourceLocal = context.addSyntheticLocal(foreachStmt.line(), "$foreach_source", RuntimeTypes.MIXED);
+        IRLocal itemsLocal = context.addSyntheticLocal(
+                foreachStmt.line(), "$foreach_items", RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
+        IRLocal indexLocal = context.addSyntheticLocal(foreachStmt.line(), "$foreach_index", RuntimeTypes.INT);
+
+        IRExpression source = lowerExpression(foreachStmt.iterable(), context, problems);
+        current.addStatement(new IRExpressionStatement(
+                foreachStmt.line(),
+                new IRLocalStore(foreachStmt.line(), sourceLocal, coerceIfNeeded(source, RuntimeTypes.MIXED))));
+
+        boolean keyValueLoop = foreachStmt.hasValueLocal();
+        current.addStatement(new IRExpressionStatement(
+                foreachStmt.line(),
+                new IRLocalStore(
+                        foreachStmt.line(),
+                        itemsLocal,
+                        new IRForeachItems(
+                                foreachStmt.line(),
+                                new IRLocalLoad(foreachStmt.line(), sourceLocal),
+                                keyValueLoop,
+                                RuntimeTypes.arrayOf(RuntimeTypes.MIXED)))));
+
+        current.addStatement(new IRExpressionStatement(
+                foreachStmt.line(),
+                new IRLocalStore(
+                        foreachStmt.line(),
+                        indexLocal,
+                        new IRConstant(foreachStmt.line(), 0, RuntimeTypes.INT))));
+
+        BlockBuilder conditionBlock = context.newBlock("foreach_cond");
+        BlockBuilder bodyBlock = context.newBlock("foreach_body");
+        BlockBuilder updateBlock = context.newBlock("foreach_update");
+        BlockBuilder mergeBlock = context.newBlock("foreach_end");
+
+        current.terminate(new IRJump(foreachStmt.line(), conditionBlock.label()));
+
+        IRExpression condition = new IRBinaryOperation(
+                foreachStmt.line(),
+                BinaryOpType.BOP_LT,
+                new IRLocalLoad(foreachStmt.line(), indexLocal),
+                new IRForeachSize(
+                        foreachStmt.line(),
+                        new IRLocalLoad(foreachStmt.line(), itemsLocal),
+                        RuntimeTypes.INT),
+                RuntimeTypes.STATUS);
+        conditionBlock.terminate(
+                new IRConditionalJump(foreachStmt.line(), condition, bodyBlock.label(), mergeBlock.label()));
+
+        IRLocal keyLocal = context.requireLocal(foreachStmt.keyLocal(), problems);
+        IRExpression item = new IRArrayGet(
+                foreachStmt.line(),
+                new IRLocalLoad(foreachStmt.line(), itemsLocal),
+                new IRLocalLoad(foreachStmt.line(), indexLocal),
+                RuntimeTypes.MIXED);
+        bodyBlock.addStatement(new IRExpressionStatement(
+                foreachStmt.line(),
+                new IRLocalStore(foreachStmt.line(), keyLocal, coerceIfNeeded(item, keyLocal.type()))));
+
+        if (keyValueLoop) {
+            IRLocal valueLocal = context.requireLocal(foreachStmt.valueLocal(), problems);
+            IRExpression value = new IRForeachValue(
+                    foreachStmt.line(),
+                    new IRLocalLoad(foreachStmt.line(), sourceLocal),
+                    new IRLocalLoad(foreachStmt.line(), keyLocal),
+                    RuntimeTypes.MIXED);
+            bodyBlock.addStatement(new IRExpressionStatement(
+                    foreachStmt.line(),
+                    new IRLocalStore(foreachStmt.line(), valueLocal, coerceIfNeeded(value, valueLocal.type()))));
+        }
+
+        context.pushLoop(mergeBlock.label(), updateBlock.label());
+        BlockBuilder bodyTail = lowerStatement(foreachStmt.body(), bodyBlock, context, problems);
+        context.popLoop();
+        if (bodyTail != null && !bodyTail.isTerminated())
+            bodyTail.terminate(new IRJump(foreachStmt.line(), updateBlock.label()));
+
+        IRExpression increment = new IRBinaryOperation(
+                foreachStmt.line(),
+                BinaryOpType.BOP_ADD,
+                new IRLocalLoad(foreachStmt.line(), indexLocal),
+                new IRConstant(foreachStmt.line(), 1, RuntimeTypes.INT),
+                RuntimeTypes.INT);
+        updateBlock.addStatement(new IRExpressionStatement(
+                foreachStmt.line(), new IRLocalStore(foreachStmt.line(), indexLocal, increment)));
+        updateBlock.terminate(new IRJump(foreachStmt.line(), conditionBlock.label()));
+
+        return mergeBlock;
+    }
+
     private BlockBuilder lowerWhileStatement(
             ASTStmtWhile whileStmt,
             BlockBuilder current,
@@ -440,6 +542,12 @@ public final class IRLowerer {
 
         if (expression instanceof ASTExprLiteralString literal)
             return new IRConstant(literal.line(), literal.value(), RuntimeTypes.STRING);
+
+        if (expression instanceof ASTExprSymbolLiteral symbolLiteral)
+            return new IRConstant(symbolLiteral.line(), symbolLiteral.name(), RuntimeTypes.MIXED);
+
+        if (expression instanceof ASTExprFunctionReference functionReference)
+            return new IRConstant(functionReference.line(), "#'" + functionReference.name(), RuntimeTypes.MIXED);
 
         if (expression instanceof ASTExprArrayLiteral arrayLiteral) {
             List<IRExpression> elements = new ArrayList<>();
@@ -760,6 +868,7 @@ public final class IRLowerer {
         private final Deque<String> continueTargets = new ArrayDeque<>();
 
         private int blockCounter = 0;
+        private int syntheticLocalCounter = 0;
 
         private MethodContext(RuntimeType returnType, Map<Symbol, IRField> fieldsBySymbol, String currentInternalName) {
             this.returnType = returnType != null ? returnType : RuntimeTypes.MIXED;
@@ -776,6 +885,19 @@ public final class IRLowerer {
         public void registerLocal(Symbol symbol, IRLocal local) {
             localsBySymbol.put(symbol, local);
             localsBySlot.put(local.slot(), local);
+        }
+
+        public IRLocal addSyntheticLocal(int line, String prefix, RuntimeType type) {
+            int slot = 1;
+            for (IRParameter parameter : parameters)
+                slot = Math.max(slot, parameter.local().slot() + 1);
+            for (IRLocal local : locals)
+                slot = Math.max(slot, local.slot() + 1);
+
+            IRLocal local = new IRLocal(line, prefix + "_" + syntheticLocalCounter++, type, slot, false);
+            locals.add(local);
+            localsBySlot.put(local.slot(), local);
+            return local;
         }
 
         public void pushLoop(String breakTarget, String continueTarget) {

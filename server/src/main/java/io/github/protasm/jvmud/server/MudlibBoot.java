@@ -216,6 +216,8 @@ public final class MudlibBoot {
         configBoundary.lifecycleEvents().forEach(builder::handle);
         objectBoundary.lifecycleMethods().forEach(builder::lifecycleMethod);
         configBoundary.lifecycleMethods().forEach(builder::lifecycleMethod);
+        objectBoundary.directEfunAliases().forEach(builder::directEfunAlias);
+        configBoundary.directEfunAliases().forEach(builder::directEfunAlias);
 
         return builder.build();
     }

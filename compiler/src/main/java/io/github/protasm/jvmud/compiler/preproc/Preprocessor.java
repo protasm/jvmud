@@ -178,7 +178,7 @@ public final class Preprocessor {
         } else break;
       }
 
-      if (!cc.end() && (cc.peek() == '#')) {
+      if (isStartOfDirective(cc)) {
         // directive: ignore buffered ws per preproc rules
         handleDirective(cc, fileContext, out, includeGuard);
 
@@ -360,6 +360,7 @@ public final class Preprocessor {
   private void doIf(
       CharCursor cc, FileContext fileContext, PreprocessedSourceBuilder out, Set<String> includeGuard) {
     // Evaluate simple integer expression with defined(NAME)
+    skipWhitespaceExceptNewline(cc);
     List<PPToken> expr = tokenizeUntilNewline(cc).tokens();
     boolean cond = evalIfExpr(expr);
 
@@ -396,6 +397,7 @@ public final class Preprocessor {
       String name = readIdent(cc);
 
       if ("elif".equals(name)) {
+        skipWhitespaceExceptNewline(cc);
         List<PPToken> expr = tokenizeUntilNewline(cc).tokens();
 
         firstBranch = evalIfExpr(expr);
@@ -588,8 +590,19 @@ public final class Preprocessor {
         continue;
       }
 
-      if ((c == '"') || (c == '\'')) {
+      if (c == '"') {
         out.add(readString(s, startOffset));
+
+        continue;
+      }
+
+      if (c == '\'') {
+        if (isSymbolQuote(s)) {
+          s.advance();
+          out.add(new PPToken(PPToken.Kind.OP, "'", s.map(), startOffset, s.index()));
+        } else {
+          out.add(readString(s, startOffset));
+        }
 
         continue;
       }
@@ -615,6 +628,18 @@ public final class Preprocessor {
       newlineSpan = s.spanFrom(s.index(), s.index());
 
     return new TokenizedLine(out, newlineSpan);
+  }
+
+  private boolean isSymbolQuote(CharCursor s) {
+    if (!s.canPeekNext())
+      return false;
+
+    char next = s.peekNext();
+    if (!(Character.isLetter(next) || (next == '_')))
+      return false;
+
+    char afterIdentifierStart = s.map().charAt(s.index() + 2);
+    return afterIdentifierStart != '\'';
   }
 
   private PPToken readIdentTok(CharCursor s, int startOffset) {
@@ -701,6 +726,12 @@ public final class Preprocessor {
 
     for (int i = 0; i < in.size(); ) {
       PPToken t = in.get(i);
+
+      if (i > 0 && "'".equals(in.get(i - 1).lexeme)) {
+        out.add(t);
+        i++;
+        continue;
+      }
 
       if ((t.kind == PPToken.Kind.IDENT)
           && macros.containsKey(t.lexeme)
@@ -964,9 +995,15 @@ public final class Preprocessor {
   }
 
   private static boolean isStartOfDirective(CharCursor cc) {
-    // Minimal: treat any '#' at current cursor as a directive start.
-    // (If you want to enforce BOL/leading-ws-only later, we can refine this.)
-    return !cc.end() && (cc.peek() == '#');
+    if (cc.end() || (cc.peek() != '#'))
+      return false;
+
+    int mark = cc.index();
+    cc.advance();
+    skipWhitespaceExceptNewline(cc);
+    boolean directive = !cc.end() && (Character.isLetter(cc.peek()) || (cc.peek() == '_'));
+    cc.rewind(mark);
+    return directive;
   }
 
   /** Handle backslash-newline line splicing up-front. */

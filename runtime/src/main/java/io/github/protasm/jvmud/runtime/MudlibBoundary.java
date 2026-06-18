@@ -50,6 +50,7 @@ public final class MudlibBoundary {
     private final Duration temporalTickInterval;
     private final Set<MudlibLifecycleEvent> lifecycleEvents;
     private final Map<MudlibLifecycleEvent, String> lifecycleMethods;
+    private final Map<String, String> directEfunAliases;
 
     private MudlibBoundary(Builder builder) {
         this.gameId = normalizeOptionalText(builder.gameId);
@@ -68,6 +69,7 @@ public final class MudlibBoundary {
         this.temporalTickInterval = builder.temporalTickInterval;
         this.lifecycleEvents = immutableCopy(builder.lifecycleEvents);
         this.lifecycleMethods = immutableCopy(builder.lifecycleMethods);
+        this.directEfunAliases = normalizeTextMap(builder.directEfunAliases);
     }
 
     /** Returns a boundary with no declared mudlib integration points. */
@@ -182,6 +184,24 @@ public final class MudlibBoundary {
     }
 
     /**
+     * Returns direct-efun name translations declared by this mudlib boundary.
+     *
+     * <p>Keys are legacy/direct driver efun spellings used by mudlib source, and values are
+     * JVMud-native engine efun names. This keeps legacy vocabulary at the compatibility boundary
+     * instead of adding those names to the engine efun catalog.</p>
+     *
+     * @return immutable map from mudlib efun name to JVMud efun name
+     */
+    public Map<String, String> directEfunAliases() {
+        return directEfunAliases;
+    }
+
+    /** Returns the JVMud-native efun name for a direct mudlib efun spelling, if one is declared. */
+    public Optional<String> directEfunAlias(String mudlibName) {
+        return Optional.ofNullable(directEfunAliases.get(normalizeRequiredText(mudlibName, "Direct efun name")));
+    }
+
+    /**
      * Returns the configured mudlib method for an event, if one was declared.
      *
      * @param event lifecycle event to inspect
@@ -224,7 +244,8 @@ public final class MudlibBoundary {
                 || temporalTickMethod != null
                 || !temporalTickInterval.isZero()
                 || !lifecycleEvents.isEmpty()
-                || !lifecycleMethods.isEmpty();
+                || !lifecycleMethods.isEmpty()
+                || !directEfunAliases.isEmpty();
     }
 
     private static Set<MudlibLifecycleEvent> immutableCopy(EnumSet<MudlibLifecycleEvent> events) {
@@ -240,6 +261,19 @@ public final class MudlibBoundary {
             return Map.of();
         }
         return Collections.unmodifiableMap(new EnumMap<>(methods));
+    }
+
+    private static Map<String, String> normalizeTextMap(Map<String, String> mappings) {
+        if (mappings.isEmpty()) {
+            return Map.of();
+        }
+        java.util.LinkedHashMap<String, String> normalized = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : mappings.entrySet()) {
+            normalized.put(
+                    normalizeRequiredText(entry.getKey(), "Direct efun source name"),
+                    normalizeRequiredText(entry.getValue(), "Direct efun target name"));
+        }
+        return Collections.unmodifiableMap(normalized);
     }
 
     private static String normalizeOptionalPath(String path) {
@@ -265,6 +299,14 @@ public final class MudlibBoundary {
         }
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private static String normalizeRequiredText(String value, String description) {
+        String normalized = normalizeOptionalText(value);
+        if (normalized == null) {
+            throw new IllegalArgumentException(description + " cannot be blank.");
+        }
+        return normalized;
     }
 
     private static String normalizeOptionalPrompt(String value) {
@@ -320,6 +362,8 @@ public final class MudlibBoundary {
                 EnumSet.noneOf(MudlibLifecycleEvent.class);
         private final EnumMap<MudlibLifecycleEvent, String> lifecycleMethods =
                 new EnumMap<>(MudlibLifecycleEvent.class);
+        private final java.util.LinkedHashMap<String, String> directEfunAliases =
+                new java.util.LinkedHashMap<>();
 
         private Builder() {}
 
@@ -456,6 +500,18 @@ public final class MudlibBoundary {
             } else {
                 lifecycleMethods.put(event, normalized);
                 lifecycleEvents.add(event);
+            }
+            return this;
+        }
+
+        /** Maps a mudlib direct-efun spelling to a JVMud-native engine efun name. */
+        public Builder directEfunAlias(String mudlibName, String engineName) {
+            String normalizedMudlibName = normalizeRequiredText(mudlibName, "Direct efun source name");
+            String normalizedEngineName = normalizeOptionalText(engineName);
+            if (normalizedEngineName == null) {
+                directEfunAliases.remove(normalizedMudlibName);
+            } else {
+                directEfunAliases.put(normalizedMudlibName, normalizedEngineName);
             }
             return this;
         }

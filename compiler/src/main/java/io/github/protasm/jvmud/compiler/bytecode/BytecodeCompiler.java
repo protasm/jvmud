@@ -7,6 +7,7 @@ import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCoercions;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeEquality;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeForeach;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeIndex;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeTypes;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
@@ -402,6 +403,21 @@ public final class BytecodeCompiler {
 
         if (expression instanceof IRProtectedEval protectedEval) {
             emitProtectedEval(mv, internalName, method, protectedEval);
+            return;
+        }
+
+        if (expression instanceof IRForeachItems foreachItems) {
+            emitForeachItems(mv, internalName, method, foreachItems);
+            return;
+        }
+
+        if (expression instanceof IRForeachSize foreachSize) {
+            emitForeachSize(mv, internalName, method, foreachSize);
+            return;
+        }
+
+        if (expression instanceof IRForeachValue foreachValue) {
+            emitForeachValue(mv, internalName, method, foreachValue);
             return;
         }
 
@@ -1098,6 +1114,41 @@ public final class BytecodeCompiler {
                 false);
 
         mv.visitLabel(done);
+    }
+
+    private void emitForeachItems(MethodVisitor mv, String internalName, IRMethod method, IRForeachItems foreachItems) {
+        emitExpression(mv, internalName, method, foreachItems.source());
+        boxIfNeeded(mv, foreachItems.source().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeForeach.class),
+                foreachItems.keys() ? "keys" : "items",
+                "(Ljava/lang/Object;)Ljava/util/List;",
+                false);
+    }
+
+    private void emitForeachSize(MethodVisitor mv, String internalName, IRMethod method, IRForeachSize foreachSize) {
+        emitExpression(mv, internalName, method, foreachSize.source());
+        boxIfNeeded(mv, foreachSize.source().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeForeach.class),
+                "size",
+                "(Ljava/lang/Object;)I",
+                false);
+    }
+
+    private void emitForeachValue(MethodVisitor mv, String internalName, IRMethod method, IRForeachValue foreachValue) {
+        emitExpression(mv, internalName, method, foreachValue.source());
+        boxIfNeeded(mv, foreachValue.source().type());
+        emitExpression(mv, internalName, method, foreachValue.key());
+        boxIfNeeded(mv, foreachValue.key().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeForeach.class),
+                "value",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                false);
     }
 
     private void emitMappingLiteral(MethodVisitor mv, String internalName, IRMethod method, IRMappingLiteral literal) {

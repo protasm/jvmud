@@ -3,12 +3,15 @@ package io.github.protasm.jvmud.compiler.parser;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_BREAK;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_COLON;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CONTINUE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_ELSE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_FOREACH;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_IDENTIFIER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_IF;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_IN;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_INHERIT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_FOR;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_BRACE;
@@ -56,6 +59,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
@@ -557,6 +561,8 @@ public class Parser {
                         return ifStatement();
                 else if (tokens.match(T_FOR))
                         return forStatement();
+                else if (tokens.match(T_FOREACH))
+                        return foreachStatement();
                 else if (tokens.match(T_WHILE))
                         return whileStatement();
                 else if (tokens.match(T_BREAK))
@@ -666,6 +672,39 @@ public class Parser {
         ASTStatement body = statement();
 
         return new ASTStmtFor(line, initializer, condition, update, body);
+    }
+
+    private ASTStmtForeach foreachStatement() {
+        int line = tokens.previous().line();
+        tokens.consume(T_LEFT_PAREN, "Expect '(' after foreach.");
+
+        ASTLocal keyLocal = foreachLocal();
+        ASTLocal valueLocal = null;
+        if (tokens.match(T_COMMA))
+            valueLocal = foreachLocal();
+
+        if (!tokens.match(T_IN) && !tokens.match(T_COLON))
+            throw new ParseException("Expect 'in' or ':' in foreach clause.", tokens.current());
+
+        ASTExpression iterable = expression();
+        tokens.consume(T_RIGHT_PAREN, "Expect ')' after foreach clause.");
+
+        return new ASTStmtForeach(line, keyLocal, valueLocal, iterable, statement());
+    }
+
+    private ASTLocal foreachLocal() {
+        Token<String> typeToken = tokens.consume(T_IDENTIFIER, "Expect foreach variable type.");
+        boolean isArrayType = tokens.match(TokenType.T_STAR);
+        Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect foreach variable name.");
+        String declaredType = typeToken.lexeme() + (isArrayType ? "*" : "");
+        Symbol symbol = new Symbol(declaredType, nameToken.lexeme());
+        ASTLocal local = new ASTLocal(typeToken.line(), symbol);
+
+        locals.add(local);
+        if (currentMethod != null)
+            currentMethod.addLocal(local);
+
+        return local;
     }
 
     private ASTStmtExpression expressionStatement() {

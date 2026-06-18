@@ -77,6 +77,7 @@ public final class MudlibBoundaryConfigReader {
         addString(builder::initialPlacePath, firstValue(values, "initial_place"));
         addString(builder::preloadFilePath, firstValue(values, "preload_file"));
         addPreloadObjects(builder, allValues(values, "preload_objects"));
+        addDirectEfunAliases(builder, values);
         addLifecycleEvents(builder, allValues(values, "handled_lifecycle_events"));
         addLifecycleMethods(builder, values);
         addString(builder::temporalTickMethod, firstValue(values, "temporal_tick_method"));
@@ -291,6 +292,25 @@ public final class MudlibBoundaryConfigReader {
             String methodName = entry.getValue().get(0);
             if (!methodName.isBlank()) {
                 builder.lifecycleMethod(lifecycleEvent(eventName), methodName);
+            }
+        }
+    }
+
+    private static void addDirectEfunAliases(MudlibBoundary.Builder builder, Map<String, List<String>> values) {
+        for (Map.Entry<String, List<String>> entry : values.entrySet()) {
+            String key = entry.getKey().trim();
+            if (!key.startsWith("direct_efun.")) {
+                continue;
+            }
+
+            String mudlibName = key.substring("direct_efun.".length());
+            if (mudlibName.isBlank() || entry.getValue().isEmpty()) {
+                continue;
+            }
+
+            String engineName = entry.getValue().get(0);
+            if (!engineName.isBlank()) {
+                builder.directEfunAlias(mudlibName, engineName);
             }
         }
     }

@@ -17,6 +17,7 @@ import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
+import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.runtime.MudlibBoundary;
@@ -123,6 +124,96 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void preprocessorLeavesFunctionSymbolLiteralsAsSourceText() {
+        String processed = Preprocessor.preprocess("""
+                    #define HOOK_NAME loadUIDs
+                mixed value() {
+                    return ({#'HOOK_NAME, #'previous_object});
+                }
+                """);
+
+        assertTrue(processed.contains("#'HOOK_NAME"));
+        assertTrue(processed.contains("#'previous_object"));
+        assertFalse(processed.contains("#define"));
+    }
+
+    @Test
+    void preprocessorEvaluatesIfExpressionsAfterDirectiveWhitespace() {
+        String processed = Preprocessor.preprocess("""
+                #if ! __EFUN_DEFINED__(enable_commands)
+                int enabled() { return 1; }
+                #endif
+                #if 1
+                int always() { return 1; }
+                #endif
+                """);
+
+        assertTrue(processed.contains("enabled"));
+        assertTrue(processed.contains("always"));
+        assertFalse(processed.contains("#if"));
+        assertFalse(processed.contains("#endif"));
+    }
+
+    @Test
+    void preprocessorDoesNotLetFunctionSymbolsConsumeLaterDirectives() {
+        String processed = Preprocessor.preprocess("""
+                void shutdown() {
+                    map(efun::db_handles(), #'db_close); // closes handles
+                }
+
+                #if ! __EFUN_DEFINED__(enable_commands)
+                int enabled() { return 1; }
+                #endif
+                """);
+
+        assertTrue(processed.contains("#'db_close"));
+        assertTrue(processed.contains("enabled"));
+        assertFalse(processed.contains("#if"));
+        assertFalse(processed.contains("#endif"));
+    }
+
+    @Test
+    void runtimeParsesQuotedSymbolLiteralsWithoutBreakingCharacterLiterals() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/quoted_symbol.c", """
+                mixed symbol() {
+                    return 'item;
+                }
+
+                int character() {
+                    return 'a';
+                }
+        """);
+
+        assertEquals("item", object.invoke("symbol"));
+        assertEquals((int) 'a', object.invoke("character"));
+    }
+
+    @Test
+    void runtimeParsesFunctionReferencesAsCompatibilityValues() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/function_reference.c", """
+                mixed value() {
+                    return #'moveHook;
+                }
+                """);
+
+        assertEquals("#'moveHook", object.invoke("value"));
+    }
+
+    @Test
+    void parserAcceptsFunctionReferencesAsCallArgumentsAfterQualifiedCalls() {
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
+                void shutdown() {
+                    map(efun::db_handles(), #'db_close);
+                }
+                """);
+
+        assertTrue(result.getProblems().stream()
+                .noneMatch(problem -> problem.getStage().name().equals("PARSE")), () -> result.getProblems().toString());
+    }
+
+    @Test
     void runtimeSupportsWhileLoopsAndArrayConcatAssignment() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/array_loop.c", """
@@ -144,6 +235,110 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(3, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsQualifiedEfunCalls() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("sizeof", "jvmud_size")
+                .build());
+        LPCObjectHandle object = runtime.loadSource("smoke/qualified_efun.c", """
+                int value() {
+                    return efun::sizeof(({1, 2, 3}));
+                }
+                """);
+
+        assertEquals(3, object.invoke("value"));
+    }
+
+    @Test
+    void unsupportedQualifiedCallsReportSemanticProblem() {
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
+                mixed value() {
+                    return other::sizeof(({1}));
+                }
+                """);
+
+        assertTrue(result.getProblems().stream()
+                .anyMatch(problem -> problem.getMessage().contains("Unsupported qualified call prefix 'other'")));
+    }
+
+    @Test
+    void runtimeSupportsForeachOverArrays() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/foreach_array.c", """
+                int value() {
+                    int total;
+
+                    foreach(int item in {1, 2, 3})
+                        total += item;
+
+                    return total;
+                }
+                """);
+
+        assertEquals(6, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeAcceptsColonAsForeachSeparator() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/foreach_colon.c", """
+                string value() {
+                    string text;
+
+                    text = "";
+                    foreach(string item : {"a", "b", "c"})
+                        text += item;
+
+                    return text;
+                }
+                """);
+
+        assertEquals("abc", object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsForeachMappingKeyValueLoops() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/foreach_mapping.c", """
+                int value() {
+                    mapping values;
+                    int total;
+
+                    values = ([ "a": 2, "b": 3 ]);
+                    foreach(string key, int amount in values)
+                        total += amount;
+
+                    return total;
+                }
+                """);
+
+        assertEquals(5, object.invoke("value"));
+    }
+
+    @Test
+    void foreachHonorsBreakAndContinue() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/foreach_control.c", """
+                int value() {
+                    int total;
+
+                    foreach(int item in {1, 2, 3, 4}) {
+                        if (item == 2)
+                            continue;
+                        if (item == 4)
+                            break;
+                        total += item;
+                    }
+
+                    return total;
+                }
+                """);
+
+        assertEquals(4, object.invoke("value"));
     }
 
     @Test

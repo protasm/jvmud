@@ -173,6 +173,10 @@ public final class RuntimeContext {
         this.mudlibBoundary = mudlibBoundary != null ? mudlibBoundary : MudlibBoundary.empty();
     }
 
+    public String directEfunName(String mudlibName) {
+        return mudlibBoundary.directEfunAlias(mudlibName).orElse(mudlibName);
+    }
+
     public void setScheduler(WorldScheduler scheduler) {
         this.scheduler = scheduler != null ? scheduler : new WorldScheduler();
     }
