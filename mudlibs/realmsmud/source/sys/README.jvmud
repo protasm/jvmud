@@ -1,0 +1,18 @@
+This directory contains vendored LDMud LPC header files copied for the
+RealmsMUD mudlib.
+
+RealmsMUD's upstream README says that an LDMud install should copy the contents
+of the LDMud driver's mudlib/sys directory into this mudlib's /sys directory.
+These files are included here for that mudlib-local requirement. They are not
+JVMud engine code, and they should not be edited by hand.
+
+Source:
+- Repository: https://github.com/ldmud/ldmud
+- Source path: mudlib/sys
+- Commit: e1cbe804944c1f5865ad1beeeff220b43c48c7e3
+- Retrieved: 2026-06-18
+
+Update policy:
+- Replace this directory from a recorded LDMud source revision.
+- Keep JVMud-specific behavior in mudlibs/realmsmud/jvmud/ or JVMud runtime
+  code, not in these vendored headers.
