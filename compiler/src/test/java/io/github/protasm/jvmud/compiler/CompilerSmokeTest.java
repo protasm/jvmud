@@ -60,7 +60,7 @@ final class CompilerSmokeTest {
 
         CompilationResult result = new CompilationPipeline("java/lang/Object").run(source);
 
-        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
+        assertTrue(result.getProblems().isEmpty(), () -> problemMessages(result));
         assertNotNull(result.getBytecode());
         assertTrue(result.getBytecode().length > 0);
     }
@@ -84,7 +84,7 @@ final class CompilerSmokeTest {
                 .run(sourcePath, Files.readString(sourcePath), "room/mine/tunnel", "/room/mine/tunnel.c",
                         ParserOptions.defaults());
 
-        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
+        assertTrue(result.getProblems().isEmpty(), () -> problemMessages(result));
         assertNotNull(result.getBytecode());
     }
 
@@ -644,9 +644,13 @@ final class CompilerSmokeTest {
     void parserPreservesLdmudStyleDeclarationModifiers() {
         String source = """
                 private nosave object cache;
+                private nosave object *cacheList;
 
                 public nomask varargs int value(string name, string title) {
                     return 42;
+                }
+
+                static nomask varargs void helper(mixed *values) {
                 }
 
                 protected void setup() {
@@ -659,12 +663,63 @@ final class CompilerSmokeTest {
         ASTObject ast = result.getAstObject();
         assertTrue(ast.fields().get("cache").modifiers().isPrivate());
         assertTrue(ast.fields().get("cache").modifiers().isNosave());
+        assertTrue(ast.fields().get("cacheList").modifiers().isPrivate());
+        assertTrue(ast.fields().get("cacheList").modifiers().isNosave());
 
         assertTrue(ast.methods().get("value").modifiers().isPublic());
         assertTrue(ast.methods().get("value").modifiers().isNomask());
         assertTrue(ast.methods().get("value").modifiers().isVarargs());
 
+        assertTrue(ast.methods().get("helper").modifiers().isStatic());
+        assertTrue(ast.methods().get("helper").modifiers().isNomask());
+        assertTrue(ast.methods().get("helper").modifiers().isVarargs());
+
         assertTrue(ast.methods().get("setup").modifiers().isProtected());
+    }
+
+    @Test
+    void parserRecordsVirtualInheritWithoutChangingOrdinaryInherits() throws IOException {
+        Files.writeString(tempDir.resolve("base.c"), """
+                int base_value() {
+                    return 1;
+                }
+                """);
+        Path sourcePath = tempDir.resolve("child.c");
+        String source = """
+                virtual inherit "base.c";
+
+                int value() {
+                    return 42;
+                }
+                """;
+        Files.writeString(sourcePath, source);
+
+        RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(tempDir, List.of()));
+        CompilationResult result = new CompilationPipeline("java/lang/Object", context)
+                .run(sourcePath, source, "child", "/child.c", ParserOptions.defaults());
+
+        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
+
+        ASTObject ast = result.getAstObject();
+        assertEquals(1, ast.inherits().size());
+        assertEquals("\"base.c\"", ast.inherits().get(0).path());
+        assertTrue(ast.inherits().get(0).isVirtual());
+    }
+
+    @Test
+    void parserTreatsVirtualAsOrdinaryIdentifierAwayFromInherit() {
+        String source = """
+                int virtual = 40;
+
+                int value() {
+                    return virtual + 2;
+                }
+                """;
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/virtual_identifier.c", source);
+
+        assertEquals(42, object.invoke("value"));
     }
 
     @Test
@@ -2197,6 +2252,74 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void compilerResolvesMultipleDirectInheritsAndPreservesChildOverride() throws Exception {
+        Files.writeString(tempDir.resolve("base_one.c"), """
+                int value() {
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("base_two.c"), """
+                int other_value() {
+                    return 2;
+                }
+                """);
+        Path childPath = tempDir.resolve("child.c");
+        String source = """
+                inherit "base_one.c";
+                inherit "base_two.c";
+
+                int value() {
+                    return 42;
+                }
+                """;
+        Files.writeString(childPath, source);
+
+        RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(tempDir, List.of()));
+        CompilationResult result = new CompilationPipeline("java/lang/Object", context)
+                .run(childPath, source, "child", "/child.c", ParserOptions.defaults());
+
+        assertTrue(result.getProblems().isEmpty(), () -> problemMessages(result));
+        assertEquals(2, result.getAstObject().inherits().size());
+        assertEquals(2, result.getCompilationUnit().directParentUnits().size());
+        assertEquals("base_one", result.getCompilationUnit().parentUnit().astObject().name());
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle child = runtime.load(childPath);
+
+        assertEquals(42, child.invoke("value"));
+    }
+
+    @Test
+    void compilerReportsAmbiguousInheritedMethodsFromMultipleDirectParents() throws Exception {
+        Files.writeString(tempDir.resolve("left.c"), """
+                int shared() {
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("right.c"), """
+                int shared() {
+                    return 2;
+                }
+                """);
+        Path childPath = tempDir.resolve("child.c");
+        String source = """
+                inherit "left.c";
+                inherit "right.c";
+                """;
+        Files.writeString(childPath, source);
+
+        RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(tempDir, List.of()));
+        CompilationResult result = new CompilationPipeline("java/lang/Object", context)
+                .run(childPath, source, "child", "/child.c", ParserOptions.defaults());
+
+        assertTrue(
+                result.getProblems().stream()
+                        .anyMatch(problem -> problem.getMessage()
+                                .contains("Ambiguous inherited method 'shared' with arity 0")),
+                () -> problemMessages(result));
+    }
+
+    @Test
     void runtimeResolvesExtensionlessMudlibRootInherits() throws Exception {
         Files.createDirectories(tempDir.resolve("room"));
         Files.createDirectories(tempDir.resolve("room/village"));
@@ -3448,6 +3571,20 @@ final class CompilerSmokeTest {
                 .lifecycleMethod(MudlibLifecycleEvent.OBJECT_DESTRUCTION_REQUESTED, "prepare_destruct")
                 .build());
         return runtime;
+    }
+
+    private String problemMessages(CompilationResult result) {
+        StringBuilder messages = new StringBuilder();
+        result.getProblems().forEach(problem -> {
+            if (!messages.isEmpty())
+                messages.append('\n');
+            messages.append(problem.getStage()).append(": ").append(problem.getMessage());
+            if (problem.getLine() != null)
+                messages.append(" at line ").append(problem.getLine());
+            if (problem.getThrowable() != null && problem.getThrowable().getMessage() != null)
+                messages.append(" - ").append(problem.getThrowable().getMessage());
+        });
+        return messages.toString();
     }
 
     private int countOccurrences(String text, String needle) {

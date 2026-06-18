@@ -5,6 +5,7 @@ import io.github.protasm.jvmud.compiler.bytecode.BytecodeCompiler;
 import io.github.protasm.jvmud.compiler.parser.ParseException;
 import io.github.protasm.jvmud.compiler.parser.Parser;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTInherit;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.scanner.ScanException;
 import io.github.protasm.jvmud.compiler.scanner.Scanner;
@@ -146,9 +147,11 @@ public final class CompilationPipeline {
             return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
         }
 
-        if (unit.inheritedPath() != null) {
-            CompilationUnit parentUnit =
-                    resolveAndAnalyzeParent(unit, parserOptions, inheritanceStack, problems);
+        if (!astObject.inherits().isEmpty()) {
+            List<CompilationUnit> parentUnits =
+                    resolveAndAnalyzeParents(unit, parserOptions, inheritanceStack, problems);
+            unit.setDirectParentUnits(parentUnits);
+            CompilationUnit parentUnit = parentUnits.isEmpty() ? null : parentUnits.get(0);
             unit.setParentUnit(parentUnit);
             if (!problems.isEmpty()) {
                 return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
@@ -218,13 +221,34 @@ public final class CompilationPipeline {
         return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
     }
 
-    private CompilationUnit resolveAndAnalyzeParent(
+    private List<CompilationUnit> resolveAndAnalyzeParents(
             CompilationUnit childUnit,
             ParserOptions parserOptions,
             Set<String> inheritanceStack,
             List<CompilationProblem> problems) {
+        List<CompilationUnit> parentUnits = new ArrayList<>();
+        ASTObject astObject = childUnit.astObject();
+        if (astObject == null)
+            return parentUnits;
+
+        for (ASTInherit inherit : astObject.inherits()) {
+            String inheritedPath = normalizeInheritedPath(inherit.path());
+            CompilationUnit parentUnit =
+                    resolveAndAnalyzeParent(childUnit, inheritedPath, parserOptions, inheritanceStack, problems);
+            if (parentUnit != null)
+                parentUnits.add(parentUnit);
+        }
+
+        return parentUnits;
+    }
+
+    private CompilationUnit resolveAndAnalyzeParent(
+            CompilationUnit childUnit,
+            String inheritedPath,
+            ParserOptions parserOptions,
+            Set<String> inheritanceStack,
+            List<CompilationProblem> problems) {
         IncludeResolution resolution;
-        String inheritedPath = normalizeInheritedPath(childUnit.inheritedPath());
 
         try {
             resolution = resolveInheritedSource(childUnit, inheritedPath);
@@ -232,7 +256,7 @@ public final class CompilationPipeline {
             problems.add(
                     new CompilationProblem(
                             CompilationStage.PARSE,
-                            "Cannot inherit '" + childUnit.inheritedPath() + "': " + e.getMessage(),
+                            "Cannot inherit '" + inheritedPath + "': " + e.getMessage(),
                             e));
             return null;
         }
@@ -264,7 +288,7 @@ public final class CompilationPipeline {
             problems.add(
                     new CompilationProblem(
                             CompilationStage.ANALYZE,
-                            "Failed to analyze inherited object '" + childUnit.inheritedPath() + "'",
+                            "Failed to analyze inherited object '" + inheritedPath + "'",
                             (Throwable) null));
         }
 

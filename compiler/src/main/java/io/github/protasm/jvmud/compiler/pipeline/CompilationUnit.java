@@ -4,6 +4,9 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.semantic.SemanticModel;
 import io.github.protasm.jvmud.compiler.token.TokenList;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -20,6 +23,7 @@ public final class CompilationUnit {
     private final String source;
     private String inheritedPath;
     private CompilationUnit parentUnit;
+    private final List<CompilationUnit> directParentUnits = new ArrayList<>();
     private TokenList tokens;
     private ASTObject astObject;
     private SemanticModel semanticModel;
@@ -74,6 +78,16 @@ public final class CompilationUnit {
 
     public void setParentUnit(CompilationUnit parentUnit) {
         this.parentUnit = parentUnit;
+    }
+
+    public List<CompilationUnit> directParentUnits() {
+        return Collections.unmodifiableList(directParentUnits);
+    }
+
+    public void setDirectParentUnits(List<CompilationUnit> parentUnits) {
+        directParentUnits.clear();
+        if (parentUnits != null)
+            directParentUnits.addAll(parentUnits);
     }
 
     public TokenList tokens() {

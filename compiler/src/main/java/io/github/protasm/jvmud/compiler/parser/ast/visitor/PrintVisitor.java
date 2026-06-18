@@ -338,7 +338,7 @@ public final class PrintVisitor implements ASTVisitor {
 
     @Override
     public void visitInherit(ASTInherit inherit) {
-        doOutput(String.format("%s(\"%s\")", inherit.className(), inherit.path()));
+        doOutput(String.format("%s(%s%s)", inherit.className(), inherit.isVirtual() ? "virtual " : "", inherit.path()));
     }
 
     @Override

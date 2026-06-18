@@ -64,6 +64,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.HashSet;
@@ -110,6 +111,7 @@ public final class SemanticAnalyzer {
 
         List<CompilationProblem> problems = new ArrayList<>();
         CompilationUnit parentUnit = (unit != null) ? unit.parentUnit() : null;
+        List<CompilationUnit> directParentUnits = directParentUnits(unit, parentUnit);
         SemanticScope parentScope = (parentUnit != null && parentUnit.semanticModel() != null)
                 ? parentUnit.semanticModel().objectScope()
                 : null;
@@ -120,11 +122,12 @@ public final class SemanticAnalyzer {
         validateDefinitionsHaveDeclarations(astObject, problems);
         validateDuplicates(astObject.fields(), "field", problems);
         validateDuplicateMethods(astObject.methods(), problems);
-        mergeParentSymbols(objectScope, parentUnit);
+        validateDuplicateInheritedMembers(astObject, directParentUnits, problems);
+        mergeParentSymbols(objectScope, directParentUnits);
 
         for (ASTField field : astObject.fields()) {
             boolean shadowsInherited =
-                    hasInheritedField(parentScope, field.symbol().name());
+                    hasInheritedField(objectScope, field.symbol().name());
             if (shadowsInherited) {
                 // Field shadowing: inherited field remains in scope. Shadowing is permitted for
                 // compatibility with LPC mudlibs, so we do not surface it as an error.
@@ -134,7 +137,7 @@ public final class SemanticAnalyzer {
         }
 
         for (ASTMethod method : astObject.methods()) {
-            ASTMethod overridden = findOverriddenMethod(parentScope, method);
+            ASTMethod overridden = findOverriddenMethod(directParentUnits, method);
             if (overridden != null && !isSignatureCompatible(method, overridden)) {
                 // Override detection: overriding is allowed only when the typed LPC signatures
                 // match; otherwise surface a hard error.
@@ -165,6 +168,16 @@ public final class SemanticAnalyzer {
         typeChecker.check(astObject);
 
         return new SemanticAnalysisResult(new SemanticModel(astObject, objectScope), problems);
+    }
+
+    private List<CompilationUnit> directParentUnits(CompilationUnit unit, CompilationUnit parentUnit) {
+        if (unit != null && !unit.directParentUnits().isEmpty())
+            return unit.directParentUnits();
+
+        if (parentUnit != null)
+            return List.of(parentUnit);
+
+        return List.of();
     }
 
     private void resolveSymbolType(Symbol symbol, int line, List<CompilationProblem> problems) {
@@ -432,17 +445,6 @@ public final class SemanticAnalyzer {
         if (inherits.isEmpty())
             return;
 
-        if (inherits.size() > 1) {
-            for (int i = 1; i < inherits.size(); i++) {
-                ASTInherit inherit = inherits.get(i);
-                problems.add(
-                        new CompilationProblem(
-                                CompilationStage.ANALYZE,
-                                "Only one inherit statement is allowed per object.",
-                                inherit.line()));
-            }
-        }
-
         int firstPropertyOrder = firstPropertyOrder(astObject);
         if (firstPropertyOrder == Integer.MAX_VALUE)
             return;
@@ -551,15 +553,90 @@ public final class SemanticAnalyzer {
         }
     }
 
-    private void mergeParentSymbols(SemanticScope objectScope, CompilationUnit parentUnit) {
-        if (parentUnit == null || parentUnit.semanticModel() == null)
+    private void validateDuplicateInheritedMembers(
+            ASTObject astObject, List<CompilationUnit> directParentUnits, List<CompilationProblem> problems) {
+        if (directParentUnits.size() < 2)
             return;
 
-        ASTObject parent = parentUnit.semanticModel().astObject();
-        for (ASTField field : parent.fields())
-            objectScope.importSymbol(new ScopedSymbol(field.symbol(), parentUnit, field, null));
-        for (ASTMethod method : parent.methods())
-            objectScope.importSymbol(new ScopedSymbol(method.symbol(), parentUnit, null, method));
+        Map<String, List<ScopedSymbol>> fieldsByName = new LinkedHashMap<>();
+        Map<MethodKey, List<ScopedSymbol>> methodsBySignature = new LinkedHashMap<>();
+
+        for (CompilationUnit parentUnit : directParentUnits) {
+            if (parentUnit == null || parentUnit.semanticModel() == null)
+                continue;
+
+            ASTObject parent = parentUnit.semanticModel().astObject();
+            for (ASTField field : parent.fields()) {
+                fieldsByName.computeIfAbsent(field.symbol().name(), ignored -> new ArrayList<>())
+                        .add(new ScopedSymbol(field.symbol(), parentUnit, field, null));
+            }
+            for (ASTMethod method : parent.methods()) {
+                MethodKey key = new MethodKey(method.symbol().name(), parameterCount(method));
+                methodsBySignature.computeIfAbsent(key, ignored -> new ArrayList<>())
+                        .add(new ScopedSymbol(method.symbol(), parentUnit, null, method));
+            }
+        }
+
+        for (Map.Entry<String, List<ScopedSymbol>> entry : fieldsByName.entrySet()) {
+            if (entry.getValue().size() < 2 || declaresField(astObject, entry.getKey()))
+                continue;
+
+            problems.add(
+                    new CompilationProblem(
+                            CompilationStage.ANALYZE,
+                            "Ambiguous inherited field '" + entry.getKey() + "' from multiple direct parents.",
+                            inheritedConflictLine(entry.getValue())));
+        }
+
+        for (Map.Entry<MethodKey, List<ScopedSymbol>> entry : methodsBySignature.entrySet()) {
+            MethodKey key = entry.getKey();
+            if (entry.getValue().size() < 2 || declaresMethod(astObject, key.name(), key.arity()))
+                continue;
+
+            problems.add(
+                    new CompilationProblem(
+                            CompilationStage.ANALYZE,
+                            "Ambiguous inherited method '" + key.name() + "' with arity " + key.arity()
+                                    + " from multiple direct parents.",
+                            inheritedConflictLine(entry.getValue())));
+        }
+    }
+
+    private boolean declaresField(ASTObject astObject, String name) {
+        for (ASTField field : astObject.fields())
+            if (Objects.equals(field.symbol().name(), name))
+                return true;
+        return false;
+    }
+
+    private boolean declaresMethod(ASTObject astObject, String name, int arity) {
+        for (ASTMethod method : astObject.methods())
+            if (Objects.equals(method.symbol().name(), name) && parameterCount(method) == arity)
+                return true;
+        return false;
+    }
+
+    private int inheritedConflictLine(List<ScopedSymbol> inheritedSymbols) {
+        for (ScopedSymbol symbol : inheritedSymbols) {
+            if (symbol.field() != null)
+                return symbol.field().line();
+            if (symbol.method() != null)
+                return symbol.method().line();
+        }
+        return -1;
+    }
+
+    private void mergeParentSymbols(SemanticScope objectScope, List<CompilationUnit> parentUnits) {
+        for (CompilationUnit parentUnit : parentUnits) {
+            if (parentUnit == null || parentUnit.semanticModel() == null)
+                continue;
+
+            ASTObject parent = parentUnit.semanticModel().astObject();
+            for (ASTField field : parent.fields())
+                objectScope.importSymbol(new ScopedSymbol(field.symbol(), parentUnit, field, null));
+            for (ASTMethod method : parent.methods())
+                objectScope.importSymbol(new ScopedSymbol(method.symbol(), parentUnit, null, method));
+        }
     }
 
     private boolean hasInheritedField(SemanticScope parentScope, String name) {
@@ -569,15 +646,26 @@ public final class SemanticAnalyzer {
         return parentScope.resolveAll(name).stream().anyMatch(s -> s.field() != null);
     }
 
-    private ASTMethod findOverriddenMethod(SemanticScope parentScope, ASTMethod method) {
-        if (parentScope == null)
+    private ASTMethod findOverriddenMethod(List<CompilationUnit> directParentUnits, ASTMethod method) {
+        if (directParentUnits == null || directParentUnits.isEmpty())
             return null;
 
-        return parentScope.resolveAll(method.symbol().name()).stream()
-                .map(ScopedSymbol::method)
-                .filter(Objects::nonNull)
-                .reduce((first, second) -> second)
-                .orElse(null);
+        ASTMethod overridden = null;
+        for (CompilationUnit parentUnit : directParentUnits) {
+            if (parentUnit == null || parentUnit.semanticModel() == null)
+                continue;
+
+            SemanticScope parentScope = parentUnit.semanticModel().objectScope();
+            ASTMethod candidate = parentScope.resolveAll(method.symbol().name()).stream()
+                    .map(ScopedSymbol::method)
+                    .filter(Objects::nonNull)
+                    .filter(parentMethod -> parameterCount(parentMethod) == parameterCount(method))
+                    .reduce((first, second) -> second)
+                    .orElse(null);
+            if (candidate != null)
+                overridden = candidate;
+        }
+        return overridden;
     }
 
     private boolean isSignatureCompatible(ASTMethod child, ASTMethod parent) {
@@ -604,6 +692,8 @@ public final class SemanticAnalyzer {
 
         return true;
     }
+
+    private record MethodKey(String name, int arity) {}
 
     private List<LPCType> parameterTypes(ASTMethod method) {
         if (method.parameters() == null)

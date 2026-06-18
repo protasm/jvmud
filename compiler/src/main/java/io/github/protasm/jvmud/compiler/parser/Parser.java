@@ -128,9 +128,8 @@ public class Parser {
                         sourceOrder = 0;
 
                         while (!this.tokens.isAtEnd()) {
-                                if (this.tokens.match(T_INHERIT)) {
-                                        Token<String> parentToken = consumeInheritPath();
-                                        ASTInherit inherit = new ASTInherit(parentToken.line(), parentToken.lexeme());
+                                ASTInherit inherit = inheritDeclaration();
+                                if (inherit != null) {
                                         inherit.setSourceOrder(nextSourceOrder());
                                         currObj.addInherit(inherit);
                                         continue;
@@ -150,6 +149,23 @@ public class Parser {
 
                         throw new ParseException("Unexpected parser failure: " + e.getMessage(), -1, e);
                 }
+    }
+
+    private ASTInherit inheritDeclaration() {
+            boolean isVirtual = false;
+
+            if (tokens.check(T_IDENTIFIER) && "virtual".equals(tokens.current().lexeme())
+                    && tokens.peek(1).type() == T_INHERIT) {
+                    isVirtual = true;
+                    tokens.advance();
+            }
+
+            if (!tokens.match(T_INHERIT)) {
+                    return null;
+            }
+
+            Token<String> parentToken = consumeInheritPath();
+            return new ASTInherit(parentToken.line(), parentToken.lexeme(), isVirtual);
     }
 
     private Token<String> consumeInheritPath() {
