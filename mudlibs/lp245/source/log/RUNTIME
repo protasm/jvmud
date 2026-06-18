@@ -1,0 +1,4 @@
+context=command operation=south
+Failed to call south on room/wiz_hall: room.wiz_hall.south/0
+context=command operation=south
+Failed to call south on room/wiz_hall: room.wiz_hall.south/0

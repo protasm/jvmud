@@ -426,6 +426,65 @@ final class TelnetServerTest {
     }
 
     @Test
+    void lp245WizardHallMissingSouthActionFallsThroughCleanly() throws Exception {
+        Path lp245 = lp245TestRoot();
+        Path player = lp245.resolve("source/obj/player.c");
+        Files.writeString(player, Files.readString(player)
+                .replace("move_object(myself, \"room/church\");", "move_object(myself, \"room/wiz_hall\");"));
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, lp245, MudlibBoot.LP245_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "What is your name: ")
+                        .contains("What is your name: "));
+
+                socket.getOutputStream().write("wizbug\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password: ").contains("Password: "));
+
+                socket.getOutputStream().write("secret1\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password: (again) ")
+                        .contains("Password: (again) "));
+
+                socket.getOutputStream().write("secret1\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Please enter your email address")
+                        .contains("Please enter your email address"));
+
+                socket.getOutputStream().write("none\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Are you, male, female or other")
+                        .contains("Are you, male, female or other"));
+
+                socket.getOutputStream().write("o\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String greeting = readUntilQuietAfterContains(socket, "> ");
+                assertTrue(greeting.contains("Welcome, Creature!"), greeting);
+                assertTrue(greeting.contains("Leo the Archwizard."), greeting);
+
+                socket.getOutputStream().write("south\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String south = readUntilQuietAfterContains(socket, "You can't do that.");
+                assertFalse(south.contains("Your sensitive mind notices a wrongness"), south);
+                assertTrue(south.contains("You can't do that."), south);
+
+                socket.getOutputStream().write("north\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String north = readUntilQuietAfterContains(socket, "A strong magic force stops you.");
+                assertFalse(north.contains("Your sensitive mind notices a wrongness"), north);
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                readUntilSocketClosed(socket);
+            }
+        }
+    }
+
+    @Test
     void lpmuseumRestoresAccountAndDisconnectsAfterThreeBadPasswords() throws Exception {
         Path museum = lpmuseumTestRoot();
         String accountId = uniqueAccountId("returning");

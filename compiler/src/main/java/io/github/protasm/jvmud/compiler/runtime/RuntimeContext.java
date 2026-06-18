@@ -1346,10 +1346,18 @@ public final class RuntimeContext {
     }
 
     private Object invokeCommandAction(CommandAction action, String argument) {
-        if (argument != null || hasMethod(action.handler().getClass(), action.methodName(), 1)) {
+        boolean hasOneArgument = hasMethod(action.handler().getClass(), action.methodName(), 1);
+        boolean hasNoArguments = hasMethod(action.handler().getClass(), action.methodName(), 0);
+        if (argument != null && hasOneArgument) {
             return invokeObject(action.handler(), action.methodName(), argument);
         }
-        return invokeObject(action.handler(), action.methodName());
+        if (argument == null && hasOneArgument && !hasNoArguments) {
+            return invokeObject(action.handler(), action.methodName(), argument);
+        }
+        if (hasNoArguments) {
+            return invokeObject(action.handler(), action.methodName());
+        }
+        return 0;
     }
 
     private Method findMethod(Class<?> targetClass, String methodName, int arity) throws NoSuchMethodException {

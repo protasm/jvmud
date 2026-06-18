@@ -1724,6 +1724,42 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void commandDispatchTreatsMissingActionMethodAsUnhandled() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void add_action(string method, string verb) {
+                    jvmud_add_action(method, verb);
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                string short() {
+                    return "player";
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void init() {
+                    add_action("missing", "south");
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        EngineEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+        LPCObjectHandle start = runtime.load(tempDir.resolve("room/start.c"));
+        runtime.moveObject(player.instance(), start.instance());
+        runtime.refreshCommandActions(player.instance());
+
+        assertEquals(0, runtime.dispatchCommand(player.instance(), "south"));
+        assertEquals("", runtime.outputTranscript());
+    }
+
+    @Test
     void addVerbKeepsScopedActionTransientAcrossRefresh() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.createDirectories(tempDir.resolve("room"));
