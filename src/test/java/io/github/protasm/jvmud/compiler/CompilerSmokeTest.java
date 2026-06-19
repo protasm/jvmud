@@ -1559,6 +1559,22 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeInlineCallableCapturesOuterLocals() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_callable_capture.c", """
+                function value(int threshold) {
+                    return (: $1 > threshold :);
+                }
+                """);
+
+        Object callable = object.invoke("value", 2);
+        assertTrue(callable instanceof RuntimeCallable);
+        assertEquals(1, ((RuntimeFunctionLiteral) callable).arity());
+        assertEquals(1, ((RuntimeCallable) callable).call(new RuntimeContext(null), 3));
+        assertEquals(0, ((RuntimeCallable) callable).call(new RuntimeContext(null), 1));
+    }
+
+    @Test
     void runtimeSupportsInlineCallableReturnShorthand() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_filter_return_shorthand.c", """
@@ -4188,6 +4204,37 @@ final class CompilerSmokeTest {
 
         assertEquals(1, child.invoke("current_persistence"));
         assertEquals(0, child.invoke("disable_persistence"));
+    }
+
+    @Test
+    void compilerLowersInheritedMethodFromSecondaryDirectParent() throws Exception {
+        Files.writeString(tempDir.resolve("base_one.c"), """
+                int first_value() {
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("base_two.c"), """
+                protected int count = 40;
+
+                protected int secondary_helper(int amount) {
+                    count += amount;
+                    return count;
+                }
+                """);
+        Path childPath = tempDir.resolve("child.c");
+        Files.writeString(childPath, """
+                inherit "base_one.c";
+                inherit "base_two.c";
+
+                int value() {
+                    return secondary_helper(2);
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle child = runtime.load(childPath);
+
+        assertEquals(42, child.invoke("value"));
     }
 
     @Test

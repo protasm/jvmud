@@ -9,6 +9,7 @@ import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
+import io.github.protasm.jvmud.compiler.pipeline.CompilationStage;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
@@ -53,6 +54,16 @@ final class RealmsMudCompatibilityScanTest {
                     "lib/core/specification.c",
                     "lib/core/stateObject.c",
                     "lib/core/thing.c");
+    private static final List<KnownIssue> KNOWN_ISSUES =
+            List.of(
+                    new KnownIssue(
+                            "lib/modules/secure/dataAccess.c",
+                            CompilationStage.ANALYZE,
+                            87,
+                            "Argument 2 type mismatch (expected LPCSTRING but found LPCINT)",
+                            "RealmsMUD passes playerId to saveCompositeResearch, whose declared signature expects "
+                                    + "playerName. This is tracked as a probable Realms source mismatch rather than "
+                                    + "a JVMud language gap."));
 
     @Test
     void selectedRealmsMudFilesProduceCompatibilityRadarReport() throws IOException {
@@ -73,8 +84,8 @@ final class RealmsMudCompatibilityScanTest {
         // This is deliberately a radar, not a readiness gate. It should keep exposing
         // the first RealmsMUD blockers while the rest of the build stays green.
         for (String sourceName : compatibilitySet(sourceRoot)) {
-            Path sourcePath = sourceRoot.resolve(sourceName);
-            assertTrue(Files.isRegularFile(sourcePath), sourceName + " should exist in the RealmsMUD source tree.");
+            Path sourcePath = compatibilitySourcePath(sourceRoot, sourceName);
+            assertTrue(Files.isRegularFile(sourcePath), sourceName + " should exist in the RealmsMUD mudlib tree.");
             String source = Files.readString(sourcePath);
             CompilationResult result =
                     pipeline.run(sourcePath, source, stripExtension(sourceName), "/" + sourceName, ParserOptions.defaults());
@@ -102,6 +113,12 @@ final class RealmsMudCompatibilityScanTest {
             }
         }
         return List.copyOf(sourceNames);
+    }
+
+    private static Path compatibilitySourcePath(Path sourceRoot, String sourceName) {
+        if (sourceName.startsWith("jvmud/"))
+            return MUDLIB_ROOT.resolve(sourceName);
+        return sourceRoot.resolve(sourceName);
     }
 
     private static void assertConfiguredBoundary(MudlibBoundary boundary) {
@@ -140,7 +157,8 @@ final class RealmsMudCompatibilityScanTest {
         Files.createDirectories(REPORT_PATH.getParent());
 
         long supported = results.values().stream().filter(result -> result.getProblems().isEmpty()).count();
-        long unsupported = results.size() - supported;
+        long knownIssues = results.entrySet().stream().filter(RealmsMudCompatibilityScanTest::isKnownIssue).count();
+        long unsupported = results.size() - supported - knownIssues;
 
         StringBuilder report = new StringBuilder();
         report.append("# JVMud RealmsMUD Compatibility Scan\n\n");
@@ -155,6 +173,7 @@ final class RealmsMudCompatibilityScanTest {
                 .append("`\n");
         report.append("- Scanned files: ").append(results.size()).append("\n");
         report.append("- Supported now: ").append(supported).append("\n");
+        report.append("- Ignored known RealmsMUD source issues: ").append(knownIssues).append("\n");
         report.append("- Current blockers: ").append(unsupported).append("\n\n");
         report.append("## Boot, Core, And Environment Sweep\n\n");
         report.append("| Source | Status | First Problem Stage | First Problem Line | First Problem |\n");
@@ -168,6 +187,20 @@ final class RealmsMudCompatibilityScanTest {
             }
 
             CompilationProblem first = problems.get(0);
+            KnownIssue knownIssue = matchingKnownIssue(entry.getKey(), first);
+            if (knownIssue != null) {
+                report.append("| `")
+                        .append(entry.getKey())
+                        .append("` | known Realms source issue | ")
+                        .append(escape(String.valueOf(first.getStage())))
+                        .append(" | ")
+                        .append(first.getLine() == null ? "" : first.getLine())
+                        .append(" | ")
+                        .append(escape(problemSummary(first)))
+                        .append(" |\n");
+                continue;
+            }
+
             report.append("| `")
                     .append(entry.getKey())
                     .append("` | unsupported | ")
@@ -192,8 +225,55 @@ final class RealmsMudCompatibilityScanTest {
         report.append("`/secure/master/**/*.c`, and `/secure/simulated-efuns/**/*.c` sweeps cover ");
         report.append("RealmsMUD's service objects, security/data-service modules, master support ");
         report.append("objects, and simulated global efun surface.\n");
+        appendKnownIssueNotes(report, results);
 
         Files.writeString(REPORT_PATH, report.toString());
+    }
+
+    private static void appendKnownIssueNotes(StringBuilder report, Map<String, CompilationResult> results) {
+        report.append("\n## Ignored Known RealmsMUD Source Issues\n\n");
+        report.append("These are deliberately excluded from the current blocker count so the radar can ");
+        report.append("keep exposing new JVMud compatibility gaps. They are not treated as JVMud language ");
+        report.append("features to implement.\n\n");
+        report.append("| Source | Line | Stage | Status | Note |\n");
+        report.append("| --- | ---: | --- | --- | --- |\n");
+        for (KnownIssue issue : KNOWN_ISSUES) {
+            CompilationResult result = results.get(issue.sourceName());
+            String status = "not scanned";
+            if (result != null && result.getProblems().isEmpty()) {
+                status = "resolved or no longer first problem";
+            } else if (result != null && matchingKnownIssue(issue.sourceName(), result.getProblems().get(0)) != null) {
+                status = "ignored";
+            } else if (result != null) {
+                status = "different first problem";
+            }
+            report.append("| `")
+                    .append(issue.sourceName())
+                    .append("` | ")
+                    .append(issue.line())
+                    .append(" | ")
+                    .append(issue.stage())
+                    .append(" | ")
+                    .append(status)
+                    .append(" | ")
+                    .append(escape(issue.note()))
+                    .append(" |\n");
+        }
+        report.append("\nKnown issues only classify the current first compiler problem for a file. ");
+        report.append("Later problems in that same file may appear after the known issue is fixed or ");
+        report.append("the compiler gains broader diagnostic recovery.\n");
+    }
+
+    private static boolean isKnownIssue(Map.Entry<String, CompilationResult> entry) {
+        List<CompilationProblem> problems = entry.getValue().getProblems();
+        return !problems.isEmpty() && matchingKnownIssue(entry.getKey(), problems.get(0)) != null;
+    }
+
+    private static KnownIssue matchingKnownIssue(String sourceName, CompilationProblem problem) {
+        return KNOWN_ISSUES.stream()
+                .filter(issue -> issue.matches(sourceName, problem))
+                .findFirst()
+                .orElse(null);
     }
 
     private static String problemSummary(CompilationProblem problem) {
@@ -222,5 +302,25 @@ final class RealmsMudCompatibilityScanTest {
             return "";
         }
         return value.replace("|", "\\|").replace("\n", " ").replace("\r", " ");
+    }
+
+    /**
+     * Documents one RealmsMUD source-level mismatch that should stay visible in the radar while
+     * being excluded from the current JVMud blocker count.
+     */
+    private record KnownIssue(
+            String sourceName, CompilationStage stage, int line, String messageFragment, String note) {
+        private boolean matches(String candidateSourceName, CompilationProblem problem) {
+            if (!sourceName.equals(candidateSourceName)) {
+                return false;
+            }
+            if (stage != problem.getStage()) {
+                return false;
+            }
+            if (problem.getLine() == null || problem.getLine() != line) {
+                return false;
+            }
+            return problemSummary(problem).contains(messageFragment);
+        }
     }
 }

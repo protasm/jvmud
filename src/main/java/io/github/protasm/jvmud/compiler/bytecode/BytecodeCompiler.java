@@ -587,22 +587,49 @@ public final class BytecodeCompiler {
         pushInt(mv, literal.arity());
         mv.visitVarInsn(ALOAD, 0);
         mv.visitLdcInsn(helperName);
+        emitInlineCallableCaptures(mv, literal);
         mv.visitMethodInsn(
                 INVOKESPECIAL,
                 Type.getInternalName(RuntimeFunctionLiteral.class),
                 "<init>",
-                "(Ljava/lang/String;ILjava/lang/Object;Ljava/lang/String;)V",
+                "(Ljava/lang/String;ILjava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;)V",
                 false);
+    }
+
+    private void emitInlineCallableCaptures(MethodVisitor mv, IRInlineCallableLiteral literal) {
+        pushInt(mv, literal.captureLocals().size());
+        mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
+        for (int i = 0; i < literal.captureLocals().size(); i++) {
+            IRLocal local = literal.captureLocals().get(i);
+            mv.visitInsn(DUP);
+            pushInt(mv, i);
+            emitLocalLoad(mv, local);
+            boxIfNeeded(mv, local.type());
+            mv.visitInsn(AASTORE);
+        }
     }
 
     private void emitInlineCallableHelper(String helperName, IRInlineCallableLiteral literal) {
         MethodVisitor mv = activeClassWriter.visitMethod(
                 ACC_PUBLIC | ACC_SYNTHETIC,
                 helperName,
-                "(" + RUNTIME_CONTEXT_DESCRIPTOR + "[Ljava/lang/Object;)Ljava/lang/Object;",
+                "(" + RUNTIME_CONTEXT_DESCRIPTOR + "[Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
                 null,
                 null);
         mv.visitCode();
+
+        for (int i = 0; i < literal.captureLocals().size(); i++) {
+            IRLocal local = literal.captureLocals().get(i);
+            mv.visitVarInsn(ALOAD, 3);
+            pushInt(mv, i);
+            mv.visitInsn(AALOAD);
+            coerceValue(mv, RuntimeTypes.MIXED, local.type());
+            switch (kindToOpcode(local.type(), false)) {
+            case ISTORE -> mv.visitVarInsn(ISTORE, local.slot());
+            case FSTORE -> mv.visitVarInsn(FSTORE, local.slot());
+            default -> mv.visitVarInsn(ASTORE, local.slot());
+            }
+        }
 
         for (int i = 0; i < literal.argumentLocals().size(); i++) {
             IRLocal local = literal.argumentLocals().get(i);
@@ -617,12 +644,14 @@ public final class BytecodeCompiler {
             }
         }
 
+        List<IRLocal> helperLocals = new java.util.ArrayList<>(literal.captureLocals());
+        helperLocals.addAll(literal.argumentLocals());
         IRMethod callableMethod = new IRMethod(
                 literal.line(),
                 helperName,
                 RuntimeTypes.MIXED,
                 List.of(),
-                literal.argumentLocals(),
+                helperLocals,
                 List.of(),
                 helperName,
                 false,

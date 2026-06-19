@@ -103,6 +103,8 @@ import javax.crypto.spec.PBEKeySpec;
  * <h2>Entity identity, lookup, containment, and lifecycle</h2>
  * <ul>
  *   <li>{@code jvmud_entity_id(mixed entity) : string} returns an engine object identifier.</li>
+ *   <li>{@code jvmud_load_entity(string path) : object} loads or returns the shared object for a
+ *       mudlib path.</li>
  *   <li>{@code jvmud_spawn_entity(string path) : object} clones an LPC object.</li>
  *   <li>{@code jvmud_move_entity(mixed entity, mixed destination) : void} moves an entity or
  *       path-resolved object.</li>
@@ -167,10 +169,15 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_lowercase_text(mixed value) : string} lowercases text.</li>
  *   <li>{@code jvmud_capitalize_text(mixed value) : string} capitalizes the first character of
  *       text.</li>
+ *   <li>{@code jvmud_format_text(string format, mixed ...args) : string} formats text using the
+ *       host formatter with LPC {@code %O} object placeholders treated as string placeholders; this
+ *       overload is registered for arities 1 through 8.</li>
  *   <li>{@code jvmud_extract_text(mixed value, int from) : string} extracts text from an inclusive
  *       start index through the end.</li>
  *   <li>{@code jvmud_extract_text(mixed value, int from, int to) : string} extracts text using
  *       inclusive start and end indexes.</li>
+ *   <li>{@code jvmud_member(mixed value, mixed needle) : int} checks mapping key membership or
+ *       returns the index of a value in an array or string.</li>
  *   <li>{@code jvmud_is_string(mixed value) : status} reports whether a value is Java-backed LPC
  *       string data.</li>
  *   <li>{@code jvmud_is_int(mixed value) : status} reports whether a value is Java-backed LPC
@@ -303,6 +310,9 @@ public final class CoreEfuns {
                 (runtime, args) -> String.valueOf(args[0]).toLowerCase()));
         efuns.add(efun("jvmud_capitalize_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> capitalizeText(String.valueOf(args[0]))));
+        for (int arity = 1; arity <= 8; arity++) {
+            efuns.add(formatTextEfun(arity));
+        }
         efuns.add(efun("jvmud_extract_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
                 (runtime, args) -> extractText(
                         String.valueOf(args[0]),
@@ -314,6 +324,8 @@ public final class CoreEfuns {
                         String.valueOf(args[0]),
                         ((Number) args[1]).intValue(),
                         ((Number) args[2]).intValue())));
+        efuns.add(efun("jvmud_member", LPCType.LPCINT, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
+                (runtime, args) -> member(args[0], args[1])));
         efuns.add(efun("jvmud_capture_session_input", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> {
                     runtime.captureSessionInput(
@@ -343,6 +355,8 @@ public final class CoreEfuns {
         for (int arity = 2; arity <= 6; arity++) {
             efuns.add(invokeEntityEfun(arity));
         }
+        efuns.add(efun("jvmud_load_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.loadOrGetObject(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_spawn_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.cloneObject(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_move_entity", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
@@ -461,6 +475,23 @@ public final class CoreEfuns {
         throw new IllegalArgumentException("sizeof expects array, mapping, or string value");
     }
 
+    private static int member(Object value, Object needle) {
+        if (value instanceof Map<?, ?> map) {
+            return map.containsKey(needle) ? 1 : 0;
+        }
+        if (value instanceof List<?> list) {
+            return list.indexOf(needle);
+        }
+        if (value instanceof CharSequence text) {
+            String haystack = text.toString();
+            if (needle instanceof Number number) {
+                return haystack.indexOf((char) number.intValue());
+            }
+            return haystack.indexOf(String.valueOf(needle));
+        }
+        return -1;
+    }
+
     private static String capitalizeText(String value) {
         if (value.isEmpty()) {
             return value;
@@ -554,6 +585,25 @@ public final class CoreEfuns {
         }
 
         return ThreadLocalRandom.current().nextInt(max);
+    }
+
+    private static Efun formatTextEfun(int arity) {
+        List<LPCType> parameters = new ArrayList<>();
+        parameters.add(LPCType.LPCSTRING);
+        for (int i = 1; i < arity; i++) {
+            parameters.add(LPCType.LPCMIXED);
+        }
+        return efun("jvmud_format_text", LPCType.LPCSTRING, parameters,
+                (runtime, args) -> formatText(args));
+    }
+
+    private static String formatText(Object[] args) {
+        String format = String.valueOf(args[0]).replace("%O", "%s");
+        Object[] values = new Object[args.length - 1];
+        if (values.length > 0) {
+            System.arraycopy(args, 1, values, 0, values.length);
+        }
+        return String.format(Locale.ROOT, format, values);
     }
 
     private static Efun filterIndicesEfun(int arity) {

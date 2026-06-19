@@ -12,11 +12,12 @@ import java.util.Objects;
  * special-form callbacks.</p>
  */
 public record IRInlineCallableLiteral(
-        int line, IRExpression body, int arity, List<IRLocal> argumentLocals, RuntimeType type)
+        int line, IRExpression body, int arity, List<IRLocal> argumentLocals, List<IRLocal> captureLocals, RuntimeType type)
         implements IRExpression {
     public IRInlineCallableLiteral {
         Objects.requireNonNull(body, "body");
         argumentLocals = List.copyOf(argumentLocals);
+        captureLocals = List.copyOf(captureLocals);
         Objects.requireNonNull(type, "type");
         if (arity < 0)
             throw new IllegalArgumentException("arity must be non-negative");

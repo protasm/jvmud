@@ -69,6 +69,7 @@ import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeTypes;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeValueKind;
+import io.github.protasm.jvmud.compiler.pipeline.CompilationUnit;
 import io.github.protasm.jvmud.compiler.semantic.SemanticModel;
 import io.github.protasm.jvmud.compiler.semantic.SemanticScope;
 import java.util.ArrayDeque;
@@ -76,6 +77,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -102,6 +104,7 @@ public final class IRLowerer {
 
         Map<Symbol, IRField> fieldsBySymbol = new HashMap<>();
         List<IRField> flattenedInheritedFields = new ArrayList<>();
+        Set<String> flattenedInheritedMethodOwners = new HashSet<>();
         importInheritedFields(
                 objectScope,
                 objectScope,
@@ -111,9 +114,24 @@ public final class IRLowerer {
                 objectInternalName,
                 parentInternalName,
                 problems);
+        importSecondaryParentScopeFields(
+                objectScope,
+                declaredFieldSymbols(astObject),
+                fieldsBySymbol,
+                flattenedInheritedFields,
+                objectInternalName,
+                parentInternalName,
+                problems);
         List<IRField> fields = lowerFields(astObject.fields(), fieldsBySymbol, problems, objectInternalName);
         fields.addAll(0, flattenedInheritedFields);
-        List<IRMethod> methods = lowerMethods(astObject, fieldsBySymbol, problems, objectInternalName);
+        List<IRMethod> methods = lowerMethods(
+                astObject,
+                objectScope,
+                fieldsBySymbol,
+                flattenedInheritedMethodOwners,
+                problems,
+                objectInternalName,
+                parentInternalName);
 
         TypedIR typedIr = new TypedIR(new IRObject(astObject.line(), astObject.name(), parentInternalName, fields, methods));
 
@@ -244,29 +262,347 @@ public final class IRLowerer {
         return !Objects.equals(ownerInternalName, parentInternalName);
     }
 
+    /**
+     * Imports the analyzed field symbols visible to secondary direct parents. Flattened secondary
+     * methods keep references to those exact symbols, so name-equivalent fields imported through the
+     * child scope are not enough for method-body lowering.
+     */
+    private void importSecondaryParentScopeFields(
+            SemanticScope objectScope,
+            Set<Symbol> declaredFieldSymbols,
+            Map<Symbol, IRField> fieldsBySymbol,
+            List<IRField> flattenedInheritedFields,
+            String objectInternalName,
+            String parentInternalName,
+            List<CompilationProblem> problems) {
+        if (objectScope == null)
+            return;
+
+        Set<CompilationUnit> secondaryParentUnits = visibleSecondaryParentUnits(objectScope, parentInternalName);
+        for (CompilationUnit parentUnit : secondaryParentUnits) {
+            for (ASTField field : parentUnit.semanticModel().astObject().fields()) {
+                importVisibleInheritedField(
+                        field,
+                        declaredFieldSymbols,
+                        fieldsBySymbol,
+                        flattenedInheritedFields,
+                        objectInternalName,
+                        parentInternalName,
+                        problems);
+            }
+
+            SemanticScope parentScope = parentUnit.semanticModel().objectScope();
+            for (List<SemanticScope.ScopedSymbol> scopedSymbols : parentScope.symbols().values()) {
+                for (SemanticScope.ScopedSymbol scopedSymbol : scopedSymbols) {
+                    if (scopedSymbol == null || scopedSymbol.field() == null)
+                        continue;
+
+                    importVisibleInheritedField(
+                            scopedSymbol,
+                            declaredFieldSymbols,
+                            fieldsBySymbol,
+                            flattenedInheritedFields,
+                            objectInternalName,
+                            parentInternalName,
+                            problems);
+                }
+            }
+        }
+    }
+
+    /**
+     * Imports a concrete field declared by a secondary parent unit. Flattened methods may reference
+     * private fields that are not visible through child semantic scope, but their storage still has
+     * to travel with the method body when JVMud lowers multiple LPC inherits onto one Java class.
+     */
+    private void importVisibleInheritedField(
+            ASTField field,
+            Set<Symbol> declaredFieldSymbols,
+            Map<Symbol, IRField> fieldsBySymbol,
+            List<IRField> flattenedInheritedFields,
+            String objectInternalName,
+            String parentInternalName,
+            List<CompilationProblem> problems) {
+        if (field == null)
+            return;
+
+        Symbol symbol = field.symbol();
+        if (declaredFieldSymbols.contains(symbol))
+            return;
+
+        RuntimeType type = runtimeType(symbol.lpcType());
+        String ownerInternalName = field.ownerName();
+        if (ownerInternalName != null && !Objects.equals(ownerInternalName, parentInternalName)) {
+            IRField mapped = fieldsBySymbol.get(symbol);
+            if (mapped != null && Objects.equals(mapped.ownerInternalName(), objectInternalName))
+                return;
+
+            IRField existing = findField(fieldsBySymbol, objectInternalName, symbol.name());
+            if (existing != null) {
+                fieldsBySymbol.put(symbol, existing);
+                return;
+            }
+            IRField flattenedField = new IRField(
+                    field.line(),
+                    objectInternalName,
+                    symbol.name(),
+                    type,
+                    lowerFieldInitializer(field.initializer(), type, fieldsBySymbol, problems, objectInternalName));
+            fieldsBySymbol.put(symbol, flattenedField);
+            flattenedInheritedFields.add(flattenedField);
+            return;
+        }
+
+        if (fieldsBySymbol.containsKey(symbol))
+            return;
+
+        IRField existing = findField(
+                fieldsBySymbol,
+                (ownerInternalName != null) ? ownerInternalName : defaultParentInternalName,
+                symbol.name());
+        if (existing != null) {
+            fieldsBySymbol.put(symbol, existing);
+            return;
+        }
+
+        fieldsBySymbol.put(
+                symbol,
+                new IRField(
+                        field.line(),
+                        (ownerInternalName != null) ? ownerInternalName : defaultParentInternalName,
+                        symbol.name(),
+                        type,
+                        null));
+    }
+
+    private Set<CompilationUnit> secondaryParentUnits(SemanticScope objectScope, String parentInternalName) {
+        Set<CompilationUnit> units = new HashSet<>();
+        for (List<SemanticScope.ScopedSymbol> scopedSymbols : objectScope.symbols().values()) {
+            for (SemanticScope.ScopedSymbol scopedSymbol : scopedSymbols) {
+                CompilationUnit originUnit = scopedSymbol.originUnit();
+                if (originUnit == null || originUnit.semanticModel() == null)
+                    continue;
+
+                String originName = originUnit.semanticModel().astObject().name();
+                if (!Objects.equals(originName, parentInternalName))
+                    units.add(originUnit);
+            }
+        }
+        return units;
+    }
+
+    private Set<CompilationUnit> visibleSecondaryParentUnits(SemanticScope objectScope, String parentInternalName) {
+        Set<CompilationUnit> units = new HashSet<>();
+        for (CompilationUnit unit : secondaryParentUnits(objectScope, parentInternalName))
+            collectVisibleParentUnits(unit, units);
+        return units;
+    }
+
+    private void collectVisibleParentUnits(CompilationUnit unit, Set<CompilationUnit> units) {
+        if (unit == null || unit.semanticModel() == null || !units.add(unit))
+            return;
+
+        for (CompilationUnit parentUnit : unit.directParentUnits())
+            collectVisibleParentUnits(parentUnit, units);
+    }
+
+    private void importVisibleInheritedField(
+            SemanticScope.ScopedSymbol scopedSymbol,
+            Set<Symbol> declaredFieldSymbols,
+            Map<Symbol, IRField> fieldsBySymbol,
+            List<IRField> flattenedInheritedFields,
+            String objectInternalName,
+            String parentInternalName,
+            List<CompilationProblem> problems) {
+        Symbol symbol = scopedSymbol.symbol();
+        if (declaredFieldSymbols.contains(symbol))
+            return;
+
+        RuntimeType type = runtimeType(symbol.lpcType());
+        String ownerInternalName = scopedSymbol.field().ownerName();
+        if (ownerInternalName != null && !Objects.equals(ownerInternalName, parentInternalName)) {
+            IRField mapped = fieldsBySymbol.get(symbol);
+            if (mapped != null && Objects.equals(mapped.ownerInternalName(), objectInternalName))
+                return;
+
+            IRField existing = findField(fieldsBySymbol, objectInternalName, symbol.name());
+            if (existing != null) {
+                fieldsBySymbol.put(symbol, existing);
+                return;
+            }
+            IRField flattenedField = new IRField(
+                    scopedSymbol.field().line(),
+                    objectInternalName,
+                    symbol.name(),
+                    type,
+                    lowerFieldInitializer(
+                            scopedSymbol.field().initializer(),
+                            type,
+                            fieldsBySymbol,
+                            problems,
+                            objectInternalName));
+            fieldsBySymbol.put(symbol, flattenedField);
+            flattenedInheritedFields.add(flattenedField);
+            return;
+        }
+
+        if (fieldsBySymbol.containsKey(symbol))
+            return;
+
+        IRField existing = findField(
+                fieldsBySymbol,
+                (ownerInternalName != null) ? ownerInternalName : defaultParentInternalName,
+                symbol.name());
+        if (existing != null) {
+            fieldsBySymbol.put(symbol, existing);
+            return;
+        }
+
+        fieldsBySymbol.put(
+                symbol,
+                new IRField(
+                        scopedSymbol.field().line(),
+                        (ownerInternalName != null) ? ownerInternalName : defaultParentInternalName,
+                        symbol.name(),
+                        type,
+                        null));
+    }
+
+    private IRField findField(Map<Symbol, IRField> fieldsBySymbol, String ownerInternalName, String name) {
+        for (IRField field : fieldsBySymbol.values()) {
+            if (Objects.equals(field.ownerInternalName(), ownerInternalName) && Objects.equals(field.name(), name))
+                return field;
+        }
+        return null;
+    }
+
     private List<IRMethod> lowerMethods(
             ASTObject astObject,
+            SemanticScope objectScope,
             Map<Symbol, IRField> fieldsBySymbol,
+            Set<String> flattenedInheritedMethodOwners,
             List<CompilationProblem> problems,
-            String objectInternalName) {
+            String objectInternalName,
+            String parentInternalName) {
         List<IRMethod> methods = new ArrayList<>();
+        Set<MethodKey> declaredMethodKeys = declaredMethodKeys(astObject);
+        importSecondaryInheritedMethods(
+                objectScope,
+                fieldsBySymbol,
+                flattenedInheritedMethodOwners,
+                declaredMethodKeys,
+                methods,
+                problems,
+                objectInternalName,
+                parentInternalName);
 
         for (ASTMethod method : astObject.methods()) {
             if (!method.isDefined())
                 continue;
-            methods.add(lowerMethod(method, fieldsBySymbol, problems, objectInternalName));
+            methods.add(lowerMethod(method, fieldsBySymbol, flattenedInheritedMethodOwners, problems, objectInternalName));
         }
 
         return methods;
     }
 
+    private Set<MethodKey> declaredMethodKeys(ASTObject astObject) {
+        Set<MethodKey> keys = new HashSet<>();
+        if (astObject == null)
+            return keys;
+
+        for (ASTMethod method : astObject.methods())
+            keys.add(new MethodKey(method.symbol().name(), parameterCount(method)));
+        return keys;
+    }
+
+    /**
+     * Copies concrete methods from secondary direct parents onto the child IR. The primary parent
+     * remains a JVM superclass, but secondary parents must be represented as child-owned bytecode
+     * because Java has no second superclass slot.
+     */
+    private void importSecondaryInheritedMethods(
+            SemanticScope objectScope,
+            Map<Symbol, IRField> fieldsBySymbol,
+            Set<String> flattenedInheritedMethodOwners,
+            Set<MethodKey> declaredMethodKeys,
+            List<IRMethod> methods,
+            List<CompilationProblem> problems,
+            String objectInternalName,
+            String parentInternalName) {
+        if (objectScope == null)
+            return;
+
+        List<ASTMethod> methodsToFlatten = new ArrayList<>();
+        Set<MethodKey> imported = new HashSet<>();
+        collectSecondaryInheritedMethods(
+                objectScope.symbols().values(),
+                fieldsBySymbol,
+                flattenedInheritedMethodOwners,
+                declaredMethodKeys,
+                imported,
+                methodsToFlatten,
+                objectInternalName,
+                parentInternalName);
+
+        for (CompilationUnit parentUnit : visibleSecondaryParentUnits(objectScope, parentInternalName)) {
+            collectSecondaryInheritedMethods(
+                    parentUnit.semanticModel().objectScope().symbols().values(),
+                    fieldsBySymbol,
+                    flattenedInheritedMethodOwners,
+                    declaredMethodKeys,
+                    imported,
+                    methodsToFlatten,
+                    objectInternalName,
+                    parentInternalName);
+        }
+
+        for (ASTMethod method : methodsToFlatten)
+            methods.add(lowerMethod(method, fieldsBySymbol, flattenedInheritedMethodOwners, problems, objectInternalName));
+    }
+
+    private void collectSecondaryInheritedMethods(
+            Iterable<List<SemanticScope.ScopedSymbol>> symbolLists,
+            Map<Symbol, IRField> fieldsBySymbol,
+            Set<String> flattenedInheritedMethodOwners,
+            Set<MethodKey> declaredMethodKeys,
+            Set<MethodKey> imported,
+            List<ASTMethod> methodsToFlatten,
+            String objectInternalName,
+            String parentInternalName) {
+        for (List<SemanticScope.ScopedSymbol> scopedSymbols : symbolLists) {
+            for (SemanticScope.ScopedSymbol scopedSymbol : scopedSymbols) {
+                ASTMethod method = scopedSymbol.method();
+                if (method == null || !method.isDefined())
+                    continue;
+
+                String ownerInternalName = method.ownerName();
+                if (ownerInternalName == null || Objects.equals(ownerInternalName, objectInternalName))
+                    continue;
+                if (Objects.equals(ownerInternalName, parentInternalName))
+                    continue;
+
+                MethodKey key = new MethodKey(method.symbol().name(), parameterCount(method));
+                if (declaredMethodKeys.contains(key) || !imported.add(key))
+                    continue;
+
+                flattenedInheritedMethodOwners.add(ownerInternalName);
+                methodsToFlatten.add(method);
+            }
+        }
+    }
+
     private IRMethod lowerMethod(
             ASTMethod method,
             Map<Symbol, IRField> fieldsBySymbol,
+            Set<String> flattenedInheritedMethodOwners,
             List<CompilationProblem> problems,
             String objectInternalName) {
         MethodContext context =
-                new MethodContext(runtimeType(method.symbol().lpcType()), fieldsBySymbol, objectInternalName);
+                new MethodContext(
+                        runtimeType(method.symbol().lpcType()),
+                        fieldsBySymbol,
+                        objectInternalName,
+                        flattenedInheritedMethodOwners);
 
         lowerParameters(method, context);
         lowerLocals(method, context);
@@ -1044,6 +1380,8 @@ public final class IRLowerer {
             String ownerInternalName = callMethod.method().ownerName();
             if (ownerInternalName == null && !callMethod.isParentDispatch())
                 ownerInternalName = defaultParentInternalName;
+            if (!callMethod.isParentDispatch() && context.isFlattenedOwner(ownerInternalName))
+                ownerInternalName = context.currentInternalName;
             List<RuntimeType> parameterTypes = parameterTypes(callMethod.method());
             return new IRInstanceCall(
                     callMethod.line(),
@@ -1125,12 +1463,130 @@ public final class IRLowerer {
         int argumentCount = maxClosureArgumentIndex(inlineCallable.body());
         List<IRLocal> argumentLocals = new ArrayList<>();
         for (int i = 1; i <= argumentCount; i++)
-            argumentLocals.add(new IRLocal(inlineCallable.line(), "callable_arg" + i, RuntimeTypes.MIXED, i + 2, false));
+            argumentLocals.add(new IRLocal(inlineCallable.line(), "callable_arg" + i, RuntimeTypes.MIXED, 100 + i, false));
 
         context.pushClosureArguments(argumentLocals);
         IRExpression body = lowerExpression(inlineCallable.body(), context, problems);
         context.popClosureArguments();
-        return new IRInlineCallableLiteral(inlineCallable.line(), body, argumentCount, argumentLocals, RuntimeTypes.CALLABLE);
+        return new IRInlineCallableLiteral(
+                inlineCallable.line(),
+                body,
+                argumentCount,
+                argumentLocals,
+                captureLocals(body, argumentLocals),
+                RuntimeTypes.CALLABLE);
+    }
+
+    private List<IRLocal> captureLocals(IRExpression expression, List<IRLocal> argumentLocals) {
+        Set<IRLocal> arguments = new HashSet<>(argumentLocals);
+        Map<Integer, IRLocal> capturesBySlot = new LinkedHashMap<>();
+        collectCaptureLocals(expression, arguments, capturesBySlot);
+        return List.copyOf(capturesBySlot.values());
+    }
+
+    private void collectCaptureLocals(
+            IRExpression expression, Set<IRLocal> argumentLocals, Map<Integer, IRLocal> capturesBySlot) {
+        if (expression == null)
+            return;
+
+        if (expression instanceof IRLocalLoad localLoad) {
+            IRLocal local = localLoad.local();
+            if (!argumentLocals.contains(local))
+                capturesBySlot.putIfAbsent(local.slot(), local);
+            return;
+        }
+        if (expression instanceof IRLocalStore localStore) {
+            IRLocal local = localStore.local();
+            if (!argumentLocals.contains(local))
+                capturesBySlot.putIfAbsent(local.slot(), local);
+            collectCaptureLocals(localStore.value(), argumentLocals, capturesBySlot);
+            return;
+        }
+        if (expression instanceof IRLocalMutation mutation) {
+            IRLocal local = mutation.local();
+            if (!argumentLocals.contains(local))
+                capturesBySlot.putIfAbsent(local.slot(), local);
+            return;
+        }
+        if (expression instanceof IRFieldLoad || expression instanceof IRConstant || expression instanceof IRFromEndIndex
+                || expression instanceof IRFunctionReferenceLiteral || expression instanceof IRTypedFunctionLiteral
+                || expression instanceof IRInlineCallableLiteral)
+            return;
+        if (expression instanceof IRCoerce coerce) {
+            collectCaptureLocals(coerce.value(), argumentLocals, capturesBySlot);
+            return;
+        }
+        if (expression instanceof IRUnaryOperation unary) {
+            collectCaptureLocals(unary.operand(), argumentLocals, capturesBySlot);
+            return;
+        }
+        if (expression instanceof IRBinaryOperation binary) {
+            collectCaptureLocals(binary.left(), argumentLocals, capturesBySlot);
+            collectCaptureLocals(binary.right(), argumentLocals, capturesBySlot);
+            return;
+        }
+        if (expression instanceof IRSequence sequence) {
+            sequence.expressions().forEach(nested -> collectCaptureLocals(nested, argumentLocals, capturesBySlot));
+            return;
+        }
+        if (expression instanceof IRConditionalExpression conditional) {
+            collectCaptureLocals(conditional.condition(), argumentLocals, capturesBySlot);
+            collectCaptureLocals(conditional.thenBranch(), argumentLocals, capturesBySlot);
+            collectCaptureLocals(conditional.elseBranch(), argumentLocals, capturesBySlot);
+            return;
+        }
+        if (expression instanceof IREfunCall call) {
+            call.arguments().forEach(argument -> collectCaptureLocals(argument, argumentLocals, capturesBySlot));
+            return;
+        }
+        if (expression instanceof IRInstanceCall call) {
+            call.arguments().forEach(argument -> collectCaptureLocals(argument, argumentLocals, capturesBySlot));
+            return;
+        }
+        if (expression instanceof IRDynamicInvoke invoke) {
+            invoke.arguments().forEach(argument -> collectCaptureLocals(argument, argumentLocals, capturesBySlot));
+            return;
+        }
+        if (expression instanceof IRDynamicInvokeExpression invoke) {
+            collectCaptureLocals(invoke.target(), argumentLocals, capturesBySlot);
+            invoke.arguments().forEach(argument -> collectCaptureLocals(argument, argumentLocals, capturesBySlot));
+            return;
+        }
+        if (expression instanceof IRDynamicInvokeField invoke) {
+            invoke.arguments().forEach(argument -> collectCaptureLocals(argument, argumentLocals, capturesBySlot));
+            return;
+        }
+        if (expression instanceof IRArrayLiteral literal) {
+            literal.elements().forEach(element -> collectCaptureLocals(element, argumentLocals, capturesBySlot));
+            return;
+        }
+        if (expression instanceof IRMappingLiteral literal) {
+            for (IRMappingEntry entry : literal.entries()) {
+                collectCaptureLocals(entry.key(), argumentLocals, capturesBySlot);
+                collectCaptureLocals(entry.value(), argumentLocals, capturesBySlot);
+            }
+            return;
+        }
+        if (expression instanceof IRArrayGet get) {
+            collectCaptureLocals(get.array(), argumentLocals, capturesBySlot);
+            collectCaptureLocals(get.index(), argumentLocals, capturesBySlot);
+            return;
+        }
+        if (expression instanceof IRMappingGet get) {
+            collectCaptureLocals(get.mapping(), argumentLocals, capturesBySlot);
+            collectCaptureLocals(get.key(), argumentLocals, capturesBySlot);
+            return;
+        }
+        if (expression instanceof IRStringGet get) {
+            collectCaptureLocals(get.string(), argumentLocals, capturesBySlot);
+            collectCaptureLocals(get.index(), argumentLocals, capturesBySlot);
+            return;
+        }
+        if (expression instanceof IRSlice slice) {
+            collectCaptureLocals(slice.target(), argumentLocals, capturesBySlot);
+            collectCaptureLocals(slice.start(), argumentLocals, capturesBySlot);
+            collectCaptureLocals(slice.end(), argumentLocals, capturesBySlot);
+        }
     }
 
     private IRExpression lowerSortArray(
@@ -1270,6 +1726,17 @@ public final class IRLowerer {
         return types;
     }
 
+    private int parameterCount(ASTMethod method) {
+        if (method == null || method.parameters() == null)
+            return 0;
+        int count = 0;
+        for (ASTParameter ignored : method.parameters())
+            count++;
+        return count;
+    }
+
+    private record MethodKey(String name, int arity) {}
+
     private IRExpression coerceIfNeeded(IRExpression value, RuntimeType targetType) {
         if (value == null)
             return new IRConstant(0, null, targetType != null ? targetType : RuntimeTypes.MIXED);
@@ -1351,6 +1818,7 @@ public final class IRLowerer {
         private final RuntimeType returnType;
         private final Map<Symbol, IRField> fieldsBySymbol;
         private final String currentInternalName;
+        private final Set<String> flattenedInheritedMethodOwners;
         private final Map<Symbol, IRLocal> localsBySymbol = new HashMap<>();
         private final Map<Integer, IRLocal> localsBySlot = new HashMap<>();
         private final List<IRParameter> parameters = new ArrayList<>();
@@ -1364,9 +1832,23 @@ public final class IRLowerer {
         private int syntheticLocalCounter = 0;
 
         private MethodContext(RuntimeType returnType, Map<Symbol, IRField> fieldsBySymbol, String currentInternalName) {
+            this(returnType, fieldsBySymbol, currentInternalName, Set.of());
+        }
+
+        private MethodContext(
+                RuntimeType returnType,
+                Map<Symbol, IRField> fieldsBySymbol,
+                String currentInternalName,
+                Set<String> flattenedInheritedMethodOwners) {
             this.returnType = returnType != null ? returnType : RuntimeTypes.MIXED;
             this.fieldsBySymbol = fieldsBySymbol;
             this.currentInternalName = currentInternalName;
+            this.flattenedInheritedMethodOwners =
+                    flattenedInheritedMethodOwners != null ? flattenedInheritedMethodOwners : Set.of();
+        }
+
+        public boolean isFlattenedOwner(String ownerInternalName) {
+            return ownerInternalName != null && flattenedInheritedMethodOwners.contains(ownerInternalName);
         }
 
         public BlockBuilder newBlock(String prefix) {
@@ -1480,11 +1962,19 @@ public final class IRLowerer {
 
         public IRField requireField(ASTField astField, List<CompilationProblem> problems) {
             IRField field = fieldsBySymbol.get(astField.symbol());
-            if (field != null)
+            if (field != null && !isFlattenedOwner(field.ownerInternalName()))
                 return field;
 
             RuntimeType type = RuntimeTypes.fromLpcType(astField.symbol().lpcType());
             String owner = (astField.ownerName() != null) ? astField.ownerName() : currentInternalName;
+            if (isFlattenedOwner(owner)) {
+                IRField flattened = findCurrentField(astField.symbol().name());
+                if (flattened != null) {
+                    fieldsBySymbol.put(astField.symbol(), flattened);
+                    return flattened;
+                }
+                owner = currentInternalName;
+            }
             IRField synthesized = new IRField(astField.line(), owner, astField.symbol().name(), type, null);
             fieldsBySymbol.put(astField.symbol(), synthesized);
             problems.add(
@@ -1493,6 +1983,14 @@ public final class IRLowerer {
                             "Synthesizing missing field '" + astField.symbol().name() + "' during lowering.",
                             astField.line()));
             return synthesized;
+        }
+
+        private IRField findCurrentField(String name) {
+            for (IRField field : fieldsBySymbol.values()) {
+                if (Objects.equals(field.ownerInternalName(), currentInternalName) && Objects.equals(field.name(), name))
+                    return field;
+            }
+            return null;
         }
 
         public List<IRBlock> buildBlocks(IRTerminator defaultTerminator) {
