@@ -78,6 +78,7 @@ public final class MudlibBoundaryConfigReader {
         addString(builder::preloadFilePath, firstValue(values, "preload_file"));
         addPreloadObjects(builder, allValues(values, "preload_objects"));
         addDirectEfunAliases(builder, values);
+        addLdmudCompatibilityPredefines(builder, values);
         addLifecycleEvents(builder, allValues(values, "handled_lifecycle_events"));
         addLifecycleMethods(builder, values);
         addString(builder::temporalTickMethod, firstValue(values, "temporal_tick_method"));
@@ -136,7 +137,7 @@ public final class MudlibBoundaryConfigReader {
                 continue;
             }
 
-            for (String value : splitValues(rawValue)) {
+            for (String value : splitValues(rawValue, shouldPreserveReplacementText(key))) {
                 values.computeIfAbsent(key, ignored -> new ArrayList<>()).add(value);
             }
         }
@@ -148,7 +149,11 @@ public final class MudlibBoundaryConfigReader {
         return comment == -1 ? value : value.substring(0, comment);
     }
 
-    private static List<String> splitValues(String rawValue) {
+    private static List<String> splitValues(String rawValue, boolean preserveReplacementText) {
+        if (preserveReplacementText) {
+            return rawValue.isBlank() ? List.of() : List.of(rawValue.trim());
+        }
+
         List<String> values = new ArrayList<>();
         for (String part : rawValue.split(",")) {
             String value = unquote(part.trim());
@@ -166,6 +171,10 @@ public final class MudlibBoundaryConfigReader {
             return value.substring(1, value.length() - 1);
         }
         return value;
+    }
+
+    private static boolean shouldPreserveReplacementText(String key) {
+        return key.trim().startsWith("ldmud_compat_predefine.");
     }
 
     private static String firstValue(Map<String, List<String>> values, String... keys) {
@@ -311,6 +320,26 @@ public final class MudlibBoundaryConfigReader {
             String engineName = entry.getValue().get(0);
             if (!engineName.isBlank()) {
                 builder.directEfunAlias(mudlibName, engineName);
+            }
+        }
+    }
+
+    private static void addLdmudCompatibilityPredefines(
+            MudlibBoundary.Builder builder, Map<String, List<String>> values) {
+        for (Map.Entry<String, List<String>> entry : values.entrySet()) {
+            String key = entry.getKey().trim();
+            if (!key.startsWith("ldmud_compat_predefine.")) {
+                continue;
+            }
+
+            String macroName = key.substring("ldmud_compat_predefine.".length());
+            if (macroName.isBlank() || entry.getValue().isEmpty()) {
+                continue;
+            }
+
+            String replacementText = entry.getValue().get(0);
+            if (!replacementText.isBlank()) {
+                builder.compatibilityPredefine(macroName, replacementText);
             }
         }
     }

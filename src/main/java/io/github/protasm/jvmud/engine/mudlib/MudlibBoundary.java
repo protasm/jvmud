@@ -51,6 +51,7 @@ public final class MudlibBoundary {
     private final Set<MudlibLifecycleEvent> lifecycleEvents;
     private final Map<MudlibLifecycleEvent, String> lifecycleMethods;
     private final Map<String, String> directEfunAliases;
+    private final Map<String, String> compatibilityPredefines;
 
     private MudlibBoundary(Builder builder) {
         this.gameId = normalizeOptionalText(builder.gameId);
@@ -70,6 +71,7 @@ public final class MudlibBoundary {
         this.lifecycleEvents = immutableCopy(builder.lifecycleEvents);
         this.lifecycleMethods = immutableCopy(builder.lifecycleMethods);
         this.directEfunAliases = normalizeTextMap(builder.directEfunAliases);
+        this.compatibilityPredefines = normalizeTextMap(builder.compatibilityPredefines);
     }
 
     /** Returns a boundary with no declared mudlib integration points. */
@@ -202,6 +204,20 @@ public final class MudlibBoundary {
     }
 
     /**
+     * Returns preprocessor predefines supplied by a mudlib compatibility profile.
+     *
+     * <p>These are compile-time facts exposed to LPC source before parsing. They are intended for
+     * driver-compatibility shims, such as LDMud-flavored version macros that imported mudlibs probe
+     * with {@code __VERSION_MAJOR__}. JVMud keeps them at the mudlib boundary instead of treating
+     * another driver's predefined macro vocabulary as JVMud-native LPC.</p>
+     *
+     * @return immutable map from predefined macro name to replacement text
+     */
+    public Map<String, String> compatibilityPredefines() {
+        return compatibilityPredefines;
+    }
+
+    /**
      * Returns the configured mudlib method for an event, if one was declared.
      *
      * @param event lifecycle event to inspect
@@ -245,7 +261,8 @@ public final class MudlibBoundary {
                 || !temporalTickInterval.isZero()
                 || !lifecycleEvents.isEmpty()
                 || !lifecycleMethods.isEmpty()
-                || !directEfunAliases.isEmpty();
+                || !directEfunAliases.isEmpty()
+                || !compatibilityPredefines.isEmpty();
     }
 
     private static Set<MudlibLifecycleEvent> immutableCopy(EnumSet<MudlibLifecycleEvent> events) {
@@ -270,8 +287,8 @@ public final class MudlibBoundary {
         java.util.LinkedHashMap<String, String> normalized = new java.util.LinkedHashMap<>();
         for (Map.Entry<String, String> entry : mappings.entrySet()) {
             normalized.put(
-                    normalizeRequiredText(entry.getKey(), "Direct efun source name"),
-                    normalizeRequiredText(entry.getValue(), "Direct efun target name"));
+                    normalizeRequiredText(entry.getKey(), "Mapping key"),
+                    normalizeRequiredText(entry.getValue(), "Mapping value"));
         }
         return Collections.unmodifiableMap(normalized);
     }
@@ -363,6 +380,8 @@ public final class MudlibBoundary {
         private final EnumMap<MudlibLifecycleEvent, String> lifecycleMethods =
                 new EnumMap<>(MudlibLifecycleEvent.class);
         private final java.util.LinkedHashMap<String, String> directEfunAliases =
+                new java.util.LinkedHashMap<>();
+        private final java.util.LinkedHashMap<String, String> compatibilityPredefines =
                 new java.util.LinkedHashMap<>();
 
         private Builder() {}
@@ -512,6 +531,28 @@ public final class MudlibBoundary {
                 directEfunAliases.remove(normalizedMudlibName);
             } else {
                 directEfunAliases.put(normalizedMudlibName, normalizedEngineName);
+            }
+            return this;
+        }
+
+        /**
+         * Declares a compile-time compatibility predefine for this mudlib profile.
+         *
+         * <p>The replacement text is passed to the LPC preprocessor as source text. String-valued
+         * macros should therefore include their LPC quotes, for example {@code "\"3.6.3\""}.</p>
+         *
+         * @param macroName predefined macro name exposed to mudlib source
+         * @param replacementText replacement source text for the macro
+         * @return this builder
+         * @throws IllegalArgumentException if {@code macroName} is blank
+         */
+        public Builder compatibilityPredefine(String macroName, String replacementText) {
+            String normalizedName = normalizeRequiredText(macroName, "Compatibility predefine name");
+            String normalizedReplacement = normalizeOptionalText(replacementText);
+            if (normalizedReplacement == null) {
+                compatibilityPredefines.remove(normalizedName);
+            } else {
+                compatibilityPredefines.put(normalizedName, normalizedReplacement);
             }
             return this;
         }

@@ -116,7 +116,7 @@ public final class RuntimeContext {
     }
 
     public Preprocessor newPreprocessor() {
-        return new Preprocessor(includeResolver);
+        return new Preprocessor(includeResolver, mudlibBoundary.compatibilityPredefines());
     }
 
     public void registerEfun(Efun efun) {

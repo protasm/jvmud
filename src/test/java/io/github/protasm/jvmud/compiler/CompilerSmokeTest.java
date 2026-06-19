@@ -183,6 +183,31 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void pipelineAppliesMudlibBoundaryCompatibilityPredefines() {
+        RuntimeContext context = new RuntimeContext(null);
+        context.setMudlibBoundary(MudlibBoundary.builder()
+                .compatibilityPredefine("__VERSION__", "\"JVMud compatibility\"")
+                .compatibilityPredefine("__VERSION_MAJOR__", "3")
+                .compatibilityPredefine("__VERSION_MINOR__", "6")
+                .compatibilityPredefine("__VERSION_MICRO__", "3")
+                .build());
+
+        CompilationResult result = new CompilationPipeline("java/lang/Object", context).run("""
+                string version() {
+                    return __VERSION__;
+                }
+
+                int supports_text_width() {
+                    return (__VERSION_MAJOR__ >= 3) && (__VERSION_MINOR__ >= 6)
+                        && (__VERSION_MICRO__ >= 3);
+                }
+                """);
+
+        assertTrue(result.getProblems().isEmpty(), () -> problemMessages(result));
+        assertNotNull(result.getBytecode());
+    }
+
+    @Test
     void preprocessorDoesNotLetFunctionSymbolsConsumeLaterDirectives() {
         String processed = Preprocessor.preprocess("""
                 void shutdown() {

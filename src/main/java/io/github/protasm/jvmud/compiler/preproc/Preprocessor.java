@@ -62,10 +62,28 @@ public final class Preprocessor {
   private final Map<String, Macro> macros = new HashMap<>();
 
   public Preprocessor(IncludeResolver resolver) {
+    this(resolver, Map.of());
+  }
+
+  /**
+   * Creates a preprocessor with explicit compatibility predefines.
+   *
+   * <p>The predefined values are replacement source text. This constructor is used by mudlib
+   * boundary profiles to expose driver-compatibility macros, for example LDMud-shaped version
+   * probes, without making those macros JVMud-native LPC.</p>
+   *
+   * @param resolver include resolver for {@code #include} directives
+   * @param compatibilityPredefines macro names and replacement source text supplied by the active
+   *     mudlib boundary
+   */
+  public Preprocessor(IncludeResolver resolver, Map<String, String> compatibilityPredefines) {
     this.resolver = Objects.requireNonNull(resolver);
 
     // predefineds you may want:
     defineObject("__LPC__", "1");
+    if (compatibilityPredefines != null) {
+      compatibilityPredefines.forEach(this::defineObject);
+    }
   }
 
   /* ========================= public API ========================== */

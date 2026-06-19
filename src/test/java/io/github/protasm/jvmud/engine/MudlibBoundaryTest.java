@@ -123,6 +123,8 @@ final class MudlibBoundaryTest {
                 lifecycle.scheduled_tick_error = heart_beat_error
                 lifecycle.server_shutdown = notify_shutdown
                 direct_efun.sizeof = jvmud_size
+                ldmud_compat_predefine.__VERSION__ = "JVMud LDMud compatibility"
+                ldmud_compat_predefine.__VERSION_MAJOR__ = 3
                 temporal_tick_method = heart_beat
                 temporal_tick_interval = 0.25
                 """);
@@ -159,9 +161,24 @@ final class MudlibBoundaryTest {
         assertEquals("notify_shutdown", boundary.lifecycleMethod(MudlibLifecycleEvent.SERVER_SHUTDOWN).orElseThrow());
         assertEquals("jvmud_size", boundary.directEfunAlias("sizeof").orElseThrow());
         assertEquals(Map.of("sizeof", "jvmud_size"), boundary.directEfunAliases());
+        assertEquals(
+                Map.of("__VERSION__", "\"JVMud LDMud compatibility\"", "__VERSION_MAJOR__", "3"),
+                boundary.compatibilityPredefines());
         assertEquals("heart_beat", boundary.temporalTickMethod().orElseThrow());
         assertEquals(Duration.ofMillis(250), boundary.temporalTickInterval());
         assertEquals(0, boundary.temporalTickIntervalSeconds());
+    }
+
+    @Test
+    void compatibilityPredefinesAreImmutable() {
+        MudlibBoundary boundary = MudlibBoundary.builder()
+                .compatibilityPredefine("__VERSION_MAJOR__", "3")
+                .build();
+
+        assertTrue(boundary.declared());
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> boundary.compatibilityPredefines().put("__VERSION_MINOR__", "6"));
     }
 
     @Test

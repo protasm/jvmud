@@ -86,6 +86,12 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("init/init_file", boundary.preloadFilePath().orElseThrow());
         assertTrue(boundary.preloadObjectPaths().contains("secure/master"));
         assertTrue(boundary.preloadObjectPaths().contains("secure/simul_efun"));
+        assertEquals(
+                "\"JVMud RealmsMUD LDMud compatibility\"",
+                boundary.compatibilityPredefines().get("__VERSION__"));
+        assertEquals("3", boundary.compatibilityPredefines().get("__VERSION_MAJOR__"));
+        assertEquals("6", boundary.compatibilityPredefines().get("__VERSION_MINOR__"));
+        assertEquals("3", boundary.compatibilityPredefines().get("__VERSION_MICRO__"));
         assertEquals("create", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED).orElseThrow());
         assertEquals("reset", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_ACTIVATED).orElseThrow());
         assertEquals(
