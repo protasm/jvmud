@@ -973,15 +973,17 @@ public final class IRLowerer {
         if (expression instanceof ASTExprOpBinary binary) {
             if (binary.operator() == io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_ADD
                     && binary.lpcType() == LPCType.LPCARRAY) {
-                IRExpression left = lowerExpression(binary.left(), context, problems);
-                IRExpression right = lowerExpression(binary.right(), context, problems);
-                return new IRArrayConcat(binary.line(), left, right, RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
+                RuntimeType arrayType = RuntimeTypes.arrayOf(RuntimeTypes.MIXED);
+                IRExpression left = coerceIfNeeded(lowerExpression(binary.left(), context, problems), arrayType);
+                IRExpression right = coerceIfNeeded(lowerExpression(binary.right(), context, problems), arrayType);
+                return new IRArrayConcat(binary.line(), left, right, arrayType);
             }
             if (binary.operator() == io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_SUB
                     && binary.lpcType() == LPCType.LPCARRAY) {
-                IRExpression left = lowerExpression(binary.left(), context, problems);
-                IRExpression right = lowerExpression(binary.right(), context, problems);
-                return new IRArrayDifference(binary.line(), left, right, RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
+                RuntimeType arrayType = RuntimeTypes.arrayOf(RuntimeTypes.MIXED);
+                IRExpression left = coerceIfNeeded(lowerExpression(binary.left(), context, problems), arrayType);
+                IRExpression right = coerceIfNeeded(lowerExpression(binary.right(), context, problems), arrayType);
+                return new IRArrayDifference(binary.line(), left, right, arrayType);
             }
             if (binary.operator() == io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_SUB
                     && binary.lpcType() == LPCType.LPCSTRING) {
@@ -991,8 +993,8 @@ public final class IRLowerer {
             }
             if (binary.operator() == io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_ADD
                     && binary.lpcType() == LPCType.LPCMAPPING) {
-                IRExpression left = lowerExpression(binary.left(), context, problems);
-                IRExpression right = lowerExpression(binary.right(), context, problems);
+                IRExpression left = coerceIfNeeded(lowerExpression(binary.left(), context, problems), RuntimeTypes.MAPPING);
+                IRExpression right = coerceIfNeeded(lowerExpression(binary.right(), context, problems), RuntimeTypes.MAPPING);
                 return new IRMappingMerge(binary.line(), left, right, RuntimeTypes.MAPPING);
             }
             RuntimeType type = runtimeType(binary.lpcType());

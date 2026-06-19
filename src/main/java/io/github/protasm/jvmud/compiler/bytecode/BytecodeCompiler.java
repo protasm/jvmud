@@ -755,6 +755,11 @@ public final class BytecodeCompiler {
             MethodVisitor mv, String internalName, IRMethod method, IRBinaryOperation binary) {
         BinaryOpType op = binary.operator();
 
+        if (op == BinaryOpType.BOP_OR && isReferenceFallbackType(binary.type())) {
+            emitReferenceFallback(mv, internalName, method, binary);
+            return;
+        }
+
         if (op == BinaryOpType.BOP_AND || op == BinaryOpType.BOP_OR) {
             emitLogicalBinary(mv, internalName, method, binary);
             return;
@@ -883,6 +888,43 @@ public final class BytecodeCompiler {
         mv.visitLabel(falseLabel);
         mv.visitInsn(ICONST_0);
         mv.visitLabel(end);
+    }
+
+    /**
+     * Emits LPC fallback syntax, {@code left || right}, for explicit reference contexts.
+     *
+     * <p>The expression still uses LPC truthiness and short-circuits. The selected branch is then
+     * coerced to JVMud's target reference representation.</p>
+     */
+    private void emitReferenceFallback(MethodVisitor mv, String internalName, IRMethod method, IRBinaryOperation binary) {
+        Label fallbackLabel = new Label();
+        Label endLabel = new Label();
+
+        emitExpression(mv, internalName, method, binary.left());
+        boxIfNeeded(mv, binary.left().type());
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(Truth.class),
+                "isTruthy",
+                "(Ljava/lang/Object;)Z",
+                false);
+        mv.visitJumpInsn(IFEQ, fallbackLabel);
+        coerceValue(mv, RuntimeTypes.MIXED, binary.type());
+        mv.visitJumpInsn(GOTO, endLabel);
+
+        mv.visitLabel(fallbackLabel);
+        mv.visitInsn(POP);
+        emitExpression(mv, internalName, method, binary.right());
+        coerceValue(mv, binary.right().type(), binary.type());
+        mv.visitLabel(endLabel);
+    }
+
+    /** Returns whether a runtime type can preserve {@code left || right} as a reference fallback. */
+    private boolean isReferenceFallbackType(RuntimeType type) {
+        return type.kind() == RuntimeValueKind.STRING
+                || type.kind() == RuntimeValueKind.ARRAY
+                || type.kind() == RuntimeValueKind.MAPPING;
     }
 
     private void emitComparison(MethodVisitor mv, BinaryOpType op) {

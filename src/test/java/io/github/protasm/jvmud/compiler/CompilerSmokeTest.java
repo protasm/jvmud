@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -487,6 +488,135 @@ final class CompilerSmokeTest {
 
         assertEquals(6.0f, object.invoke("scaled", 4));
         assertEquals(1, object.invoke("compares"));
+    }
+
+    @Test
+    void runtimeWidensIntegerAssignmentsToFloat() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/integer_to_float_assignment.c", """
+                float field = 3;
+
+                float assigned(int value) {
+                    float local = 0;
+
+                    local = value - 2;
+                    return field + local;
+                }
+                """);
+
+        assertEquals(8.0f, object.invoke("assigned", 7));
+    }
+
+    @Test
+    void runtimeSupportsFalseSentinelAndOrFallbackInStringContexts() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/string_false_sentinel.c", """
+                string field = 0;
+                int calls;
+
+                mixed maybe_text(int present) {
+                    if (present) {
+                        return "present";
+                    }
+                    return 0;
+                }
+
+                string fallback(int present) {
+                    return maybe_text(present) || "fallback";
+                }
+
+                string local_zero() {
+                    string value = 0;
+                    return value;
+                }
+
+                string side_effect() {
+                    calls += 1;
+                    return "unused";
+                }
+
+                string short_circuit() {
+                    return "kept" || side_effect();
+                }
+
+                int call_count() {
+                    return calls;
+                }
+                """);
+
+        assertEquals("", object.invoke("local_zero"));
+        assertEquals("fallback", object.invoke("fallback", 0));
+        assertEquals("present", object.invoke("fallback", 1));
+        assertEquals("kept", object.invoke("short_circuit"));
+        assertEquals(0, object.invoke("call_count"));
+    }
+
+    @Test
+    void runtimeSupportsFalseSentinelInCollectionContexts() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/collection_false_sentinel.c", """
+                mixed maybe_array(int present) {
+                    if (present) {
+                        return ({ "kept" });
+                    }
+                    return 0;
+                }
+
+                mixed maybe_mapping(int present) {
+                    if (present) {
+                        return ([ "name": "kept" ]);
+                    }
+                    return 0;
+                }
+
+                string *array_fallback(int present) {
+                    return maybe_array(present) || ({});
+                }
+
+                mapping mapping_fallback(int present) {
+                    return maybe_mapping(present) || ([]);
+                }
+
+                string *array_plus_false() {
+                    return ({ "a" }) + 0;
+                }
+
+                string *array_minus_false() {
+                    return ({ "a" }) - 0;
+                }
+
+                mixed maybe_left_array() {
+                    return ({ "left" });
+                }
+
+                mixed maybe_right_array() {
+                    return ({ "right" });
+                }
+
+                string *mixed_array_concat() {
+                    string *values = maybe_left_array() + maybe_right_array();
+                    return values;
+                }
+
+                string *mixed_array_difference() {
+                    string *values = maybe_left_array() - maybe_right_array();
+                    return values;
+                }
+
+                string *filter_mixed_array_difference() {
+                    return filter(maybe_left_array() - maybe_right_array(), (: 1 :));
+                }
+                """);
+
+        assertEquals(List.of(), object.invoke("array_fallback", 0));
+        assertEquals(List.of("kept"), object.invoke("array_fallback", 1));
+        assertEquals(Map.of(), object.invoke("mapping_fallback", 0));
+        assertEquals(Map.of("name", "kept"), object.invoke("mapping_fallback", 1));
+        assertEquals(List.of("a"), object.invoke("array_plus_false"));
+        assertEquals(List.of("a"), object.invoke("array_minus_false"));
+        assertEquals(List.of("left", "right"), object.invoke("mixed_array_concat"));
+        assertEquals(List.of("left"), object.invoke("mixed_array_difference"));
+        assertEquals(List.of("left"), object.invoke("filter_mixed_array_difference"));
     }
 
     @Test

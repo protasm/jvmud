@@ -247,7 +247,7 @@ public final class SemanticTypeChecker {
             return LPCType.LPCFUNCTION;
         }
         if (expression instanceof ASTExprCollectionTransform transform) {
-            inferExpressionType(transform.source(), context);
+            inferExpressionType(transform.source(), context, LPCType.LPCARRAY);
             inferExpressionType(transform.callback().body(), context);
             for (ASTExpression extra : transform.extraArguments())
                 inferExpressionType(extra, context);
@@ -426,17 +426,26 @@ public final class SemanticTypeChecker {
         switch (op) {
         case BOP_ADD -> {
             if (leftType == LPCType.LPCARRAY || rightType == LPCType.LPCARRAY) {
-                if (!isArrayLikeForConcat(leftType) || !isArrayLikeForConcat(rightType)) {
+                if (!isArrayLikeForConcat(expr.left(), leftType) || !isArrayLikeForConcat(expr.right(), rightType)) {
                     problems.add(
                             new CompilationProblem(
                                     CompilationStage.ANALYZE,
                                     "Array concatenation requires two arrays",
-                                    expr.line()));
+                            expr.line()));
                 }
+                expr.setInferredType(LPCType.LPCARRAY);
                 return LPCType.LPCARRAY;
             }
-            if (leftType == LPCType.LPCSTRING || rightType == LPCType.LPCSTRING)
+            if (expectedType == LPCType.LPCARRAY
+                    && isArrayLikeForConcat(expr.left(), leftType)
+                    && isArrayLikeForConcat(expr.right(), rightType)) {
+                expr.setInferredType(LPCType.LPCARRAY);
+                return LPCType.LPCARRAY;
+            }
+            if (leftType == LPCType.LPCSTRING || rightType == LPCType.LPCSTRING) {
+                expr.setInferredType(LPCType.LPCSTRING);
                 return LPCType.LPCSTRING;
+            }
             if (expectedType == LPCType.LPCSTRING && isStringLikeForConcat(leftType) && isStringLikeForConcat(rightType)) {
                 expr.setInferredType(LPCType.LPCSTRING);
                 return LPCType.LPCSTRING;
@@ -447,8 +456,15 @@ public final class SemanticTypeChecker {
                             new CompilationProblem(
                                     CompilationStage.ANALYZE,
                                     "Mapping concatenation requires two mappings",
-                                    expr.line()));
+                            expr.line()));
                 }
+                expr.setInferredType(LPCType.LPCMAPPING);
+                return LPCType.LPCMAPPING;
+            }
+            if (expectedType == LPCType.LPCMAPPING
+                    && isMappingLikeForConcat(leftType)
+                    && isMappingLikeForConcat(rightType)) {
+                expr.setInferredType(LPCType.LPCMAPPING);
                 return LPCType.LPCMAPPING;
             }
 
@@ -459,13 +475,20 @@ public final class SemanticTypeChecker {
         }
         case BOP_SUB -> {
             if (leftType == LPCType.LPCARRAY || rightType == LPCType.LPCARRAY) {
-                if (!isArrayLikeForDifference(leftType) || !isArrayLikeForDifference(rightType)) {
+                if (!isArrayLikeForDifference(expr.left(), leftType) || !isArrayLikeForDifference(expr.right(), rightType)) {
                     problems.add(
                             new CompilationProblem(
                                     CompilationStage.ANALYZE,
                                     "Array subtraction requires two arrays",
-                                    expr.line()));
+                            expr.line()));
                 }
+                expr.setInferredType(LPCType.LPCARRAY);
+                return LPCType.LPCARRAY;
+            }
+            if (expectedType == LPCType.LPCARRAY
+                    && isArrayLikeForDifference(expr.left(), leftType)
+                    && isArrayLikeForDifference(expr.right(), rightType)) {
+                expr.setInferredType(LPCType.LPCARRAY);
                 return LPCType.LPCARRAY;
             }
             if (leftType == LPCType.LPCSTRING || rightType == LPCType.LPCSTRING) {
@@ -474,8 +497,9 @@ public final class SemanticTypeChecker {
                             new CompilationProblem(
                                     CompilationStage.ANALYZE,
                                     "String subtraction requires two strings",
-                                    expr.line()));
+                            expr.line()));
                 }
+                expr.setInferredType(LPCType.LPCSTRING);
                 return LPCType.LPCSTRING;
             }
             if (expectedType == LPCType.LPCSTRING
@@ -500,6 +524,13 @@ public final class SemanticTypeChecker {
             return LPCType.LPCINT;
         }
         case BOP_AND, BOP_OR -> {
+            if (op == BinaryOpType.BOP_OR
+                    && isFallbackExpectedType(expectedType)
+                    && isFallbackOperand(expectedType, expr.left(), leftType)
+                    && isFallbackOperand(expectedType, expr.right(), rightType)) {
+                expr.setInferredType(expectedType);
+                return expectedType;
+            }
             return LPCType.LPCSTATUS;
         }
         case BOP_GT, BOP_GE, BOP_LT, BOP_LE -> {
@@ -514,8 +545,15 @@ public final class SemanticTypeChecker {
         return LPCType.LPCMIXED;
     }
 
-    private boolean isArrayLikeForConcat(LPCType type) {
-        return type == LPCType.LPCARRAY || type == LPCType.LPCMIXED || type == LPCType.LPCERROR;
+    /**
+     * Returns whether an operand may participate in LPC array concatenation for compatibility
+     * idioms, including the legacy false sentinel {@code 0}.
+     */
+    private boolean isArrayLikeForConcat(ASTExpression expression, LPCType type) {
+        return type == LPCType.LPCARRAY
+                || type == LPCType.LPCMIXED
+                || type == LPCType.LPCERROR
+                || isFalseSentinel(expression, type);
     }
 
     private boolean isMappingLikeForConcat(LPCType type) {
@@ -526,12 +564,45 @@ public final class SemanticTypeChecker {
         return type == LPCType.LPCSTRING || type == LPCType.LPCMIXED || type == LPCType.LPCERROR;
     }
 
-    private boolean isArrayLikeForDifference(LPCType type) {
-        return type == LPCType.LPCARRAY || type == LPCType.LPCMIXED || type == LPCType.LPCERROR;
+    /**
+     * Returns whether an operand may participate in LPC array difference for compatibility idioms,
+     * including the legacy false sentinel {@code 0}.
+     */
+    private boolean isArrayLikeForDifference(ASTExpression expression, LPCType type) {
+        return type == LPCType.LPCARRAY
+                || type == LPCType.LPCMIXED
+                || type == LPCType.LPCERROR
+                || isFalseSentinel(expression, type);
     }
 
     private boolean isStringLikeForDifference(LPCType type) {
         return type == LPCType.LPCSTRING || type == LPCType.LPCMIXED || type == LPCType.LPCERROR;
+    }
+
+    /**
+     * Returns whether an explicit target type can use LPC's {@code value || fallback} reference
+     * idiom without collapsing the expression to a boolean status.
+     */
+    private boolean isFallbackExpectedType(LPCType expectedType) {
+        return expectedType == LPCType.LPCSTRING
+                || expectedType == LPCType.LPCARRAY
+                || expectedType == LPCType.LPCMAPPING;
+    }
+
+    /**
+     * Returns whether an operand is compatible with a narrowed fallback target, including
+     * unresolved mixed values and the legacy false sentinel {@code 0}.
+     */
+    private boolean isFallbackOperand(LPCType expectedType, ASTExpression expression, LPCType type) {
+        return type == expectedType
+                || type == LPCType.LPCMIXED
+                || type == LPCType.LPCERROR
+                || isFalseSentinel(expression, type);
+    }
+
+    /** Returns whether an expression is the LPC false sentinel in a reference-like context. */
+    private boolean isFalseSentinel(ASTExpression expression, LPCType type) {
+        return type == LPCType.LPCINT && isZeroLiteral(expression);
     }
 
     private boolean isComparableType(LPCType type) {
@@ -858,6 +929,9 @@ public final class SemanticTypeChecker {
 
         if ((expected == LPCType.LPCINT && actual == LPCType.LPCSTATUS)
                 || (expected == LPCType.LPCSTATUS && actual == LPCType.LPCINT))
+            return true;
+
+        if (expected == LPCType.LPCFLOAT && (actual == LPCType.LPCINT || actual == LPCType.LPCSTATUS))
             return true;
 
         if (actual == LPCType.LPCERROR)
