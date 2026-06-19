@@ -214,6 +214,35 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void parserTreatsDuplicateIdenticalModifiersAsIdempotent() {
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
+                public nomask nomask int value() {
+                    return 7;
+                }
+                """);
+
+        assertTrue(result.getProblems().isEmpty(), () -> result.getProblems().toString());
+        assertNotNull(result.getBytecode());
+    }
+
+    @Test
+    void runtimeSupportsTypedForInitializerDeclaration() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/typed_for_initializer.c", """
+                int value() {
+                    int total;
+
+                    for (int i = 0; i < 4; i++)
+                        total += i;
+
+                    return total;
+                }
+                """);
+
+        assertEquals(6, object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsWhileLoopsAndArrayConcatAssignment() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/array_loop.c", """

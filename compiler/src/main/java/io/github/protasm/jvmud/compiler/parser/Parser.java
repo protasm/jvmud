@@ -208,50 +208,52 @@ public class Parser {
 
             switch (lexeme) {
             case "public" -> {
+                if (visibility == Visibility.PUBLIC) {
+                    tokens.advance();
+                    continue;
+                }
                 if (visibility != Visibility.DEFAULT)
                     throw new ParseException("Only one visibility modifier is allowed.", tokens.current());
                 visibility = Visibility.PUBLIC;
                 tokens.advance();
             }
             case "private" -> {
+                if (visibility == Visibility.PRIVATE) {
+                    tokens.advance();
+                    continue;
+                }
                 if (visibility != Visibility.DEFAULT)
                     throw new ParseException("Only one visibility modifier is allowed.", tokens.current());
                 visibility = Visibility.PRIVATE;
                 tokens.advance();
             }
             case "protected" -> {
+                if (visibility == Visibility.PROTECTED) {
+                    tokens.advance();
+                    continue;
+                }
                 if (visibility != Visibility.DEFAULT)
                     throw new ParseException("Only one visibility modifier is allowed.", tokens.current());
                 visibility = Visibility.PROTECTED;
                 tokens.advance();
             }
             case "static" -> {
-                if (isStatic)
-                    throw new ParseException("Duplicate declaration modifier 'static'.", tokens.current());
                 isStatic = true;
                 tokens.advance();
             }
             case "nomask" -> {
-                if (isNomask)
-                    throw new ParseException("Duplicate declaration modifier 'nomask'.", tokens.current());
                 isNomask = true;
                 tokens.advance();
             }
             case "varargs" -> {
-                if (isVarargs)
-                    throw new ParseException("Duplicate declaration modifier 'varargs'.", tokens.current());
                 isVarargs = true;
                 tokens.advance();
             }
             case "nosave" -> {
-                if (isNosave)
-                    throw new ParseException("Duplicate declaration modifier 'nosave'.", tokens.current());
                 isNosave = true;
                 tokens.advance();
             }
             case "deprecated" -> {
-                if (isDeprecated)
-                    throw new ParseException("Duplicate declaration modifier 'deprecated'.", tokens.current());
                 isDeprecated = true;
                 tokens.advance();
             }
@@ -654,9 +656,17 @@ public class Parser {
         int line = tokens.previous().line();
         tokens.consume(T_LEFT_PAREN, "Expect '(' after for.");
 
+        List<ASTLocal> initializerLocals = List.of();
         ASTExpression initializer = null;
-        if (!tokens.check(T_SEMICOLON))
-            initializer = commaExpression();
+        if (!tokens.check(T_SEMICOLON)) {
+            if (startsLocalDeclaration()) {
+                ForInitializerDeclaration declaration = forInitializerDeclaration();
+                initializerLocals = declaration.locals();
+                initializer = declaration.initializer();
+            } else {
+                initializer = commaExpression();
+            }
+        }
         tokens.consume(T_SEMICOLON, "Expect ';' after for initializer.");
 
         ASTExpression condition = null;
@@ -671,7 +681,31 @@ public class Parser {
 
         ASTStatement body = statement();
 
-        return new ASTStmtFor(line, initializer, condition, update, body);
+        return new ASTStmtFor(line, initializerLocals, initializer, condition, update, body);
+    }
+
+    private record ForInitializerDeclaration(List<ASTLocal> locals, ASTExpression initializer) {}
+
+    private ForInitializerDeclaration forInitializerDeclaration() {
+        Token<String> typeToken = tokens.consume(T_IDENTIFIER, "Expect for initializer local type.");
+        boolean isArrayType = tokens.match(TokenType.T_STAR);
+        Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect for initializer local name.");
+        String declaredType = typeToken.lexeme() + (isArrayType ? "*" : "");
+        Symbol symbol = new Symbol(declaredType, nameToken.lexeme());
+        ASTLocal local = new ASTLocal(currLine(), symbol);
+
+        locals.add(local);
+        if (currentMethod != null)
+            currentMethod.addLocal(local);
+
+        ASTExpression initializer = null;
+        if (tokens.match(T_EQUAL))
+            initializer = new ASTExprLocalStore(currLine(), local, expression(), true);
+
+        if (tokens.check(T_COMMA))
+            throw new ParseException("Only one typed local declaration is supported in a for initializer.", tokens.current());
+
+        return new ForInitializerDeclaration(List.of(local), initializer);
     }
 
     private ASTStmtForeach foreachStatement() {

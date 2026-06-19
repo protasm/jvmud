@@ -1294,16 +1294,25 @@ public final class SemanticAnalyzer {
             }
 
             if (statement instanceof ASTStmtFor stmtFor) {
+                context.pushScope();
+                context.declare(stmtFor.initializerLocals());
                 ASTExpression resolvedInit = resolveExpression(stmtFor.initializer(), context);
                 ASTExpression resolvedCondition = resolveExpression(stmtFor.condition(), context);
                 ASTExpression resolvedUpdate = resolveExpression(stmtFor.update(), context);
                 ASTStatement resolvedBody = resolveStatement(stmtFor.body(), context);
+                context.popScope();
                 if (resolvedInit == stmtFor.initializer()
                         && resolvedCondition == stmtFor.condition()
                         && resolvedUpdate == stmtFor.update()
                         && resolvedBody == stmtFor.body())
                     return stmtFor;
-                return new ASTStmtFor(stmtFor.line(), resolvedInit, resolvedCondition, resolvedUpdate, resolvedBody);
+                return new ASTStmtFor(
+                        stmtFor.line(),
+                        stmtFor.initializerLocals(),
+                        resolvedInit,
+                        resolvedCondition,
+                        resolvedUpdate,
+                        resolvedBody);
             }
 
             if (statement instanceof ASTStmtForeach stmtForeach) {
