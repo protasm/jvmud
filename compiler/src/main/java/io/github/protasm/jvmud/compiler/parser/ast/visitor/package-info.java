@@ -1,12 +1,11 @@
 /**
- * Visitor implementations that operate over the LPC AST.
+ * Visitor-style utilities that operate over the LPC AST.
  *
- * <p>Includes utilities for printing the tree and inferring {@link
- * io.github.protasm.jvmud.compiler.parser.type.LPCType} information before compilation. Visitors are expected
- * to be run in a defined order (e.g., type inference after parsing) to ensure downstream consumers
- * like the compiler see fully annotated nodes.</p>
+ * <p>The current visitor surface provides shared traversal dispatch and debug-oriented tree
+ * printing. Core compiler behavior now lives in named pipeline stages such as semantic analysis and
+ * IR lowering rather than in broad visitor passes.</p>
  *
- * <p>Visitors are not responsible for mutating program structure beyond attaching type data or debug
- * output; semantic enforcement beyond these passes belongs to parser or compiler stages.</p>
+ * <p>Visitors should remain small support utilities. Language validation belongs to {@code
+ * semantic}; backend translation belongs to {@code ir} and {@code bytecode}.</p>
  */
 package io.github.protasm.jvmud.compiler.parser.ast.visitor;

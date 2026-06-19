@@ -7,8 +7,8 @@
  * {@link io.github.protasm.jvmud.compiler.parser.type.UnaryOpType}, {@link
  * io.github.protasm.jvmud.compiler.parser.type.InstrType}).</p>
  *
- * <p>Supports basic conversions between LPC and JVM descriptors used during compilation and type
- * inference. This package encodes expectations about operator result types but does not emit bytecode
- * or perform runtime checks.</p>
+ * <p>Supports basic conversions between LPC types and JVM descriptors used during semantic
+ * analysis, IR lowering, and bytecode generation. This package encodes type and operator metadata
+ * but does not emit bytecode or perform runtime checks.</p>
  */
 package io.github.protasm.jvmud.compiler.parser.type;

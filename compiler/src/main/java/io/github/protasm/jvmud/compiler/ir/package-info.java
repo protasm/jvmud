@@ -1,9 +1,12 @@
 /**
  * Typed intermediate representation produced after semantic analysis.
  *
- * <p>The IR models runtime-level types and control flow explicitly, providing a stable bridge
- * between parsed ASTs and backend code generation. Nodes are immutable records capturing source
- * line numbers, runtime types, and JVM-oriented call details so later passes can reason about
- * coercions, truthiness, and dispatch without depending on parser internals.</p>
+ * <p>The IR models runtime-level types, control flow, calls, field access, local access, collection
+ * operations, and coercions explicitly. It is the stable bridge between the checked semantic model
+ * and backend bytecode generation.</p>
+ *
+ * <p>IR nodes are immutable records that carry source line numbers, runtime types, and JVM-oriented
+ * call details. This lets the bytecode backend reason about truthiness, dispatch, descriptors, and
+ * helper calls without depending on parser internals.</p>
  */
 package io.github.protasm.jvmud.compiler.ir;

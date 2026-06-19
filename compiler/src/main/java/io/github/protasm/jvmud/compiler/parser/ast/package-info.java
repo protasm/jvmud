@@ -1,15 +1,13 @@
 /**
  * Abstract syntax tree structures representing LPC objects.
  *
- * <p>Contains node definitions for objects, fields, methods, parameters, and supporting symbols. Each
- * node participates in multiple visitor passes (printing, semantic checking, compilation) and retains
- * minimal decoration such as source line numbers and inferred {@link
- * io.github.protasm.jvmud.compiler.parser.type.LPCType} values. Traversal is unified through the sealed
- * {@link io.github.protasm.jvmud.compiler.parser.ast.visitor.ASTVisitor} dispatcher instead of per-node
- * overloads.</p>
+ * <p>Contains node definitions for objects, inherits, fields, methods, parameters, arguments,
+ * locals, symbols, and common list/map node shapes. Expression and statement specializations live
+ * in subpackages.</p>
  *
- * <p>Invariants include stable ownership metadata (e.g., object and method names) and visitor support
- * via {@link io.github.protasm.jvmud.compiler.bytecode.BytecodeCompiler}.</p>
+ * <p>AST nodes preserve source line information and parser structure without owning final language
+ * meaning. Semantic analysis resolves names, validates types, and prepares the checked model used
+ * by IR lowering.</p>
  *
  * <p>This package focuses on structure rather than parsing mechanics (see {@code parser}) or
  * expression/statement specializations (see subpackages).</p>

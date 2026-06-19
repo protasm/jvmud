@@ -1,14 +1,14 @@
 /**
- * Core parser for LPC, producing typed AST structures from token streams.
+ * Core parser for LPC, producing AST structures from token streams.
  *
- * <p>Implements a multi-pass parse ({@code declarations}, {@code definitions}, type inference) driven
- * by a Pratt-style expression parser. The {@link io.github.protasm.jvmud.compiler.parser.Parser} coordinates
- * symbol registration, local scope tracking, and visitor-based post-processing.</p>
+ * <p>Parses object-level declarations and method bodies while delegating expression precedence to a
+ * Pratt-style expression parser. The {@link io.github.protasm.jvmud.compiler.parser.Parser}
+ * records declared fields, methods, locals, parameters, inherits, and parser options.</p>
  *
  * <p>Assumes tokens have already been validated lexically; raises {@link
  * io.github.protasm.jvmud.compiler.parser.ParseException} when encountering structural issues. Parser behavior
- * is influenced by {@link io.github.protasm.jvmud.compiler.parser.ParserOptions} but leaves semantic
- * enforcement to later stages.</p>
+ * is influenced by {@link io.github.protasm.jvmud.compiler.parser.ParserOptions} but leaves name
+ * resolution, efun lookup, and type enforcement to semantic analysis.</p>
  *
  * <p>This package defines parsing mechanics rather than AST shape (see {@code parser.ast}) or operator
  * definitions (see {@code parser.parselet} and {@code parser.type}).</p>

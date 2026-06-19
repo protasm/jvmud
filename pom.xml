@@ -76,7 +76,7 @@
               <windowtitle>JVMud API</windowtitle>
               <outputDirectory>${maven.multiModuleProjectDirectory}/docs/api</outputDirectory>
               <sourcepath>${maven.multiModuleProjectDirectory}/runtime/src/main/java:${maven.multiModuleProjectDirectory}/compiler/src/main/java</sourcepath>
-              <subpackages>io.github.protasm.jvmud.engine:io.github.protasm.jvmud.compiler.pipeline:io.github.protasm.jvmud.compiler.efun:io.github.protasm.jvmud.compiler.efun.builtin:io.github.protasm.jvmud.compiler.exec:io.github.protasm.jvmud.compiler.runtime</subpackages>
+              <subpackages>io.github.protasm.jvmud.engine:io.github.protasm.jvmud.compiler</subpackages>
               <source>${maven.compiler.release}</source>
               <doclint>all,-missing</doclint>
             </configuration>
