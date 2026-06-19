@@ -1325,6 +1325,19 @@ public final class BytecodeCompiler {
 
     private void emitArraySet(MethodVisitor mv, String internalName, IRMethod method, IRArraySet arraySet) {
         emitExpression(mv, internalName, method, arraySet.array());
+        if (arraySet.array().type() != null && arraySet.array().type().kind() == RuntimeValueKind.MIXED) {
+            emitExpression(mv, internalName, method, arraySet.index());
+            boxIfNeeded(mv, arraySet.index().type());
+            emitExpression(mv, internalName, method, arraySet.value());
+            boxIfNeeded(mv, arraySet.value().type());
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Type.getInternalName(RuntimeIndex.class),
+                    "set",
+                    "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                    false);
+            return;
+        }
         mv.visitTypeInsn(CHECKCAST, "java/util/List");
         emitExpression(mv, internalName, method, arraySet.index());
         coerceValue(mv, arraySet.index().type(), RuntimeTypes.INT);

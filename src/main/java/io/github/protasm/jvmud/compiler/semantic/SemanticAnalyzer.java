@@ -958,13 +958,14 @@ public final class SemanticAnalyzer {
                 ASTExpression resolvedTarget = resolveExpression(store.target(), context);
                 ASTExpression resolvedIndex = resolveExpression(store.index(), context);
                 ASTExpression resolvedValue = resolveExpression(store.value(), context);
+                ASTExpression value = buildIndexStoreValue(store, resolvedTarget, resolvedIndex, resolvedValue);
 
                 if (resolvedTarget == store.target()
                         && resolvedIndex == store.index()
-                        && resolvedValue == store.value())
+                        && value == store.value())
                     return store;
 
-                return new ASTExprArrayStore(store.line(), resolvedTarget, resolvedIndex, resolvedValue);
+                return new ASTExprArrayStore(store.line(), resolvedTarget, resolvedIndex, AssignOpType.SET, value);
             }
 
             if (expression instanceof ASTExprArrayMutation mutation) {
@@ -1326,6 +1327,22 @@ public final class SemanticAnalyzer {
                         assignment.line(), new ASTExprLocalAccess(assignment.line(), local), resolvedValue, compoundOp);
 
             return new ASTExprLocalStore(assignment.line(), local, value);
+        }
+
+        private ASTExpression buildIndexStoreValue(
+                ASTExprArrayStore store,
+                ASTExpression resolvedTarget,
+                ASTExpression resolvedIndex,
+                ASTExpression resolvedValue) {
+            BinaryOpType compoundOp = compoundAssignmentOperator(store.operator());
+            if (compoundOp == null)
+                return resolvedValue;
+
+            return new ASTExprOpBinary(
+                    store.line(),
+                    new ASTExprArrayAccess(store.line(), resolvedTarget, resolvedIndex),
+                    resolvedValue,
+                    compoundOp);
         }
 
         private BinaryOpType compoundAssignmentOperator(AssignOpType op) {

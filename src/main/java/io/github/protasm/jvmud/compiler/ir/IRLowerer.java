@@ -791,9 +791,16 @@ public final class IRLowerer {
                         arrayStore.line(), target, key, coerceIfNeeded(value, RuntimeTypes.MIXED), value.type());
             }
 
-            IRExpression index = coerceIfNeeded(
-                    lowerExpression(arrayStore.index(), context, problems), RuntimeTypes.INT);
+            IRExpression rawIndex = lowerExpression(arrayStore.index(), context, problems);
             IRExpression value = lowerExpression(arrayStore.value(), context, problems);
+            if (targetType != null && targetType.kind() == RuntimeValueKind.MIXED)
+                return new IRArraySet(
+                        arrayStore.line(),
+                        target,
+                        coerceIfNeeded(rawIndex, RuntimeTypes.MIXED),
+                        coerceIfNeeded(value, RuntimeTypes.MIXED),
+                        value.type());
+            IRExpression index = coerceIfNeeded(rawIndex, RuntimeTypes.INT);
             return new IRArraySet(
                     arrayStore.line(), target, index, coerceIfNeeded(value, RuntimeTypes.MIXED), value.type());
         }

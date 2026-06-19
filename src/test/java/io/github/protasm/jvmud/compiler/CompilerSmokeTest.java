@@ -910,6 +910,60 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsIndexedCompoundArrayAppend() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/indexed_compound_array_append.c", """
+                int value() {
+                    mixed* values;
+
+                    values = ({ ({ 1 }) });
+                    values[0] += ({ 2, 3 });
+
+                    return jvmud_size(values[0]);
+                }
+                """);
+
+        assertEquals(3, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsIndexedCompoundMappingAppend() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/indexed_compound_mapping_append.c", """
+                int value() {
+                    mapping values;
+
+                    values = ([ "items": ({ 1 }) ]);
+                    values["items"] += ({ 2 });
+
+                    return jvmud_size(values["items"]);
+                }
+                """);
+
+        assertEquals(2, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsNestedIndexedCompoundMappingAppend() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/nested_indexed_compound_mapping_append.c", """
+                int value() {
+                    mapping bonuses;
+
+                    bonuses = ([ "fire": ([ "resist": ({ 1 }) ]) ]);
+                    bonuses["fire"]["resist"] += ({ 2 });
+
+                    return jvmud_size(bonuses["fire"]["resist"]);
+                }
+                """);
+
+        assertEquals(2, object.invoke("value"));
+    }
+
+    @Test
     void foreachVariablesAreScopedToSiblingLoops() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/foreach_sibling_scopes.c", """

@@ -26,6 +26,19 @@ public final class RuntimeIndex {
         return get(target, numericIndex);
     }
 
+    /** Stores a value through a dynamically typed LPC index target. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Object set(Object target, Object index, Object value) {
+        if (target instanceof Map map) {
+            return map.put(index, value);
+        }
+        if (target instanceof List list) {
+            int numericIndex = index instanceof Number number ? number.intValue() : 0;
+            return list.set(numericIndex, value);
+        }
+        throw new IllegalArgumentException("Cannot assign indexed value: " + target);
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object mutateNumber(Object target, int index, int delta) {
         if (target instanceof List list) {
