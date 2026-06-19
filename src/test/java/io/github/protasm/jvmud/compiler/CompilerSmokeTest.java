@@ -3663,6 +3663,42 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void compilerLowersInheritedFieldFromSecondaryDirectParent() throws Exception {
+        Files.writeString(tempDir.resolve("base_one.c"), """
+                int first_value() {
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("base_two.c"), """
+                protected int PersistRegion = 1;
+
+                int persist_value() {
+                    return PersistRegion;
+                }
+                """);
+        Path childPath = tempDir.resolve("child.c");
+        Files.writeString(childPath, """
+                inherit "base_one.c";
+                inherit "base_two.c";
+
+                int current_persistence() {
+                    return PersistRegion;
+                }
+
+                int disable_persistence() {
+                    PersistRegion = 0;
+                    return PersistRegion;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle child = runtime.load(childPath);
+
+        assertEquals(1, child.invoke("current_persistence"));
+        assertEquals(0, child.invoke("disable_persistence"));
+    }
+
+    @Test
     void compilerReportsAmbiguousInheritedMethodsFromMultipleDirectParents() throws Exception {
         Files.writeString(tempDir.resolve("left.c"), """
                 int shared() {

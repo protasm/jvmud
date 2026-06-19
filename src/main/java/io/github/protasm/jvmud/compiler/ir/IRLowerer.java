@@ -72,9 +72,11 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /** Lowers typed AST nodes into the JVM-oriented IR model. */
 public final class IRLowerer {
@@ -94,11 +96,20 @@ public final class IRLowerer {
         String parentInternalName =
                 (astObject.parentName() != null) ? astObject.parentName() : defaultParentInternalName;
         SemanticScope objectScope = semanticModel.objectScope();
-        SemanticScope parentScope = (objectScope != null) ? objectScope.parent() : null;
 
         Map<Symbol, IRField> fieldsBySymbol = new HashMap<>();
-        importInheritedFields(parentScope, fieldsBySymbol);
+        List<IRField> flattenedInheritedFields = new ArrayList<>();
+        importInheritedFields(
+                objectScope,
+                objectScope,
+                declaredFieldSymbols(astObject),
+                fieldsBySymbol,
+                flattenedInheritedFields,
+                objectInternalName,
+                parentInternalName,
+                problems);
         List<IRField> fields = lowerFields(astObject.fields(), fieldsBySymbol, problems, objectInternalName);
+        fields.addAll(0, flattenedInheritedFields);
         List<IRMethod> methods = lowerMethods(astObject, fieldsBySymbol, problems, objectInternalName);
 
         TypedIR typedIr = new TypedIR(new IRObject(astObject.line(), astObject.name(), parentInternalName, fields, methods));
@@ -126,6 +137,16 @@ public final class IRLowerer {
         return fields;
     }
 
+    private Set<Symbol> declaredFieldSymbols(ASTObject astObject) {
+        Set<Symbol> symbols = new HashSet<>();
+        if (astObject == null)
+            return symbols;
+
+        for (ASTField field : astObject.fields())
+            symbols.add(field.symbol());
+        return symbols;
+    }
+
     private IRExpression lowerFieldInitializer(
             ASTExpression initializer,
             RuntimeType fieldType,
@@ -140,7 +161,20 @@ public final class IRLowerer {
         return coerceIfNeeded(lowered, fieldType);
     }
 
-    private void importInheritedFields(SemanticScope scope, Map<Symbol, IRField> fieldsBySymbol) {
+    /**
+     * Imports fields already resolved by semantic analysis. Fields from secondary
+     * direct parents are flattened onto the child because JVM bytecode can only
+     * inherit storage from one superclass.
+     */
+    private void importInheritedFields(
+            SemanticScope scope,
+            SemanticScope objectScope,
+            Set<Symbol> declaredFieldSymbols,
+            Map<Symbol, IRField> fieldsBySymbol,
+            List<IRField> flattenedInheritedFields,
+            String objectInternalName,
+            String parentInternalName,
+            List<CompilationProblem> problems) {
         if (scope == null)
             return;
 
@@ -150,11 +184,31 @@ public final class IRLowerer {
                     continue;
 
                 Symbol symbol = scopedSymbol.symbol();
+                if (declaredFieldSymbols.contains(symbol))
+                    continue;
+
                 if (fieldsBySymbol.containsKey(symbol))
                     continue;
 
                 RuntimeType type = runtimeType(symbol.lpcType());
                 String ownerInternalName = scopedSymbol.field().ownerName();
+                if (shouldFlattenInheritedField(scope, objectScope, ownerInternalName, parentInternalName)) {
+                    IRField flattenedField = new IRField(
+                            scopedSymbol.field().line(),
+                            objectInternalName,
+                            symbol.name(),
+                            type,
+                            lowerFieldInitializer(
+                                    scopedSymbol.field().initializer(),
+                                    type,
+                                    fieldsBySymbol,
+                                    problems,
+                                    objectInternalName));
+                    fieldsBySymbol.put(symbol, flattenedField);
+                    flattenedInheritedFields.add(flattenedField);
+                    continue;
+                }
+
                 IRField inheritedField = new IRField(
                         scopedSymbol.field().line(),
                         (ownerInternalName != null) ? ownerInternalName : defaultParentInternalName,
@@ -165,7 +219,26 @@ public final class IRLowerer {
             }
         }
 
-        importInheritedFields(scope.parent(), fieldsBySymbol);
+        importInheritedFields(
+                scope.parent(),
+                objectScope,
+                declaredFieldSymbols,
+                fieldsBySymbol,
+                flattenedInheritedFields,
+                objectInternalName,
+                parentInternalName,
+                problems);
+    }
+
+    private boolean shouldFlattenInheritedField(
+            SemanticScope scope, SemanticScope objectScope, String ownerInternalName, String parentInternalName) {
+        if (scope != objectScope)
+            return false;
+
+        if (ownerInternalName == null)
+            return false;
+
+        return !Objects.equals(ownerInternalName, parentInternalName);
     }
 
     private List<IRMethod> lowerMethods(

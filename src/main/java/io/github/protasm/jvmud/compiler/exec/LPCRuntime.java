@@ -171,7 +171,7 @@ public final class LPCRuntime {
 
         CompilationUnit compilationUnit = result.getCompilationUnit();
         if (compilationUnit != null) {
-            defineInheritedClasses(compilationUnit.parentUnit());
+            defineInheritedClasses(compilationUnit.directParentUnits());
         }
 
         byte[] bytecode = result.getBytecode();
@@ -252,7 +252,7 @@ public final class LPCRuntime {
 
         CompilationUnit compilationUnit = result.getCompilationUnit();
         if (compilationUnit != null) {
-            defineInheritedClasses(compilationUnit.parentUnit());
+            defineInheritedClasses(compilationUnit.directParentUnits());
         }
 
         byte[] bytecode = result.getBytecode();
@@ -962,7 +962,7 @@ public final class LPCRuntime {
 
         CompilationUnit compilationUnit = result.getCompilationUnit();
         if (compilationUnit != null) {
-            defineInheritedClasses(compilationUnit.parentUnit());
+            defineInheritedClasses(compilationUnit.directParentUnits());
         }
 
         byte[] bytecode = result.getBytecode();
@@ -1341,12 +1341,24 @@ public final class LPCRuntime {
         return (dot == -1) ? name : name.substring(0, dot);
     }
 
+    /** Defines every direct inherited LPC class, including secondary multiple-inherit parents. */
+    private void defineInheritedClasses(List<CompilationUnit> units) {
+        if (units == null || units.isEmpty()) {
+            return;
+        }
+
+        for (CompilationUnit unit : units) {
+            defineInheritedClasses(unit);
+        }
+    }
+
+    /** Defines one inherited LPC class after recursively defining its own inherited classes. */
     private void defineInheritedClasses(CompilationUnit unit) {
         if (unit == null) {
             return;
         }
 
-        defineInheritedClasses(unit.parentUnit());
+        defineInheritedClasses(unit.directParentUnits());
 
         ASTObject astObject = unit.astObject();
         if (astObject == null) {
