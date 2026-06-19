@@ -34,7 +34,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingEntry;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprError;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
@@ -1139,7 +1139,7 @@ public final class SemanticAnalyzer {
                             CompilationStage.ANALYZE,
                             "Unrecognized invoke target '" + unresolvedInvoke.targetName() + "'",
                             unresolvedInvoke.line()));
-            return new ASTExprNull(unresolvedInvoke.line());
+            return new ASTExprError(unresolvedInvoke.line());
         }
 
         private ASTExpression resolveCall(ASTExprUnresolvedCall unresolvedCall, LocalResolutionContext context) {
@@ -1167,7 +1167,7 @@ public final class SemanticAnalyzer {
                             CompilationStage.ANALYZE,
                             "Unrecognized method or function '" + unresolvedCall.name() + "'.",
                             unresolvedCall.line()));
-            return new ASTExprNull(unresolvedCall.line());
+            return new ASTExprError(unresolvedCall.line());
         }
 
         private ASTExprCollectionTransform collectionTransform(ASTExprUnresolvedCall unresolvedCall, ASTArguments args) {
@@ -1216,7 +1216,7 @@ public final class SemanticAnalyzer {
                                 CompilationStage.ANALYZE,
                                 "Unsupported qualified call prefix '" + unresolvedCall.qualifier() + "'.",
                                 unresolvedCall.line()));
-                return new ASTExprNull(unresolvedCall.line());
+                return new ASTExprError(unresolvedCall.line());
             }
 
             Efun efun = resolveDirectEfun(unresolvedCall.name(), resolvedArgs.size());
@@ -1229,7 +1229,7 @@ public final class SemanticAnalyzer {
                             CompilationStage.ANALYZE,
                             "Unrecognized efun '" + unresolvedCall.name() + "'.",
                             unresolvedCall.line()));
-            return new ASTExprNull(unresolvedCall.line());
+            return new ASTExprError(unresolvedCall.line());
         }
 
         private Efun resolveDirectEfun(String name, int arity) {
@@ -1252,7 +1252,7 @@ public final class SemanticAnalyzer {
                                 CompilationStage.ANALYZE,
                                 "Cannot call inherited method '" + unresolvedParentCall.name() + "' without a parent object.",
                                 unresolvedParentCall.line()));
-                return new ASTExprNull(unresolvedParentCall.line());
+                return new ASTExprError(unresolvedParentCall.line());
             }
 
             ScopedSymbol parentSymbol = parentScope.resolveLocally(unresolvedParentCall.name());
@@ -1265,7 +1265,7 @@ public final class SemanticAnalyzer {
                             CompilationStage.ANALYZE,
                             "Inherited method '" + unresolvedParentCall.name() + "' is not defined in the parent object.",
                             unresolvedParentCall.line()));
-            return new ASTExprNull(unresolvedParentCall.line());
+            return new ASTExprError(unresolvedParentCall.line());
         }
 
         private ASTExpression resolveAssignment(
@@ -1285,7 +1285,7 @@ public final class SemanticAnalyzer {
                             CompilationStage.ANALYZE,
                             "Unrecognized local or field '" + unresolvedAssignment.name() + "'.",
                             unresolvedAssignment.line()));
-            return new ASTExprNull(unresolvedAssignment.line());
+            return new ASTExprError(unresolvedAssignment.line());
         }
 
         private ASTExpression resolveIdentifier(
@@ -1303,7 +1303,7 @@ public final class SemanticAnalyzer {
                             CompilationStage.ANALYZE,
                             "Unrecognized local or field '" + unresolvedIdentifier.name() + "'.",
                             unresolvedIdentifier.line()));
-            return new ASTExprNull(unresolvedIdentifier.line());
+            return new ASTExprError(unresolvedIdentifier.line());
         }
 
         private ASTExprFieldStore buildFieldStore(

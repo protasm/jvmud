@@ -3,7 +3,6 @@ package io.github.protasm.jvmud.compiler.parser.type;
 import static io.github.protasm.jvmud.compiler.parser.type.JType.JBOOLEAN;
 import static io.github.protasm.jvmud.compiler.parser.type.JType.JFLOAT;
 import static io.github.protasm.jvmud.compiler.parser.type.JType.JINT;
-import static io.github.protasm.jvmud.compiler.parser.type.JType.JNULL;
 import static io.github.protasm.jvmud.compiler.parser.type.JType.JOBJECT;
 import static io.github.protasm.jvmud.compiler.parser.type.JType.JSTRING;
 import static io.github.protasm.jvmud.compiler.parser.type.JType.JVOID;
@@ -13,7 +12,8 @@ public enum LPCType {
     LPCFLOAT(JFLOAT),
     LPCMAPPING(null),
     LPCMIXED(JOBJECT),
-    LPCNULL(JNULL),
+    /** Compiler recovery type used after semantic errors; not a source-language LPC type. */
+    LPCERROR(JOBJECT),
     LPCOBJECT(JOBJECT),
     LPCSTATUS(JBOOLEAN),
     LPCSTRING(JSTRING),

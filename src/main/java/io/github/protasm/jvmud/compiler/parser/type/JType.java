@@ -1,7 +1,7 @@
 package io.github.protasm.jvmud.compiler.parser.type;
 
 public enum JType {
-    JBOOLEAN("Z"), JCHAR("C"), JFLOAT("F"), JDOUBLE("D"), JBYTE("B"), JSHORT("S"), JINT("I"), JLONG("J"), JNULL(null),
+    JBOOLEAN("Z"), JCHAR("C"), JFLOAT("F"), JDOUBLE("D"), JBYTE("B"), JSHORT("S"), JINT("I"), JLONG("J"), JINTERNAL_NULL(null),
     JSTRING("Ljava/lang/String;"), JOBJECT("Ljava/lang/Object;"), JVOID("V");
 
     private final String descriptor;

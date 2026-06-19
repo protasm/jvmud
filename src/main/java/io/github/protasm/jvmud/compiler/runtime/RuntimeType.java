@@ -24,7 +24,7 @@ public record RuntimeType(
     }
 
     public boolean isReferenceLike() {
-        return jvmType == null || jvmType == JType.JOBJECT || jvmType == JType.JSTRING || jvmType == JType.JNULL;
+        return jvmType == null || jvmType == JType.JOBJECT || jvmType == JType.JSTRING || jvmType == JType.JINTERNAL_NULL;
     }
 
     /**
@@ -41,7 +41,7 @@ public record RuntimeType(
             return "[" + elementType.descriptor();
         }
 
-        if (jvmType != null && jvmType != JType.JOBJECT && jvmType != JType.JNULL)
+        if (jvmType != null && jvmType != JType.JOBJECT && jvmType != JType.JINTERNAL_NULL)
             return jvmType.descriptor();
 
         if (objectInternalName != null)

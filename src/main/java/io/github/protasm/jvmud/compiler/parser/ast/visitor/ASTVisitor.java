@@ -29,7 +29,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralString;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralTrue;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprError;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
@@ -88,7 +88,7 @@ public interface ASTVisitor {
         case ASTExprLiteralTrue exprLiteralTrue -> visitExprLiteralTrue(exprLiteralTrue);
         case ASTExprLocalAccess exprLocalAccess -> visitExprLocalAccess(exprLocalAccess);
         case ASTExprLocalStore exprLocalStore -> visitExprLocalStore(exprLocalStore);
-        case ASTExprNull exprNull -> visitExprNull(exprNull);
+        case ASTExprError exprError -> visitExprError(exprError);
         case ASTExprOpBinary exprOpBinary -> visitExprOpBinary(exprOpBinary);
         case ASTExprOpUnary exprOpUnary -> visitExprOpUnary(exprOpUnary);
         case ASTExprSymbolLiteral exprSymbolLiteral -> visitExprSymbolLiteral(exprSymbolLiteral);
@@ -179,7 +179,7 @@ public interface ASTVisitor {
 
     default void visitExprLocalStore(ASTExprLocalStore expr) {}
 
-    default void visitExprNull(ASTExprNull expr) {}
+    default void visitExprError(ASTExprError expr) {}
 
     default void visitExprOpBinary(ASTExprOpBinary expr) {}
 

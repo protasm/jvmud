@@ -24,8 +24,17 @@ public final class RuntimeTypes {
     public static final RuntimeType MIXED =
             new RuntimeType(RuntimeValueKind.MIXED, JType.JOBJECT, "java/lang/Object", RuntimeTruthiness.REFERENCE_NULL_FALSE, null);
 
-    public static final RuntimeType NULL =
-            new RuntimeType(RuntimeValueKind.NULL, JType.JNULL, null, RuntimeTruthiness.ALWAYS_FALSE, null);
+    /**
+     * Internal Java {@code null} marker used by generated helper calls, not an LPC source type.
+     */
+    public static final RuntimeType INTERNAL_NULL =
+            new RuntimeType(RuntimeValueKind.INTERNAL_NULL, JType.JINTERNAL_NULL, null, RuntimeTruthiness.ALWAYS_FALSE, null);
+
+    /**
+     * Compiler recovery type for expressions that survived only to suppress duplicate diagnostics.
+     */
+    public static final RuntimeType ERROR =
+            new RuntimeType(RuntimeValueKind.ERROR, JType.JOBJECT, "java/lang/Object", RuntimeTruthiness.ALWAYS_FALSE, null);
 
     public static final RuntimeType VOID =
             new RuntimeType(RuntimeValueKind.VOID, JType.JVOID, null, RuntimeTruthiness.NONE, null);
@@ -57,7 +66,7 @@ public final class RuntimeTypes {
         case LPCFLOAT -> FLOAT;
         case LPCMAPPING -> MAPPING;
         case LPCMIXED -> MIXED;
-        case LPCNULL -> NULL;
+        case LPCERROR -> ERROR;
         case LPCOBJECT -> OBJECT;
         case LPCSTATUS -> STATUS;
         case LPCSTRING -> STRING;

@@ -11,6 +11,9 @@ public enum RuntimeValueKind {
     MIXED,
     ARRAY,
     EFUN,
-    NULL,
+    /** Internal Java {@code null} marker used by helper calls, not an LPC source value. */
+    INTERNAL_NULL,
+    /** Compiler recovery marker for expressions that should not reach successful code generation. */
+    ERROR,
     VOID
 }

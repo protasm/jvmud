@@ -19,7 +19,7 @@ public final class ASTExprSequence extends ASTExpression {
     @Override
     public LPCType lpcType() {
         if (expressions.isEmpty())
-            return LPCType.LPCNULL;
+            return LPCType.LPCERROR;
 
         return expressions.get(expressions.size() - 1).lpcType();
     }

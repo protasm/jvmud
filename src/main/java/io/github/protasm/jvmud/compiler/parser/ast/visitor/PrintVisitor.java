@@ -26,7 +26,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralString;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralTrue;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprError;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignment;
@@ -212,7 +212,7 @@ public final class PrintVisitor implements ASTVisitor {
     }
 
     @Override
-    public void visitExprNull(ASTExprNull expr) {
+    public void visitExprError(ASTExprError expr) {
         doOutput(expr.className());
     }
 

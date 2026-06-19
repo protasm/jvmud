@@ -35,7 +35,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingEntry;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprNull;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprError;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
@@ -654,7 +654,7 @@ public final class IRLowerer {
     private IRExpression lowerExpression(
             ASTExpression expression, MethodContext context, List<CompilationProblem> problems) {
         if (expression == null)
-            return new IRConstant(0, null, RuntimeTypes.NULL);
+            return new IRConstant(0, null, RuntimeTypes.INTERNAL_NULL);
 
         if (expression instanceof ASTExprLiteralInteger literal)
             return new IRConstant(literal.line(), literal.value(), RuntimeTypes.INT);
@@ -712,8 +712,14 @@ public final class IRLowerer {
         if (expression instanceof ASTExprLiteralFalse literal)
             return new IRConstant(literal.line(), Boolean.FALSE, RuntimeTypes.STATUS);
 
-        if (expression instanceof ASTExprNull literalNull)
-            return new IRConstant(literalNull.line(), null, RuntimeTypes.NULL);
+        if (expression instanceof ASTExprError literalError) {
+            problems.add(
+                    new CompilationProblem(
+                            CompilationStage.LOWER,
+                            "Compiler error recovery expression reached IR lowering.",
+                            literalError.line()));
+            return new IRConstant(literalError.line(), null, RuntimeTypes.ERROR);
+        }
 
         if (expression instanceof ASTExprLocalAccess access)
             return new IRLocalLoad(access.line(), context.requireLocal(access.local(), problems));
@@ -765,7 +771,7 @@ public final class IRLowerer {
             IRExpression start = coerceIfNeeded(
                     lowerExpression(sliceAccess.start(), context, problems), RuntimeTypes.INT);
             IRExpression end = sliceAccess.end() == null
-                    ? new IRConstant(sliceAccess.line(), null, RuntimeTypes.NULL)
+                    ? new IRConstant(sliceAccess.line(), null, RuntimeTypes.INTERNAL_NULL)
                     : coerceIfNeeded(lowerExpression(sliceAccess.end(), context, problems), RuntimeTypes.INT);
             RuntimeType targetType = runtimeType(sliceAccess.target().lpcType());
             RuntimeType resultType = RuntimeTypes.MIXED;
@@ -799,7 +805,7 @@ public final class IRLowerer {
             IRExpression start = coerceIfNeeded(
                     lowerExpression(sliceStore.start(), context, problems), RuntimeTypes.INT);
             IRExpression end = sliceStore.end() == null
-                    ? new IRConstant(sliceStore.line(), null, RuntimeTypes.NULL)
+                    ? new IRConstant(sliceStore.line(), null, RuntimeTypes.INTERNAL_NULL)
                     : coerceIfNeeded(lowerExpression(sliceStore.end(), context, problems), RuntimeTypes.INT);
             IRExpression value = coerceIfNeeded(lowerExpression(sliceStore.value(), context, problems), RuntimeTypes.MIXED);
             return new IRArraySliceSet(
@@ -1137,7 +1143,8 @@ public final class IRLowerer {
         return switch (returnType.kind()) {
         case INT, STATUS -> new IRConstant(line, 0, returnType);
         case FLOAT -> new IRConstant(line, 0.0f, returnType);
-        case STRING, OBJECT, MAPPING, MIXED, ARRAY, EFUN, NULL -> new IRConstant(line, null, returnType);
+        case STRING, OBJECT, MAPPING, MIXED, ARRAY, EFUN, INTERNAL_NULL, ERROR ->
+            new IRConstant(line, null, returnType);
         case VOID -> null;
         };
     }
