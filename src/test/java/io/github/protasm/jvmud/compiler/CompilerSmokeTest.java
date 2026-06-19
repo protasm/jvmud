@@ -472,6 +472,18 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsLargeCollectionLiteralInitializers() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object =
+                runtime.loadSource("smoke/large_collection_literal_initializers.c", largeCollectionLiteralSource(240));
+
+        assertEquals(199, object.invoke("score"));
+        assertEquals("tag 199b", object.invoke("tag"));
+        assertEquals("item 199 description", object.invoke("description"));
+        assertEquals(239, object.invoke("number"));
+    }
+
+    @Test
     void runtimeSupportsArraySliceReplacement() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/array_slice_replacement.c", """
@@ -5152,6 +5164,49 @@ final class CompilerSmokeTest {
             index += needle.length();
         }
         return count;
+    }
+
+    /** Builds a smoke source whose collection literals are large enough to require bytecode helpers. */
+    private String largeCollectionLiteralSource(int entries) {
+        StringBuilder source = new StringBuilder();
+        source.append("mapping values = ([\n");
+        for (int i = 0; i < entries; i++) {
+            source.append("    \"item ")
+                    .append(i)
+                    .append("\": ([ \"score\": ")
+                    .append(i)
+                    .append(", \"tags\": ({ \"tag ")
+                    .append(i)
+                    .append("a\", \"tag ")
+                    .append(i)
+                    .append("b\" }), \"description\": \"item ")
+                    .append(i)
+                    .append("\" \" description\" ]),\n");
+        }
+        source.append("]);\n");
+        source.append("mixed *numbers = ({\n");
+        for (int i = 0; i < entries; i++) {
+            source.append("    ").append(i).append(",\n");
+        }
+        source.append("});\n");
+        source.append("""
+                mixed score() {
+                    return values["item 199"]["score"];
+                }
+
+                mixed tag() {
+                    return values["item 199"]["tags"][1];
+                }
+
+                mixed description() {
+                    return values["item 199"]["description"];
+                }
+
+                mixed number() {
+                    return numbers[239];
+                }
+                """);
+        return source.toString();
     }
 
     private String tickingObjectSource(int intervalSeconds) {

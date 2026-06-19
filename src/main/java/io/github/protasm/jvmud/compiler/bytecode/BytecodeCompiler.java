@@ -37,8 +37,15 @@ public final class BytecodeCompiler {
     private static final String INIT_METHOD_NAME = "$lpc$init";
     private static final String INIT_METHOD_DESCRIPTOR = "()V";
     private static final String INIT_GUARD_FIELD = "$lpc$initialized";
+    private static final String FIELD_INITIALIZER_HELPER_PREFIX = "$lpc$field$";
+    private static final String LITERAL_HELPER_PREFIX = "$lpc$literal$";
+    private static final int LITERAL_HELPER_CHUNK_SIZE = 64;
     private static final String OBJECT_INTERNAL_NAME = Type.getInternalName(Object.class);
     private final String defaultParentInternalName;
+    private ClassWriter activeClassWriter;
+    private String activeInternalName;
+    private int fieldInitializerHelperCounter;
+    private int literalHelperCounter;
 
     public BytecodeCompiler(String defaultParentInternalName) {
         this.defaultParentInternalName =
@@ -60,15 +67,26 @@ public final class BytecodeCompiler {
         // class into the generated superclass slot.
         cw.visit(V21, ACC_SUPER | ACC_PUBLIC, internalName, null, parentName, null);
 
-        emitEngineManagedFields(cw);
-        emitFields(cw, object);
-        emitPrivateInitializer(cw, internalName, parentName, object.fields());
-        emitDefaultConstructor(cw, internalName, parentName);
+        activeClassWriter = cw;
+        activeInternalName = internalName;
+        fieldInitializerHelperCounter = 0;
+        literalHelperCounter = 0;
+        try {
+            emitEngineManagedFields(cw);
+            emitFields(cw, object);
+            emitPrivateInitializer(cw, internalName, parentName, object.fields());
+            emitDefaultConstructor(cw, internalName, parentName);
 
-        for (IRMethod method : object.methods())
-            emitMethod(cw, internalName, method);
+            for (IRMethod method : object.methods())
+                emitMethod(cw, internalName, method);
 
-        return cw.toByteArray();
+            return cw.toByteArray();
+        } finally {
+            activeClassWriter = null;
+            activeInternalName = null;
+            fieldInitializerHelperCounter = 0;
+            literalHelperCounter = 0;
+        }
     }
 
     private void emitFields(ClassWriter cw, IRObject object) {
@@ -140,6 +158,14 @@ public final class BytecodeCompiler {
             // instance under the engine-managed lifecycle gate. The engine deliberately avoids
             // invoking any mudlib-defined hooks here; mudlib policy remains explicit and
             // user-controlled.
+            if (field.initializer() != null && activeClassWriter != null) {
+                String helperName = nextFieldInitializerHelperName();
+                emitFieldInitializerHelper(helperName, internalName, field);
+                mv.visitVarInsn(ALOAD, 0);
+                mv.visitMethodInsn(INVOKESPECIAL, internalName, helperName, INIT_METHOD_DESCRIPTOR, false);
+                continue;
+            }
+
             mv.visitVarInsn(ALOAD, 0);
             if (field.initializer() == null) {
                 emitMixedZero(mv);
@@ -148,6 +174,22 @@ public final class BytecodeCompiler {
             }
             mv.visitFieldInsn(PUTFIELD, field.ownerInternalName(), field.name(), descriptor(field.type()));
         }
+    }
+
+    /**
+     * Emits one field initializer body out-of-line so the lifecycle initializer remains a compact
+     * dispatch method even for mudlibs with many or very large data-table fields.
+     */
+    private void emitFieldInitializerHelper(String helperName, String internalName, IRField field) {
+        MethodVisitor mv =
+                activeClassWriter.visitMethod(ACC_PRIVATE | ACC_SYNTHETIC, helperName, INIT_METHOD_DESCRIPTOR, null, null);
+        mv.visitCode();
+        mv.visitVarInsn(ALOAD, 0);
+        emitExpression(mv, internalName, null, field.initializer());
+        mv.visitFieldInsn(PUTFIELD, field.ownerInternalName(), field.name(), descriptor(field.type()));
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
     }
 
     private void emitMethod(ClassWriter cw, String internalName, IRMethod method) {
@@ -1219,6 +1261,11 @@ public final class BytecodeCompiler {
     }
 
     private void emitArrayLiteral(MethodVisitor mv, String internalName, IRMethod method, IRArrayLiteral literal) {
+        if (shouldEmitLiteralHelper(literal)) {
+            emitChunkedArrayLiteral(mv, internalName, method, literal);
+            return;
+        }
+
         mv.visitTypeInsn(NEW, "java/util/ArrayList");
         mv.visitInsn(DUP);
         mv.visitMethodInsn(INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false);
@@ -1629,6 +1676,11 @@ public final class BytecodeCompiler {
     }
 
     private void emitMappingLiteral(MethodVisitor mv, String internalName, IRMethod method, IRMappingLiteral literal) {
+        if (shouldEmitLiteralHelper(literal)) {
+            emitChunkedMappingLiteral(mv, internalName, method, literal);
+            return;
+        }
+
         mv.visitTypeInsn(NEW, "java/util/HashMap");
         mv.visitInsn(DUP);
         mv.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V", false);
@@ -1643,6 +1695,145 @@ public final class BytecodeCompiler {
                     INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
             mv.visitInsn(POP);
         }
+    }
+
+    /**
+     * Returns true when a collection literal is large enough and self-contained enough to be
+     * populated by synthetic helper methods instead of the caller's bytecode body.
+     */
+    private boolean shouldEmitLiteralHelper(IRArrayLiteral literal) {
+        return activeClassWriter != null
+                && literal.elements().size() > LITERAL_HELPER_CHUNK_SIZE
+                && isOutOfLineLiteral(literal);
+    }
+
+    /**
+     * Returns true when a mapping literal is large enough and self-contained enough to be populated
+     * by synthetic helper methods instead of the caller's bytecode body.
+     */
+    private boolean shouldEmitLiteralHelper(IRMappingLiteral literal) {
+        return activeClassWriter != null
+                && literal.entries().size() > LITERAL_HELPER_CHUNK_SIZE
+                && isOutOfLineLiteral(literal);
+    }
+
+    /**
+     * Emits an ArrayList and delegates population to synthetic chunk helpers to avoid the JVM's
+     * per-method bytecode-size limit for large mudlib data literals.
+     */
+    private void emitChunkedArrayLiteral(
+            MethodVisitor mv, String internalName, IRMethod method, IRArrayLiteral literal) {
+        mv.visitTypeInsn(NEW, "java/util/ArrayList");
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false);
+
+        List<IRExpression> elements = literal.elements();
+        for (int start = 0; start < elements.size(); start += LITERAL_HELPER_CHUNK_SIZE) {
+            int end = Math.min(start + LITERAL_HELPER_CHUNK_SIZE, elements.size());
+            String helperName = nextLiteralHelperName();
+            emitArrayLiteralChunkHelper(helperName, elements.subList(start, end));
+            mv.visitInsn(DUP);
+            mv.visitMethodInsn(INVOKESTATIC, internalName, helperName, "(Ljava/util/List;)V", false);
+        }
+    }
+
+    /**
+     * Emits a HashMap and delegates population to synthetic chunk helpers to avoid the JVM's
+     * per-method bytecode-size limit for large mudlib data literals.
+     */
+    private void emitChunkedMappingLiteral(
+            MethodVisitor mv, String internalName, IRMethod method, IRMappingLiteral literal) {
+        mv.visitTypeInsn(NEW, "java/util/HashMap");
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V", false);
+
+        List<IRMappingEntry> entries = literal.entries();
+        for (int start = 0; start < entries.size(); start += LITERAL_HELPER_CHUNK_SIZE) {
+            int end = Math.min(start + LITERAL_HELPER_CHUNK_SIZE, entries.size());
+            String helperName = nextLiteralHelperName();
+            emitMappingLiteralChunkHelper(helperName, entries.subList(start, end));
+            mv.visitInsn(DUP);
+            mv.visitMethodInsn(INVOKESTATIC, internalName, helperName, "(Ljava/util/Map;)V", false);
+        }
+    }
+
+    private void emitArrayLiteralChunkHelper(String helperName, List<IRExpression> elements) {
+        MethodVisitor mv = activeClassWriter.visitMethod(
+                ACC_PRIVATE | ACC_STATIC | ACC_SYNTHETIC, helperName, "(Ljava/util/List;)V", null, null);
+        mv.visitCode();
+
+        for (IRExpression element : elements) {
+            mv.visitVarInsn(ALOAD, 0);
+            emitExpression(mv, activeInternalName, null, element);
+            boxIfNeeded(mv, element.type());
+            mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z", true);
+            mv.visitInsn(POP);
+        }
+
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+
+    private void emitMappingLiteralChunkHelper(String helperName, List<IRMappingEntry> entries) {
+        MethodVisitor mv = activeClassWriter.visitMethod(
+                ACC_PRIVATE | ACC_STATIC | ACC_SYNTHETIC, helperName, "(Ljava/util/Map;)V", null, null);
+        mv.visitCode();
+
+        for (IRMappingEntry entry : entries) {
+            mv.visitVarInsn(ALOAD, 0);
+            emitExpression(mv, activeInternalName, null, entry.key());
+            boxIfNeeded(mv, entry.key().type());
+            emitExpression(mv, activeInternalName, null, entry.value());
+            boxIfNeeded(mv, entry.value().type());
+            mv.visitMethodInsn(
+                    INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
+            mv.visitInsn(POP);
+        }
+
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+
+    private String nextLiteralHelperName() {
+        return LITERAL_HELPER_PREFIX + literalHelperCounter++;
+    }
+
+    private String nextFieldInitializerHelperName() {
+        return FIELD_INITIALIZER_HELPER_PREFIX + fieldInitializerHelperCounter++;
+    }
+
+    private boolean isOutOfLineLiteral(IRExpression expression) {
+        if (expression instanceof IRConstant || expression instanceof IRTypedFunctionLiteral)
+            return true;
+
+        if (expression instanceof IRCoerce coerce)
+            return isOutOfLineLiteral(coerce.value());
+
+        if (expression instanceof IRUnaryOperation unary)
+            return isOutOfLineLiteral(unary.operand());
+
+        if (expression instanceof IRBinaryOperation binary)
+            return isOutOfLineLiteral(binary.left()) && isOutOfLineLiteral(binary.right());
+
+        if (expression instanceof IRArrayLiteral arrayLiteral)
+            return arrayLiteral.elements().stream().allMatch(this::isOutOfLineLiteral);
+
+        if (expression instanceof IRArrayConcat arrayConcat)
+            return isOutOfLineLiteral(arrayConcat.left()) && isOutOfLineLiteral(arrayConcat.right());
+
+        if (expression instanceof IRMappingLiteral mappingLiteral)
+            return mappingLiteral.entries().stream()
+                    .allMatch(entry -> isOutOfLineLiteral(entry.key()) && isOutOfLineLiteral(entry.value()));
+
+        if (expression instanceof IRMappingMerge mappingMerge)
+            return isOutOfLineLiteral(mappingMerge.left()) && isOutOfLineLiteral(mappingMerge.right());
+
+        if (expression instanceof IRStringDifference stringDifference)
+            return isOutOfLineLiteral(stringDifference.left()) && isOutOfLineLiteral(stringDifference.right());
+
+        return false;
     }
 
     private void emitMappingMerge(MethodVisitor mv, String internalName, IRMethod method, IRMappingMerge merge) {
