@@ -220,7 +220,11 @@ public interface ASTVisitor {
     default void visitStmtSwitch(ASTStmtSwitch stmt) {
         visit(stmt.expression());
         for (ASTStmtSwitch.SwitchCase switchCase : stmt.cases()) {
-            visit(switchCase.expression());
+            if (!switchCase.isDefault()) {
+                visit(switchCase.expression());
+                if (switchCase.isRange())
+                    visit(switchCase.rangeEndExpression());
+            }
             switchCase.statements().forEach(this::visit);
         }
     }

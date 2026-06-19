@@ -33,11 +33,44 @@ final class RealmsMudCompatibilityScanTest {
                     "secure/master.c",
                     "secure/simul_efun.c",
                     "secure/login.c",
+                    "lib/core/baseSelector.c",
                     "lib/core/events.c",
+                    "lib/core/messageParser.c",
+                    "lib/core/organizations.c",
+                    "lib/core/prerequisites.c",
                     "lib/core/stateMachine.c",
                     "lib/core/specification.c",
+                    "lib/core/stateObject.c",
+                    "lib/core/thing.c",
+                    "lib/environment/elementBonus.c",
                     "lib/environment/environment.c",
+                    "lib/environment/environmentalElement.c",
+                    "lib/environment/generatedEnvironment.c",
+                    "lib/environment/generatedRegionTemplate.c",
+                    "lib/environment/generatedRoomTemplate.c",
+                    "lib/environment/harvestableResource.c",
+                    "lib/environment/legacyRoomConverter.c",
                     "lib/environment/region.c",
+                    "lib/environment/modules/regions/building-coordinates.c",
+                    "lib/environment/modules/regions/building-decorators.c",
+                    "lib/environment/modules/regions/building-doors.c",
+                    "lib/environment/modules/regions/building-files.c",
+                    "lib/environment/modules/regions/building-layout.c",
+                    "lib/environment/modules/regions/core.c",
+                    "lib/environment/modules/regions/domain.c",
+                    "lib/environment/modules/regions/entries-and-exits.c",
+                    "lib/environment/modules/regions/generate-building.c",
+                    "lib/environment/modules/regions/generate-path.c",
+                    "lib/environment/modules/regions/generate-region.c",
+                    "lib/environment/modules/regions/generate-room.c",
+                    "lib/environment/modules/regions/generate-settlement.c",
+                    "lib/environment/modules/regions/generate-tunneling.c",
+                    "lib/environment/modules/regions/map.c",
+                    "lib/environment/modules/regions/persist-region.c",
+                    "lib/environment/modules/regions/walk-generation.c",
+                    "lib/environment/modules/regions/walk-persistence.c",
+                    "lib/environment/modules/regions/walk-settlement.c",
+                    "lib/environment/modules/regions/walk-splitting.c",
                     "lib/environment/walkableRegion.c");
 
     @Test
@@ -125,7 +158,7 @@ final class RealmsMudCompatibilityScanTest {
         report.append("- Scanned files: ").append(results.size()).append("\n");
         report.append("- Supported now: ").append(supported).append("\n");
         report.append("- Current blockers: ").append(unsupported).append("\n\n");
-        report.append("## Selected Boot And Gameplay Spine\n\n");
+        report.append("## Selected Boot, Core, And Environment Spine\n\n");
         report.append("| Source | Status | First Problem Stage | First Problem Line | First Problem |\n");
         report.append("| --- | --- | --- | ---: | --- |\n");
 
@@ -152,8 +185,11 @@ final class RealmsMudCompatibilityScanTest {
         report.append("- `secure/master.c` is RealmsMUD's LDMud master object and driver-hook entry point.\n");
         report.append("- `secure/simul_efun.c` exposes the mudlib's global compatibility surface.\n");
         report.append("- `secure/login.c` is the player connection and account flow.\n");
-        report.append("- `/lib/core` and `/lib/environment` files are the smallest early slice toward ");
-        report.append("events, state, descriptions, regions, and a playable place.\n");
+        report.append("- `/lib/core` files cover the reusable event, state, selector, organization, ");
+        report.append("prerequisite, message, and thing surfaces used by gameplay objects.\n");
+        report.append("- Direct `/lib/environment` files and `/lib/environment/modules/regions` cover ");
+        report.append("descriptions, harvestables, generated rooms, regions, maps, persistence, and ");
+        report.append("walkable/generated region support.\n");
 
         Files.writeString(REPORT_PATH, report.toString());
     }

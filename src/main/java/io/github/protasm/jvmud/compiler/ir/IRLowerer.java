@@ -695,14 +695,7 @@ public final class IRLowerer {
             int caseIndex = testCaseIndexes.get(i);
             ASTStmtSwitch.SwitchCase switchCase = cases.get(caseIndex);
             BlockBuilder testBlock = testBlocks.get(i);
-            IRExpression caseValue = coerceIfNeeded(
-                    lowerExpression(switchCase.expression(), context, problems), RuntimeTypes.MIXED);
-            IRExpression condition = new IRBinaryOperation(
-                    switchCase.line(),
-                    BinaryOpType.BOP_EQ,
-                    new IRLocalLoad(switchCase.line(), valueLocal),
-                    caseValue,
-                    RuntimeTypes.STATUS);
+            IRExpression condition = lowerSwitchCaseCondition(switchCase, valueLocal, context, problems);
             String falseLabel = (i + 1 < testBlocks.size()) ? testBlocks.get(i + 1).label() : defaultOrEndLabel;
             testBlock.terminate(
                     new IRConditionalJump(switchCase.line(), condition, bodyBlocks.get(caseIndex).label(), falseLabel));
@@ -725,6 +718,49 @@ public final class IRLowerer {
         context.popBreakTarget();
 
         return mergeBlock;
+    }
+
+    /**
+     * Lowers an exact {@code case value:} or inclusive {@code case start..end:} label into the
+     * boolean condition used by the explicit switch-test blocks.
+     */
+    private IRExpression lowerSwitchCaseCondition(
+            ASTStmtSwitch.SwitchCase switchCase,
+            IRLocal valueLocal,
+            MethodContext context,
+            List<CompilationProblem> problems) {
+        IRExpression caseValue = coerceIfNeeded(
+                lowerExpression(switchCase.expression(), context, problems), RuntimeTypes.MIXED);
+        IRExpression switchValue = new IRLocalLoad(switchCase.line(), valueLocal);
+        if (!switchCase.isRange()) {
+            return new IRBinaryOperation(
+                    switchCase.line(),
+                    BinaryOpType.BOP_EQ,
+                    switchValue,
+                    caseValue,
+                    RuntimeTypes.STATUS);
+        }
+
+        IRExpression rangeEndValue = coerceIfNeeded(
+                lowerExpression(switchCase.rangeEndExpression(), context, problems), RuntimeTypes.MIXED);
+        IRExpression lowerBound = new IRBinaryOperation(
+                switchCase.line(),
+                BinaryOpType.BOP_GE,
+                switchValue,
+                caseValue,
+                RuntimeTypes.STATUS);
+        IRExpression upperBound = new IRBinaryOperation(
+                switchCase.line(),
+                BinaryOpType.BOP_LE,
+                new IRLocalLoad(switchCase.line(), valueLocal),
+                rangeEndValue,
+                RuntimeTypes.STATUS);
+        return new IRBinaryOperation(
+                switchCase.line(),
+                BinaryOpType.BOP_AND,
+                lowerBound,
+                upperBound,
+                RuntimeTypes.STATUS);
     }
 
     private IRExpression lowerExpression(
@@ -1080,12 +1116,16 @@ public final class IRLowerer {
     private IRExpression lowerSortArray(
             ASTExprSortArray sortArray, MethodContext context, List<CompilationProblem> problems) {
         IRExpression source = lowerExpression(sortArray.source(), context, problems);
+        List<IRExpression> extras = new ArrayList<>();
+        for (ASTExpression extra : sortArray.extraArguments())
+            extras.add(lowerExpression(extra, context, problems));
+
         IRLocal itemsLocal = context.addSyntheticLocal(sortArray.line(), "sort_items", RuntimeTypes.MIXED);
         IRLocal indexLocal = context.addSyntheticLocal(sortArray.line(), "sort_index", RuntimeTypes.INT);
         IRLocal innerIndexLocal = context.addSyntheticLocal(sortArray.line(), "sort_inner_index", RuntimeTypes.INT);
         IRLocal swapLocal = context.addSyntheticLocal(sortArray.line(), "sort_swap", RuntimeTypes.MIXED);
 
-        int argumentCount = Math.max(2, maxClosureArgumentIndex(sortArray.comparator().body()));
+        int argumentCount = Math.max(2 + extras.size(), maxClosureArgumentIndex(sortArray.comparator().body()));
         List<IRLocal> argumentLocals = new ArrayList<>();
         for (int i = 1; i <= argumentCount; i++)
             argumentLocals.add(context.addSyntheticLocal(sortArray.line(), "sort_arg" + i, RuntimeTypes.MIXED));
@@ -1102,6 +1142,7 @@ public final class IRLowerer {
                 indexLocal,
                 innerIndexLocal,
                 swapLocal,
+                extras,
                 argumentLocals,
                 RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
     }

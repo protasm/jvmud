@@ -11,6 +11,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DEFAULT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DO;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DOT_DOT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_ELSE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_FOREACH;
@@ -687,7 +688,14 @@ public class Parser {
             if (tokens.match(T_CASE)) {
                 caseLine = tokens.previous().line();
                 caseExpression = expression();
+                ASTExpression rangeEndExpression = null;
+                if (tokens.match(T_DOT_DOT))
+                    rangeEndExpression = expression();
                 tokens.consume(T_COLON, "Expect ':' after case expression.");
+                List<ASTStatement> statements = switchCaseStatements();
+                cases.add(new ASTStmtSwitch.SwitchCase(
+                        caseLine, caseExpression, rangeEndExpression, false, statements));
+                continue;
             } else if (tokens.match(T_DEFAULT)) {
                 caseLine = tokens.previous().line();
                 isDefault = true;
@@ -696,24 +704,27 @@ public class Parser {
                 throw new ParseException("Expect 'case' or 'default' in switch body.", tokens.current());
             }
 
-            List<ASTStatement> statements = new ArrayList<>();
-            while (!tokens.check(T_CASE)
-                    && !tokens.check(T_DEFAULT)
-                    && !tokens.check(T_RIGHT_BRACE)
-                    && !tokens.isAtEnd()) {
-                if (startsLocalDeclaration()) {
-                    Token<String> typeToken = tokens.consume(T_IDENTIFIER, "Expect local type.");
-                    locals(typeToken, statements);
-                } else {
-                    statements.add(statement());
-                }
-            }
-
-            cases.add(new ASTStmtSwitch.SwitchCase(caseLine, caseExpression, isDefault, statements));
+            cases.add(new ASTStmtSwitch.SwitchCase(caseLine, caseExpression, isDefault, switchCaseStatements()));
         }
 
         tokens.consume(T_RIGHT_BRACE, "Expect '}' after switch body.");
         return new ASTStmtSwitch(line, expression, cases);
+    }
+
+    private List<ASTStatement> switchCaseStatements() {
+        List<ASTStatement> statements = new ArrayList<>();
+        while (!tokens.check(T_CASE)
+                && !tokens.check(T_DEFAULT)
+                && !tokens.check(T_RIGHT_BRACE)
+                && !tokens.isAtEnd()) {
+            if (startsLocalDeclaration()) {
+                Token<String> typeToken = tokens.consume(T_IDENTIFIER, "Expect local type.");
+                locals(typeToken, statements);
+            } else {
+                statements.add(statement());
+            }
+        }
+        return statements;
     }
 
     private ASTStmtWhile whileStatement() {

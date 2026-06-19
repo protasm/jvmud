@@ -375,7 +375,11 @@ public final class SemanticAnalyzer {
         if (statement instanceof ASTStmtSwitch stmtSwitch) {
             inspectInitializerExpression(stmtSwitch.expression(), problems);
             for (ASTStmtSwitch.SwitchCase switchCase : stmtSwitch.cases()) {
-                inspectInitializerExpression(switchCase.expression(), problems);
+                if (!switchCase.isDefault()) {
+                    inspectInitializerExpression(switchCase.expression(), problems);
+                    if (switchCase.isRange())
+                        inspectInitializerExpression(switchCase.rangeEndExpression(), problems);
+                }
                 for (ASTStatement nested : switchCase.statements())
                     validateInitializers(nested, problems);
             }
@@ -931,15 +935,26 @@ public final class SemanticAnalyzer {
 
             if (expression instanceof ASTExprSortArray sortArray) {
                 ASTExpression resolvedSource = resolveExpression(sortArray.source(), context);
+                List<ASTExpression> resolvedExtras = new ArrayList<>();
+                boolean extrasChanged = false;
+                for (ASTExpression extra : sortArray.extraArguments()) {
+                    ASTExpression resolvedExtra = resolveExpression(extra, context);
+                    resolvedExtras.add(resolvedExtra);
+                    if (resolvedExtra != extra)
+                        extrasChanged = true;
+                }
                 context.enterInlineCallable();
                 ASTExpression resolvedBody = resolveExpression(sortArray.comparator().body(), context);
                 context.exitInlineCallable();
-                if (resolvedSource == sortArray.source() && resolvedBody == sortArray.comparator().body())
+                if (resolvedSource == sortArray.source()
+                        && resolvedBody == sortArray.comparator().body()
+                        && !extrasChanged)
                     return sortArray;
                 return new ASTExprSortArray(
                         sortArray.line(),
                         resolvedSource,
-                        new ASTExprInlineCallable(sortArray.comparator().line(), resolvedBody));
+                        new ASTExprInlineCallable(sortArray.comparator().line(), resolvedBody),
+                        resolvedExtras);
             }
 
             if (expression instanceof ASTExprDynamicInvoke dynamicInvoke) {
@@ -1212,40 +1227,89 @@ public final class SemanticAnalyzer {
             if (!"sort_array".equals(unresolvedCall.name()))
                 return null;
 
-            if (args == null || args.size() != 2)
+            if (args == null || args.size() < 2)
                 return null;
 
             ASTExpression callback = args.get(1).expression();
             if (!(callback instanceof ASTExprInlineCallable inlineCallable))
                 return null;
 
-            return new ASTExprSortArray(unresolvedCall.line(), args.get(0).expression(), inlineCallable);
+            List<ASTExpression> extras = new ArrayList<>();
+            for (int i = 2; i < args.size(); i++)
+                extras.add(args.get(i).expression());
+
+            return new ASTExprSortArray(unresolvedCall.line(), args.get(0).expression(), inlineCallable, extras);
         }
 
         private ASTExpression resolveQualifiedCall(
                 ASTExprUnresolvedQualifiedCall unresolvedCall, LocalResolutionContext context) {
             ASTArguments resolvedArgs = resolveArguments(unresolvedCall.arguments(), context);
 
-            if (!"efun".equals(unresolvedCall.qualifier())) {
+            if ("efun".equals(unresolvedCall.qualifier())) {
+                Efun efun = resolveDirectEfun(unresolvedCall.name(), resolvedArgs.size());
+
+                if (efun != null)
+                    return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
+
                 problems.add(
                         new CompilationProblem(
                                 CompilationStage.ANALYZE,
-                                "Unsupported qualified call prefix '" + unresolvedCall.qualifier() + "'.",
+                                "Unrecognized efun '" + unresolvedCall.name() + "'.",
                                 unresolvedCall.line()));
                 return new ASTExprError(unresolvedCall.line());
             }
 
-            Efun efun = resolveDirectEfun(unresolvedCall.name(), resolvedArgs.size());
-
-            if (efun != null)
-                return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
+            ASTExpression inheritedCall = resolveQualifiedPrimaryParentCall(unresolvedCall, resolvedArgs);
+            if (inheritedCall != null)
+                return inheritedCall;
 
             problems.add(
                     new CompilationProblem(
                             CompilationStage.ANALYZE,
-                            "Unrecognized efun '" + unresolvedCall.name() + "'.",
+                            "Unsupported qualified call prefix '" + unresolvedCall.qualifier() + "'.",
                             unresolvedCall.line()));
             return new ASTExprError(unresolvedCall.line());
+        }
+
+        /**
+         * Resolves {@code parentName::method()} when {@code parentName} names the primary inherited
+         * object, which can be emitted as a JVM {@code invokespecial} dispatch.
+         */
+        private ASTExpression resolveQualifiedPrimaryParentCall(
+                ASTExprUnresolvedQualifiedCall unresolvedCall, ASTArguments resolvedArgs) {
+            if (parentUnit == null || parentUnit.semanticModel() == null)
+                return null;
+
+            ASTObject parentObject = parentUnit.semanticModel().astObject();
+            if (parentObject == null || !matchesObjectQualifier(unresolvedCall.qualifier(), parentObject.name()))
+                return null;
+
+            SemanticScope parentScope = parentUnit.semanticModel().objectScope();
+            ASTMethod parentMethod = parentScope.resolveAll(unresolvedCall.name()).stream()
+                    .map(ScopedSymbol::method)
+                    .filter(Objects::nonNull)
+                    .filter(method -> parameterCount(method) >= resolvedArgs.size())
+                    .min(Comparator.comparingInt(SemanticAnalyzer::parameterCount))
+                    .orElse(null);
+            if (parentMethod != null)
+                return new ASTExprCallMethod(unresolvedCall.line(), parentMethod, resolvedArgs, true);
+
+            problems.add(
+                    new CompilationProblem(
+                            CompilationStage.ANALYZE,
+                            "Inherited method '" + unresolvedCall.name() + "' is not defined in qualified parent '"
+                                    + unresolvedCall.qualifier() + "'.",
+                            unresolvedCall.line()));
+            return new ASTExprError(unresolvedCall.line());
+        }
+
+        private boolean matchesObjectQualifier(String qualifier, String objectName) {
+            if (Objects.equals(qualifier, objectName))
+                return true;
+
+            int slash = objectName.lastIndexOf('/');
+            String simpleName = slash == -1 ? objectName : objectName.substring(slash + 1);
+            return Objects.equals(qualifier, simpleName);
         }
 
         private Efun resolveDirectEfun(String name, int arity) {
@@ -1567,7 +1631,12 @@ public final class SemanticAnalyzer {
                 List<ASTStmtSwitch.SwitchCase> resolvedCases = new ArrayList<>();
                 boolean changed = resolvedExpression != stmtSwitch.expression();
                 for (ASTStmtSwitch.SwitchCase switchCase : stmtSwitch.cases()) {
-                    ASTExpression resolvedCaseExpression = resolveExpression(switchCase.expression(), context);
+                    ASTExpression resolvedCaseExpression = switchCase.isDefault()
+                            ? null
+                            : resolveExpression(switchCase.expression(), context);
+                    ASTExpression resolvedRangeEndExpression = switchCase.isRange()
+                            ? resolveExpression(switchCase.rangeEndExpression(), context)
+                            : null;
                     List<ASTStatement> resolvedStatements = new ArrayList<>();
                     for (ASTStatement nested : switchCase.statements()) {
                         ASTStatement resolvedNested = resolveStatement(nested, context);
@@ -1577,9 +1646,12 @@ public final class SemanticAnalyzer {
                     }
                     if (resolvedCaseExpression != switchCase.expression())
                         changed = true;
+                    if (resolvedRangeEndExpression != switchCase.rangeEndExpression())
+                        changed = true;
                     resolvedCases.add(new ASTStmtSwitch.SwitchCase(
                             switchCase.line(),
                             resolvedCaseExpression,
+                            resolvedRangeEndExpression,
                             switchCase.isDefault(),
                             resolvedStatements));
                 }

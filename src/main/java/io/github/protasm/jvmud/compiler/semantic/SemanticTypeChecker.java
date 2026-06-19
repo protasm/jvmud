@@ -161,7 +161,11 @@ public final class SemanticTypeChecker {
         if (statement instanceof ASTStmtSwitch stmtSwitch) {
             inferExpressionType(stmtSwitch.expression(), context);
             for (ASTStmtSwitch.SwitchCase switchCase : stmtSwitch.cases()) {
-                inferExpressionType(switchCase.expression(), context);
+                if (!switchCase.isDefault()) {
+                    inferExpressionType(switchCase.expression(), context);
+                    if (switchCase.isRange())
+                        inferExpressionType(switchCase.rangeEndExpression(), context);
+                }
                 for (ASTStatement nested : switchCase.statements())
                     checkStatement(nested, context);
             }
@@ -244,6 +248,8 @@ public final class SemanticTypeChecker {
         if (expression instanceof ASTExprSortArray sortArray) {
             inferExpressionType(sortArray.source(), context);
             inferExpressionType(sortArray.comparator().body(), context);
+            for (ASTExpression extra : sortArray.extraArguments())
+                inferExpressionType(extra, context);
             return sortArray.lpcType();
         }
         if (expression instanceof ASTExprSymbolLiteral || expression instanceof ASTExprFunctionReference)

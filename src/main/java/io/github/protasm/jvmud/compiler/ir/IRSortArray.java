@@ -20,6 +20,7 @@ import java.util.Objects;
  * @param indexLocal synthetic outer loop index
  * @param innerIndexLocal synthetic inner loop index
  * @param swapLocal synthetic temporary used while swapping elements
+ * @param extraArguments comparator context values bound to callback slots starting at {@code $3}
  * @param comparatorArgumentLocals synthetic locals bound to {@code $1}, {@code $2}, and any
  *     additional referenced callback slots
  * @param type runtime result type
@@ -32,6 +33,7 @@ public record IRSortArray(
         IRLocal indexLocal,
         IRLocal innerIndexLocal,
         IRLocal swapLocal,
+        List<IRExpression> extraArguments,
         List<IRLocal> comparatorArgumentLocals,
         RuntimeType type)
         implements IRExpression {
@@ -42,6 +44,7 @@ public record IRSortArray(
         Objects.requireNonNull(indexLocal, "indexLocal");
         Objects.requireNonNull(innerIndexLocal, "innerIndexLocal");
         Objects.requireNonNull(swapLocal, "swapLocal");
+        extraArguments = List.copyOf(extraArguments);
         comparatorArgumentLocals = List.copyOf(comparatorArgumentLocals);
         Objects.requireNonNull(type, "type");
         if (comparatorArgumentLocals.size() < 2)

@@ -308,7 +308,15 @@ public final class CompilationPipeline {
 
         if (normalized.startsWith("/")) {
             IncludeResolver resolver = runtimeContext.includeResolver();
-            return resolver.resolve(childUnit.sourcePath(), normalized, false);
+            Exception resolverFailure = null;
+            for (String candidatePath : inheritedSourceCandidates(normalized)) {
+                try {
+                    return resolver.resolve(childUnit.sourcePath(), candidatePath, false);
+                } catch (Exception e) {
+                    resolverFailure = e;
+                }
+            }
+            throw new IllegalArgumentException("absolute inherit not found at " + normalized, resolverFailure);
         }
 
         Path sourcePath = childUnit.sourcePath();

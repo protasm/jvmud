@@ -453,8 +453,14 @@ public final class PrintVisitor implements ASTVisitor {
             out.println();
             doOutput(switchCase.isDefault() ? "[DEFAULT]" : "[CASE]");
             indentLvl++;
-            if (!switchCase.isDefault())
+            if (!switchCase.isDefault()) {
                 switchCase.expression().accept(this);
+                if (switchCase.isRange()) {
+                    out.println();
+                    doOutput("[RANGE_END]");
+                    switchCase.rangeEndExpression().accept(this);
+                }
+            }
             for (ASTStatement statement : switchCase.statements()) {
                 out.println();
                 statement.accept(this);

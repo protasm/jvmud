@@ -1310,6 +1310,14 @@ public final class BytecodeCompiler {
                 INVOKESPECIAL, "java/util/ArrayList", "<init>", "(Ljava/util/Collection;)V", false);
         mv.visitVarInsn(ASTORE, sortArray.itemsLocal().slot());
 
+        for (int i = 0; i < sortArray.extraArguments().size(); i++) {
+            IRExpression extra = sortArray.extraArguments().get(i);
+            IRLocal local = sortArray.comparatorArgumentLocals().get(i + 2);
+            emitExpression(mv, internalName, method, extra);
+            boxIfNeeded(mv, extra.type());
+            mv.visitVarInsn(ASTORE, local.slot());
+        }
+
         pushInt(mv, 0);
         mv.visitVarInsn(ISTORE, sortArray.indexLocal().slot());
 

@@ -822,6 +822,47 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsSwitchCaseRanges() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/switch_case_ranges.c", """
+                string template(int illuminationLevel) {
+                    string templateKey;
+
+                    switch(illuminationLevel) {
+                        case 1..2:
+                        {
+                            templateKey = "near dark template";
+                            break;
+                        }
+                        case 3..4:
+                        {
+                            templateKey = "low light template";
+                            break;
+                        }
+                        case 7..8:
+                        {
+                            templateKey = "some light template";
+                            break;
+                        }
+                        default:
+                        {
+                            templateKey = "template";
+                            break;
+                        }
+                    }
+
+                    return templateKey;
+                }
+                """);
+
+        assertEquals("near dark template", object.invoke("template", 1));
+        assertEquals("near dark template", object.invoke("template", 2));
+        assertEquals("low light template", object.invoke("template", 4));
+        assertEquals("some light template", object.invoke("template", 7));
+        assertEquals("template", object.invoke("template", 6));
+    }
+
+    @Test
     void runtimeSupportsLogicalAndAssignment() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/logical_and_assignment.c", """
@@ -901,6 +942,30 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(3, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsQualifiedPrimaryParentCalls() throws Exception {
+        Files.writeString(tempDir.resolve("environment.c"), """
+                int initialized;
+
+                void init() {
+                    initialized = 7;
+                }
+                """);
+        Files.writeString(tempDir.resolve("generatedEnvironment.c"), """
+                inherit "environment.c";
+
+                int run() {
+                    environment::init();
+                    return initialized;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.load(tempDir.resolve("generatedEnvironment.c"));
+
+        assertEquals(7, object.invoke("run"));
     }
 
     @Test
@@ -1286,6 +1351,21 @@ final class CompilerSmokeTest {
         LPCObjectHandle object = runtime.loadSource("smoke/inline_sort.c", """
                 mixed value() {
                     return sort_array(({"b", "a", "c"}), (: $1 > $2 :));
+                }
+                """);
+
+        assertEquals(List.of("a", "b", "c"), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsSortArrayInlineComparatorExtraArguments() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_sort_extra_arguments.c", """
+                mixed value() {
+                    mapping order;
+
+                    order = ([ "b": 2, "a": 1, "c": 3 ]);
+                    return sort_array(({"b", "a", "c"}), (: $3[$1] > $3[$2] :), order);
                 }
                 """);
 
@@ -3851,6 +3931,36 @@ final class CompilerSmokeTest {
 
                 int child_value() {
                     return environment_value() + 12;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
+                .baseIncludePath(tempDir.resolve("wrong-root"))
+                .build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mudlibRootPath(mudlibRoot)
+                .build());
+
+        LPCObjectHandle child = runtime.load(mudlibRoot.resolve("areas/example.c"));
+
+        assertEquals(42, child.invoke("child_value"));
+    }
+
+    @Test
+    void runtimeResolvesExtensionlessAbsoluteMudlibInherits() throws Exception {
+        Path mudlibRoot = tempDir.resolve("realms");
+        Files.createDirectories(mudlibRoot.resolve("areas"));
+        Files.createDirectories(mudlibRoot.resolve("lib/core"));
+        Files.writeString(mudlibRoot.resolve("lib/core/thing.c"), """
+                int thing_value() {
+                    return 30;
+                }
+                """);
+        Files.writeString(mudlibRoot.resolve("areas/example.c"), """
+                inherit "/lib/core/thing";
+
+                int child_value() {
+                    return thing_value() + 12;
                 }
                 """);
 
