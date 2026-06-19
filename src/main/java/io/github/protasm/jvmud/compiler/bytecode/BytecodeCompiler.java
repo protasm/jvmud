@@ -777,6 +777,22 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (usesFloatArithmetic(binary)) {
+            emitFloatOperand(mv, internalName, method, binary.left());
+            emitFloatOperand(mv, internalName, method, binary.right());
+
+            switch (op) {
+            case BOP_ADD -> mv.visitInsn(FADD);
+            case BOP_SUB -> mv.visitInsn(FSUB);
+            case BOP_MULT -> mv.visitInsn(FMUL);
+            case BOP_DIV -> mv.visitInsn(FDIV);
+            case BOP_MOD -> mv.visitInsn(FREM);
+            case BOP_GT, BOP_GE, BOP_LT, BOP_LE, BOP_EQ, BOP_NE -> emitFloatComparison(mv, op);
+            default -> throw new UnsupportedOperationException("Unsupported float operator: " + op);
+            }
+            return;
+        }
+
         emitIntOperand(mv, internalName, method, binary.left());
         emitIntOperand(mv, internalName, method, binary.right());
 
@@ -797,6 +813,23 @@ public final class BytecodeCompiler {
                 || op == BinaryOpType.BOP_GE
                 || op == BinaryOpType.BOP_LT
                 || op == BinaryOpType.BOP_LE;
+    }
+
+    private boolean usesFloatArithmetic(IRBinaryOperation binary) {
+        if (!isNumericOperator(binary.operator()))
+            return false;
+
+        return binary.type().kind() == RuntimeValueKind.FLOAT
+                || binary.left().type().kind() == RuntimeValueKind.FLOAT
+                || binary.right().type().kind() == RuntimeValueKind.FLOAT;
+    }
+
+    /** Returns true for operators whose primitive JVM emission may use int or float opcodes. */
+    private boolean isNumericOperator(BinaryOpType op) {
+        return switch (op) {
+        case BOP_ADD, BOP_SUB, BOP_MULT, BOP_DIV, BOP_MOD, BOP_GT, BOP_GE, BOP_LT, BOP_LE, BOP_EQ, BOP_NE -> true;
+        default -> false;
+        };
     }
 
     private void emitDynamicComparison(
@@ -864,6 +897,28 @@ public final class BytecodeCompiler {
         mv.visitLabel(endLabel);
     }
 
+    /** Emits a JVM float comparison and leaves the LPC status result on the operand stack. */
+    private void emitFloatComparison(MethodVisitor mv, BinaryOpType op) {
+        Label trueLabel = new Label();
+        Label endLabel = new Label();
+
+        mv.visitInsn(FCMPL);
+        switch (op) {
+        case BOP_GT -> mv.visitJumpInsn(IFGT, trueLabel);
+        case BOP_GE -> mv.visitJumpInsn(IFGE, trueLabel);
+        case BOP_LT -> mv.visitJumpInsn(IFLT, trueLabel);
+        case BOP_LE -> mv.visitJumpInsn(IFLE, trueLabel);
+        case BOP_EQ -> mv.visitJumpInsn(IFEQ, trueLabel);
+        case BOP_NE -> mv.visitJumpInsn(IFNE, trueLabel);
+        default -> throw new UnsupportedOperationException("Unsupported float comparison: " + op);
+        }
+        mv.visitInsn(ICONST_0);
+        mv.visitJumpInsn(GOTO, endLabel);
+        mv.visitLabel(trueLabel);
+        mv.visitInsn(ICONST_1);
+        mv.visitLabel(endLabel);
+    }
+
     private void emitReferenceEquality(
             MethodVisitor mv, String internalName, IRMethod method, IRBinaryOperation binary) {
         emitExpression(mv, internalName, method, binary.left());
@@ -885,6 +940,12 @@ public final class BytecodeCompiler {
     private void emitIntOperand(MethodVisitor mv, String internalName, IRMethod method, IRExpression operand) {
         emitExpression(mv, internalName, method, operand);
         coerceValue(mv, operand.type(), RuntimeTypes.INT);
+    }
+
+    /** Emits an expression and coerces the resulting JVM value to primitive float. */
+    private void emitFloatOperand(MethodVisitor mv, String internalName, IRMethod method, IRExpression operand) {
+        emitExpression(mv, internalName, method, operand);
+        coerceValue(mv, operand.type(), RuntimeTypes.FLOAT);
     }
 
     private void emitEfunCall(MethodVisitor mv, String internalName, IRMethod method, IREfunCall efunCall) {

@@ -472,6 +472,24 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimePromotesMixedIntegerAndFloatArithmetic() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_integer_float_arithmetic.c", """
+                float scaled(int level) {
+                    return level * 1.5;
+                }
+
+                int compares() {
+                    return (2 * 1.5 == 3.0) && (1 + 0.5 < 2);
+                }
+                """);
+
+        assertEquals(6.0f, object.invoke("scaled", 4));
+        assertEquals(1, object.invoke("compares"));
+    }
+
+    @Test
     void runtimeSupportsLargeCollectionLiteralInitializers() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object =

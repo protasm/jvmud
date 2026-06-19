@@ -60,17 +60,24 @@ public final class ASTExprOpBinary extends ASTExpression {
                 yield LPCType.LPCMAPPING;
             if (left.lpcType() == LPCType.LPCSTRING || right.lpcType() == LPCType.LPCSTRING)
                 yield LPCType.LPCSTRING;
-            yield LPCType.LPCINT;
+            yield numericResultType();
         }
         case BOP_SUB -> {
             if (left.lpcType() == LPCType.LPCARRAY || right.lpcType() == LPCType.LPCARRAY)
                 yield LPCType.LPCARRAY;
             if (left.lpcType() == LPCType.LPCSTRING || right.lpcType() == LPCType.LPCSTRING)
                 yield LPCType.LPCSTRING;
-            yield LPCType.LPCINT;
+            yield numericResultType();
         }
-        case BOP_MULT, BOP_DIV, BOP_MOD, BOP_BIT_OR, BOP_BIT_AND, BOP_BIT_XOR, BOP_SHL, BOP_SHR -> LPCType.LPCINT;
+        case BOP_MULT, BOP_DIV, BOP_MOD -> numericResultType();
+        case BOP_BIT_OR, BOP_BIT_AND, BOP_BIT_XOR, BOP_SHL, BOP_SHR -> LPCType.LPCINT;
         case BOP_GT, BOP_GE, BOP_LT, BOP_LE, BOP_EQ, BOP_NE, BOP_OR, BOP_AND -> LPCType.LPCSTATUS;
         };
+    }
+
+    private LPCType numericResultType() {
+        if (left.lpcType() == LPCType.LPCFLOAT || right.lpcType() == LPCType.LPCFLOAT)
+            return LPCType.LPCFLOAT;
+        return LPCType.LPCINT;
     }
 }

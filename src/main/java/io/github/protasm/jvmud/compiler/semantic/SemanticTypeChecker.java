@@ -414,7 +414,7 @@ public final class SemanticTypeChecker {
             return LPCType.LPCINT;
         }
 
-        ensureAssignable(LPCType.LPCINT, operandType, expr.line(), "Unary operator expects numeric operand");
+        ensureNumericOperand(operandType, expr.line(), "Unary operator expects numeric operand");
         return operandType == LPCType.LPCFLOAT ? LPCType.LPCFLOAT : LPCType.LPCINT;
     }
 
@@ -453,7 +453,9 @@ public final class SemanticTypeChecker {
             }
 
             ensureNumericOperands(leftType, rightType, expr.line(), "Addition expects numeric operands");
-            return LPCType.LPCINT;
+            LPCType resultType = promotedNumericType(leftType, rightType);
+            expr.setInferredType(resultType);
+            return resultType;
         }
         case BOP_SUB -> {
             if (leftType == LPCType.LPCARRAY || rightType == LPCType.LPCARRAY) {
@@ -483,14 +485,18 @@ public final class SemanticTypeChecker {
                 return LPCType.LPCSTRING;
             }
             ensureNumericOperands(leftType, rightType, expr.line(), op + " expects numeric operands");
-            return LPCType.LPCINT;
+            LPCType resultType = promotedNumericType(leftType, rightType);
+            expr.setInferredType(resultType);
+            return resultType;
         }
         case BOP_MULT, BOP_DIV, BOP_MOD -> {
             ensureNumericOperands(leftType, rightType, expr.line(), op + " expects numeric operands");
-            return LPCType.LPCINT;
+            LPCType resultType = promotedNumericType(leftType, rightType);
+            expr.setInferredType(resultType);
+            return resultType;
         }
         case BOP_BIT_OR, BOP_BIT_AND, BOP_BIT_XOR, BOP_SHL, BOP_SHR -> {
-            ensureNumericOperands(leftType, rightType, expr.line(), op + " expects integer operands");
+            ensureIntegerOperands(leftType, rightType, expr.line(), op + " expects integer operands");
             return LPCType.LPCINT;
         }
         case BOP_AND, BOP_OR -> {
@@ -634,8 +640,41 @@ public final class SemanticTypeChecker {
     }
 
     private void ensureNumericOperands(LPCType left, LPCType right, int line, String message) {
+        ensureNumericOperand(left, line, message);
+        ensureNumericOperand(right, line, message);
+    }
+
+    private void ensureIntegerOperands(LPCType left, LPCType right, int line, String message) {
         ensureAssignable(LPCType.LPCINT, left, line, message);
         ensureAssignable(LPCType.LPCINT, right, line, message);
+    }
+
+    /** Records an analysis problem unless the type can participate in numeric LPC arithmetic. */
+    private void ensureNumericOperand(LPCType type, int line, String message) {
+        if (isNumericType(type))
+            return;
+
+        problems.add(
+                new CompilationProblem(
+                        CompilationStage.ANALYZE,
+                        message + " (found " + type + ")",
+                        line));
+    }
+
+    /** Returns true for static types accepted by JVMud's numeric operator family. */
+    private boolean isNumericType(LPCType type) {
+        return type == LPCType.LPCINT
+                || type == LPCType.LPCSTATUS
+                || type == LPCType.LPCFLOAT
+                || type == LPCType.LPCMIXED
+                || type == LPCType.LPCERROR;
+    }
+
+    /** Promotes numeric arithmetic to float only when one operand is statically float. */
+    private LPCType promotedNumericType(LPCType left, LPCType right) {
+        if (left == LPCType.LPCFLOAT || right == LPCType.LPCFLOAT)
+            return LPCType.LPCFLOAT;
+        return LPCType.LPCINT;
     }
 
     private LPCType inferIndexAccessType(ASTExprArrayAccess access, MethodContext context) {
