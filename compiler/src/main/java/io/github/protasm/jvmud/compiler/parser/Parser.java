@@ -6,6 +6,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COLON;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CONTINUE;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DO;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_ELSE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_FOREACH;
@@ -57,6 +58,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTStatement;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtDoWhile;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
@@ -561,6 +563,8 @@ public class Parser {
         public ASTStatement statement() {
                 if (tokens.match(T_IF))
                         return ifStatement();
+                else if (tokens.match(T_DO))
+                        return doWhileStatement();
                 else if (tokens.match(T_FOR))
                         return forStatement();
                 else if (tokens.match(T_FOREACH))
@@ -650,6 +654,21 @@ public class Parser {
         tokens.consume(T_RIGHT_PAREN, "Expect ')' after while condition.");
 
         return new ASTStmtWhile(line, condition, statement());
+    }
+
+    private ASTStmtDoWhile doWhileStatement() {
+        int line = tokens.previous().line();
+        ASTStatement body = statement();
+
+        tokens.consume(T_WHILE, "Expect 'while' after do body.");
+        tokens.consume(T_LEFT_PAREN, "Expect '(' after do/while.");
+
+        ASTExpression condition = expression();
+
+        tokens.consume(T_RIGHT_PAREN, "Expect ')' after do/while condition.");
+        tokens.consume(T_SEMICOLON, "Expect ';' after do/while condition.");
+
+        return new ASTStmtDoWhile(line, body, condition);
     }
 
     private ASTStmtFor forStatement() {

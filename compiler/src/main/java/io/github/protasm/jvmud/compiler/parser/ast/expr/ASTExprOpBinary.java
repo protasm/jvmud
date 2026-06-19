@@ -41,7 +41,12 @@ public final class ASTExprOpBinary extends ASTExpression {
                 yield LPCType.LPCSTRING;
             yield LPCType.LPCINT;
         }
-        case BOP_SUB, BOP_MULT, BOP_DIV, BOP_MOD, BOP_BIT_OR, BOP_BIT_AND, BOP_BIT_XOR, BOP_SHL, BOP_SHR -> LPCType.LPCINT;
+        case BOP_SUB -> {
+            if (left.lpcType() == LPCType.LPCARRAY || right.lpcType() == LPCType.LPCARRAY)
+                yield LPCType.LPCARRAY;
+            yield LPCType.LPCINT;
+        }
+        case BOP_MULT, BOP_DIV, BOP_MOD, BOP_BIT_OR, BOP_BIT_AND, BOP_BIT_XOR, BOP_SHL, BOP_SHR -> LPCType.LPCINT;
         case BOP_GT, BOP_GE, BOP_LT, BOP_LE, BOP_EQ, BOP_NE, BOP_OR, BOP_AND -> LPCType.LPCSTATUS;
         };
     }

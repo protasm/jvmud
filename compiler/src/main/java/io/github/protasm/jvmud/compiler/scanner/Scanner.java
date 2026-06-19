@@ -12,6 +12,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DOT_DOT;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DOLLAR;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EOF;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL_EQUAL;
@@ -190,6 +191,8 @@ public class Scanner {
             return characterLiteral();
         case '#':
             return token(T_HASH);
+        case '$':
+            return token(T_DOLLAR);
         case '&':
             if (ss.match('&'))
                 return token(T_DBL_AMP);
@@ -302,6 +305,19 @@ public class Scanner {
     private Token<?> number() {
         boolean isFloat = false;
 
+        if (ss.previous() == '0' && (ss.peek() == 'x' || ss.peek() == 'X')) {
+            ss.advance();
+            while (isHexDigit(ss.peek()))
+                ss.advance();
+
+            String lexeme = ss.read();
+            try {
+                return intToken(T_INT_LITERAL, lexeme, Integer.parseUnsignedInt(lexeme.substring(2), 16));
+            } catch (NumberFormatException e) {
+                return errorToken("Invalid numeric literal: '" + lexeme + "'");
+            }
+        }
+
         while (isDigit(ss.peek()))
             ss.advance();
 
@@ -408,6 +424,10 @@ public class Scanner {
 
     private boolean isDigit(char c) {
         return (c >= '0') && (c <= '9');
+    }
+
+    private boolean isHexDigit(char c) {
+        return isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
     }
 
     private Token<String> unexpectedChar(char c) {

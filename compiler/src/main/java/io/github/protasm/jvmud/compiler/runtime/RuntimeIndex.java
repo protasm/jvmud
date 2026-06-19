@@ -2,6 +2,7 @@ package io.github.protasm.jvmud.compiler.runtime;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** Runtime indexing helpers for dynamically typed LPC values. */
 public final class RuntimeIndex {
@@ -15,6 +16,14 @@ public final class RuntimeIndex {
             return list.get(index);
         }
         throw new IllegalArgumentException("Cannot index value: " + target);
+    }
+
+    public static Object get(Object target, Object index) {
+        if (target instanceof Map<?, ?> map) {
+            return map.get(index);
+        }
+        int numericIndex = index instanceof Number number ? number.intValue() : 0;
+        return get(target, numericIndex);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

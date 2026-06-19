@@ -19,6 +19,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_BANG_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DOLLAR;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_FALSE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_FLOAT_LITERAL;
@@ -59,6 +60,7 @@ import io.github.protasm.jvmud.compiler.parser.parselet.PrefixIdentifier;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixLParen;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixLiteral;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixArrayLiteral;
+import io.github.protasm.jvmud.compiler.parser.parselet.PrefixClosureArgument;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixNumber;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixQuotedReference;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixString;
@@ -103,6 +105,7 @@ public class PrattParser {
 
         tokenTypeToRule.put(T_APOSTROPHE, new ParseRule(new PrefixQuotedReference(false), null, PREC_NONE));
         tokenTypeToRule.put(T_HASH, new ParseRule(new PrefixQuotedReference(true), null, PREC_NONE));
+        tokenTypeToRule.put(T_DOLLAR, new ParseRule(new PrefixClosureArgument(), null, PREC_NONE));
 
         tokenTypeToRule.put(T_BANG, new ParseRule(new PrefixUnaryOp(), null, PREC_NONE));
         tokenTypeToRule.put(T_TILDE, new ParseRule(new PrefixUnaryOp(), null, PREC_NONE));

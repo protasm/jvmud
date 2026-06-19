@@ -1,0 +1,91 @@
+=== The JVMud Philosophy Of MUD
+
+JVMud is built around eight core concepts:
+
+* Game
+* Text
+* Interactive
+* Multiplayer
+* World
+* Persistence
+* Temporality
+* Presence
+
+Together, these concepts define what JVMud means by MUD.
+
+JVMud is not a general-purpose simulation framework, chat server,
+collaboration platform, or generic game engine. It is an engine for creating
+and operating persistent, multiplayer, text-based game worlds in the tradition
+of LP MUDs.
+
+==== Game
+
+The world exists to be played. JVMud assumes rules, mechanics, goals,
+challenges, progression, or other game-like structures.
+
+==== Text
+
+Text is the primary medium through which the world is perceived and
+manipulated. It is a first-class part of the engine's design, not a skin over a
+visual game.
+
+==== Interactive
+
+Players can affect the world, and the world can affect players. Actions have
+consequences.
+
+==== Multiplayer
+
+Multiple players inhabit the same world simultaneously. The world is shared.
+
+==== World
+
+The game takes place within a concrete virtual domain. JVMud describes this
+domain in terms of Places, Links, Entities, and Movement.
+
+Places give the world locality. Links make Places traversable. Entities are the
+things that exist in that structure. Movement changes where an Entity is
+present.
+
+==== Persistence
+
+The world and its state endure independently of any individual player's
+session. A player may disconnect and later return to a world whose state has
+continued to exist.
+
+Persistence does not require eternal continuity. Reboots, resets, and selected
+save/restore behavior can all be compatible with a persistent world.
+
+==== Temporality
+
+The world can change through time. Events occur, actions have consequences, and
+state evolves.
+
+Temporality is separate from Persistence: a world can have active time, saved
+state, restored state, and reset state without treating all of those as the
+same idea.
+
+==== Presence
+
+Presence means that a player experiences the game from within the World. The
+player is not an outside observer manipulating a simulation from above.
+
+In JVMud terms, a player participates through a Persona: an Entity that serves
+as the player's current point of perception and action. A Persona is located
+somewhere, and that location determines what the player can perceive and what
+actions are locally available.
+
+Players are somewhere, not everywhere. Presence creates locality of
+information, which makes exploration, discovery, concealment, surprise,
+navigation, and mystery possible.
+
+==== LPC Compatibility And Engine Vocabulary
+
+JVMud has one mudlib and language target: LPC for LPMud-style worlds. That does
+not mean JVMud adopts every legacy LPMud driver term as engine ontology.
+
+Legacy names such as rooms, objects, heartbeats, applies, call_outs, and master
+objects may appear in compatibility surfaces, mudlib source, and LPC-facing
+documentation. The engine-facing model remains JVMud's own model: Game, Text,
+Interaction, Multiplayer World, Persistence, Temporality, and Presence, built
+from Places, Links, Entities, Players, Sessions, and Personas.

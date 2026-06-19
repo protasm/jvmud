@@ -14,6 +14,7 @@ public final class TokenClassifier {
             Map.ofEntries(
                     Map.entry("break", TokenType.T_BREAK),
                     Map.entry("continue", TokenType.T_CONTINUE),
+                    Map.entry("do", TokenType.T_DO),
                     Map.entry("else", TokenType.T_ELSE),
                     Map.entry("false", TokenType.T_FALSE),
                     Map.entry("for", TokenType.T_FOR),

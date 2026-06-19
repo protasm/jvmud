@@ -446,319 +446,365 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
-<li><a href="#overview">Overview</a>
+<li><a href="#_status">Status</a></li>
+<li><a href="#_how_to_read_this_manual">How To Read This Manual</a></li>
+<li><a href="#_terminology">Terminology</a></li>
+<li><a href="#_getting_oriented">Getting Oriented</a>
 <ul class="sectlevel2">
-<li><a href="#manual-audience">Who This Manual Is For</a></li>
-<li><a href="#manual-status">Project Status</a></li>
+<li><a href="#_overview">Overview</a></li>
+<li><a href="#_repository_tour">Repository Tour</a></li>
 </ul>
 </li>
-<li><a href="#installing">Installing</a>
+<li><a href="#_installing_and_running">Installing And Running</a>
 <ul class="sectlevel2">
-<li><a href="#installing-prerequisites">Prerequisites</a></li>
-<li><a href="#installing-layout">Repository Layout</a></li>
-<li><a href="#installing-build">Build And Test</a></li>
-<li><a href="#installing-manual">Build This Manual</a></li>
+<li><a href="#_installing">Installing</a></li>
+<li><a href="#_running_jvmud">Running JVMud</a></li>
+<li><a href="#_connecting_with_telnet">Connecting With Telnet</a></li>
+<li><a href="#_smoke_tests">Smoke Tests</a></li>
 </ul>
 </li>
-<li><a href="#running-jvmud">Running JVMud</a>
+<li><a href="#_playing_and_testing_a_world">Playing And Testing A World</a>
 <ul class="sectlevel2">
-<li><a href="#running-admin-cli">Start The Admin CLI</a></li>
-<li><a href="#running-server">Start The Telnet Server</a></li>
-<li><a href="#running-connect">Connect As A Player</a></li>
-<li><a href="#running-smoke">Run The Startup Smoke Test</a></li>
+<li><a href="#_login_flow">Login Flow</a></li>
+<li><a href="#_basic_commands">Basic Commands</a></li>
+<li><a href="#_command_routing">Command Routing</a></li>
+<li><a href="#_transcript_regressions">Transcript Regressions</a></li>
 </ul>
 </li>
-<li><a href="#admin-cli">Admin CLI</a>
+<li><a href="#_operating_jvmud">Operating JVMud</a>
 <ul class="sectlevel2">
-<li><a href="#admin-cli-start">Starting The Shell</a></li>
-<li><a href="#admin-cli-commands">Common Commands</a></li>
-<li><a href="#admin-cli-filesystem">Mudlib Filesystem</a></li>
-<li><a href="#admin-cli-verbosity">Verbosity</a></li>
+<li><a href="#_admin_cli">Admin CLI</a></li>
+<li><a href="#_runtime_model">Runtime Model</a></li>
+<li><a href="#_mudlib_boundary">Mudlib Boundary</a></li>
 </ul>
 </li>
-<li><a href="#playing">Playing</a>
+<li><a href="#_lpc_and_mudlib_authoring">LPC And Mudlib Authoring</a>
 <ul class="sectlevel2">
-<li><a href="#playing-login">Login</a></li>
-<li><a href="#playing-commands">Basic Commands</a></li>
-<li><a href="#playing-world-input">How World Input Is Routed</a></li>
-<li><a href="#playing-limits">Current Limits</a></li>
+<li><a href="#_supported_lpc">Supported LPC</a></li>
+<li><a href="#_explicit_types">Explicit Types</a></li>
+<li><a href="#_efuns">Efuns</a></li>
+<li><a href="#_lifecycle_hooks">Lifecycle Hooks</a></li>
+<li><a href="#_compatibility_shims">Compatibility Shims</a></li>
 </ul>
 </li>
-<li><a href="#mudlib-layout">Mudlib Layout</a>
+<li><a href="#_mudlibs">Mudlibs</a>
 <ul class="sectlevel2">
-<li><a href="#mudlib-layout-core">Important Paths</a></li>
-<li><a href="#mudlib-layout-upstream">Upstream Source Policy</a></li>
-<li><a href="#mudlib-layout-boundary">Engine And Mudlib Boundary</a></li>
+<li><a href="#_layout">Layout</a></li>
+<li><a href="#_lp245_notes">LP245 Notes</a></li>
+<li><a href="#_upstream_source_policy">Upstream Source Policy</a></li>
 </ul>
 </li>
-<li><a href="#lpc-authoring">LPC Authoring</a>
+<li><a href="#_developer_reference">Developer Reference</a>
 <ul class="sectlevel2">
-<li><a href="#lpc-authoring-types">Explicit Types</a></li>
-<li><a href="#lpc-authoring-compat">Compatibility Shims</a></li>
-<li><a href="#lpc-authoring-compile">Compile And Load Checks</a></li>
-<li><a href="#lpc-authoring-api-docs">Java API Docs</a></li>
+<li><a href="#_compiler_pipeline">Compiler Pipeline</a></li>
+<li><a href="#_runtime_and_server_internals">Runtime And Server Internals</a></li>
+<li><a href="#_testing_and_verification">Testing And Verification</a></li>
 </ul>
 </li>
-<li><a href="#troubleshooting">Troubleshooting</a>
+<li><a href="#_troubleshooting">Troubleshooting</a>
 <ul class="sectlevel2">
-<li><a href="#troubleshooting-build">Build Fails</a></li>
-<li><a href="#troubleshooting-admin">Object Load Fails</a></li>
-<li><a href="#troubleshooting-player">Player Login Or Commands Fail</a></li>
-<li><a href="#troubleshooting-compatibility">Mudlib Compatibility Report</a></li>
-<li><a href="#troubleshooting-docs">Manual Generation Fails</a></li>
+<li><a href="#_build_failures">Build Failures</a></li>
+<li><a href="#_object_load_failures">Object Load Failures</a></li>
+<li><a href="#_login_and_command_failures">Login And Command Failures</a></li>
+<li><a href="#_documentation_generation">Documentation Generation</a></li>
+</ul>
+</li>
+<li><a href="#_appendixes">Appendixes</a>
+<ul class="sectlevel2">
+<li><a href="#_commands">Commands</a></li>
+<li><a href="#_configuration_reference">Configuration Reference</a></li>
+<li><a href="#_compatibility_notes">Compatibility Notes</a></li>
+<li><a href="#_glossary">Glossary</a></li>
 </ul>
 </li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div id="preamble">
+<div class="sect1">
+<h2 id="_status"><a class="anchor" href="#_status"></a><a class="link" href="#_status">Status</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h2>
+<h2 id="_how_to_read_this_manual"><a class="anchor" href="#_how_to_read_this_manual"></a><a class="link" href="#_how_to_read_this_manual">How To Read This Manual</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
-<div class="sect2">
-<h3 id="manual-audience"><a class="anchor" href="#manual-audience"></a><a class="link" href="#manual-audience">Who This Manual Is For</a></h3>
-<div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="manual-status"><a class="anchor" href="#manual-status"></a><a class="link" href="#manual-status">Project Status</a></h3>
-<div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
+<p>Content to be written.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="installing"><a class="anchor" href="#installing"></a><a class="link" href="#installing">Installing</a></h2>
+<h2 id="_terminology"><a class="anchor" href="#_terminology"></a><a class="link" href="#_terminology">Terminology</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_getting_oriented"><a class="anchor" href="#_getting_oriented"></a><a class="link" href="#_getting_oriented">Getting Oriented</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Content to be written.</p>
 </div>
 <div class="sect2">
-<h3 id="installing-prerequisites"><a class="anchor" href="#installing-prerequisites"></a><a class="link" href="#installing-prerequisites">Prerequisites</a></h3>
+<h3 id="_overview"><a class="anchor" href="#_overview"></a><a class="link" href="#_overview">Overview</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="installing-layout"><a class="anchor" href="#installing-layout"></a><a class="link" href="#installing-layout">Repository Layout</a></h3>
-<div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="installing-build"><a class="anchor" href="#installing-build"></a><a class="link" href="#installing-build">Build And Test</a></h3>
-<div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="installing-manual"><a class="anchor" href="#installing-manual"></a><a class="link" href="#installing-manual">Build This Manual</a></h3>
+<h3 id="_repository_tour"><a class="anchor" href="#_repository_tour"></a><a class="link" href="#_repository_tour">Repository Tour</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="running-jvmud"><a class="anchor" href="#running-jvmud"></a><a class="link" href="#running-jvmud">Running JVMud</a></h2>
+<h2 id="_installing_and_running"><a class="anchor" href="#_installing_and_running"></a><a class="link" href="#_installing_and_running">Installing And Running</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 <div class="sect2">
-<h3 id="running-admin-cli"><a class="anchor" href="#running-admin-cli"></a><a class="link" href="#running-admin-cli">Start The Admin CLI</a></h3>
+<h3 id="_installing"><a class="anchor" href="#_installing"></a><a class="link" href="#_installing">Installing</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="running-server"><a class="anchor" href="#running-server"></a><a class="link" href="#running-server">Start The Telnet Server</a></h3>
-<div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="running-connect"><a class="anchor" href="#running-connect"></a><a class="link" href="#running-connect">Connect As A Player</a></h3>
+<h3 id="_running_jvmud"><a class="anchor" href="#_running_jvmud"></a><a class="link" href="#_running_jvmud">Running JVMud</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="running-smoke"><a class="anchor" href="#running-smoke"></a><a class="link" href="#running-smoke">Run The Startup Smoke Test</a></h3>
+<h3 id="_connecting_with_telnet"><a class="anchor" href="#_connecting_with_telnet"></a><a class="link" href="#_connecting_with_telnet">Connecting With Telnet</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_smoke_tests"><a class="anchor" href="#_smoke_tests"></a><a class="link" href="#_smoke_tests">Smoke Tests</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="admin-cli"><a class="anchor" href="#admin-cli"></a><a class="link" href="#admin-cli">Admin CLI</a></h2>
+<h2 id="_playing_and_testing_a_world"><a class="anchor" href="#_playing_and_testing_a_world"></a><a class="link" href="#_playing_and_testing_a_world">Playing And Testing A World</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 <div class="sect2">
-<h3 id="admin-cli-start"><a class="anchor" href="#admin-cli-start"></a><a class="link" href="#admin-cli-start">Starting The Shell</a></h3>
+<h3 id="_login_flow"><a class="anchor" href="#_login_flow"></a><a class="link" href="#_login_flow">Login Flow</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="admin-cli-commands"><a class="anchor" href="#admin-cli-commands"></a><a class="link" href="#admin-cli-commands">Common Commands</a></h3>
-<div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="admin-cli-filesystem"><a class="anchor" href="#admin-cli-filesystem"></a><a class="link" href="#admin-cli-filesystem">Mudlib Filesystem</a></h3>
+<h3 id="_basic_commands"><a class="anchor" href="#_basic_commands"></a><a class="link" href="#_basic_commands">Basic Commands</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="admin-cli-verbosity"><a class="anchor" href="#admin-cli-verbosity"></a><a class="link" href="#admin-cli-verbosity">Verbosity</a></h3>
+<h3 id="_command_routing"><a class="anchor" href="#_command_routing"></a><a class="link" href="#_command_routing">Command Routing</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_transcript_regressions"><a class="anchor" href="#_transcript_regressions"></a><a class="link" href="#_transcript_regressions">Transcript Regressions</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="playing"><a class="anchor" href="#playing"></a><a class="link" href="#playing">Playing</a></h2>
+<h2 id="_operating_jvmud"><a class="anchor" href="#_operating_jvmud"></a><a class="link" href="#_operating_jvmud">Operating JVMud</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 <div class="sect2">
-<h3 id="playing-login"><a class="anchor" href="#playing-login"></a><a class="link" href="#playing-login">Login</a></h3>
+<h3 id="_admin_cli"><a class="anchor" href="#_admin_cli"></a><a class="link" href="#_admin_cli">Admin CLI</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="playing-commands"><a class="anchor" href="#playing-commands"></a><a class="link" href="#playing-commands">Basic Commands</a></h3>
-<div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="playing-world-input"><a class="anchor" href="#playing-world-input"></a><a class="link" href="#playing-world-input">How World Input Is Routed</a></h3>
+<h3 id="_runtime_model"><a class="anchor" href="#_runtime_model"></a><a class="link" href="#_runtime_model">Runtime Model</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="playing-limits"><a class="anchor" href="#playing-limits"></a><a class="link" href="#playing-limits">Current Limits</a></h3>
+<h3 id="_mudlib_boundary"><a class="anchor" href="#_mudlib_boundary"></a><a class="link" href="#_mudlib_boundary">Mudlib Boundary</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="mudlib-layout"><a class="anchor" href="#mudlib-layout"></a><a class="link" href="#mudlib-layout">Mudlib Layout</a></h2>
+<h2 id="_lpc_and_mudlib_authoring"><a class="anchor" href="#_lpc_and_mudlib_authoring"></a><a class="link" href="#_lpc_and_mudlib_authoring">LPC And Mudlib Authoring</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 <div class="sect2">
-<h3 id="mudlib-layout-core"><a class="anchor" href="#mudlib-layout-core"></a><a class="link" href="#mudlib-layout-core">Important Paths</a></h3>
+<h3 id="_supported_lpc"><a class="anchor" href="#_supported_lpc"></a><a class="link" href="#_supported_lpc">Supported LPC</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="mudlib-layout-upstream"><a class="anchor" href="#mudlib-layout-upstream"></a><a class="link" href="#mudlib-layout-upstream">Upstream Source Policy</a></h3>
-<div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="mudlib-layout-boundary"><a class="anchor" href="#mudlib-layout-boundary"></a><a class="link" href="#mudlib-layout-boundary">Engine And Mudlib Boundary</a></h3>
+<h3 id="_explicit_types"><a class="anchor" href="#_explicit_types"></a><a class="link" href="#_explicit_types">Explicit Types</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_efuns"><a class="anchor" href="#_efuns"></a><a class="link" href="#_efuns">Efuns</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_lifecycle_hooks"><a class="anchor" href="#_lifecycle_hooks"></a><a class="link" href="#_lifecycle_hooks">Lifecycle Hooks</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_compatibility_shims"><a class="anchor" href="#_compatibility_shims"></a><a class="link" href="#_compatibility_shims">Compatibility Shims</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="lpc-authoring"><a class="anchor" href="#lpc-authoring"></a><a class="link" href="#lpc-authoring">LPC Authoring</a></h2>
+<h2 id="_mudlibs"><a class="anchor" href="#_mudlibs"></a><a class="link" href="#_mudlibs">Mudlibs</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 <div class="sect2">
-<h3 id="lpc-authoring-types"><a class="anchor" href="#lpc-authoring-types"></a><a class="link" href="#lpc-authoring-types">Explicit Types</a></h3>
+<h3 id="_layout"><a class="anchor" href="#_layout"></a><a class="link" href="#_layout">Layout</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="lpc-authoring-compat"><a class="anchor" href="#lpc-authoring-compat"></a><a class="link" href="#lpc-authoring-compat">Compatibility Shims</a></h3>
-<div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="lpc-authoring-compile"><a class="anchor" href="#lpc-authoring-compile"></a><a class="link" href="#lpc-authoring-compile">Compile And Load Checks</a></h3>
+<h3 id="_lp245_notes"><a class="anchor" href="#_lp245_notes"></a><a class="link" href="#_lp245_notes">LP245 Notes</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="lpc-authoring-api-docs"><a class="anchor" href="#lpc-authoring-api-docs"></a><a class="link" href="#lpc-authoring-api-docs">Java API Docs</a></h3>
+<h3 id="_upstream_source_policy"><a class="anchor" href="#_upstream_source_policy"></a><a class="link" href="#_upstream_source_policy">Upstream Source Policy</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="troubleshooting"><a class="anchor" href="#troubleshooting"></a><a class="link" href="#troubleshooting">Troubleshooting</a></h2>
+<h2 id="_developer_reference"><a class="anchor" href="#_developer_reference"></a><a class="link" href="#_developer_reference">Developer Reference</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 <div class="sect2">
-<h3 id="troubleshooting-build"><a class="anchor" href="#troubleshooting-build"></a><a class="link" href="#troubleshooting-build">Build Fails</a></h3>
+<h3 id="_compiler_pipeline"><a class="anchor" href="#_compiler_pipeline"></a><a class="link" href="#_compiler_pipeline">Compiler Pipeline</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="troubleshooting-admin"><a class="anchor" href="#troubleshooting-admin"></a><a class="link" href="#troubleshooting-admin">Object Load Fails</a></h3>
-<div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="troubleshooting-player"><a class="anchor" href="#troubleshooting-player"></a><a class="link" href="#troubleshooting-player">Player Login Or Commands Fail</a></h3>
+<h3 id="_runtime_and_server_internals"><a class="anchor" href="#_runtime_and_server_internals"></a><a class="link" href="#_runtime_and_server_internals">Runtime And Server Internals</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="troubleshooting-compatibility"><a class="anchor" href="#troubleshooting-compatibility"></a><a class="link" href="#troubleshooting-compatibility">Mudlib Compatibility Report</a></h3>
+<h3 id="_testing_and_verification"><a class="anchor" href="#_testing_and_verification"></a><a class="link" href="#_testing_and_verification">Testing And Verification</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_troubleshooting"><a class="anchor" href="#_troubleshooting"></a><a class="link" href="#_troubleshooting">Troubleshooting</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Content to be written.</p>
+</div>
+<div class="sect2">
+<h3 id="_build_failures"><a class="anchor" href="#_build_failures"></a><a class="link" href="#_build_failures">Build Failures</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="troubleshooting-docs"><a class="anchor" href="#troubleshooting-docs"></a><a class="link" href="#troubleshooting-docs">Manual Generation Fails</a></h3>
+<h3 id="_object_load_failures"><a class="anchor" href="#_object_load_failures"></a><a class="link" href="#_object_load_failures">Object Load Failures</a></h3>
 <div class="paragraph">
-<p>Document in progress&#8230;&#8203;.</p>
+<p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_login_and_command_failures"><a class="anchor" href="#_login_and_command_failures"></a><a class="link" href="#_login_and_command_failures">Login And Command Failures</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_documentation_generation"><a class="anchor" href="#_documentation_generation"></a><a class="link" href="#_documentation_generation">Documentation Generation</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_appendixes"><a class="anchor" href="#_appendixes"></a><a class="link" href="#_appendixes">Appendixes</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Content to be written.</p>
+</div>
+<div class="sect2">
+<h3 id="_commands"><a class="anchor" href="#_commands"></a><a class="link" href="#_commands">Commands</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuration_reference"><a class="anchor" href="#_configuration_reference"></a><a class="link" href="#_configuration_reference">Configuration Reference</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_compatibility_notes"><a class="anchor" href="#_compatibility_notes"></a><a class="link" href="#_compatibility_notes">Compatibility Notes</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_glossary"><a class="anchor" href="#_glossary"></a><a class="link" href="#_glossary">Glossary</a></h3>
+<div class="paragraph">
+<p>Content to be written.</p>
 </div>
 </div>
 </div>
@@ -767,7 +813,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="footer">
 <div id="footer-text">
 Version 0.1.0-SNAPSHOT<br>
-Last updated 2026-06-10 11:25:15 -0400
+Last updated 2026-06-19 09:45:38 -0400
 </div>
 </div>
 </body>

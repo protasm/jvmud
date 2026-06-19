@@ -6,6 +6,7 @@ import io.github.protasm.jvmud.compiler.ir.*;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCoercions;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeArray;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeEquality;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeForeach;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeIndex;
@@ -281,6 +282,11 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRCollectionTransform transform) {
+            emitCollectionTransform(mv, internalName, method, transform);
+            return;
+        }
+
         if (expression instanceof IRLocalLoad localLoad) {
             emitLocalLoad(mv, localLoad.local());
             return;
@@ -323,6 +329,11 @@ public final class BytecodeCompiler {
 
         if (expression instanceof IRArrayConcat arrayConcat) {
             emitArrayConcat(mv, internalName, method, arrayConcat);
+            return;
+        }
+
+        if (expression instanceof IRArrayDifference arrayDifference) {
+            emitArrayDifference(mv, internalName, method, arrayDifference);
             return;
         }
 
@@ -986,6 +997,87 @@ public final class BytecodeCompiler {
         }
     }
 
+    private void emitCollectionTransform(
+            MethodVisitor mv, String internalName, IRMethod method, IRCollectionTransform transform) {
+        emitExpression(mv, internalName, method, transform.source());
+        boxIfNeeded(mv, transform.source().type());
+        mv.visitVarInsn(ASTORE, transform.sourceLocal().slot());
+
+        mv.visitVarInsn(ALOAD, transform.sourceLocal().slot());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeForeach.class),
+                "items",
+                "(Ljava/lang/Object;)Ljava/util/List;",
+                false);
+        mv.visitVarInsn(ASTORE, transform.itemsLocal().slot());
+
+        mv.visitTypeInsn(NEW, "java/util/ArrayList");
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false);
+        mv.visitVarInsn(ASTORE, transform.resultLocal().slot());
+
+        for (int i = 0; i < transform.extraArguments().size(); i++) {
+            IRExpression extra = transform.extraArguments().get(i);
+            IRLocal local = transform.callbackArgumentLocals().get(i + 1);
+            emitExpression(mv, internalName, method, extra);
+            boxIfNeeded(mv, extra.type());
+            mv.visitVarInsn(ASTORE, local.slot());
+        }
+
+        pushInt(mv, 0);
+        mv.visitVarInsn(ISTORE, transform.indexLocal().slot());
+
+        Label conditionLabel = new Label();
+        Label endLabel = new Label();
+        mv.visitLabel(conditionLabel);
+        mv.visitVarInsn(ILOAD, transform.indexLocal().slot());
+        mv.visitVarInsn(ALOAD, transform.itemsLocal().slot());
+        mv.visitTypeInsn(CHECKCAST, "java/util/List");
+        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "size", "()I", true);
+        mv.visitJumpInsn(IF_ICMPGE, endLabel);
+
+        mv.visitVarInsn(ALOAD, transform.itemsLocal().slot());
+        mv.visitTypeInsn(CHECKCAST, "java/util/List");
+        mv.visitVarInsn(ILOAD, transform.indexLocal().slot());
+        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "get", "(I)Ljava/lang/Object;", true);
+        mv.visitVarInsn(ASTORE, transform.callbackArgumentLocals().get(0).slot());
+
+        if (transform.operation() == IRCollectionTransform.Operation.FILTER) {
+            emitExpression(mv, internalName, method, transform.callbackBody());
+            boxIfNeeded(mv, transform.callbackBody().type());
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Type.getInternalName(Truth.class),
+                    "isTruthy",
+                    "(Ljava/lang/Object;)Z",
+                    false);
+            Label skipAdd = new Label();
+            mv.visitJumpInsn(IFEQ, skipAdd);
+            mv.visitVarInsn(ALOAD, transform.resultLocal().slot());
+            mv.visitTypeInsn(CHECKCAST, "java/util/List");
+            mv.visitVarInsn(ALOAD, transform.callbackArgumentLocals().get(0).slot());
+            mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z", true);
+            mv.visitInsn(POP);
+            mv.visitLabel(skipAdd);
+        } else {
+            mv.visitVarInsn(ALOAD, transform.resultLocal().slot());
+            mv.visitTypeInsn(CHECKCAST, "java/util/List");
+            emitExpression(mv, internalName, method, transform.callbackBody());
+            boxIfNeeded(mv, transform.callbackBody().type());
+            mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z", true);
+            mv.visitInsn(POP);
+        }
+
+        mv.visitIincInsn(transform.indexLocal().slot(), 1);
+        mv.visitJumpInsn(GOTO, conditionLabel);
+        mv.visitLabel(endLabel);
+
+        mv.visitVarInsn(ALOAD, transform.resultLocal().slot());
+        if (transform.type().kind() == RuntimeValueKind.ARRAY)
+            mv.visitTypeInsn(CHECKCAST, "java/util/List");
+    }
+
     private void emitArrayConcat(MethodVisitor mv, String internalName, IRMethod method, IRArrayConcat concat) {
         mv.visitTypeInsn(NEW, "java/util/ArrayList");
         mv.visitInsn(DUP);
@@ -1002,16 +1094,29 @@ public final class BytecodeCompiler {
         mv.visitInsn(POP);
     }
 
+    private void emitArrayDifference(MethodVisitor mv, String internalName, IRMethod method, IRArrayDifference difference) {
+        emitExpression(mv, internalName, method, difference.left());
+        boxIfNeeded(mv, difference.left().type());
+        emitExpression(mv, internalName, method, difference.right());
+        boxIfNeeded(mv, difference.right().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeArray.class),
+                "difference",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;",
+                false);
+    }
+
     private void emitArrayGet(MethodVisitor mv, String internalName, IRMethod method, IRArrayGet arrayGet) {
         emitExpression(mv, internalName, method, arrayGet.array());
         if (arrayGet.array().type() != null && arrayGet.array().type().kind() == RuntimeValueKind.MIXED) {
             emitExpression(mv, internalName, method, arrayGet.index());
-            coerceValue(mv, arrayGet.index().type(), RuntimeTypes.INT);
+            boxIfNeeded(mv, arrayGet.index().type());
             mv.visitMethodInsn(
                     INVOKESTATIC,
                     Type.getInternalName(RuntimeIndex.class),
                     "get",
-                    "(Ljava/lang/Object;I)Ljava/lang/Object;",
+                    "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
                     false);
             return;
         }

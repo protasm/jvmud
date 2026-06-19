@@ -74,13 +74,13 @@
       <h2>Player And Connection Model</h2>
       <dl class="term-list">
         <dt>Player</dt>
-        <dd>The human person playing the game from outside the fictional world.</dd>
+        <dd>The human-facing controller endpoint associated with a session. JVMud does not make Player an account, login, or durable identity.</dd>
         <dt>Session</dt>
         <dd>An active connection or control context, such as a Telnet connection.</dd>
         <dt>Persona</dt>
         <dd>The entity currently associated with a session as that session's in-world perspective.</dd>
         <dt>Player Object</dt>
-        <dd>The LPC-authored mudlib object that gives a persona its behavior.</dd>
+        <dd>Compatibility vocabulary for an LPC-authored mudlib object that may combine profile data, persona behavior, login flow, and legacy session glue.</dd>
         <dt>Interaction Scope</dt>
         <dd>The local command and perception context around a persona.</dd>
         <dt>Command Dispatch</dt>

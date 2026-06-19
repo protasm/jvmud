@@ -10,6 +10,7 @@ import io.github.protasm.jvmud.compiler.parser.Parser;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingEntry;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInlineCallable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,11 +23,22 @@ public class PrefixLParen implements PrefixParselet {
             return mapping;
         }
 
+        if (parser.tokens().match(T_COLON))
+            return parseInlineCallable(parser);
+
         ASTExpression expr = parser.expression();
 
         parser.tokens().consume(T_RIGHT_PAREN, "Expect ')' after expression.");
 
         return expr;
+    }
+
+    private ASTExpression parseInlineCallable(Parser parser) {
+        int line = parser.currLine();
+        ASTExpression body = parser.expression();
+        parser.tokens().consume(T_COLON, "Expect ':' before ')' after inline callable expression.");
+        parser.tokens().consume(T_RIGHT_PAREN, "Expect ')' after inline callable expression.");
+        return new ASTExprInlineCallable(line, body);
     }
 
     private ASTExpression parseMappingLiteral(Parser parser) {

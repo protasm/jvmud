@@ -20,10 +20,13 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprClosureArgument;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCollectionTransform;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFunctionReference;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInlineCallable;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFalse;
@@ -44,6 +47,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtDoWhile;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
@@ -125,6 +129,12 @@ public final class SemanticTypeChecker {
             return;
         }
 
+        if (statement instanceof ASTStmtDoWhile stmtDoWhile) {
+            checkStatement(stmtDoWhile.body(), context);
+            inferExpressionType(stmtDoWhile.condition(), context);
+            return;
+        }
+
         if (statement instanceof ASTStmtBreak)
             return;
 
@@ -167,6 +177,19 @@ public final class SemanticTypeChecker {
             return LPCType.LPCARRAY;
         if (expression instanceof ASTExprMappingLiteral)
             return LPCType.LPCMAPPING;
+        if (expression instanceof ASTExprClosureArgument)
+            return LPCType.LPCMIXED;
+        if (expression instanceof ASTExprInlineCallable inlineCallable) {
+            inferExpressionType(inlineCallable.body(), context);
+            return LPCType.LPCMIXED;
+        }
+        if (expression instanceof ASTExprCollectionTransform transform) {
+            inferExpressionType(transform.source(), context);
+            inferExpressionType(transform.callback().body(), context);
+            for (ASTExpression extra : transform.extraArguments())
+                inferExpressionType(extra, context);
+            return transform.lpcType();
+        }
         if (expression instanceof ASTExprSymbolLiteral || expression instanceof ASTExprFunctionReference)
             return LPCType.LPCMIXED;
 
@@ -341,7 +364,21 @@ public final class SemanticTypeChecker {
             ensureNumericOperands(leftType, rightType, expr.line(), "Addition expects numeric operands");
             return LPCType.LPCINT;
         }
-        case BOP_SUB, BOP_MULT, BOP_DIV, BOP_MOD -> {
+        case BOP_SUB -> {
+            if (leftType == LPCType.LPCARRAY || rightType == LPCType.LPCARRAY) {
+                if (!isArrayLikeForDifference(leftType) || !isArrayLikeForDifference(rightType)) {
+                    problems.add(
+                            new CompilationProblem(
+                                    CompilationStage.ANALYZE,
+                                    "Array subtraction requires two arrays",
+                                    expr.line()));
+                }
+                return LPCType.LPCARRAY;
+            }
+            ensureNumericOperands(leftType, rightType, expr.line(), op + " expects numeric operands");
+            return LPCType.LPCINT;
+        }
+        case BOP_MULT, BOP_DIV, BOP_MOD -> {
             ensureNumericOperands(leftType, rightType, expr.line(), op + " expects numeric operands");
             return LPCType.LPCINT;
         }
@@ -362,6 +399,10 @@ public final class SemanticTypeChecker {
         }
 
         return LPCType.LPCMIXED;
+    }
+
+    private boolean isArrayLikeForDifference(LPCType type) {
+        return type == LPCType.LPCARRAY || type == LPCType.LPCMIXED || type == LPCType.LPCNULL;
     }
 
     private LPCType inferEfunCall(ASTExprCallEfun expr, MethodContext context) {

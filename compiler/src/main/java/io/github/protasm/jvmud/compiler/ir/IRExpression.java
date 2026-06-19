@@ -4,6 +4,7 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
 
 public sealed interface IRExpression extends IRNode
         permits IRArrayConcat,
+                IRArrayDifference,
                 IRArrayGet,
                 IRArrayLiteral,
                 IRArrayMutation,
@@ -12,6 +13,7 @@ public sealed interface IRExpression extends IRNode
                 IRCoerce,
                 IRConditionalExpression,
                 IRConstant,
+                IRCollectionTransform,
                 IRDynamicInvoke,
                 IRDynamicInvokeExpression,
                 IRDynamicInvokeField,

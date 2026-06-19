@@ -32,6 +32,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtDoWhile;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
@@ -992,6 +993,12 @@ final class MudlibCompatibilityScanTest {
         public void visitStmtWhile(ASTStmtWhile stmt) {
             stmt.condition().accept(this);
             stmt.body().accept(this);
+        }
+
+        @Override
+        public void visitStmtDoWhile(ASTStmtDoWhile stmt) {
+            stmt.body().accept(this);
+            stmt.condition().accept(this);
         }
 
         @Override

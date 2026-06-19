@@ -19,6 +19,8 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprClosureArgument;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCollectionTransform;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
@@ -44,6 +46,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtDoWhile;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
@@ -293,6 +296,10 @@ public final class IRLowerer {
             return lowerWhileStatement(whileStmt, current, context, problems);
         }
 
+        if (statement instanceof ASTStmtDoWhile doWhileStmt) {
+            return lowerDoWhileStatement(doWhileStmt, current, context, problems);
+        }
+
         if (statement instanceof ASTStmtBreak) {
             String breakTarget = context.currentBreakTarget();
             if (breakTarget == null) {
@@ -505,6 +512,31 @@ public final class IRLowerer {
         return mergeBlock;
     }
 
+    private BlockBuilder lowerDoWhileStatement(
+            ASTStmtDoWhile doWhileStmt,
+            BlockBuilder current,
+            MethodContext context,
+            List<CompilationProblem> problems) {
+        BlockBuilder bodyBlock = context.newBlock("do_body");
+        BlockBuilder conditionBlock = context.newBlock("do_cond");
+        BlockBuilder mergeBlock = context.newBlock("do_end");
+
+        current.terminate(new IRJump(doWhileStmt.line(), bodyBlock.label()));
+
+        context.pushLoop(mergeBlock.label(), conditionBlock.label());
+        BlockBuilder bodyTail = lowerStatement(doWhileStmt.body(), bodyBlock, context, problems);
+        context.popLoop();
+        if (bodyTail != null && !bodyTail.isTerminated())
+            bodyTail.terminate(new IRJump(doWhileStmt.line(), conditionBlock.label()));
+
+        IRExpression condition = coerceIfNeeded(
+                lowerExpression(doWhileStmt.condition(), context, problems), RuntimeTypes.STATUS);
+        conditionBlock.terminate(
+                new IRConditionalJump(doWhileStmt.line(), condition, bodyBlock.label(), mergeBlock.label()));
+
+        return mergeBlock;
+    }
+
     private BlockBuilder lowerIfStatement(
             ASTStmtIfThenElse ifStmt,
             BlockBuilder current,
@@ -548,6 +580,23 @@ public final class IRLowerer {
 
         if (expression instanceof ASTExprFunctionReference functionReference)
             return new IRConstant(functionReference.line(), "#'" + functionReference.name(), RuntimeTypes.MIXED);
+
+        if (expression instanceof ASTExprClosureArgument closureArgument) {
+            IRLocal local = context.closureArgumentLocal(closureArgument.index());
+            if (local == null) {
+                problems.add(
+                        new CompilationProblem(
+                                CompilationStage.LOWER,
+                                "Closure argument $" + closureArgument.index()
+                                        + " is not available in this lowering context.",
+                                closureArgument.line()));
+                return new IRConstant(closureArgument.line(), null, RuntimeTypes.MIXED);
+            }
+            return new IRLocalLoad(closureArgument.line(), local);
+        }
+
+        if (expression instanceof ASTExprCollectionTransform transform)
+            return lowerCollectionTransform(transform, context, problems);
 
         if (expression instanceof ASTExprArrayLiteral arrayLiteral) {
             List<IRExpression> elements = new ArrayList<>();
@@ -606,10 +655,17 @@ public final class IRLowerer {
                 return new IRMappingGet(arrayAccess.line(), target, key, RuntimeTypes.MIXED);
             }
 
-            IRExpression index = coerceIfNeeded(
-                    lowerExpression(arrayAccess.index(), context, problems), RuntimeTypes.INT);
+            IRExpression rawIndex = lowerExpression(arrayAccess.index(), context, problems);
+            IRExpression index = coerceIfNeeded(rawIndex, RuntimeTypes.INT);
             if (targetType != null && targetType.kind() == RuntimeValueKind.STRING)
                 return new IRStringGet(arrayAccess.line(), target, index, RuntimeTypes.INT);
+
+            if (targetType != null && targetType.kind() == RuntimeValueKind.MIXED)
+                return new IRArrayGet(
+                        arrayAccess.line(),
+                        target,
+                        coerceIfNeeded(rawIndex, RuntimeTypes.MIXED),
+                        RuntimeTypes.MIXED);
 
             return new IRArrayGet(arrayAccess.line(), target, index, RuntimeTypes.MIXED);
         }
@@ -668,6 +724,12 @@ public final class IRLowerer {
                 IRExpression left = lowerExpression(binary.left(), context, problems);
                 IRExpression right = lowerExpression(binary.right(), context, problems);
                 return new IRArrayConcat(binary.line(), left, right, RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
+            }
+            if (binary.operator() == io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_SUB
+                    && binary.lpcType() == LPCType.LPCARRAY) {
+                IRExpression left = lowerExpression(binary.left(), context, problems);
+                IRExpression right = lowerExpression(binary.right(), context, problems);
+                return new IRArrayDifference(binary.line(), left, right, RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
             }
             if (binary.operator() == io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_ADD
                     && binary.lpcType() == LPCType.LPCMAPPING) {
@@ -759,6 +821,118 @@ public final class IRLowerer {
                         "Unsupported expression kind: " + expression.getClass().getSimpleName(),
                         expression.line()));
         return new IRConstant(expression.line(), null, RuntimeTypes.MIXED);
+    }
+
+    private IRExpression lowerCollectionTransform(
+            ASTExprCollectionTransform transform, MethodContext context, List<CompilationProblem> problems) {
+        IRExpression source = lowerExpression(transform.source(), context, problems);
+        List<IRExpression> extras = new ArrayList<>();
+        for (ASTExpression extra : transform.extraArguments())
+            extras.add(lowerExpression(extra, context, problems));
+
+        IRLocal sourceLocal = context.addSyntheticLocal(transform.line(), "closure_source", RuntimeTypes.MIXED);
+        IRLocal itemsLocal = context.addSyntheticLocal(transform.line(), "closure_items", RuntimeTypes.MIXED);
+        IRLocal resultLocal = context.addSyntheticLocal(transform.line(), "closure_result", RuntimeTypes.MIXED);
+        IRLocal indexLocal = context.addSyntheticLocal(transform.line(), "closure_index", RuntimeTypes.INT);
+
+        int argumentCount = Math.max(1 + extras.size(), maxClosureArgumentIndex(transform.callback().body()));
+        List<IRLocal> argumentLocals = new ArrayList<>();
+        for (int i = 1; i <= argumentCount; i++)
+            argumentLocals.add(context.addSyntheticLocal(transform.line(), "closure_arg" + i, RuntimeTypes.MIXED));
+
+        context.pushClosureArguments(argumentLocals);
+        IRExpression callbackBody = lowerExpression(transform.callback().body(), context, problems);
+        context.popClosureArguments();
+
+        IRCollectionTransform.Operation operation = transform.operation() == ASTExprCollectionTransform.Operation.FILTER
+                ? IRCollectionTransform.Operation.FILTER
+                : IRCollectionTransform.Operation.MAP;
+        RuntimeType resultType = runtimeType(transform.lpcType());
+        if (resultType == null)
+            resultType = RuntimeTypes.MIXED;
+        return new IRCollectionTransform(
+                transform.line(),
+                operation,
+                coerceIfNeeded(source, RuntimeTypes.MIXED),
+                extras,
+                callbackBody,
+                sourceLocal,
+                itemsLocal,
+                resultLocal,
+                indexLocal,
+                argumentLocals,
+                resultType);
+    }
+
+    private int maxClosureArgumentIndex(ASTExpression expression) {
+        if (expression == null)
+            return 0;
+        if (expression instanceof ASTExprClosureArgument closureArgument)
+            return closureArgument.index();
+        if (expression instanceof ASTExprArrayAccess access)
+            return Math.max(maxClosureArgumentIndex(access.target()), maxClosureArgumentIndex(access.index()));
+        if (expression instanceof ASTExprArrayStore store)
+            return Math.max(
+                    Math.max(maxClosureArgumentIndex(store.target()), maxClosureArgumentIndex(store.index())),
+                    maxClosureArgumentIndex(store.value()));
+        if (expression instanceof ASTExprArrayMutation mutation)
+            return Math.max(maxClosureArgumentIndex(mutation.target()), maxClosureArgumentIndex(mutation.index()));
+        if (expression instanceof ASTExprSliceAccess access)
+            return Math.max(
+                    Math.max(maxClosureArgumentIndex(access.target()), maxClosureArgumentIndex(access.start())),
+                    maxClosureArgumentIndex(access.end()));
+        if (expression instanceof ASTExprOpUnary unary)
+            return maxClosureArgumentIndex(unary.right());
+        if (expression instanceof ASTExprOpBinary binary)
+            return Math.max(maxClosureArgumentIndex(binary.left()), maxClosureArgumentIndex(binary.right()));
+        if (expression instanceof ASTExprSequence sequence) {
+            int max = 0;
+            for (ASTExpression nested : sequence.expressions())
+                max = Math.max(max, maxClosureArgumentIndex(nested));
+            return max;
+        }
+        if (expression instanceof ASTExprProtectedEval protectedEval)
+            return maxClosureArgumentIndex(protectedEval.body());
+        if (expression instanceof ASTExprTernary ternary)
+            return Math.max(
+                    Math.max(maxClosureArgumentIndex(ternary.condition()), maxClosureArgumentIndex(ternary.thenBranch())),
+                    maxClosureArgumentIndex(ternary.elseBranch()));
+        if (expression instanceof ASTExprCallEfun callEfun)
+            return maxClosureArgumentIndex(callEfun.arguments());
+        if (expression instanceof ASTExprCallMethod callMethod)
+            return maxClosureArgumentIndex(callMethod.arguments());
+        if (expression instanceof ASTExprDynamicInvoke dynamicInvoke)
+            return Math.max(
+                    maxClosureArgumentIndex(dynamicInvoke.target()),
+                    maxClosureArgumentIndex(dynamicInvoke.arguments()));
+        if (expression instanceof ASTExprInvokeLocal invokeLocal)
+            return maxClosureArgumentIndex(invokeLocal.arguments());
+        if (expression instanceof ASTExprInvokeField invokeField)
+            return maxClosureArgumentIndex(invokeField.arguments());
+        if (expression instanceof ASTExprArrayLiteral arrayLiteral) {
+            int max = 0;
+            for (ASTExpression element : arrayLiteral.elements())
+                max = Math.max(max, maxClosureArgumentIndex(element));
+            return max;
+        }
+        if (expression instanceof ASTExprMappingLiteral mappingLiteral) {
+            int max = 0;
+            for (ASTExprMappingEntry entry : mappingLiteral.entries()) {
+                max = Math.max(max, maxClosureArgumentIndex(entry.key()));
+                max = Math.max(max, maxClosureArgumentIndex(entry.value()));
+            }
+            return max;
+        }
+        return 0;
+    }
+
+    private int maxClosureArgumentIndex(ASTArguments arguments) {
+        if (arguments == null)
+            return 0;
+        int max = 0;
+        for (ASTArgument argument : arguments)
+            max = Math.max(max, maxClosureArgumentIndex(argument.expression()));
+        return max;
     }
 
     private List<IRExpression> lowerArguments(
@@ -866,6 +1040,7 @@ public final class IRLowerer {
         private final List<BlockBuilder> blocks = new ArrayList<>();
         private final Deque<String> breakTargets = new ArrayDeque<>();
         private final Deque<String> continueTargets = new ArrayDeque<>();
+        private final Deque<List<IRLocal>> closureArgumentLocals = new ArrayDeque<>();
 
         private int blockCounter = 0;
         private int syntheticLocalCounter = 0;
@@ -918,6 +1093,23 @@ public final class IRLowerer {
 
         public String currentContinueTarget() {
             return continueTargets.peek();
+        }
+
+        public void pushClosureArguments(List<IRLocal> argumentLocals) {
+            closureArgumentLocals.push(argumentLocals);
+        }
+
+        public void popClosureArguments() {
+            if (!closureArgumentLocals.isEmpty())
+                closureArgumentLocals.pop();
+        }
+
+        public IRLocal closureArgumentLocal(int index) {
+            if (index < 1 || closureArgumentLocals.isEmpty())
+                return null;
+
+            List<IRLocal> locals = closureArgumentLocals.peek();
+            return index <= locals.size() ? locals.get(index - 1) : null;
         }
 
         public IRLocal requireLocal(ASTLocal astLocal, List<CompilationProblem> problems) {

@@ -21,9 +21,12 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallEfun;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprClosureArgument;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCollectionTransform;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInlineCallable;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
@@ -47,6 +50,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedQualifi
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtDoWhile;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
@@ -352,6 +356,11 @@ public final class SemanticAnalyzer {
 
         if (statement instanceof ASTStmtWhile stmtWhile) {
             validateInitializers(stmtWhile.body(), problems);
+            return;
+        }
+
+        if (statement instanceof ASTStmtDoWhile stmtDoWhile) {
+            validateInitializers(stmtDoWhile.body(), problems);
             return;
         }
 
@@ -733,8 +742,9 @@ public final class SemanticAnalyzer {
             resolver.resolveMethod(method);
     }
 
-    private static final class LocalResolutionContext {
-        private final Deque<List<ASTLocal>> scopes = new ArrayDeque<>();
+        private static final class LocalResolutionContext {
+            private final Deque<List<ASTLocal>> scopes = new ArrayDeque<>();
+            private int inlineCallableDepth;
 
         void pushScope() {
             scopes.push(new ArrayList<>());
@@ -761,6 +771,19 @@ public final class SemanticAnalyzer {
             }
 
             return null;
+        }
+
+        void enterInlineCallable() {
+            inlineCallableDepth++;
+        }
+
+        void exitInlineCallable() {
+            if (inlineCallableDepth > 0)
+                inlineCallableDepth--;
+        }
+
+        boolean insideInlineCallable() {
+            return inlineCallableDepth > 0;
         }
     }
 
@@ -828,6 +851,49 @@ public final class SemanticAnalyzer {
 
             if (expression instanceof ASTExprUnresolvedInvoke unresolvedInvoke)
                 return resolveInvoke(unresolvedInvoke, context);
+
+            if (expression instanceof ASTExprClosureArgument closureArgument) {
+                if (!context.insideInlineCallable()) {
+                    problems.add(
+                            new CompilationProblem(
+                                    CompilationStage.ANALYZE,
+                                    "Closure argument $" + closureArgument.index()
+                                            + " can only be used inside an inline callable.",
+                                    closureArgument.line()));
+                }
+                return closureArgument;
+            }
+
+            if (expression instanceof ASTExprInlineCallable inlineCallable) {
+                context.enterInlineCallable();
+                ASTExpression resolvedBody = resolveExpression(inlineCallable.body(), context);
+                context.exitInlineCallable();
+                if (resolvedBody == inlineCallable.body())
+                    return inlineCallable;
+                return new ASTExprInlineCallable(inlineCallable.line(), resolvedBody);
+            }
+
+            if (expression instanceof ASTExprCollectionTransform transform) {
+                ASTExpression resolvedSource = resolveExpression(transform.source(), context);
+                context.enterInlineCallable();
+                ASTExpression resolvedBody = resolveExpression(transform.callback().body(), context);
+                context.exitInlineCallable();
+                List<ASTExpression> resolvedExtras = new ArrayList<>();
+                boolean changed = resolvedSource != transform.source() || resolvedBody != transform.callback().body();
+                for (ASTExpression extra : transform.extraArguments()) {
+                    ASTExpression resolved = resolveExpression(extra, context);
+                    changed |= resolved != extra;
+                    resolvedExtras.add(resolved);
+                }
+                if (!changed)
+                    return transform;
+                return new ASTExprCollectionTransform(
+                        transform.line(),
+                        transform.operation(),
+                        resolvedSource,
+                        new ASTExprInlineCallable(transform.callback().line(), resolvedBody),
+                        resolvedExtras);
+            }
 
             if (expression instanceof ASTExprDynamicInvoke dynamicInvoke) {
                 ASTExpression resolvedTarget = resolveExpression(dynamicInvoke.target(), context);
@@ -1031,6 +1097,10 @@ public final class SemanticAnalyzer {
 
         private ASTExpression resolveCall(ASTExprUnresolvedCall unresolvedCall, LocalResolutionContext context) {
             ASTArguments resolvedArgs = resolveArguments(unresolvedCall.arguments(), context);
+            ASTExprCollectionTransform transform = collectionTransform(unresolvedCall, resolvedArgs);
+            if (transform != null)
+                return transform;
+
             ASTMethod method = resolveMethod(unresolvedCall.name(), resolvedArgs.size());
 
             if (method != null)
@@ -1047,6 +1117,28 @@ public final class SemanticAnalyzer {
                             "Unrecognized method or function '" + unresolvedCall.name() + "'.",
                             unresolvedCall.line()));
             return new ASTExprNull(unresolvedCall.line());
+        }
+
+        private ASTExprCollectionTransform collectionTransform(ASTExprUnresolvedCall unresolvedCall, ASTArguments args) {
+            if (!"filter".equals(unresolvedCall.name()) && !"map".equals(unresolvedCall.name()))
+                return null;
+
+            if (args == null || args.size() < 2)
+                return null;
+
+            ASTExpression callback = args.get(1).expression();
+            if (!(callback instanceof ASTExprInlineCallable inlineCallable))
+                return null;
+
+            List<ASTExpression> extras = new ArrayList<>();
+            for (int i = 2; i < args.size(); i++)
+                extras.add(args.get(i).expression());
+
+            ASTExprCollectionTransform.Operation operation = "filter".equals(unresolvedCall.name())
+                    ? ASTExprCollectionTransform.Operation.FILTER
+                    : ASTExprCollectionTransform.Operation.MAP;
+            return new ASTExprCollectionTransform(
+                    unresolvedCall.line(), operation, args.get(0).expression(), inlineCallable, extras);
         }
 
         private ASTExpression resolveQualifiedCall(
@@ -1339,6 +1431,14 @@ public final class SemanticAnalyzer {
                 if (resolvedCondition == stmtWhile.condition() && resolvedBody == stmtWhile.body())
                     return stmtWhile;
                 return new ASTStmtWhile(stmtWhile.line(), resolvedCondition, resolvedBody);
+            }
+
+            if (statement instanceof ASTStmtDoWhile stmtDoWhile) {
+                ASTStatement resolvedBody = resolveStatement(stmtDoWhile.body(), context);
+                ASTExpression resolvedCondition = resolveExpression(stmtDoWhile.condition(), context);
+                if (resolvedBody == stmtDoWhile.body() && resolvedCondition == stmtDoWhile.condition())
+                    return stmtDoWhile;
+                return new ASTStmtDoWhile(stmtDoWhile.line(), resolvedBody, resolvedCondition);
             }
 
         if (statement instanceof ASTStmtBreak stmtBreak)

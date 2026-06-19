@@ -8,7 +8,7 @@ public enum TokenType {
     T_CARET_EQUAL(Object.class), T_COLON(Object.class), T_COMMA(Object.class), T_DBL_AMP(Object.class),
     T_DBL_PIPE(Object.class), T_DOT_DOT(Object.class), T_EQUAL(Object.class), T_LEFT_BRACE(Object.class), T_LEFT_BRACKET(Object.class),
     T_LEFT_PAREN(Object.class), T_LESS_LESS(Object.class), T_LESS_LESS_EQUAL(Object.class),
-    T_HASH(Object.class), T_MINUS(Object.class), T_MINUS_EQUAL(Object.class), T_MINUS_MINUS(Object.class),
+    T_HASH(Object.class), T_DOLLAR(Object.class), T_MINUS(Object.class), T_MINUS_EQUAL(Object.class), T_MINUS_MINUS(Object.class),
     T_PERCENT(Object.class), T_PIPE(Object.class), T_PIPE_EQUAL(Object.class), T_PLUS(Object.class), T_PLUS_EQUAL(Object.class),
     T_PLUS_PLUS(Object.class), T_QUESTION(Object.class), T_RIGHT_ARROW(Object.class), T_RIGHT_BRACE(Object.class), T_RIGHT_BRACKET(Object.class),
     T_RIGHT_PAREN(Object.class), T_SEMICOLON(Object.class), T_SLASH(Object.class), T_SLASH_EQUAL(Object.class),
@@ -28,7 +28,7 @@ public enum TokenType {
     T_STRING_LITERAL(String.class),
 
     // Control flow
-    T_IF(String.class), T_ELSE(String.class), T_FOR(String.class), T_FOREACH(String.class), T_IN(String.class),
+    T_IF(String.class), T_ELSE(String.class), T_DO(String.class), T_FOR(String.class), T_FOREACH(String.class), T_IN(String.class),
     T_WHILE(String.class), T_BREAK(String.class), T_CONTINUE(String.class),
 
     // Reserved words

@@ -267,6 +267,95 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsArraySubtraction() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/array_difference.c", """
+                mixed value() {
+                    return ({ "a", "b", "a", "c" }) - ({ "a", "d" });
+                }
+                """);
+
+        assertEquals(List.of("b", "c"), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsArraySubtractionFromMixedArrayValue() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_array_difference.c", """
+                mixed value() {
+                    mixed values;
+
+                    values = ({ "a", "b", "c" });
+                    return values - ({ "b" });
+                }
+                """);
+
+        assertEquals(List.of("a", "c"), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsDoWhileLoops() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/do_while.c", """
+                int value() {
+                    int total;
+                    int index;
+
+                    do {
+                        total += index;
+                        index++;
+                    } while (index < 4);
+
+                    return total;
+                }
+                """);
+
+        assertEquals(6, object.invoke("value"));
+    }
+
+    @Test
+    void doWhileRunsAtLeastOnce() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/do_while_once.c", """
+                int value() {
+                    int count;
+
+                    do {
+                        count++;
+                    } while (0);
+
+                    return count;
+                }
+                """);
+
+        assertEquals(1, object.invoke("value"));
+    }
+
+    @Test
+    void doWhileHonorsBreakAndContinue() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/do_while_control.c", """
+                int value() {
+                    int index;
+                    int total;
+
+                    do {
+                        index++;
+                        if (index == 2)
+                            continue;
+                        if (index == 5)
+                            break;
+                        total += index;
+                    } while (index < 10);
+
+                    return total;
+                }
+                """);
+
+        assertEquals(8, object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsQualifiedEfunCalls() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);
@@ -368,6 +457,45 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(4, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsInlineCallableFilterArguments() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_filter.c", """
+                mixed value() {
+                    return filter(({1, 0, 2, 0, 3}), (: $1 :));
+                }
+                """);
+
+        assertEquals(List.of(1, 2, 3), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsInlineCallableMapArguments() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_map.c", """
+                mixed value() {
+                    return map(({1, 2, 3}), (: $1 * $2 :), 10);
+                }
+                """);
+
+        assertEquals(List.of(10, 20, 30), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsInlineCallableExtraArgumentsAndMappingLookup() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_filter_mapping_lookup.c", """
+                mixed value() {
+                    mapping values;
+
+                    values = ([ "keep": 1, "drop": 0 ]);
+                    return filter(({"keep", "drop"}), (: $2[$1] :), values);
+                }
+                """);
+
+        assertEquals(List.of("keep"), object.invoke("value"));
     }
 
     @Test

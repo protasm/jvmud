@@ -37,6 +37,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTStatement;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtDoWhile;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
@@ -426,6 +427,18 @@ public final class PrintVisitor implements ASTVisitor {
         out.println();
         doOutput("[BODY]");
         stmt.body().accept(this);
+        indentLvl--;
+    }
+
+    @Override
+    public void visitStmtDoWhile(ASTStmtDoWhile stmt) {
+        doOutput(stmt.className());
+        indentLvl++;
+        doOutput("[BODY]");
+        stmt.body().accept(this);
+        out.println();
+        doOutput("[CONDITION]");
+        stmt.condition().accept(this);
         indentLvl--;
     }
 
