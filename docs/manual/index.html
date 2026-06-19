@@ -452,6 +452,19 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_getting_oriented">Getting Oriented</a>
 <ul class="sectlevel2">
 <li><a href="#_overview">Overview</a></li>
+<li><a href="#_the_jvmud_philosophy_of_mud">The JVMud Philosophy Of MUD</a>
+<ul class="sectlevel3">
+<li><a href="#_game">Game</a></li>
+<li><a href="#_text">Text</a></li>
+<li><a href="#_interactive">Interactive</a></li>
+<li><a href="#_multiplayer">Multiplayer</a></li>
+<li><a href="#_world">World</a></li>
+<li><a href="#_persistence">Persistence</a></li>
+<li><a href="#_temporality">Temporality</a></li>
+<li><a href="#_presence">Presence</a></li>
+<li><a href="#_lpc_compatibility_and_engine_vocabulary">LPC Compatibility And Engine Vocabulary</a></li>
+</ul>
+</li>
 <li><a href="#_repository_tour">Repository Tour</a></li>
 </ul>
 </li>
@@ -555,6 +568,155 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <h3 id="_overview"><a class="anchor" href="#_overview"></a><a class="link" href="#_overview">Overview</a></h3>
 <div class="paragraph">
 <p>Content to be written.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_jvmud_philosophy_of_mud"><a class="anchor" href="#_the_jvmud_philosophy_of_mud"></a><a class="link" href="#_the_jvmud_philosophy_of_mud">The JVMud Philosophy Of MUD</a></h3>
+<div class="paragraph">
+<p>JVMud is built around eight core concepts:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Game</p>
+</li>
+<li>
+<p>Text</p>
+</li>
+<li>
+<p>Interactive</p>
+</li>
+<li>
+<p>Multiplayer</p>
+</li>
+<li>
+<p>World</p>
+</li>
+<li>
+<p>Persistence</p>
+</li>
+<li>
+<p>Temporality</p>
+</li>
+<li>
+<p>Presence</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Together, these concepts define what JVMud means by MUD.</p>
+</div>
+<div class="paragraph">
+<p>JVMud is not a general-purpose simulation framework, chat server,
+collaboration platform, generic game engine, or generic MUD framework. It is
+specifically and by design an LPMud engine: a platform for imagining, creating,
+operating, and playing LPC-authored game worlds in the tradition of LP MUDs.</p>
+</div>
+<div class="sect3">
+<h4 id="_game"><a class="anchor" href="#_game"></a><a class="link" href="#_game">Game</a></h4>
+<div class="paragraph">
+<p>The world exists to be played. JVMud assumes rules, mechanics, goals,
+challenges, progression, or other game-like structures.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_text"><a class="anchor" href="#_text"></a><a class="link" href="#_text">Text</a></h4>
+<div class="paragraph">
+<p>Text is the primary medium through which the world is perceived and
+manipulated. It is a first-class part of the engine&#8217;s design, not a skin over a
+visual game.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_interactive"><a class="anchor" href="#_interactive"></a><a class="link" href="#_interactive">Interactive</a></h4>
+<div class="paragraph">
+<p>Players can affect the world, and the world can affect players. Actions have
+consequences.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_multiplayer"><a class="anchor" href="#_multiplayer"></a><a class="link" href="#_multiplayer">Multiplayer</a></h4>
+<div class="paragraph">
+<p>Multiple players inhabit the same world simultaneously. The world is shared.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_world"><a class="anchor" href="#_world"></a><a class="link" href="#_world">World</a></h4>
+<div class="paragraph">
+<p>The game takes place within a concrete virtual domain. JVMud describes this
+domain in terms of Places, Links, Entities, and Movement.</p>
+</div>
+<div class="paragraph">
+<p>Places give the world locality. Links make Places traversable. Entities are the
+things that exist in that structure. Movement changes where an Entity is
+present.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_persistence"><a class="anchor" href="#_persistence"></a><a class="link" href="#_persistence">Persistence</a></h4>
+<div class="paragraph">
+<p>The world and its state endure independently of any individual player&#8217;s
+session. A player may disconnect and later return to a world whose state has
+continued to exist.</p>
+</div>
+<div class="paragraph">
+<p>Persistence does not require eternal continuity. Reboots, resets, and selected
+save/restore behavior can all be compatible with a persistent world.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_temporality"><a class="anchor" href="#_temporality"></a><a class="link" href="#_temporality">Temporality</a></h4>
+<div class="paragraph">
+<p>The world can change through time. Events occur, actions have consequences, and
+state evolves.</p>
+</div>
+<div class="paragraph">
+<p>Temporality is separate from Persistence: a world can have active time, saved
+state, restored state, and reset state without treating all of those as the
+same idea.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_presence"><a class="anchor" href="#_presence"></a><a class="link" href="#_presence">Presence</a></h4>
+<div class="paragraph">
+<p>Presence means that a player experiences the game from within the World. The
+player is not an outside observer manipulating a simulation from above.</p>
+</div>
+<div class="paragraph">
+<p>In JVMud terms, a player participates through a Persona: an Entity that serves
+as the player&#8217;s current point of perception and action. A Persona is located
+somewhere, and that location determines what the player can perceive and what
+actions are locally available.</p>
+</div>
+<div class="paragraph">
+<p>Players are somewhere, not everywhere. Presence creates locality of
+information, which makes exploration, discovery, concealment, surprise,
+navigation, and mystery possible.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_lpc_compatibility_and_engine_vocabulary"><a class="anchor" href="#_lpc_compatibility_and_engine_vocabulary"></a><a class="link" href="#_lpc_compatibility_and_engine_vocabulary">LPC Compatibility And Engine Vocabulary</a></h4>
+<div class="paragraph">
+<p>JVMud has one mudlib and language target: LPC for LPMud-style worlds. Its
+compatibility work exists to make JVMud a deeper LPMud platform, not to broaden
+it into a multi-language MUD framework.</p>
+</div>
+<div class="paragraph">
+<p>An LPMud, in JVMud&#8217;s sense, is a game world authored in LPC, compiled into live
+game objects, and able to be rewritten, recompiled, and reloaded while the game
+continues running.</p>
+</div>
+<div class="paragraph">
+<p>That does not mean JVMud adopts every legacy LPMud driver term as engine
+ontology.</p>
+</div>
+<div class="paragraph">
+<p>Legacy names such as rooms, objects, heartbeats, applies, call_outs, and master
+objects may appear in compatibility surfaces, mudlib source, and LPC-facing
+documentation. The engine-facing model remains JVMud&#8217;s own model: Game, Text,
+Interactive, Multiplayer, World, Persistence, Temporality, and Presence, built
+from Places, Links, Entities, Players, Sessions, and Personas.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -813,7 +975,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="footer">
 <div id="footer-text">
 Version 0.1.0-SNAPSHOT<br>
-Last updated 2026-06-19 09:45:38 -0400
+Last updated 2026-06-19 09:50:02 -0400
 </div>
 </div>
 </body>

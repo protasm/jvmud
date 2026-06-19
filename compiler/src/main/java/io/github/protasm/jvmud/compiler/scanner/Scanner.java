@@ -305,7 +305,7 @@ public class Scanner {
     private Token<?> number() {
         boolean isFloat = false;
 
-        if (ss.previous() == '0' && (ss.peek() == 'x' || ss.peek() == 'X')) {
+        if (ss.peekPrev() == '0' && (ss.peek() == 'x' || ss.peek() == 'X')) {
             ss.advance();
             while (isHexDigit(ss.peek()))
                 ss.advance();

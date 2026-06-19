@@ -294,6 +294,18 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsHexIntegerLiterals() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/hex_integer.c", """
+                int value() {
+                    return 0x10 + 0X02;
+                }
+                """);
+
+        assertEquals(18, object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsDoWhileLoops() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/do_while.c", """
