@@ -455,6 +455,113 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void stringLocalAssignmentPropagatesExpectedTypeIntoMixedConcatenation() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/expected_string_local_concat.c", """
+                mixed chunk(string value) {
+                    return value;
+                }
+
+                string value() {
+                    string text = chunk("one") + chunk("two");
+                    return text;
+                }
+                """);
+
+        assertEquals("onetwo", object.invoke("value"));
+    }
+
+    @Test
+    void stringFieldAssignmentPropagatesExpectedTypeIntoMixedConcatenation() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/expected_string_field_concat.c", """
+                string text;
+
+                mixed chunk(string value) {
+                    return value;
+                }
+
+                string value() {
+                    text = chunk("field") + chunk("-value");
+                    return text;
+                }
+                """);
+
+        assertEquals("field-value", object.invoke("value"));
+    }
+
+    @Test
+    void stringFieldInitializerPropagatesExpectedTypeIntoMixedConcatenation() {
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
+                string text = left() + right();
+
+                mixed left() {
+                    return "field";
+                }
+
+                mixed right() {
+                    return "-initializer";
+                }
+                """);
+
+        assertTrue(result.getProblems().isEmpty(), () -> problemMessages(result));
+        assertNotNull(result.getBytecode());
+    }
+
+    @Test
+    void stringReturnPropagatesExpectedTypeIntoMixedConcatenation() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/expected_string_return_concat.c", """
+                mixed chunk(string value) {
+                    return value;
+                }
+
+                string value() {
+                    return chunk("return") + chunk("-value");
+                }
+                """);
+
+        assertEquals("return-value", object.invoke("value"));
+    }
+
+    @Test
+    void stringArgumentPropagatesExpectedTypeIntoMixedConcatenation() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/expected_string_argument_concat.c", """
+                mixed chunk(string value) {
+                    return value;
+                }
+
+                string echo(string value) {
+                    return value;
+                }
+
+                string value() {
+                    return echo(chunk("arg") + chunk("-value"));
+                }
+                """);
+
+        assertEquals("arg-value", object.invoke("value"));
+    }
+
+    @Test
+    void stringLocalAssignmentPropagatesExpectedTypeIntoMixedStringDifference() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/expected_string_difference.c", """
+                mixed chunk(string value) {
+                    return value;
+                }
+
+                string value() {
+                    string text = chunk("a\\rb\\r") - chunk("\\r");
+                    return text;
+                }
+                """);
+
+        assertEquals("ab", object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsDoWhileLoops() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/do_while.c", """

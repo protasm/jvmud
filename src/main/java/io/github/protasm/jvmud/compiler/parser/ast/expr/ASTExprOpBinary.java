@@ -4,10 +4,12 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 
+/** Binary operator expression, including semantic refinements for context-sensitive LPC operators. */
 public final class ASTExprOpBinary extends ASTExpression {
     private final ASTExpression left;
     private final ASTExpression right;
     private final BinaryOpType operator;
+    private LPCType inferredType;
 
     public ASTExprOpBinary(int line, ASTExpression left, ASTExpression right, BinaryOpType operator) {
         super(line);
@@ -29,8 +31,27 @@ public final class ASTExprOpBinary extends ASTExpression {
         return operator;
     }
 
+    /**
+     * Records the type selected by semantic analysis when an operator is ambiguous without context.
+     *
+     * <p>For example, {@code mixed + mixed} in an explicit string destination is treated as LPC
+     * string concatenation, while the same expression without that expected type remains numeric by
+     * default. JVMud uses this for narrow LPMud compatibility idioms such as legacy text efuns that
+     * return {@code mixed}, not as a general license to infer arbitrary operator meanings from
+     * context.</p>
+     *
+     * @param inferredType resolved expression type, or {@code null} to fall back to structural
+     *     inference
+     */
+    public void setInferredType(LPCType inferredType) {
+        this.inferredType = inferredType;
+    }
+
     @Override
     public LPCType lpcType() {
+        if (inferredType != null)
+            return inferredType;
+
         return switch (operator) {
         case BOP_ADD -> {
             if (left.lpcType() == LPCType.LPCARRAY || right.lpcType() == LPCType.LPCARRAY)

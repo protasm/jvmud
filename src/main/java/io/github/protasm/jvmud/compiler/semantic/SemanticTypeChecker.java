@@ -76,8 +76,21 @@ public final class SemanticTypeChecker {
     }
 
     public void check(ASTObject object) {
+        for (ASTField field : object.fields())
+            checkField(field);
+
         for (ASTMethod method : object.methods())
             checkMethod(method);
+    }
+
+    private void checkField(ASTField field) {
+        if (field.initializer() == null)
+            return;
+
+        LPCType fieldType = valueType(field.symbol());
+        LPCType valueType = inferExpressionType(field.initializer(), null, explicitExpectedType(field.symbol()));
+        valueType = coerceZeroLiteralFalse(fieldType, field.initializer(), valueType);
+        ensureAssignable(fieldType, valueType, field.line(), "Field initializer type mismatch");
     }
 
     private void checkMethod(ASTMethod method) {
@@ -159,12 +172,12 @@ public final class SemanticTypeChecker {
             return;
 
         if (statement instanceof ASTStmtReturn stmtReturn) {
+            LPCType declaredReturn =
+                    (context.method != null && context.method.symbol() != null) ? context.method.symbol().lpcType() : null;
             LPCType valueType = (stmtReturn.returnValue() != null)
-                    ? inferExpressionType(stmtReturn.returnValue(), context)
+                    ? inferExpressionType(stmtReturn.returnValue(), context, explicitExpectedType(context.method.symbol()))
                     : LPCType.LPCVOID;
             if (stmtReturn.returnValue() != null) {
-                LPCType declaredReturn =
-                        (context.method != null && context.method.symbol() != null) ? context.method.symbol().lpcType() : null;
                 valueType = coerceZeroLiteralFalse(declaredReturn, stmtReturn.returnValue(), valueType);
             }
             context.recordReturn(valueType, stmtReturn.isSynthetic(), stmtReturn.line());
@@ -179,6 +192,24 @@ public final class SemanticTypeChecker {
     }
 
     private LPCType inferExpressionType(ASTExpression expression, MethodContext context) {
+        return inferExpressionType(expression, context, null);
+    }
+
+    /**
+     * Infers an expression type with a narrowly scoped expected type hint from explicit LPC
+     * declarations.
+     *
+     * <p>The expected type is intentionally used only for ambiguous compatibility cases, such as
+     * treating {@code mixed + mixed} as string concatenation in an explicitly string-typed
+     * destination. That narrow rule reflects a common LPMud idiom where legacy efuns return
+     * {@code mixed} because they may produce either text or LPC false ({@code 0}), but mudlib source
+     * still combines those results as strings.</p>
+     *
+     * <p>This is a compatibility rule, not a general philosophy that JVMud should guess types from
+     * context. New expected-type propagation should stay tied to specific, demonstrated LPC mudlib
+     * idioms with smoke coverage.</p>
+     */
+    private LPCType inferExpressionType(ASTExpression expression, MethodContext context, LPCType expectedType) {
         if (expression == null)
             return LPCType.LPCERROR;
 
@@ -231,8 +262,8 @@ public final class SemanticTypeChecker {
             return inferSliceStoreType(sliceStore, context);
 
         if (expression instanceof ASTExprFieldStore store) {
-            LPCType valueType = inferExpressionType(store.value(), context);
             LPCType fieldType = valueType(store.field().symbol());
+            LPCType valueType = inferExpressionType(store.value(), context, explicitExpectedType(store.field().symbol()));
             if (fieldType == LPCType.LPCSTRING && valueType == LPCType.LPCARRAY)
                 fieldType = promoteStringSymbolToArray(store.field().symbol());
             valueType = coerceZeroLiteralFalse(fieldType, store.value(), valueType);
@@ -241,8 +272,8 @@ public final class SemanticTypeChecker {
         }
 
         if (expression instanceof ASTExprLocalStore store) {
-            LPCType valueType = inferExpressionType(store.value(), context);
             LPCType localType = valueType(store.local().symbol());
+            LPCType valueType = inferExpressionType(store.value(), context, explicitExpectedType(store.local().symbol()));
             if (localType == LPCType.LPCSTRING && valueType == LPCType.LPCARRAY)
                 localType = promoteStringSymbolToArray(store.local().symbol());
             valueType = coerceZeroLiteralFalse(localType, store.value(), valueType);
@@ -260,7 +291,7 @@ public final class SemanticTypeChecker {
             return inferUnaryType(unary, context);
 
         if (expression instanceof ASTExprOpBinary binary)
-            return inferBinaryType(binary, context);
+            return inferBinaryType(binary, context, expectedType);
 
         if (expression instanceof ASTExprSequence sequence)
             return inferSequenceType(sequence, context);
@@ -356,7 +387,7 @@ public final class SemanticTypeChecker {
         return operandType == LPCType.LPCFLOAT ? LPCType.LPCFLOAT : LPCType.LPCINT;
     }
 
-    private LPCType inferBinaryType(ASTExprOpBinary expr, MethodContext context) {
+    private LPCType inferBinaryType(ASTExprOpBinary expr, MethodContext context, LPCType expectedType) {
         LPCType leftType = inferExpressionType(expr.left(), context);
         LPCType rightType = inferExpressionType(expr.right(), context);
         BinaryOpType op = expr.operator();
@@ -375,6 +406,10 @@ public final class SemanticTypeChecker {
             }
             if (leftType == LPCType.LPCSTRING || rightType == LPCType.LPCSTRING)
                 return LPCType.LPCSTRING;
+            if (expectedType == LPCType.LPCSTRING && isStringLikeForConcat(leftType) && isStringLikeForConcat(rightType)) {
+                expr.setInferredType(LPCType.LPCSTRING);
+                return LPCType.LPCSTRING;
+            }
             if (leftType == LPCType.LPCMAPPING || rightType == LPCType.LPCMAPPING) {
                 if (!isMappingLikeForConcat(leftType) || !isMappingLikeForConcat(rightType)) {
                     problems.add(
@@ -410,6 +445,12 @@ public final class SemanticTypeChecker {
                 }
                 return LPCType.LPCSTRING;
             }
+            if (expectedType == LPCType.LPCSTRING
+                    && isStringLikeForDifference(leftType)
+                    && isStringLikeForDifference(rightType)) {
+                expr.setInferredType(LPCType.LPCSTRING);
+                return LPCType.LPCSTRING;
+            }
             ensureNumericOperands(leftType, rightType, expr.line(), op + " expects numeric operands");
             return LPCType.LPCINT;
         }
@@ -442,6 +483,10 @@ public final class SemanticTypeChecker {
 
     private boolean isMappingLikeForConcat(LPCType type) {
         return type == LPCType.LPCMAPPING || type == LPCType.LPCMIXED || type == LPCType.LPCERROR;
+    }
+
+    private boolean isStringLikeForConcat(LPCType type) {
+        return type == LPCType.LPCSTRING || type == LPCType.LPCMIXED || type == LPCType.LPCERROR;
     }
 
     private boolean isArrayLikeForDifference(LPCType type) {
@@ -539,8 +584,8 @@ public final class SemanticTypeChecker {
 
         for (int i = 0; i < arguments.size(); i++) {
             ASTArgument argument = arguments.get(i);
-            LPCType actual = inferExpressionType(argument.expression(), context);
             LPCType expected = (expectedTypes != null && i < expectedTypes.size()) ? expectedTypes.get(i) : null;
+            LPCType actual = inferExpressionType(argument.expression(), context, explicitExpectedType(expected));
 
             if (expected != null) {
                 actual = coerceZeroLiteralFalse(expected, argument.expression(), actual);
@@ -758,6 +803,17 @@ public final class SemanticTypeChecker {
 
     private LPCType valueType(Symbol symbol) {
         return (symbol != null) ? symbol.lpcType() : LPCType.LPCMIXED;
+    }
+
+    private LPCType explicitExpectedType(Symbol symbol) {
+        return symbol != null ? explicitExpectedType(symbol.declaredType()) : null;
+    }
+
+    private LPCType explicitExpectedType(LPCType type) {
+        if (type == null || type == LPCType.LPCMIXED || type == LPCType.LPCERROR || type == LPCType.LPCVOID)
+            return null;
+
+        return type;
     }
 
     private LPCType fieldType(Symbol symbol, LPCType candidate) {
