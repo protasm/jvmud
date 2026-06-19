@@ -33,7 +33,7 @@ public enum TokenType {
     T_CONTINUE(String.class),
 
     // Reserved words
-    T_INHERIT(String.class), T_FALSE(String.class), T_NIL(String.class), T_RETURN(String.class), T_SUPER(String.class),
+    T_INHERIT(String.class), T_FALSE(String.class), T_RETURN(String.class), T_SUPER(String.class),
     T_TRUE(String.class),
 
     // Synthetic

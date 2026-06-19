@@ -13,8 +13,6 @@ public class PrefixLiteral implements PrefixParselet {
             return new ASTExprLiteralTrue(parser.currLine());
         case T_FALSE:
             return new ASTExprLiteralFalse(parser.currLine());
-        case T_NIL:
-            return null; // TODO
         default:
             return null; // TODO
         }

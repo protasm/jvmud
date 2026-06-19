@@ -86,6 +86,6 @@ public final class RuntimeIndex {
         if (endValue instanceof Number number) {
             return number.intValue();
         }
-        throw new IllegalArgumentException("Slice end expects integer or nil: " + endValue);
+        throw new IllegalArgumentException("Slice end expects integer or omitted bound: " + endValue);
     }
 }
