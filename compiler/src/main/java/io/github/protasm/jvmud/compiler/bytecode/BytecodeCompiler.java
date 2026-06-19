@@ -14,6 +14,7 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeTypes;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeValueKind;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeString;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
 import java.util.HashMap;
 import java.util.List;
@@ -374,6 +375,11 @@ public final class BytecodeCompiler {
 
         if (expression instanceof IRSequence sequence) {
             emitSequence(mv, internalName, method, sequence);
+            return;
+        }
+
+        if (expression instanceof IRStringDifference stringDifference) {
+            emitStringDifference(mv, internalName, method, stringDifference);
             return;
         }
 
@@ -958,6 +964,20 @@ public final class BytecodeCompiler {
                 INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/Object;)Ljava/lang/StringBuilder;", false);
 
         mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false);
+    }
+
+    private void emitStringDifference(
+            MethodVisitor mv, String internalName, IRMethod method, IRStringDifference difference) {
+        emitExpression(mv, internalName, method, difference.left());
+        boxIfNeeded(mv, difference.left().type());
+        emitExpression(mv, internalName, method, difference.right());
+        boxIfNeeded(mv, difference.right().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeString.class),
+                "difference",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/String;",
+                false);
     }
 
     private void emitCoerceToRuntimeTypeIfNeeded(MethodVisitor mv, RuntimeType source, RuntimeType target) {

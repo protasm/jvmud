@@ -731,6 +731,12 @@ public final class IRLowerer {
                 IRExpression right = lowerExpression(binary.right(), context, problems);
                 return new IRArrayDifference(binary.line(), left, right, RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
             }
+            if (binary.operator() == io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_SUB
+                    && binary.lpcType() == LPCType.LPCSTRING) {
+                IRExpression left = lowerExpression(binary.left(), context, problems);
+                IRExpression right = lowerExpression(binary.right(), context, problems);
+                return new IRStringDifference(binary.line(), left, right, RuntimeTypes.STRING);
+            }
             if (binary.operator() == io.github.protasm.jvmud.compiler.parser.type.BinaryOpType.BOP_ADD
                     && binary.lpcType() == LPCType.LPCMAPPING) {
                 IRExpression left = lowerExpression(binary.left(), context, problems);

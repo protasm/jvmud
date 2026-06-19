@@ -1,3 +1,305 @@
 === Supported LPC
 
-Content to be written.
+JVMud supports LPC as the source language for LPMud-style game worlds. The goal
+is not to preserve every historical driver quirk. The goal is to provide a
+clear, practical LPC platform for writing mudlib code that can be compiled,
+loaded, inspected, reloaded, and hosted by JVMud.
+
+There is no single authoritative LPC. LPC grew through the work of hobbyists,
+enthusiasts, and mudlib authors building real worlds on real drivers. Over
+time, different drivers and mudlibs carried the language in different
+directions. Many LPC features are therefore best understood as dialect
+features, compatibility conventions, or driver-specific behavior rather than as
+parts of one universal standard.
+
+When this manual says JVMud supports LPC, it means JVMud supports the LPC
+language surface described here, plus the compatibility behavior needed to host
+the mudlibs JVMud is designed to run.
+
+This topic describes the supported language surface at a high level. It is a
+working authoring guide, not a complete grammar reference.
+
+==== Source Files And Objects
+
+An LPC source file compiles to a loadable game object. Source files may define:
+
+* fields
+* methods
+* forward method declarations
+* inherited parent objects
+
+JVMud supports ordinary `inherit` declarations with string paths:
+
+[source,lpc]
+----
+inherit "/obj/thing";
+----
+
+The parser also recognizes `virtual inherit` syntax for compatibility with
+mudlib source that uses it:
+
+[source,lpc]
+----
+virtual inherit "/obj/base";
+----
+
+The runtime resolves object paths through the configured mudlib source root and
+include paths. Path policy is part of the runtime and mudlib configuration, not
+the LPC language itself.
+
+==== Types
+
+JVMud supports the LPC types currently needed by the compiler and hosted
+mudlibs:
+
+* `int`
+* `float`
+* `string`
+* `status`
+* `object`
+* `mapping`
+* `mixed`
+* `void`
+* array forms such as `int *`, `string *`, and `mixed *`
+
+Use explicit return types, field types, local variable types, and parameter
+types in JVMud-maintained LPC. Explicit types make compiler errors clearer and
+avoid importing legacy driver ambiguity into the engine contract.
+
+[source,lpc]
+----
+string short() {
+    return "a brass lantern";
+}
+
+void set_count(int value) {
+    count = value;
+}
+----
+
+Legacy mudlib source may use patterns that JVMud accepts for compatibility, but
+new JVMud-facing source should prefer explicit signatures.
+
+==== Declarations And Modifiers
+
+Fields and methods may use the common LPC declaration modifiers that JVMud
+currently recognizes:
+
+* `public`
+* `private`
+* `protected`
+* `static`
+* `nomask`
+* `varargs`
+* `nosave`
+* `deprecated`
+
+The `varargs` modifier applies to methods only.
+
+[source,lpc]
+----
+private int count;
+nosave mixed transient_state;
+
+public string query_name() {
+    return "lantern";
+}
+
+varargs void message(string text, object target) {
+    write(text);
+}
+----
+
+Multiple field declarators are supported in a single declaration:
+
+[source,lpc]
+----
+int x, y, z;
+string *names, title_words;
+----
+
+==== Statements
+
+JVMud supports the statement forms used by ordinary mudlib control flow:
+
+* blocks
+* expression statements
+* `if` / `else`
+* `while`
+* `do` / `while`
+* `for`
+* `foreach`
+* `break`
+* `continue`
+* `return`
+
+Both `foreach (... in ...)` and `foreach (... : ...)` forms are supported.
+Mappings may be iterated with key and value variables.
+
+[source,lpc]
+----
+int total(int *values) {
+    int sum;
+
+    foreach (int value in values) {
+        sum += value;
+    }
+
+    return sum;
+}
+
+void describe_mapping(mapping values) {
+    foreach (string key, mixed value in values) {
+        write(key + ": " + value + "\n");
+    }
+}
+----
+
+Typed local declarations are supported in blocks and in `for` initializers.
+A `for` initializer may declare one typed local variable.
+
+==== Expressions
+
+JVMud supports the expression forms expected in practical LPC mudlib code:
+
+* integer, float, string, true, false, and null-like zero values
+* array literals
+* mapping literals
+* local and field access
+* assignment and compound assignment
+* method calls
+* efun calls
+* object-style invocation with `->`
+* parent calls through `super`
+* indexing and slicing
+* ternary expressions
+* comma expressions in loop clauses
+* protected evaluation with `catch`
+
+Supported operator families include arithmetic, comparison, equality, logical,
+bitwise, shift, and unary operators.
+
+[source,lpc]
+----
+mixed *values = ({ "north", "south", "east" });
+mapping exits = ([ "north": "/room/green", "south": "/room/road" ]);
+
+string first = values[0];
+mixed *rest = values[1..2];
+
+if (sizeof(values) > 0 && exits["north"]) {
+    write("There is a way north.\n");
+}
+----
+
+Adjacent string literals are accepted as one string value, which is useful for
+long room descriptions:
+
+[source,lpc]
+----
+string long() {
+    return "The corridor is narrow and cold. "
+           "A brass lantern hangs from a hook.";
+}
+----
+
+==== Collections
+
+Arrays and mappings are first-class LPC values in JVMud.
+
+Array literals use LPC's `({ ... })` form. Mapping literals use LPC's
+`([ key: value ])` form.
+
+[source,lpc]
+----
+mixed *items = ({ "lamp", "key", "coin" });
+mapping descriptions = ([
+    "lamp": "A small brass lantern.",
+    "key": "A tarnished iron key."
+]);
+----
+
+Indexing is supported for arrays, mappings, and strings where the runtime type
+allows it. Slicing is supported for strings and array-like values.
+
+==== Efun Calls
+
+JVMud exposes engine functions as efuns. Ordinary efun calls use the familiar
+LPC call form:
+
+[source,lpc]
+----
+write("Hello.\n");
+sizeof(({ 1, 2, 3 }));
+----
+
+Qualified `efun::name(...)` calls are supported for engine efuns:
+
+[source,lpc]
+----
+return efun::sizeof(({ 1, 2, 3 }));
+----
+
+The efun catalog is documented separately in this manual and in the generated
+Java API documentation for the engine efun registry.
+
+==== Function References And Inline Callables
+
+JVMud recognizes LPC function-reference forms used by mudlibs, including
+quoted function references and efun references:
+
+[source,lpc]
+----
+#'db_close
+efun::db_handles()
+----
+
+Inline callable forms used with collection helpers such as `filter` and `map`
+are supported for the compatibility patterns currently exercised by hosted
+mudlibs.
+
+==== Preprocessor And Includes
+
+JVMud includes a preprocessor with support for ordinary include resolution,
+macro expansion, conditional directives, and source mapping. Include behavior
+depends on the runtime/compiler configuration for the mudlib being compiled.
+
+Use includes for shared LPC constants and declarations, but keep engine-facing
+concepts in JVMud vocabulary. LPC headers should help mudlib code compile; they
+should not redefine the engine's model of Places, Entities, Players, Sessions,
+or Personas.
+
+==== Runtime-Oriented LPC
+
+JVMud supports the LPC patterns needed to host live LPMud objects:
+
+* object loading
+* method invocation
+* inherited behavior
+* selected lifecycle methods
+* command hooks such as `init`, `add_action`, and `add_verb`
+* player/session text output helpers
+* save and restore helpers for LPC object state
+* timed behavior through scheduler-backed compatibility functions
+
+These features are compatibility surfaces over JVMud's engine model. They make
+LPC mudlib code usable without making legacy driver vocabulary the engine's
+own ontology.
+
+==== Current Limits
+
+JVMud's LPC support is intentionally practical and evolving. If a historical
+LPC feature is not needed by the hosted mudlibs, it may be absent, partial, or
+accepted only as a compatibility parse form.
+
+In particular:
+
+* supported LPC means the JVMud compiler and runtime currently have behavior
+  for the construct, not that every legacy driver variant behaves identically
+* compatibility syntax may exist before full runtime behavior exists
+* JVMud-authored source should prefer explicit types and simple declarations
+* engine concepts should be documented as JVMud concepts, not as legacy LPC
+  driver concepts
+
+When in doubt, prefer the forms already used by JVMud mudlib code and covered
+by compiler or telnet smoke tests.

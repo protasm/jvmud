@@ -375,6 +375,16 @@ public final class SemanticTypeChecker {
                 }
                 return LPCType.LPCARRAY;
             }
+            if (leftType == LPCType.LPCSTRING || rightType == LPCType.LPCSTRING) {
+                if (!isStringLikeForDifference(leftType) || !isStringLikeForDifference(rightType)) {
+                    problems.add(
+                            new CompilationProblem(
+                                    CompilationStage.ANALYZE,
+                                    "String subtraction requires two strings",
+                                    expr.line()));
+                }
+                return LPCType.LPCSTRING;
+            }
             ensureNumericOperands(leftType, rightType, expr.line(), op + " expects numeric operands");
             return LPCType.LPCINT;
         }
@@ -403,6 +413,10 @@ public final class SemanticTypeChecker {
 
     private boolean isArrayLikeForDifference(LPCType type) {
         return type == LPCType.LPCARRAY || type == LPCType.LPCMIXED || type == LPCType.LPCNULL;
+    }
+
+    private boolean isStringLikeForDifference(LPCType type) {
+        return type == LPCType.LPCSTRING || type == LPCType.LPCMIXED || type == LPCType.LPCNULL;
     }
 
     private LPCType inferEfunCall(ASTExprCallEfun expr, MethodContext context) {

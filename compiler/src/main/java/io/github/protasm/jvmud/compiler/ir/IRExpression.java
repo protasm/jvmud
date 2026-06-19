@@ -32,6 +32,7 @@ public sealed interface IRExpression extends IRNode
                 IRMappingSet,
                 IRProtectedEval,
                 IRSequence,
+                IRStringDifference,
                 IRSlice,
                 IRStringGet,
                 IRUnaryOperation {

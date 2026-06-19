@@ -124,6 +124,34 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeConcatenatesAdjacentStringLiterals() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/adjacent_strings.c", """
+                string message() {
+                    return "Your sensitive mind notices a wrongness in the "
+                        "fabric of space.\\n";
+                }
+                """);
+
+        assertEquals(
+                "Your sensitive mind notices a wrongness in the fabric of space.\n",
+                object.invoke("message"));
+    }
+
+    @Test
+    void runtimeConcatenatesSeveralAdjacentStringLiterals() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/several_adjacent_strings.c", """
+                string message() {
+                    return "alpha" "beta"
+                        "gamma";
+                }
+                """);
+
+        assertEquals("alphabetagamma", object.invoke("message"));
+    }
+
+    @Test
     void preprocessorLeavesFunctionSymbolLiteralsAsSourceText() {
         String processed = Preprocessor.preprocess("""
                     #define HOOK_NAME loadUIDs
@@ -303,6 +331,33 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(18, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsStringSubtraction() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/string_difference.c", """
+                string value() {
+                    return "alpha beta alpha" - "alpha";
+                }
+                """);
+
+        assertEquals(" beta ", object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsStringSubtractionFromMixedStringValue() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_string_difference.c", """
+                string value() {
+                    mixed text;
+
+                    text = "one\\rtwo\\r";
+                    return text - "\\r";
+                }
+                """);
+
+        assertEquals("onetwo", object.invoke("value"));
     }
 
     @Test

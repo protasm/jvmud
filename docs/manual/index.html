@@ -435,6 +435,95 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 @media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<style>
+/*! Stylesheet for CodeRay to loosely match GitHub themes | MIT License */
+pre.CodeRay{background:#f7f7f8}
+.CodeRay .line-numbers{border-right:1px solid;opacity:.35;padding:0 .5em 0 0;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}
+.CodeRay span.line-numbers{display:inline-block;margin-right:.75em}
+.CodeRay .line-numbers strong{color:#000}
+table.CodeRay{border-collapse:separate;border:0;margin-bottom:0;background:none}
+table.CodeRay td{vertical-align:top;line-height:inherit}
+table.CodeRay td.line-numbers{text-align:right}
+table.CodeRay td.code{padding:0 0 0 .75em}
+.CodeRay .debug{color:#fff!important;background:navy!important}
+.CodeRay .annotation{color:#007}
+.CodeRay .attribute-name{color:navy}
+.CodeRay .attribute-value{color:#700}
+.CodeRay .binary{color:#509}
+.CodeRay .comment{color:#998;font-style:italic}
+.CodeRay .char{color:#04d}
+.CodeRay .char .content{color:#04d}
+.CodeRay .char .delimiter{color:#039}
+.CodeRay .class{color:#458;font-weight:bold}
+.CodeRay .complex{color:#a08}
+.CodeRay .constant,.CodeRay .predefined-constant{color:teal}
+.CodeRay .color{color:#099}
+.CodeRay .class-variable{color:#369}
+.CodeRay .decorator{color:#b0b}
+.CodeRay .definition{color:#099}
+.CodeRay .delimiter{color:#000}
+.CodeRay .doc{color:#970}
+.CodeRay .doctype{color:#34b}
+.CodeRay .doc-string{color:#d42}
+.CodeRay .escape{color:#666}
+.CodeRay .entity{color:#800}
+.CodeRay .error{color:#808}
+.CodeRay .exception{color:inherit}
+.CodeRay .filename{color:#099}
+.CodeRay .function{color:#900;font-weight:bold}
+.CodeRay .global-variable{color:teal}
+.CodeRay .hex{color:#058}
+.CodeRay .integer,.CodeRay .float{color:#099}
+.CodeRay .include{color:#555}
+.CodeRay .inline{color:#000}
+.CodeRay .inline .inline{background:#ccc}
+.CodeRay .inline .inline .inline{background:#bbb}
+.CodeRay .inline .inline-delimiter{color:#d14}
+.CodeRay .inline-delimiter{color:#d14}
+.CodeRay .important{color:#555;font-weight:bold}
+.CodeRay .interpreted{color:#b2b}
+.CodeRay .instance-variable{color:teal}
+.CodeRay .label{color:#970}
+.CodeRay .local-variable{color:#963}
+.CodeRay .octal{color:#40e}
+.CodeRay .predefined{color:#369}
+.CodeRay .preprocessor{color:#579}
+.CodeRay .pseudo-class{color:#555}
+.CodeRay .directive{font-weight:bold}
+.CodeRay .type{font-weight:bold}
+.CodeRay .predefined-type{color:inherit}
+.CodeRay .reserved,.CodeRay .keyword{color:#000;font-weight:bold}
+.CodeRay .key{color:#808}
+.CodeRay .key .delimiter{color:#606}
+.CodeRay .key .char{color:#80f}
+.CodeRay .value{color:#088}
+.CodeRay .regexp .delimiter{color:#808}
+.CodeRay .regexp .content{color:#808}
+.CodeRay .regexp .modifier{color:#808}
+.CodeRay .regexp .char{color:#d14}
+.CodeRay .regexp .function{color:#404;font-weight:bold}
+.CodeRay .string{color:#d20}
+.CodeRay .string .string .string{background:#ffd0d0}
+.CodeRay .string .content{color:#d14}
+.CodeRay .string .char{color:#d14}
+.CodeRay .string .delimiter{color:#d14}
+.CodeRay .shell{color:#d14}
+.CodeRay .shell .delimiter{color:#d14}
+.CodeRay .symbol{color:#990073}
+.CodeRay .symbol .content{color:#a60}
+.CodeRay .symbol .delimiter{color:#630}
+.CodeRay .tag{color:teal}
+.CodeRay .tag-special{color:#d70}
+.CodeRay .variable{color:#036}
+.CodeRay .insert{background:#afa}
+.CodeRay .delete{background:#faa}
+.CodeRay .change{color:#aaf;background:#007}
+.CodeRay .head{color:#f8f;background:#505}
+.CodeRay .insert .insert{color:#080}
+.CodeRay .delete .delete{color:#800}
+.CodeRay .change .change{color:#66f}
+.CodeRay .head .head{color:#f4f}
+</style>
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
@@ -493,7 +582,21 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#_lpc_and_mudlib_authoring">LPC And Mudlib Authoring</a>
 <ul class="sectlevel2">
-<li><a href="#_supported_lpc">Supported LPC</a></li>
+<li><a href="#_supported_lpc">Supported LPC</a>
+<ul class="sectlevel3">
+<li><a href="#_source_files_and_objects">Source Files And Objects</a></li>
+<li><a href="#_types">Types</a></li>
+<li><a href="#_declarations_and_modifiers">Declarations And Modifiers</a></li>
+<li><a href="#_statements">Statements</a></li>
+<li><a href="#_expressions">Expressions</a></li>
+<li><a href="#_collections">Collections</a></li>
+<li><a href="#_efun_calls">Efun Calls</a></li>
+<li><a href="#_function_references_and_inline_callables">Function References And Inline Callables</a></li>
+<li><a href="#_preprocessor_and_includes">Preprocessor And Includes</a></li>
+<li><a href="#_runtime_oriented_lpc">Runtime-Oriented LPC</a></li>
+<li><a href="#_current_limits">Current Limits</a></li>
+</ul>
+</li>
 <li><a href="#_explicit_types">Explicit Types</a></li>
 <li><a href="#_efuns">Efuns</a></li>
 <li><a href="#_lifecycle_hooks">Lifecycle Hooks</a></li>
@@ -826,7 +929,487 @@ from Places, Links, Entities, Players, Sessions, and Personas.</p>
 <div class="sect2">
 <h3 id="_supported_lpc"><a class="anchor" href="#_supported_lpc"></a><a class="link" href="#_supported_lpc">Supported LPC</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>JVMud supports LPC as the source language for LPMud-style game worlds. The goal
+is not to preserve every historical driver quirk. The goal is to provide a
+clear, practical LPC platform for writing mudlib code that can be compiled,
+loaded, inspected, reloaded, and hosted by JVMud.</p>
+</div>
+<div class="paragraph">
+<p>There is no single authoritative LPC. LPC grew through the work of hobbyists,
+enthusiasts, and mudlib authors building real worlds on real drivers. Over
+time, different drivers and mudlibs carried the language in different
+directions. Many LPC features are therefore best understood as dialect
+features, compatibility conventions, or driver-specific behavior rather than as
+parts of one universal standard.</p>
+</div>
+<div class="paragraph">
+<p>When this manual says JVMud supports LPC, it means JVMud supports the LPC
+language surface described here, plus the compatibility behavior needed to host
+the mudlibs JVMud is designed to run.</p>
+</div>
+<div class="paragraph">
+<p>This topic describes the supported language surface at a high level. It is a
+working authoring guide, not a complete grammar reference.</p>
+</div>
+<div class="sect3">
+<h4 id="_source_files_and_objects"><a class="anchor" href="#_source_files_and_objects"></a><a class="link" href="#_source_files_and_objects">Source Files And Objects</a></h4>
+<div class="paragraph">
+<p>An LPC source file compiles to a loadable game object. Source files may define:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>fields</p>
+</li>
+<li>
+<p>methods</p>
+</li>
+<li>
+<p>forward method declarations</p>
+</li>
+<li>
+<p>inherited parent objects</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>JVMud supports ordinary <code>inherit</code> declarations with string paths:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">inherit &quot;/obj/thing&quot;;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The parser also recognizes <code>virtual inherit</code> syntax for compatibility with
+mudlib source that uses it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">virtual inherit &quot;/obj/base&quot;;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The runtime resolves object paths through the configured mudlib source root and
+include paths. Path policy is part of the runtime and mudlib configuration, not
+the LPC language itself.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_types"><a class="anchor" href="#_types"></a><a class="link" href="#_types">Types</a></h4>
+<div class="paragraph">
+<p>JVMud supports the LPC types currently needed by the compiler and hosted
+mudlibs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>int</code></p>
+</li>
+<li>
+<p><code>float</code></p>
+</li>
+<li>
+<p><code>string</code></p>
+</li>
+<li>
+<p><code>status</code></p>
+</li>
+<li>
+<p><code>object</code></p>
+</li>
+<li>
+<p><code>mapping</code></p>
+</li>
+<li>
+<p><code>mixed</code></p>
+</li>
+<li>
+<p><code>void</code></p>
+</li>
+<li>
+<p>array forms such as <code>int *</code>, <code>string *</code>, and <code>mixed *</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Use explicit return types, field types, local variable types, and parameter
+types in JVMud-maintained LPC. Explicit types make compiler errors clearer and
+avoid importing legacy driver ambiguity into the engine contract.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">string short() {
+    return &quot;a brass lantern&quot;;
+}
+
+void set_count(int value) {
+    count = value;
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Legacy mudlib source may use patterns that JVMud accepts for compatibility, but
+new JVMud-facing source should prefer explicit signatures.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_declarations_and_modifiers"><a class="anchor" href="#_declarations_and_modifiers"></a><a class="link" href="#_declarations_and_modifiers">Declarations And Modifiers</a></h4>
+<div class="paragraph">
+<p>Fields and methods may use the common LPC declaration modifiers that JVMud
+currently recognizes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>public</code></p>
+</li>
+<li>
+<p><code>private</code></p>
+</li>
+<li>
+<p><code>protected</code></p>
+</li>
+<li>
+<p><code>static</code></p>
+</li>
+<li>
+<p><code>nomask</code></p>
+</li>
+<li>
+<p><code>varargs</code></p>
+</li>
+<li>
+<p><code>nosave</code></p>
+</li>
+<li>
+<p><code>deprecated</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>varargs</code> modifier applies to methods only.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">private int count;
+nosave mixed transient_state;
+
+public string query_name() {
+    return &quot;lantern&quot;;
+}
+
+varargs void message(string text, object target) {
+    write(text);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Multiple field declarators are supported in a single declaration:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">int x, y, z;
+string *names, title_words;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_statements"><a class="anchor" href="#_statements"></a><a class="link" href="#_statements">Statements</a></h4>
+<div class="paragraph">
+<p>JVMud supports the statement forms used by ordinary mudlib control flow:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>blocks</p>
+</li>
+<li>
+<p>expression statements</p>
+</li>
+<li>
+<p><code>if</code> / <code>else</code></p>
+</li>
+<li>
+<p><code>while</code></p>
+</li>
+<li>
+<p><code>do</code> / <code>while</code></p>
+</li>
+<li>
+<p><code>for</code></p>
+</li>
+<li>
+<p><code>foreach</code></p>
+</li>
+<li>
+<p><code>break</code></p>
+</li>
+<li>
+<p><code>continue</code></p>
+</li>
+<li>
+<p><code>return</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Both <code>foreach (&#8230;&#8203; in &#8230;&#8203;)</code> and <code>foreach (&#8230;&#8203; : &#8230;&#8203;)</code> forms are supported.
+Mappings may be iterated with key and value variables.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">int total(int *values) {
+    int sum;
+
+    foreach (int value in values) {
+        sum += value;
+    }
+
+    return sum;
+}
+
+void describe_mapping(mapping values) {
+    foreach (string key, mixed value in values) {
+        write(key + &quot;: &quot; + value + &quot;\n&quot;);
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Typed local declarations are supported in blocks and in <code>for</code> initializers.
+A <code>for</code> initializer may declare one typed local variable.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_expressions"><a class="anchor" href="#_expressions"></a><a class="link" href="#_expressions">Expressions</a></h4>
+<div class="paragraph">
+<p>JVMud supports the expression forms expected in practical LPC mudlib code:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>integer, float, string, true, false, and null-like zero values</p>
+</li>
+<li>
+<p>array literals</p>
+</li>
+<li>
+<p>mapping literals</p>
+</li>
+<li>
+<p>local and field access</p>
+</li>
+<li>
+<p>assignment and compound assignment</p>
+</li>
+<li>
+<p>method calls</p>
+</li>
+<li>
+<p>efun calls</p>
+</li>
+<li>
+<p>object-style invocation with <code>&#8594;</code></p>
+</li>
+<li>
+<p>parent calls through <code>super</code></p>
+</li>
+<li>
+<p>indexing and slicing</p>
+</li>
+<li>
+<p>ternary expressions</p>
+</li>
+<li>
+<p>comma expressions in loop clauses</p>
+</li>
+<li>
+<p>protected evaluation with <code>catch</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Supported operator families include arithmetic, comparison, equality, logical,
+bitwise, shift, and unary operators.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">mixed *values = ({ &quot;north&quot;, &quot;south&quot;, &quot;east&quot; });
+mapping exits = ([ &quot;north&quot;: &quot;/room/green&quot;, &quot;south&quot;: &quot;/room/road&quot; ]);
+
+string first = values[0];
+mixed *rest = values[1..2];
+
+if (sizeof(values) &gt; 0 &amp;&amp; exits[&quot;north&quot;]) {
+    write(&quot;There is a way north.\n&quot;);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Adjacent string literals are accepted as one string value, which is useful for
+long room descriptions:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">string long() {
+    return &quot;The corridor is narrow and cold. &quot;
+           &quot;A brass lantern hangs from a hook.&quot;;
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_collections"><a class="anchor" href="#_collections"></a><a class="link" href="#_collections">Collections</a></h4>
+<div class="paragraph">
+<p>Arrays and mappings are first-class LPC values in JVMud.</p>
+</div>
+<div class="paragraph">
+<p>Array literals use LPC&#8217;s <code>({ &#8230;&#8203; })</code> form. Mapping literals use LPC&#8217;s
+<code>([ key: value ])</code> form.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">mixed *items = ({ &quot;lamp&quot;, &quot;key&quot;, &quot;coin&quot; });
+mapping descriptions = ([
+    &quot;lamp&quot;: &quot;A small brass lantern.&quot;,
+    &quot;key&quot;: &quot;A tarnished iron key.&quot;
+]);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Indexing is supported for arrays, mappings, and strings where the runtime type
+allows it. Slicing is supported for strings and array-like values.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_efun_calls"><a class="anchor" href="#_efun_calls"></a><a class="link" href="#_efun_calls">Efun Calls</a></h4>
+<div class="paragraph">
+<p>JVMud exposes engine functions as efuns. Ordinary efun calls use the familiar
+LPC call form:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">write(&quot;Hello.\n&quot;);
+sizeof(({ 1, 2, 3 }));</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Qualified <code>efun::name(&#8230;&#8203;)</code> calls are supported for engine efuns:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">return efun::sizeof(({ 1, 2, 3 }));</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The efun catalog is documented separately in this manual and in the generated
+Java API documentation for the engine efun registry.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_function_references_and_inline_callables"><a class="anchor" href="#_function_references_and_inline_callables"></a><a class="link" href="#_function_references_and_inline_callables">Function References And Inline Callables</a></h4>
+<div class="paragraph">
+<p>JVMud recognizes LPC function-reference forms used by mudlibs, including
+quoted function references and efun references:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">#'db_close
+efun::db_handles()</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Inline callable forms used with collection helpers such as <code>filter</code> and <code>map</code>
+are supported for the compatibility patterns currently exercised by hosted
+mudlibs.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_preprocessor_and_includes"><a class="anchor" href="#_preprocessor_and_includes"></a><a class="link" href="#_preprocessor_and_includes">Preprocessor And Includes</a></h4>
+<div class="paragraph">
+<p>JVMud includes a preprocessor with support for ordinary include resolution,
+macro expansion, conditional directives, and source mapping. Include behavior
+depends on the runtime/compiler configuration for the mudlib being compiled.</p>
+</div>
+<div class="paragraph">
+<p>Use includes for shared LPC constants and declarations, but keep engine-facing
+concepts in JVMud vocabulary. LPC headers should help mudlib code compile; they
+should not redefine the engine&#8217;s model of Places, Entities, Players, Sessions,
+or Personas.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_runtime_oriented_lpc"><a class="anchor" href="#_runtime_oriented_lpc"></a><a class="link" href="#_runtime_oriented_lpc">Runtime-Oriented LPC</a></h4>
+<div class="paragraph">
+<p>JVMud supports the LPC patterns needed to host live LPMud objects:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>object loading</p>
+</li>
+<li>
+<p>method invocation</p>
+</li>
+<li>
+<p>inherited behavior</p>
+</li>
+<li>
+<p>selected lifecycle methods</p>
+</li>
+<li>
+<p>command hooks such as <code>init</code>, <code>add_action</code>, and <code>add_verb</code></p>
+</li>
+<li>
+<p>player/session text output helpers</p>
+</li>
+<li>
+<p>save and restore helpers for LPC object state</p>
+</li>
+<li>
+<p>timed behavior through scheduler-backed compatibility functions</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>These features are compatibility surfaces over JVMud&#8217;s engine model. They make
+LPC mudlib code usable without making legacy driver vocabulary the engine&#8217;s
+own ontology.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_current_limits"><a class="anchor" href="#_current_limits"></a><a class="link" href="#_current_limits">Current Limits</a></h4>
+<div class="paragraph">
+<p>JVMud&#8217;s LPC support is intentionally practical and evolving. If a historical
+LPC feature is not needed by the hosted mudlibs, it may be absent, partial, or
+accepted only as a compatibility parse form.</p>
+</div>
+<div class="paragraph">
+<p>In particular:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>supported LPC means the JVMud compiler and runtime currently have behavior
+for the construct, not that every legacy driver variant behaves identically</p>
+</li>
+<li>
+<p>compatibility syntax may exist before full runtime behavior exists</p>
+</li>
+<li>
+<p>JVMud-authored source should prefer explicit types and simple declarations</p>
+</li>
+<li>
+<p>engine concepts should be documented as JVMud concepts, not as legacy LPC
+driver concepts</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>When in doubt, prefer the forms already used by JVMud mudlib code and covered
+by compiler or telnet smoke tests.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
