@@ -17,9 +17,12 @@ import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 final class RealmsMudCompatibilityScanTest {
@@ -28,7 +31,14 @@ final class RealmsMudCompatibilityScanTest {
     private static final Path MUDLIB_SOURCE_ROOT = MUDLIB_ROOT.resolve("source");
     private static final String CONFIG_PATH = "jvmud/realmsmud.config";
     private static final Path REPORT_PATH = Path.of("target", "jvmud-realmsmud-compatibility.md");
-    private static final List<String> COMPATIBILITY_SET =
+    private static final List<String> COMPATIBILITY_SWEEP_ROOTS =
+            List.of(
+                    "lib/environment",
+                    "lib/services",
+                    "lib/modules/secure",
+                    "secure/master",
+                    "secure/simulated-efuns");
+    private static final List<String> BOOT_AND_CORE_COMPATIBILITY_SET =
             List.of(
                     "secure/master.c",
                     "secure/simul_efun.c",
@@ -41,37 +51,7 @@ final class RealmsMudCompatibilityScanTest {
                     "lib/core/stateMachine.c",
                     "lib/core/specification.c",
                     "lib/core/stateObject.c",
-                    "lib/core/thing.c",
-                    "lib/environment/elementBonus.c",
-                    "lib/environment/environment.c",
-                    "lib/environment/environmentalElement.c",
-                    "lib/environment/generatedEnvironment.c",
-                    "lib/environment/generatedRegionTemplate.c",
-                    "lib/environment/generatedRoomTemplate.c",
-                    "lib/environment/harvestableResource.c",
-                    "lib/environment/legacyRoomConverter.c",
-                    "lib/environment/region.c",
-                    "lib/environment/modules/regions/building-coordinates.c",
-                    "lib/environment/modules/regions/building-decorators.c",
-                    "lib/environment/modules/regions/building-doors.c",
-                    "lib/environment/modules/regions/building-files.c",
-                    "lib/environment/modules/regions/building-layout.c",
-                    "lib/environment/modules/regions/core.c",
-                    "lib/environment/modules/regions/domain.c",
-                    "lib/environment/modules/regions/entries-and-exits.c",
-                    "lib/environment/modules/regions/generate-building.c",
-                    "lib/environment/modules/regions/generate-path.c",
-                    "lib/environment/modules/regions/generate-region.c",
-                    "lib/environment/modules/regions/generate-room.c",
-                    "lib/environment/modules/regions/generate-settlement.c",
-                    "lib/environment/modules/regions/generate-tunneling.c",
-                    "lib/environment/modules/regions/map.c",
-                    "lib/environment/modules/regions/persist-region.c",
-                    "lib/environment/modules/regions/walk-generation.c",
-                    "lib/environment/modules/regions/walk-persistence.c",
-                    "lib/environment/modules/regions/walk-settlement.c",
-                    "lib/environment/modules/regions/walk-splitting.c",
-                    "lib/environment/walkableRegion.c");
+                    "lib/core/thing.c");
 
     @Test
     void selectedRealmsMudFilesProduceCompatibilityRadarReport() throws IOException {
@@ -91,7 +71,7 @@ final class RealmsMudCompatibilityScanTest {
 
         // This is deliberately a radar, not a readiness gate. It should keep exposing
         // the first RealmsMUD blockers while the rest of the build stays green.
-        for (String sourceName : COMPATIBILITY_SET) {
+        for (String sourceName : compatibilitySet(sourceRoot)) {
             Path sourcePath = sourceRoot.resolve(sourceName);
             assertTrue(Files.isRegularFile(sourcePath), sourceName + " should exist in the RealmsMUD source tree.");
             String source = Files.readString(sourcePath);
@@ -104,6 +84,23 @@ final class RealmsMudCompatibilityScanTest {
 
         assertFalse(results.isEmpty(), "RealmsMUD compatibility radar should scan at least one file.");
         assertTrue(Files.exists(REPORT_PATH), "RealmsMUD compatibility report should be written.");
+    }
+
+    private static List<String> compatibilitySet(Path sourceRoot) throws IOException {
+        Set<String> sourceNames = new LinkedHashSet<>(BOOT_AND_CORE_COMPATIBILITY_SET);
+        for (String sweepRoot : COMPATIBILITY_SWEEP_ROOTS) {
+            Path root = sourceRoot.resolve(sweepRoot);
+            try (Stream<Path> paths = Files.walk(root)) {
+                paths.filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().endsWith(".c"))
+                        .map(sourceRoot::relativize)
+                        .map(Path::toString)
+                        .map(path -> path.replace('\\', '/'))
+                        .sorted()
+                        .forEach(sourceNames::add);
+            }
+        }
+        return List.copyOf(sourceNames);
     }
 
     private static void assertConfiguredBoundary(MudlibBoundary boundary) {
@@ -158,7 +155,7 @@ final class RealmsMudCompatibilityScanTest {
         report.append("- Scanned files: ").append(results.size()).append("\n");
         report.append("- Supported now: ").append(supported).append("\n");
         report.append("- Current blockers: ").append(unsupported).append("\n\n");
-        report.append("## Selected Boot, Core, And Environment Spine\n\n");
+        report.append("## Boot, Core, And Environment Sweep\n\n");
         report.append("| Source | Status | First Problem Stage | First Problem Line | First Problem |\n");
         report.append("| --- | --- | --- | ---: | --- |\n");
 
@@ -187,9 +184,13 @@ final class RealmsMudCompatibilityScanTest {
         report.append("- `secure/login.c` is the player connection and account flow.\n");
         report.append("- `/lib/core` files cover the reusable event, state, selector, organization, ");
         report.append("prerequisite, message, and thing surfaces used by gameplay objects.\n");
-        report.append("- Direct `/lib/environment` files and `/lib/environment/modules/regions` cover ");
-        report.append("descriptions, harvestables, generated rooms, regions, maps, persistence, and ");
-        report.append("walkable/generated region support.\n");
+        report.append("- The `/lib/environment/**/*.c` sweep covers environmental elements, generated ");
+        report.append("rooms, regions, buildings, features, terrain, inventories, doors, interiors, ");
+        report.append("and item definitions without hand-maintaining a giant source list.\n");
+        report.append("- The `/lib/services/**/*.c`, `/lib/modules/secure/**/*.c`, ");
+        report.append("`/secure/master/**/*.c`, and `/secure/simulated-efuns/**/*.c` sweeps cover ");
+        report.append("RealmsMUD's service objects, security/data-service modules, master support ");
+        report.append("objects, and simulated global efun surface.\n");
 
         Files.writeString(REPORT_PATH, report.toString());
     }

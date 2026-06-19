@@ -30,6 +30,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFunctionReference
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFalse;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFloat;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralString;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralTrue;
@@ -48,6 +49,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSortArray;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTypedFunctionLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
@@ -771,6 +773,9 @@ public final class IRLowerer {
         if (expression instanceof ASTExprLiteralInteger literal)
             return new IRConstant(literal.line(), literal.value(), RuntimeTypes.INT);
 
+        if (expression instanceof ASTExprLiteralFloat literal)
+            return new IRConstant(literal.line(), literal.value(), RuntimeTypes.FLOAT);
+
         if (expression instanceof ASTExprLiteralString literal)
             return new IRConstant(literal.line(), literal.value(), RuntimeTypes.STRING);
 
@@ -779,6 +784,10 @@ public final class IRLowerer {
 
         if (expression instanceof ASTExprFunctionReference functionReference)
             return new IRConstant(functionReference.line(), "#'" + functionReference.name(), RuntimeTypes.MIXED);
+
+        if (expression instanceof ASTExprTypedFunctionLiteral typedFunction)
+            return new IRTypedFunctionLiteral(
+                    typedFunction.line(), typedFunctionSignature(typedFunction), RuntimeTypes.MIXED);
 
         if (expression instanceof ASTExprClosureArgument closureArgument) {
             IRLocal local = context.closureArgumentLocal(closureArgument.index());
@@ -1213,6 +1222,13 @@ public final class IRLowerer {
             return max;
         }
         return 0;
+    }
+
+    private String typedFunctionSignature(ASTExprTypedFunctionLiteral functionLiteral) {
+        List<String> parameters = new ArrayList<>();
+        functionLiteral.parameters().forEach(parameter -> parameters.add(
+                parameter.symbol().declaredTypeName() + " " + parameter.symbol().name()));
+        return functionLiteral.returnSymbol().declaredTypeName() + " (" + String.join(", ", parameters) + ")";
     }
 
     private int maxClosureArgumentIndex(ASTArguments arguments) {

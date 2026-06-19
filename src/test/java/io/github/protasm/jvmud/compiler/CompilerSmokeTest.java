@@ -17,6 +17,7 @@ import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
+import io.github.protasm.jvmud.compiler.pipeline.CompilationStage;
 import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
@@ -163,6 +164,28 @@ final class CompilerSmokeTest {
         assertTrue(processed.contains("#'HOOK_NAME"));
         assertTrue(processed.contains("#'previous_object"));
         assertFalse(processed.contains("#define"));
+    }
+
+    @Test
+    void parserAcceptsTypedFunctionLiteralsAsCallArguments() {
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
+                string tagReplaceCallback(string tag) {
+                    return tag;
+                }
+
+                string value(string layout) {
+                    return regreplace(
+                        layout,
+                        "\\\\[[A-Z0-9_ ]+\\\\]",
+                        function string (string tag) { return tagReplaceCallback(tag); },
+                        1
+                    );
+                }
+                """);
+
+        assertFalse(
+                result.getProblems().stream().anyMatch(problem -> problem.getStage() == CompilationStage.PARSE),
+                () -> result.getProblems().toString());
     }
 
     @Test
@@ -431,6 +454,21 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(2, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsFloatLiteralsInMappingValues() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mapping_float_values.c", """
+                mixed value() {
+                    mapping values;
+
+                    values = ([ "experience modifier": 1.1 ]);
+                    return values["experience modifier"];
+                }
+                """);
+
+        assertEquals(1.1f, object.invoke("value"));
     }
 
     @Test

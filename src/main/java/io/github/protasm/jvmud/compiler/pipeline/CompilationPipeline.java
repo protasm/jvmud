@@ -1,6 +1,5 @@
 package io.github.protasm.jvmud.compiler.pipeline;
 
-import io.github.protasm.jvmud.compiler.bytecode.BytecodeCompileException;
 import io.github.protasm.jvmud.compiler.bytecode.BytecodeCompiler;
 import io.github.protasm.jvmud.compiler.parser.ParseException;
 import io.github.protasm.jvmud.compiler.parser.Parser;
@@ -212,7 +211,7 @@ public final class CompilationPipeline {
             observer.stageStarted(unit, CompilationStage.COMPILE);
             bytecode = compiler.compile(typedIr);
             observer.stageSucceeded(unit, CompilationStage.COMPILE);
-        } catch (BytecodeCompileException | IllegalArgumentException e) {
+        } catch (RuntimeException e) {
             CompilationProblem problem = new CompilationProblem(CompilationStage.COMPILE, "Error compiling typed IR", e);
             problems.add(problem);
             observer.stageFailed(unit, CompilationStage.COMPILE, problem);

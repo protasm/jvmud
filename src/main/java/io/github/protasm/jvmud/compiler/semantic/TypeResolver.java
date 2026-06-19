@@ -9,6 +9,7 @@ public final class TypeResolver {
             Map.of(
                     "int", LPCType.LPCINT,
                     "float", LPCType.LPCFLOAT,
+                    "function", LPCType.LPCFUNCTION,
                     "mapping", LPCType.LPCMAPPING,
                     "mixed", LPCType.LPCMIXED,
                     "object", LPCType.LPCOBJECT,

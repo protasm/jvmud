@@ -32,6 +32,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInlineCallable;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFalse;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFloat;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralString;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralTrue;
@@ -48,6 +49,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSortArray;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTypedFunctionLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
@@ -222,6 +224,8 @@ public final class SemanticTypeChecker {
 
         if (expression instanceof ASTExprLiteralInteger)
             return LPCType.LPCINT;
+        if (expression instanceof ASTExprLiteralFloat)
+            return LPCType.LPCFLOAT;
         if (expression instanceof ASTExprLiteralString)
             return LPCType.LPCSTRING;
         if (expression instanceof ASTExprLiteralTrue || expression instanceof ASTExprLiteralFalse)
@@ -237,6 +241,10 @@ public final class SemanticTypeChecker {
         if (expression instanceof ASTExprInlineCallable inlineCallable) {
             inferExpressionType(inlineCallable.body(), context);
             return LPCType.LPCMIXED;
+        }
+        if (expression instanceof ASTExprTypedFunctionLiteral typedFunction) {
+            inferExpressionType(typedFunction.body(), context, typedFunction.returnSymbol().lpcType());
+            return LPCType.LPCFUNCTION;
         }
         if (expression instanceof ASTExprCollectionTransform transform) {
             inferExpressionType(transform.source(), context);

@@ -71,6 +71,7 @@ public final class RuntimeTypes {
         case LPCMAPPING -> MAPPING;
         case LPCMIXED -> MIXED;
         case LPCERROR -> ERROR;
+        case LPCFUNCTION -> MIXED;
         case LPCOBJECT -> OBJECT;
         case LPCSTATUS -> STATUS;
         case LPCSTRING -> STRING;

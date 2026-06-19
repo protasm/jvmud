@@ -10,6 +10,7 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeCoercions;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeArray;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeEquality;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeForeach;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeFunctionLiteral;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeIndex;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeTypes;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
@@ -294,6 +295,11 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRTypedFunctionLiteral typedFunctionLiteral) {
+            emitTypedFunctionLiteral(mv, typedFunctionLiteral);
+            return;
+        }
+
         if (expression instanceof IRLocalLoad localLoad) {
             emitLocalLoad(mv, localLoad.local());
             return;
@@ -484,6 +490,18 @@ public final class BytecodeCompiler {
         case STRING -> mv.visitLdcInsn(value);
         default -> mv.visitLdcInsn(value);
         }
+    }
+
+    private void emitTypedFunctionLiteral(MethodVisitor mv, IRTypedFunctionLiteral literal) {
+        mv.visitTypeInsn(NEW, Type.getInternalName(RuntimeFunctionLiteral.class));
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn(literal.signature());
+        mv.visitMethodInsn(
+                INVOKESPECIAL,
+                Type.getInternalName(RuntimeFunctionLiteral.class),
+                "<init>",
+                "(Ljava/lang/String;)V",
+                false);
     }
 
     private void emitLocalLoad(MethodVisitor mv, IRLocal local) {

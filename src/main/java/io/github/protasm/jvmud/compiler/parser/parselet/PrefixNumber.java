@@ -1,6 +1,7 @@
 package io.github.protasm.jvmud.compiler.parser.parselet;
 
 import io.github.protasm.jvmud.compiler.parser.Parser;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFloat;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.token.Token;
@@ -16,14 +17,10 @@ public class PrefixNumber implements PrefixParselet {
             Token<Integer> previous = parser.tokens().previous();
 
             return new ASTExprLiteralInteger(parser.currLine(), previous);
-//    case TOKEN_NUM_FLOAT:
-        //// if (inBinaryOp && lhsType == JType.JINT) {
-////        compiler.i2f();
-////        }
-////
-////        compiler.lpcFloat((Float) literal);
-//
-//        return;
+        case T_FLOAT_LITERAL:
+            Token<Float> floatToken = parser.tokens().previous();
+
+            return new ASTExprLiteralFloat(parser.currLine(), floatToken);
         default:
             return null;
         } // switch (numType)

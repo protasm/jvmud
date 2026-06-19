@@ -24,6 +24,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFunctionReference
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFalse;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFloat;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralString;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralTrue;
@@ -33,6 +34,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprError;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTypedFunctionLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignment;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedCall;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedIdentifier;
@@ -80,9 +82,11 @@ public interface ASTVisitor {
         case ASTExprFieldAccess exprFieldAccess -> visitExprFieldAccess(exprFieldAccess);
         case ASTExprFieldStore exprFieldStore -> visitExprFieldStore(exprFieldStore);
         case ASTExprFunctionReference exprFunctionReference -> visitExprFunctionReference(exprFunctionReference);
+        case ASTExprTypedFunctionLiteral exprTypedFunctionLiteral -> visitExprTypedFunctionLiteral(exprTypedFunctionLiteral);
         case ASTExprInvokeField exprInvokeField -> visitExprInvokeField(exprInvokeField);
         case ASTExprInvokeLocal exprInvokeLocal -> visitExprInvokeLocal(exprInvokeLocal);
         case ASTExprLiteralFalse exprLiteralFalse -> visitExprLiteralFalse(exprLiteralFalse);
+        case ASTExprLiteralFloat exprLiteralFloat -> visitExprLiteralFloat(exprLiteralFloat);
         case ASTExprLiteralInteger exprLiteralInteger -> visitExprLiteralInteger(exprLiteralInteger);
         case ASTExprLiteralString exprLiteralString -> visitExprLiteralString(exprLiteralString);
         case ASTExprLiteralTrue exprLiteralTrue -> visitExprLiteralTrue(exprLiteralTrue);
@@ -163,11 +167,18 @@ public interface ASTVisitor {
 
     default void visitExprFunctionReference(ASTExprFunctionReference expr) {}
 
+    default void visitExprTypedFunctionLiteral(ASTExprTypedFunctionLiteral expr) {
+        visit(expr.parameters());
+        visit(expr.body());
+    }
+
     default void visitExprInvokeField(ASTExprInvokeField expr) {}
 
     default void visitExprInvokeLocal(ASTExprInvokeLocal expr) {}
 
     default void visitExprLiteralFalse(ASTExprLiteralFalse expr) {}
+
+    default void visitExprLiteralFloat(ASTExprLiteralFloat expr) {}
 
     default void visitExprLiteralInteger(ASTExprLiteralInteger expr) {}
 

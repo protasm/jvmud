@@ -46,6 +46,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSortArray;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTypedFunctionLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignment;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedCall;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedIdentifier;
@@ -759,7 +760,7 @@ public final class SemanticAnalyzer {
     private void resolveIdentifiers(
             ASTObject astObject, SemanticScope objectScope, CompilationUnit parentUnit, List<CompilationProblem> problems) {
         IdentifierResolver resolver =
-                new IdentifierResolver(astObject.name(), objectScope, parentUnit, runtimeContext, problems);
+                new IdentifierResolver(astObject.name(), objectScope, parentUnit, runtimeContext, typeResolver, problems);
 
         for (ASTField field : astObject.fields()) {
             if (field.initializer() != null)
@@ -820,6 +821,7 @@ public final class SemanticAnalyzer {
         private final SemanticScope objectScope;
         private final CompilationUnit parentUnit;
         private final RuntimeContext runtimeContext;
+        private final TypeResolver typeResolver;
         private final List<CompilationProblem> problems;
 
         IdentifierResolver(
@@ -827,11 +829,13 @@ public final class SemanticAnalyzer {
                 SemanticScope objectScope,
                 CompilationUnit parentUnit,
                 RuntimeContext runtimeContext,
+                TypeResolver typeResolver,
                 List<CompilationProblem> problems) {
             this.currentObjectName = currentObjectName;
             this.objectScope = objectScope;
             this.parentUnit = parentUnit;
             this.runtimeContext = runtimeContext;
+            this.typeResolver = typeResolver;
             this.problems = problems;
         }
 
@@ -909,6 +913,26 @@ public final class SemanticAnalyzer {
                 if (resolvedBody == inlineCallable.body())
                     return inlineCallable;
                 return new ASTExprInlineCallable(inlineCallable.line(), resolvedBody);
+            }
+
+            if (expression instanceof ASTExprTypedFunctionLiteral typedFunction) {
+                resolveTypedFunctionSymbol(typedFunction.returnSymbol(), typedFunction.line());
+                context.pushScope();
+                List<ASTLocal> parameterLocals = new ArrayList<>();
+                for (ASTParameter parameter : typedFunction.parameters()) {
+                    resolveTypedFunctionSymbol(parameter.symbol(), parameter.line());
+                    parameterLocals.add(new ASTLocal(parameter.line(), parameter.symbol()));
+                }
+                context.declare(parameterLocals);
+                ASTExpression resolvedBody = resolveExpression(typedFunction.body(), context);
+                context.popScope();
+                if (resolvedBody == typedFunction.body())
+                    return typedFunction;
+                return new ASTExprTypedFunctionLiteral(
+                        typedFunction.line(),
+                        typedFunction.returnSymbol(),
+                        typedFunction.parameters(),
+                        resolvedBody);
             }
 
             if (expression instanceof ASTExprCollectionTransform transform) {
@@ -1199,6 +1223,24 @@ public final class SemanticAnalyzer {
                             "Unrecognized method or function '" + unresolvedCall.name() + "'.",
                             unresolvedCall.line()));
             return new ASTExprError(unresolvedCall.line());
+        }
+
+        private void resolveTypedFunctionSymbol(Symbol symbol, int line) {
+            if (symbol == null || symbol.lpcType() != null)
+                return;
+
+            LPCType resolved = typeResolver.resolve(symbol.declaredTypeName());
+            if (resolved != null) {
+                symbol.resolveDeclaredType(resolved);
+                return;
+            }
+
+            problems.add(
+                    new CompilationProblem(
+                            CompilationStage.ANALYZE,
+                            "Unknown type '" + symbol.declaredTypeName() + "' in typed function literal.",
+                            line));
+            symbol.resolveDeclaredType(LPCType.LPCMIXED);
         }
 
         private ASTExprCollectionTransform collectionTransform(ASTExprUnresolvedCall unresolvedCall, ASTArguments args) {

@@ -21,6 +21,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFalse;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFloat;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralString;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralTrue;
@@ -177,6 +178,11 @@ public final class PrintVisitor implements ASTVisitor {
     @Override
     public void visitExprLiteralFalse(ASTExprLiteralFalse expr) {
         doOutput(expr.className());
+    }
+
+    @Override
+    public void visitExprLiteralFloat(ASTExprLiteralFloat expr) {
+        doOutput(String.format("%s[%s]", expr.className(), expr.value()));
     }
 
     @Override

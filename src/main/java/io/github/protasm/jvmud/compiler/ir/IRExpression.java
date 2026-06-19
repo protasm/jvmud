@@ -40,6 +40,7 @@ public sealed interface IRExpression extends IRNode
                 IRSortArray,
                 IRSlice,
                 IRStringGet,
+                IRTypedFunctionLiteral,
                 IRUnaryOperation {
     RuntimeType type();
 }

@@ -14,6 +14,8 @@ public enum LPCType {
     LPCMIXED(JOBJECT),
     /** Compiler recovery type used after semantic errors; not a source-language LPC type. */
     LPCERROR(JOBJECT),
+    /** Callable value, including typed LPC function literals accepted for mudlib compatibility. */
+    LPCFUNCTION(JOBJECT),
     LPCOBJECT(JOBJECT),
     LPCSTATUS(JBOOLEAN),
     LPCSTRING(JSTRING),
