@@ -42,12 +42,14 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSortArray;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtDoWhile;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtEmpty;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
@@ -281,6 +283,9 @@ public final class IRLowerer {
             current.addStatement(new IRExpressionStatement(statement.line(), expression));
             return current;
         }
+
+        if (statement instanceof ASTStmtEmpty)
+            return current;
 
         if (statement instanceof ASTStmtIfThenElse ifStmt) {
             return lowerIfStatement(ifStmt, current, context, problems);
@@ -680,6 +685,9 @@ public final class IRLowerer {
         if (expression instanceof ASTExprCollectionTransform transform)
             return lowerCollectionTransform(transform, context, problems);
 
+        if (expression instanceof ASTExprSortArray sortArray)
+            return lowerSortArray(sortArray, context, problems);
+
         if (expression instanceof ASTExprArrayLiteral arrayLiteral) {
             List<IRExpression> elements = new ArrayList<>();
             for (ASTExpression element : arrayLiteral.elements())
@@ -962,6 +970,35 @@ public final class IRLowerer {
                 indexLocal,
                 argumentLocals,
                 resultType);
+    }
+
+    private IRExpression lowerSortArray(
+            ASTExprSortArray sortArray, MethodContext context, List<CompilationProblem> problems) {
+        IRExpression source = lowerExpression(sortArray.source(), context, problems);
+        IRLocal itemsLocal = context.addSyntheticLocal(sortArray.line(), "sort_items", RuntimeTypes.MIXED);
+        IRLocal indexLocal = context.addSyntheticLocal(sortArray.line(), "sort_index", RuntimeTypes.INT);
+        IRLocal innerIndexLocal = context.addSyntheticLocal(sortArray.line(), "sort_inner_index", RuntimeTypes.INT);
+        IRLocal swapLocal = context.addSyntheticLocal(sortArray.line(), "sort_swap", RuntimeTypes.MIXED);
+
+        int argumentCount = Math.max(2, maxClosureArgumentIndex(sortArray.comparator().body()));
+        List<IRLocal> argumentLocals = new ArrayList<>();
+        for (int i = 1; i <= argumentCount; i++)
+            argumentLocals.add(context.addSyntheticLocal(sortArray.line(), "sort_arg" + i, RuntimeTypes.MIXED));
+
+        context.pushClosureArguments(argumentLocals);
+        IRExpression comparatorBody = lowerExpression(sortArray.comparator().body(), context, problems);
+        context.popClosureArguments();
+
+        return new IRSortArray(
+                sortArray.line(),
+                coerceIfNeeded(source, RuntimeTypes.MIXED),
+                comparatorBody,
+                itemsLocal,
+                indexLocal,
+                innerIndexLocal,
+                swapLocal,
+                argumentLocals,
+                RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
     }
 
     private int maxClosureArgumentIndex(ASTExpression expression) {

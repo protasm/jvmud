@@ -322,6 +322,50 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsArrayConcatFromMixedArrayValue() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_array_concat.c", """
+                mixed value() {
+                    mixed ret;
+
+                    ret = ({ "a", "b" });
+                    if (pointerp(ret)) {
+                        ret += ({ "c" });
+                    }
+                    return ret;
+                }
+
+                int pointerp(mixed value) {
+                    return 1;
+                }
+                """);
+
+        assertEquals(List.of("a", "b", "c"), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsMappingMergeFromMixedMappingValue() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_mapping_merge.c", """
+                mixed value() {
+                    mixed ret;
+
+                    ret = ([ "a": 1 ]);
+                    if (mappingp(ret)) {
+                        ret += ([ "b": 2 ]);
+                    }
+                    return ret["b"];
+                }
+
+                int mappingp(mixed value) {
+                    return 1;
+                }
+                """);
+
+        assertEquals(2, object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsArraySliceReplacement() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/array_slice_replacement.c", """
@@ -744,6 +788,35 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsMixedStringRelationalComparison() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_string_compare.c", """
+                int value() {
+                    mixed left;
+                    mixed right;
+
+                    left = "b";
+                    right = "a";
+                    return left > right;
+                }
+                """);
+
+        assertEquals(1, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsSortArrayWithInlineStringComparator() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_sort.c", """
+                mixed value() {
+                    return sort_array(({"b", "a", "c"}), (: $1 > $2 :));
+                }
+                """);
+
+        assertEquals(List.of("a", "b", "c"), object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsInlineCallableExtraArgumentsAndMappingLookup() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_filter_mapping_lookup.c", """
@@ -995,6 +1068,28 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void parserAcceptsLegacyMultiStarArrayDeclarators() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/multistar_array_declarators.c", """
+                string **customIcon(string **baseIcon, string color) {
+                    string **ret;
+
+                    ret = baseIcon;
+                    return ret;
+                }
+
+                mixed value() {
+                    string **bannerArt;
+
+                    bannerArt = ({ ({ "a" }), ({ "b" }) });
+                    return customIcon(bannerArt, "red");
+                }
+                """);
+
+        assertEquals(List.of(List.of("a"), List.of("b")), object.invoke("value"));
+    }
+
+    @Test
     void objectLoadedLifecycleInvokesIntReset() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
@@ -1146,6 +1241,23 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(22, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsEmptyLoopBodyStatements() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/empty_loop_bodies.c", """
+                int value() {
+                    int i;
+
+                    while (i++ < 2);
+                    for (; i < 5; i++);
+
+                    return i;
+                }
+                """);
+
+        assertEquals(5, object.invoke("value"));
     }
 
     @Test

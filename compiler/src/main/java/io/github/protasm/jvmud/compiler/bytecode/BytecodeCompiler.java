@@ -5,6 +5,7 @@ import static org.objectweb.asm.Opcodes.*;
 import io.github.protasm.jvmud.compiler.ir.*;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeComparison;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCoercions;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeArray;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeEquality;
@@ -288,6 +289,11 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRSortArray sortArray) {
+            emitSortArray(mv, internalName, method, sortArray);
+            return;
+        }
+
         if (expression instanceof IRLocalLoad localLoad) {
             emitLocalLoad(mv, localLoad.local());
             return;
@@ -555,6 +561,12 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (isRelationalOperator(op)
+                && (binary.left().type().isReferenceLike() || binary.right().type().isReferenceLike())) {
+            emitDynamicComparison(mv, internalName, method, binary);
+            return;
+        }
+
         emitIntOperand(mv, internalName, method, binary.left());
         emitIntOperand(mv, internalName, method, binary.right());
 
@@ -568,6 +580,36 @@ public final class BytecodeCompiler {
         case BOP_GT, BOP_GE, BOP_LT, BOP_LE, BOP_EQ, BOP_NE -> emitComparison(mv, op);
         default -> throw new UnsupportedOperationException("Unsupported operator: " + op);
         }
+    }
+
+    private boolean isRelationalOperator(BinaryOpType op) {
+        return op == BinaryOpType.BOP_GT
+                || op == BinaryOpType.BOP_GE
+                || op == BinaryOpType.BOP_LT
+                || op == BinaryOpType.BOP_LE;
+    }
+
+    private void emitDynamicComparison(
+            MethodVisitor mv, String internalName, IRMethod method, IRBinaryOperation binary) {
+        emitExpression(mv, internalName, method, binary.left());
+        boxIfNeeded(mv, binary.left().type());
+        emitExpression(mv, internalName, method, binary.right());
+        boxIfNeeded(mv, binary.right().type());
+
+        String helperName = switch (binary.operator()) {
+        case BOP_GT -> "greaterThan";
+        case BOP_GE -> "greaterThanOrEqual";
+        case BOP_LT -> "lessThan";
+        case BOP_LE -> "lessThanOrEqual";
+        default -> throw new UnsupportedOperationException("Unsupported dynamic comparison: " + binary.operator());
+        };
+
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeComparison.class),
+                helperName,
+                "(Ljava/lang/Object;Ljava/lang/Object;)Z",
+                false);
     }
 
     private void emitLogicalBinary(
@@ -1103,6 +1145,105 @@ public final class BytecodeCompiler {
             mv.visitTypeInsn(CHECKCAST, "java/util/List");
     }
 
+    private void emitSortArray(MethodVisitor mv, String internalName, IRMethod method, IRSortArray sortArray) {
+        mv.visitTypeInsn(NEW, "java/util/ArrayList");
+        mv.visitInsn(DUP);
+        emitExpression(mv, internalName, method, sortArray.source());
+        boxIfNeeded(mv, sortArray.source().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeForeach.class),
+                "items",
+                "(Ljava/lang/Object;)Ljava/util/List;",
+                false);
+        mv.visitMethodInsn(
+                INVOKESPECIAL, "java/util/ArrayList", "<init>", "(Ljava/util/Collection;)V", false);
+        mv.visitVarInsn(ASTORE, sortArray.itemsLocal().slot());
+
+        pushInt(mv, 0);
+        mv.visitVarInsn(ISTORE, sortArray.indexLocal().slot());
+
+        Label outerCondition = new Label();
+        Label outerEnd = new Label();
+        Label innerCondition = new Label();
+        Label innerEnd = new Label();
+        Label skipSwap = new Label();
+
+        mv.visitLabel(outerCondition);
+        mv.visitVarInsn(ILOAD, sortArray.indexLocal().slot());
+        emitListSize(mv, sortArray.itemsLocal());
+        mv.visitJumpInsn(IF_ICMPGE, outerEnd);
+
+        mv.visitVarInsn(ILOAD, sortArray.indexLocal().slot());
+        mv.visitInsn(ICONST_1);
+        mv.visitInsn(IADD);
+        mv.visitVarInsn(ISTORE, sortArray.innerIndexLocal().slot());
+
+        mv.visitLabel(innerCondition);
+        mv.visitVarInsn(ILOAD, sortArray.innerIndexLocal().slot());
+        emitListSize(mv, sortArray.itemsLocal());
+        mv.visitJumpInsn(IF_ICMPGE, innerEnd);
+
+        emitListGet(mv, sortArray.itemsLocal(), sortArray.indexLocal());
+        mv.visitVarInsn(ASTORE, sortArray.comparatorArgumentLocals().get(0).slot());
+        emitListGet(mv, sortArray.itemsLocal(), sortArray.innerIndexLocal());
+        mv.visitVarInsn(ASTORE, sortArray.comparatorArgumentLocals().get(1).slot());
+
+        emitExpression(mv, internalName, method, sortArray.comparatorBody());
+        boxIfNeeded(mv, sortArray.comparatorBody().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(Truth.class),
+                "isTruthy",
+                "(Ljava/lang/Object;)Z",
+                false);
+        mv.visitJumpInsn(IFEQ, skipSwap);
+
+        emitListGet(mv, sortArray.itemsLocal(), sortArray.indexLocal());
+        mv.visitVarInsn(ASTORE, sortArray.swapLocal().slot());
+
+        mv.visitVarInsn(ALOAD, sortArray.itemsLocal().slot());
+        mv.visitTypeInsn(CHECKCAST, "java/util/List");
+        mv.visitVarInsn(ILOAD, sortArray.indexLocal().slot());
+        emitListGet(mv, sortArray.itemsLocal(), sortArray.innerIndexLocal());
+        mv.visitMethodInsn(
+                INVOKEINTERFACE, "java/util/List", "set", "(ILjava/lang/Object;)Ljava/lang/Object;", true);
+        mv.visitInsn(POP);
+
+        mv.visitVarInsn(ALOAD, sortArray.itemsLocal().slot());
+        mv.visitTypeInsn(CHECKCAST, "java/util/List");
+        mv.visitVarInsn(ILOAD, sortArray.innerIndexLocal().slot());
+        mv.visitVarInsn(ALOAD, sortArray.swapLocal().slot());
+        mv.visitMethodInsn(
+                INVOKEINTERFACE, "java/util/List", "set", "(ILjava/lang/Object;)Ljava/lang/Object;", true);
+        mv.visitInsn(POP);
+
+        mv.visitLabel(skipSwap);
+        mv.visitIincInsn(sortArray.innerIndexLocal().slot(), 1);
+        mv.visitJumpInsn(GOTO, innerCondition);
+
+        mv.visitLabel(innerEnd);
+        mv.visitIincInsn(sortArray.indexLocal().slot(), 1);
+        mv.visitJumpInsn(GOTO, outerCondition);
+
+        mv.visitLabel(outerEnd);
+        mv.visitVarInsn(ALOAD, sortArray.itemsLocal().slot());
+        mv.visitTypeInsn(CHECKCAST, "java/util/List");
+    }
+
+    private void emitListSize(MethodVisitor mv, IRLocal listLocal) {
+        mv.visitVarInsn(ALOAD, listLocal.slot());
+        mv.visitTypeInsn(CHECKCAST, "java/util/List");
+        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "size", "()I", true);
+    }
+
+    private void emitListGet(MethodVisitor mv, IRLocal listLocal, IRLocal indexLocal) {
+        mv.visitVarInsn(ALOAD, listLocal.slot());
+        mv.visitTypeInsn(CHECKCAST, "java/util/List");
+        mv.visitVarInsn(ILOAD, indexLocal.slot());
+        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "get", "(I)Ljava/lang/Object;", true);
+    }
+
     private void emitArrayConcat(MethodVisitor mv, String internalName, IRMethod method, IRArrayConcat concat) {
         mv.visitTypeInsn(NEW, "java/util/ArrayList");
         mv.visitInsn(DUP);
@@ -1110,11 +1251,13 @@ public final class BytecodeCompiler {
 
         mv.visitInsn(DUP);
         emitExpression(mv, internalName, method, concat.left());
+        mv.visitTypeInsn(CHECKCAST, "java/util/Collection");
         mv.visitMethodInsn(INVOKEVIRTUAL, "java/util/ArrayList", "addAll", "(Ljava/util/Collection;)Z", false);
         mv.visitInsn(POP);
 
         mv.visitInsn(DUP);
         emitExpression(mv, internalName, method, concat.right());
+        mv.visitTypeInsn(CHECKCAST, "java/util/Collection");
         mv.visitMethodInsn(INVOKEVIRTUAL, "java/util/ArrayList", "addAll", "(Ljava/util/Collection;)Z", false);
         mv.visitInsn(POP);
     }

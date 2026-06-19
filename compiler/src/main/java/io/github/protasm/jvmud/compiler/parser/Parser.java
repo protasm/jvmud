@@ -64,6 +64,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtDoWhile;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtEmpty;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
@@ -279,15 +280,30 @@ public class Parser {
             throw new ParseException("Expect property type or name.", tokens.current());
 
         Token<String> firstToken = tokens.consume(T_IDENTIFIER, "Expect property type or name.");
-        boolean isArrayType = tokens.match(TokenType.T_STAR);
+        String arraySuffix = arrayDeclaratorSuffix();
 
         if (tokens.check(T_IDENTIFIER)) {
             Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect property name.");
-            String declaredTypeName = firstToken.lexeme() + (isArrayType ? "*" : "");
+            String declaredTypeName = firstToken.lexeme() + arraySuffix;
             return new Symbol(declaredTypeName, nameToken.lexeme());
         }
 
         return new Symbol((String) null, firstToken.lexeme());
+    }
+
+    /**
+     * Consumes legacy LPC array declarator stars after a type name.
+     *
+     * <p>JVMud currently models any {@code T*}, {@code T**}, etc. as {@link
+     * io.github.protasm.jvmud.compiler.parser.type.LPCType#LPCARRAY}. The repeated spelling is
+     * retained in the declared type text for diagnostics and compatibility scans, but it does not
+     * introduce C pointer semantics.</p>
+     */
+    private String arrayDeclaratorSuffix() {
+        int dimensions = 0;
+        while (tokens.match(TokenType.T_STAR))
+            dimensions++;
+        return "*".repeat(dimensions);
     }
 
     private void field(Symbol symbol, int declarationLine, DeclarationModifiers modifiers) {
@@ -342,11 +358,11 @@ public class Parser {
         declarators.add(fieldDeclarator(symbol));
 
         while (tokens.match(T_COMMA)) {
-            boolean isArrayType = tokens.match(TokenType.T_STAR);
+            String arraySuffix = arrayDeclaratorSuffix();
             Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect field name.");
             String declaredTypeName = symbol.declaredTypeName();
-            if (isArrayType && declaredTypeName != null && !declaredTypeName.endsWith("*"))
-                declaredTypeName = declaredTypeName + "*";
+            if (!arraySuffix.isEmpty() && declaredTypeName != null && !declaredTypeName.endsWith("*"))
+                declaredTypeName = declaredTypeName + arraySuffix;
             Symbol additionalSymbol = new Symbol(declaredTypeName, nameToken.lexeme());
 
             declarators.add(fieldDeclarator(additionalSymbol));
@@ -435,11 +451,11 @@ public class Parser {
             Token<String> nameToken = null;
             String declaredType = null;
 
-            boolean isArrayType = tokens.match(TokenType.T_STAR);
+            String arraySuffix = arrayDeclaratorSuffix();
 
             if (tokens.check(T_IDENTIFIER)) {
                 nameToken = tokens.consume(T_IDENTIFIER, "Expect parameter name.");
-                declaredType = firstToken.lexeme() + (isArrayType ? "*" : "");
+                declaredType = firstToken.lexeme() + arraySuffix;
             } else {
                 nameToken = firstToken;
             }
@@ -541,9 +557,9 @@ public class Parser {
         List<ASTLocal> declaredLocals = new ArrayList<>();
 
         do {
-            boolean isArrayType = tokens.match(TokenType.T_STAR);
+            String arraySuffix = arrayDeclaratorSuffix();
             Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect local variable name.");
-            String declaredType = typeToken.lexeme() + (isArrayType ? "*" : "");
+            String declaredType = typeToken.lexeme() + arraySuffix;
             Symbol symbol = new Symbol(declaredType, nameToken.lexeme());
 
             ASTLocal local = new ASTLocal(currLine(), symbol);
@@ -567,7 +583,9 @@ public class Parser {
     }
 
         public ASTStatement statement() {
-                if (tokens.match(T_IF))
+                if (tokens.match(T_SEMICOLON))
+                        return new ASTStmtEmpty(tokens.previous().line());
+                else if (tokens.match(T_IF))
                         return ifStatement();
                 else if (tokens.match(T_DO))
                         return doWhileStatement();
@@ -760,9 +778,9 @@ public class Parser {
 
     private ForInitializerDeclaration forInitializerDeclaration() {
         Token<String> typeToken = tokens.consume(T_IDENTIFIER, "Expect for initializer local type.");
-        boolean isArrayType = tokens.match(TokenType.T_STAR);
+        String arraySuffix = arrayDeclaratorSuffix();
         Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect for initializer local name.");
-        String declaredType = typeToken.lexeme() + (isArrayType ? "*" : "");
+        String declaredType = typeToken.lexeme() + arraySuffix;
         Symbol symbol = new Symbol(declaredType, nameToken.lexeme());
         ASTLocal local = new ASTLocal(currLine(), symbol);
 
@@ -800,9 +818,9 @@ public class Parser {
 
     private ASTLocal foreachLocal() {
         Token<String> typeToken = tokens.consume(T_IDENTIFIER, "Expect foreach variable type.");
-        boolean isArrayType = tokens.match(TokenType.T_STAR);
+        String arraySuffix = arrayDeclaratorSuffix();
         Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect foreach variable name.");
-        String declaredType = typeToken.lexeme() + (isArrayType ? "*" : "");
+        String declaredType = typeToken.lexeme() + arraySuffix;
         Symbol symbol = new Symbol(declaredType, nameToken.lexeme());
         ASTLocal local = new ASTLocal(typeToken.line(), symbol);
 
@@ -881,21 +899,25 @@ public class Parser {
         return expr;
     }
 
+    /**
+     * Returns true when the current tokens look like a typed local declaration.
+     *
+     * <p>Legacy LPC permits one or more stars between the type name and local name, such as
+     * {@code string *names} or {@code string **icons}. JVMud treats those stars as array-declarator
+     * spelling only, not as pointer syntax.</p>
+     */
     private boolean startsLocalDeclaration() {
         if (!tokens.check(T_IDENTIFIER))
             return false;
 
-        Token<?> next = tokens.peek(1);
-
-        if (next.type() == T_IDENTIFIER)
+        int offset = 1;
+        if (tokens.peek(offset).type() == T_IDENTIFIER)
             return true;
 
-        if (next.type() == TokenType.T_STAR) {
-            Token<?> after = tokens.peek(2);
-            return after.type() == T_IDENTIFIER;
-        }
+        while (tokens.peek(offset).type() == TokenType.T_STAR)
+            offset++;
 
-        return false;
+        return offset > 1 && tokens.peek(offset).type() == T_IDENTIFIER;
     }
 
 }

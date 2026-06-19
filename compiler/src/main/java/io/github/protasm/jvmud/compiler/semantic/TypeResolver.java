@@ -21,8 +21,12 @@ public final class TypeResolver {
             return null;
 
         String normalized = typeName.replaceAll("\\s+", "").toLowerCase();
-        if (normalized.endsWith("*")) {
-            String base = normalized.substring(0, normalized.length() - 1);
+        int baseEnd = normalized.length();
+        while (baseEnd > 0 && normalized.charAt(baseEnd - 1) == '*')
+            baseEnd--;
+
+        if (baseEnd < normalized.length()) {
+            String base = normalized.substring(0, baseEnd);
             if (TYPE_KEYWORDS.containsKey(base))
                 return LPCType.LPCARRAY;
         }

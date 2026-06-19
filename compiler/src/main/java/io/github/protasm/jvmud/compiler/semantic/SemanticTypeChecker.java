@@ -42,6 +42,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSortArray;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
@@ -49,6 +50,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtDoWhile;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtEmpty;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
@@ -101,6 +103,9 @@ public final class SemanticTypeChecker {
             inferExpressionType(stmtExpression.expression(), context);
             return;
         }
+
+        if (statement instanceof ASTStmtEmpty)
+            return;
 
         if (statement instanceof ASTStmtIfThenElse stmtIf) {
             // All expressions participate in truthiness; conditions are not restricted to booleans.
@@ -201,6 +206,11 @@ public final class SemanticTypeChecker {
             for (ASTExpression extra : transform.extraArguments())
                 inferExpressionType(extra, context);
             return transform.lpcType();
+        }
+        if (expression instanceof ASTExprSortArray sortArray) {
+            inferExpressionType(sortArray.source(), context);
+            inferExpressionType(sortArray.comparator().body(), context);
+            return sortArray.lpcType();
         }
         if (expression instanceof ASTExprSymbolLiteral || expression instanceof ASTExprFunctionReference)
             return LPCType.LPCMIXED;
@@ -354,7 +364,7 @@ public final class SemanticTypeChecker {
         switch (op) {
         case BOP_ADD -> {
             if (leftType == LPCType.LPCARRAY || rightType == LPCType.LPCARRAY) {
-                if (leftType != LPCType.LPCARRAY || rightType != LPCType.LPCARRAY) {
+                if (!isArrayLikeForConcat(leftType) || !isArrayLikeForConcat(rightType)) {
                     problems.add(
                             new CompilationProblem(
                                     CompilationStage.ANALYZE,
@@ -366,7 +376,7 @@ public final class SemanticTypeChecker {
             if (leftType == LPCType.LPCSTRING || rightType == LPCType.LPCSTRING)
                 return LPCType.LPCSTRING;
             if (leftType == LPCType.LPCMAPPING || rightType == LPCType.LPCMAPPING) {
-                if (leftType != LPCType.LPCMAPPING || rightType != LPCType.LPCMAPPING) {
+                if (!isMappingLikeForConcat(leftType) || !isMappingLikeForConcat(rightType)) {
                     problems.add(
                             new CompilationProblem(
                                     CompilationStage.ANALYZE,
@@ -415,7 +425,7 @@ public final class SemanticTypeChecker {
             return LPCType.LPCSTATUS;
         }
         case BOP_GT, BOP_GE, BOP_LT, BOP_LE -> {
-            ensureNumericOperands(leftType, rightType, expr.line(), "Comparison expects numeric operands");
+            ensureComparableOperands(leftType, rightType, expr.line());
             return LPCType.LPCSTATUS;
         }
         case BOP_EQ, BOP_NE -> {
@@ -426,12 +436,39 @@ public final class SemanticTypeChecker {
         return LPCType.LPCMIXED;
     }
 
+    private boolean isArrayLikeForConcat(LPCType type) {
+        return type == LPCType.LPCARRAY || type == LPCType.LPCMIXED || type == LPCType.LPCNULL;
+    }
+
+    private boolean isMappingLikeForConcat(LPCType type) {
+        return type == LPCType.LPCMAPPING || type == LPCType.LPCMIXED || type == LPCType.LPCNULL;
+    }
+
     private boolean isArrayLikeForDifference(LPCType type) {
         return type == LPCType.LPCARRAY || type == LPCType.LPCMIXED || type == LPCType.LPCNULL;
     }
 
     private boolean isStringLikeForDifference(LPCType type) {
         return type == LPCType.LPCSTRING || type == LPCType.LPCMIXED || type == LPCType.LPCNULL;
+    }
+
+    private boolean isComparableType(LPCType type) {
+        return type == LPCType.LPCINT
+                || type == LPCType.LPCFLOAT
+                || type == LPCType.LPCSTRING
+                || type == LPCType.LPCMIXED
+                || type == LPCType.LPCNULL;
+    }
+
+    private void ensureComparableOperands(LPCType left, LPCType right, int line) {
+        if (isComparableType(left) && isComparableType(right))
+            return;
+
+        problems.add(
+                new CompilationProblem(
+                        CompilationStage.ANALYZE,
+                        "Comparison expects numeric, string, or mixed operands",
+                        line));
     }
 
     private LPCType inferEfunCall(ASTExprCallEfun expr, MethodContext context) {

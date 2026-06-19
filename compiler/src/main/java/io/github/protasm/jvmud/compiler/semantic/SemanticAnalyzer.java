@@ -41,6 +41,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSortArray;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignment;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedCall;
@@ -52,6 +53,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtDoWhile;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtEmpty;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
@@ -913,6 +915,19 @@ public final class SemanticAnalyzer {
                         resolvedExtras);
             }
 
+            if (expression instanceof ASTExprSortArray sortArray) {
+                ASTExpression resolvedSource = resolveExpression(sortArray.source(), context);
+                context.enterInlineCallable();
+                ASTExpression resolvedBody = resolveExpression(sortArray.comparator().body(), context);
+                context.exitInlineCallable();
+                if (resolvedSource == sortArray.source() && resolvedBody == sortArray.comparator().body())
+                    return sortArray;
+                return new ASTExprSortArray(
+                        sortArray.line(),
+                        resolvedSource,
+                        new ASTExprInlineCallable(sortArray.comparator().line(), resolvedBody));
+            }
+
             if (expression instanceof ASTExprDynamicInvoke dynamicInvoke) {
                 ASTExpression resolvedTarget = resolveExpression(dynamicInvoke.target(), context);
                 ASTArguments resolvedArgs = resolveArguments(dynamicInvoke.arguments(), context);
@@ -1133,6 +1148,10 @@ public final class SemanticAnalyzer {
             if (transform != null)
                 return transform;
 
+            ASTExprSortArray sortArray = sortArrayTransform(unresolvedCall, resolvedArgs);
+            if (sortArray != null)
+                return sortArray;
+
             ASTMethod method = resolveMethod(unresolvedCall.name(), resolvedArgs.size());
 
             if (method != null)
@@ -1171,6 +1190,20 @@ public final class SemanticAnalyzer {
                     : ASTExprCollectionTransform.Operation.MAP;
             return new ASTExprCollectionTransform(
                     unresolvedCall.line(), operation, args.get(0).expression(), inlineCallable, extras);
+        }
+
+        private ASTExprSortArray sortArrayTransform(ASTExprUnresolvedCall unresolvedCall, ASTArguments args) {
+            if (!"sort_array".equals(unresolvedCall.name()))
+                return null;
+
+            if (args == null || args.size() != 2)
+                return null;
+
+            ASTExpression callback = args.get(1).expression();
+            if (!(callback instanceof ASTExprInlineCallable inlineCallable))
+                return null;
+
+            return new ASTExprSortArray(unresolvedCall.line(), args.get(0).expression(), inlineCallable);
         }
 
         private ASTExpression resolveQualifiedCall(
@@ -1407,6 +1440,9 @@ public final class SemanticAnalyzer {
                     return stmtExpression;
                 return new ASTStmtExpression(stmtExpression.line(), resolved);
             }
+
+            if (statement instanceof ASTStmtEmpty)
+                return statement;
 
             if (statement instanceof ASTStmtIfThenElse stmtIf) {
                 ASTExpression resolvedCondition = resolveExpression(stmtIf.condition(), context);
