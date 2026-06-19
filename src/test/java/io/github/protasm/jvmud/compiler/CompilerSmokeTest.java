@@ -1130,6 +1130,82 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void forInitializerVariablesAreScopedToSiblingLoops() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/for_initializer_sibling_scopes.c", """
+                int value() {
+                    int total;
+
+                    for (int i = 0; i < 2; i++)
+                    {
+                        total += i;
+                    }
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        total += i;
+                    }
+
+                    return total;
+                }
+                """);
+
+        assertEquals(4, object.invoke("value"));
+    }
+
+    @Test
+    void forInitializerVariablesAreScopedToSiblingMethods() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/for_initializer_method_scopes.c", """
+                int left() {
+                    int found;
+
+                    for (int sx = 0; sx < 2; sx++)
+                    {
+                        found += sx;
+                    }
+
+                    return found;
+                }
+
+                int right() {
+                    int found;
+
+                    for (int sx = 0; sx < 3; sx++)
+                    {
+                        found += sx;
+                    }
+
+                    return found;
+                }
+
+                int value() {
+                    return left() + right();
+                }
+                """);
+
+        assertEquals(4, object.invoke("value"));
+    }
+
+    @Test
+    void forInitializerVariableExpiresAfterLoop() {
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
+                int value() {
+                    for (int i = 0; i < 1; i++)
+                    {
+                    }
+
+                    return i;
+                }
+                """);
+
+        assertTrue(
+                result.getProblems().stream()
+                        .anyMatch(problem -> problem.getMessage().contains("Unrecognized local or field 'i'")),
+                () -> problemMessages(result));
+    }
+
+    @Test
     void foreachHonorsBreakAndContinue() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/foreach_control.c", """

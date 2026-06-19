@@ -742,36 +742,45 @@ public class Parser {
         return new ASTStmtDoWhile(line, body, condition);
     }
 
+    /**
+     * Parses a {@code for} statement with a loop-local parser scope so typed
+     * initializer declarations do not collide with sibling loop declarations.
+     */
     private ASTStmtFor forStatement() {
         int line = tokens.previous().line();
         tokens.consume(T_LEFT_PAREN, "Expect '(' after for.");
 
-        List<ASTLocal> initializerLocals = List.of();
-        ASTExpression initializer = null;
-        if (!tokens.check(T_SEMICOLON)) {
-            if (startsLocalDeclaration()) {
-                ForInitializerDeclaration declaration = forInitializerDeclaration();
-                initializerLocals = declaration.locals();
-                initializer = declaration.initializer();
-            } else {
-                initializer = commaExpression();
+        locals.beginScope();
+        try {
+            List<ASTLocal> initializerLocals = List.of();
+            ASTExpression initializer = null;
+            if (!tokens.check(T_SEMICOLON)) {
+                if (startsLocalDeclaration()) {
+                    ForInitializerDeclaration declaration = forInitializerDeclaration();
+                    initializerLocals = declaration.locals();
+                    initializer = declaration.initializer();
+                } else {
+                    initializer = commaExpression();
+                }
             }
+            tokens.consume(T_SEMICOLON, "Expect ';' after for initializer.");
+
+            ASTExpression condition = null;
+            if (!tokens.check(T_SEMICOLON))
+                condition = expression();
+            tokens.consume(T_SEMICOLON, "Expect ';' after for condition.");
+
+            ASTExpression update = null;
+            if (!tokens.check(T_RIGHT_PAREN))
+                update = commaExpression();
+            tokens.consume(T_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+            ASTStatement body = statement();
+
+            return new ASTStmtFor(line, initializerLocals, initializer, condition, update, body);
+        } finally {
+            locals.endScope();
         }
-        tokens.consume(T_SEMICOLON, "Expect ';' after for initializer.");
-
-        ASTExpression condition = null;
-        if (!tokens.check(T_SEMICOLON))
-            condition = expression();
-        tokens.consume(T_SEMICOLON, "Expect ';' after for condition.");
-
-        ASTExpression update = null;
-        if (!tokens.check(T_RIGHT_PAREN))
-            update = commaExpression();
-        tokens.consume(T_RIGHT_PAREN, "Expect ')' after for clauses.");
-
-        ASTStatement body = statement();
-
-        return new ASTStmtFor(line, initializerLocals, initializer, condition, update, body);
     }
 
     private record ForInitializerDeclaration(List<ASTLocal> locals, ASTExpression initializer) {}
