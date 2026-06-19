@@ -25,6 +25,7 @@ public sealed interface IRExpression extends IRNode
                 IRForeachItems,
                 IRForeachSize,
                 IRForeachValue,
+                IRFromEndIndex,
                 IRInstanceCall,
                 IRLocalLoad,
                 IRLocalMutation,

@@ -7,6 +7,8 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DOT_DOT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_GREATER_GREATER_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_INT_LITERAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_LESS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_MINUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_EQUAL;
@@ -22,18 +24,21 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFromEndIndex;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
 import io.github.protasm.jvmud.compiler.parser.type.AssignOpType;
+import io.github.protasm.jvmud.compiler.token.Token;
 
 public class InfixIndex implements InfixParselet {
     @Override
     public ASTExpression parse(Parser parser, ASTExpression left, boolean canAssign) {
         int line = parser.currLine();
-        ASTExpression index = parser.expression();
+        ASTExpression index = parser.tokens().check(T_DOT_DOT) ? zero(line) : indexBound(parser);
 
         if (parser.tokens().match(T_DOT_DOT)) {
-            ASTExpression end = parser.tokens().check(T_RIGHT_BRACKET) ? null : parser.expression();
+            ASTExpression end = parser.tokens().check(T_RIGHT_BRACKET) ? null : indexBound(parser);
             parser.tokens().consume(T_RIGHT_BRACKET, "Expect ']' after slice range.");
             if (canAssign && parser.tokens().match(T_EQUAL))
                 return new ASTExprSliceStore(line, left, index, end, parser.expression());
@@ -53,6 +58,18 @@ public class InfixIndex implements InfixParselet {
             return new ASTExprArrayMutation(line, left, index, -1);
 
         return new ASTExprArrayAccess(line, left, index);
+    }
+
+    /** Parses either a normal index expression or an LPC from-end bound such as {@code <1}. */
+    private ASTExpression indexBound(Parser parser) {
+        int line = parser.currLine();
+        if (parser.tokens().match(T_LESS))
+            return new ASTExprFromEndIndex(line, parser.expression());
+        return parser.expression();
+    }
+
+    private ASTExprLiteralInteger zero(int line) {
+        return new ASTExprLiteralInteger(line, new Token<>(T_INT_LITERAL, "0", 0, null));
     }
 
     private AssignOpType assignmentOperator(Parser parser) {

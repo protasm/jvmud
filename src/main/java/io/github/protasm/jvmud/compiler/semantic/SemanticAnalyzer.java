@@ -27,6 +27,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFromEndIndex;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInlineCallable;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
@@ -877,6 +878,13 @@ public final class SemanticAnalyzer {
 
             if (expression instanceof ASTExprUnresolvedInvoke unresolvedInvoke)
                 return resolveInvoke(unresolvedInvoke, context);
+
+            if (expression instanceof ASTExprFromEndIndex fromEnd) {
+                ASTExpression resolvedDistance = resolveExpression(fromEnd.distance(), context);
+                if (resolvedDistance == fromEnd.distance())
+                    return fromEnd;
+                return new ASTExprFromEndIndex(fromEnd.line(), resolvedDistance);
+            }
 
             if (expression instanceof ASTExprClosureArgument closureArgument) {
                 if (!context.insideInlineCallable()) {

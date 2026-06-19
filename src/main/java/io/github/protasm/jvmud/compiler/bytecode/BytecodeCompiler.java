@@ -459,6 +459,11 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRFromEndIndex fromEndIndex) {
+            emitFromEndIndex(mv, internalName, method, fromEndIndex);
+            return;
+        }
+
         if (expression instanceof IRCoerce coerce) {
             emitCoerce(mv, internalName, method, coerce);
         }
@@ -1422,33 +1427,27 @@ public final class BytecodeCompiler {
 
     private void emitArrayGet(MethodVisitor mv, String internalName, IRMethod method, IRArrayGet arrayGet) {
         emitExpression(mv, internalName, method, arrayGet.array());
-        if (arrayGet.array().type() != null && arrayGet.array().type().kind() == RuntimeValueKind.MIXED) {
-            emitExpression(mv, internalName, method, arrayGet.index());
-            boxIfNeeded(mv, arrayGet.index().type());
-            mv.visitMethodInsn(
-                    INVOKESTATIC,
-                    Type.getInternalName(RuntimeIndex.class),
-                    "get",
-                    "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
-                    false);
-            return;
-        }
-        mv.visitTypeInsn(CHECKCAST, "java/util/List");
+        boxIfNeeded(mv, arrayGet.array().type());
         emitExpression(mv, internalName, method, arrayGet.index());
-        coerceValue(mv, arrayGet.index().type(), RuntimeTypes.INT);
-        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "get", "(I)Ljava/lang/Object;", true);
+        boxIfNeeded(mv, arrayGet.index().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeIndex.class),
+                "get",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                false);
     }
 
     private void emitStringGet(MethodVisitor mv, String internalName, IRMethod method, IRStringGet stringGet) {
         emitExpression(mv, internalName, method, stringGet.string());
         coerceValue(mv, stringGet.string().type(), RuntimeTypes.STRING);
         emitExpression(mv, internalName, method, stringGet.index());
-        coerceValue(mv, stringGet.index().type(), RuntimeTypes.INT);
+        boxIfNeeded(mv, stringGet.index().type());
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Type.getInternalName(RuntimeIndex.class),
                 "stringCharCode",
-                "(Ljava/lang/String;I)I",
+                "(Ljava/lang/String;Ljava/lang/Object;)I",
                 false);
     }
 
@@ -1456,46 +1455,38 @@ public final class BytecodeCompiler {
         emitExpression(mv, internalName, method, slice.target());
         boxIfNeeded(mv, slice.target().type());
         emitExpression(mv, internalName, method, slice.start());
-        coerceValue(mv, slice.start().type(), RuntimeTypes.INT);
+        boxIfNeeded(mv, slice.start().type());
         emitExpression(mv, internalName, method, slice.end());
         boxIfNeeded(mv, slice.end().type());
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Type.getInternalName(RuntimeIndex.class),
                 "slice",
-                "(Ljava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;",
+                "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
                 false);
         coerceValue(mv, RuntimeTypes.MIXED, slice.type());
     }
 
     private void emitArraySet(MethodVisitor mv, String internalName, IRMethod method, IRArraySet arraySet) {
         emitExpression(mv, internalName, method, arraySet.array());
-        if (arraySet.array().type() != null && arraySet.array().type().kind() == RuntimeValueKind.MIXED) {
-            emitExpression(mv, internalName, method, arraySet.index());
-            boxIfNeeded(mv, arraySet.index().type());
-            emitExpression(mv, internalName, method, arraySet.value());
-            boxIfNeeded(mv, arraySet.value().type());
-            mv.visitMethodInsn(
-                    INVOKESTATIC,
-                    Type.getInternalName(RuntimeIndex.class),
-                    "set",
-                    "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
-                    false);
-            return;
-        }
-        mv.visitTypeInsn(CHECKCAST, "java/util/List");
+        boxIfNeeded(mv, arraySet.array().type());
         emitExpression(mv, internalName, method, arraySet.index());
-        coerceValue(mv, arraySet.index().type(), RuntimeTypes.INT);
+        boxIfNeeded(mv, arraySet.index().type());
         emitExpression(mv, internalName, method, arraySet.value());
         boxIfNeeded(mv, arraySet.value().type());
-        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "set", "(ILjava/lang/Object;)Ljava/lang/Object;", true);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeIndex.class),
+                "set",
+                "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                false);
     }
 
     private void emitArraySliceSet(MethodVisitor mv, String internalName, IRMethod method, IRArraySliceSet arraySliceSet) {
         emitExpression(mv, internalName, method, arraySliceSet.array());
         boxIfNeeded(mv, arraySliceSet.array().type());
         emitExpression(mv, internalName, method, arraySliceSet.start());
-        coerceValue(mv, arraySliceSet.start().type(), RuntimeTypes.INT);
+        boxIfNeeded(mv, arraySliceSet.start().type());
         emitExpression(mv, internalName, method, arraySliceSet.end());
         boxIfNeeded(mv, arraySliceSet.end().type());
         emitExpression(mv, internalName, method, arraySliceSet.value());
@@ -1504,7 +1495,7 @@ public final class BytecodeCompiler {
                 INVOKESTATIC,
                 Type.getInternalName(RuntimeIndex.class),
                 "replaceSlice",
-                "(Ljava/lang/Object;ILjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
                 false);
         coerceValue(mv, RuntimeTypes.MIXED, arraySliceSet.type());
     }
@@ -1513,13 +1504,24 @@ public final class BytecodeCompiler {
         emitExpression(mv, internalName, method, mutation.array());
         boxIfNeeded(mv, mutation.array().type());
         emitExpression(mv, internalName, method, mutation.index());
-        coerceValue(mv, mutation.index().type(), RuntimeTypes.INT);
+        boxIfNeeded(mv, mutation.index().type());
         pushInt(mv, mutation.delta());
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Type.getInternalName(RuntimeIndex.class),
                 mutation.isPrefix() ? "mutateNumberPrefix" : "mutateNumber",
-                "(Ljava/lang/Object;II)Ljava/lang/Object;",
+                "(Ljava/lang/Object;Ljava/lang/Object;I)Ljava/lang/Object;",
+                false);
+    }
+
+    private void emitFromEndIndex(MethodVisitor mv, String internalName, IRMethod method, IRFromEndIndex fromEndIndex) {
+        emitExpression(mv, internalName, method, fromEndIndex.distance());
+        coerceValue(mv, fromEndIndex.distance().type(), RuntimeTypes.INT);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeIndex.class),
+                "fromEnd",
+                "(I)Ljava/lang/Object;",
                 false);
     }
 

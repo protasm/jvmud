@@ -26,6 +26,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFromEndIndex;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFunctionReference;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInlineCallable;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
@@ -262,6 +263,12 @@ public final class SemanticTypeChecker {
 
         if (expression instanceof ASTExprSliceStore sliceStore)
             return inferSliceStoreType(sliceStore, context);
+
+        if (expression instanceof ASTExprFromEndIndex fromEnd) {
+            LPCType distanceType = inferExpressionType(fromEnd.distance(), context);
+            ensureAssignable(LPCType.LPCINT, distanceType, fromEnd.line(), "From-end index expects integer distance");
+            return LPCType.LPCINT;
+        }
 
         if (expression instanceof ASTExprFieldStore store) {
             LPCType fieldType = valueType(store.field().symbol());

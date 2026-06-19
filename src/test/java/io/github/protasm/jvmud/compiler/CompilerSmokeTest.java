@@ -484,6 +484,59 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsFromEndStringSuffixSlice() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/from_end_string_suffix.c", """
+                int value() {
+                    string path;
+
+                    path = "/tmp/";
+                    return path[<1..] == "/";
+                }
+                """);
+
+        assertEquals(1, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsFromEndArrayIndexAndSlices() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/from_end_array_index.c", """
+                mixed value() {
+                    mixed *values;
+
+                    values = ({ "a", "b", "c", "d" });
+                    return ({
+                        values[<1],
+                        values[<2..],
+                        values[..<2],
+                        values[<3..<1]
+                    });
+                }
+                """);
+
+        assertEquals(
+                List.of("d", List.of("c", "d"), List.of("a", "b", "c"), List.of("b", "c", "d")),
+                object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsFromEndArraySliceAssignment() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/from_end_slice_assignment.c", """
+                mixed value() {
+                    mixed *values;
+
+                    values = ({ 1, 2, 3, 4 });
+                    values[<2..] = ({ 9 });
+                    return values;
+                }
+                """);
+
+        assertEquals(List.of(1, 2, 9), object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsHexIntegerLiterals() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/hex_integer.c", """

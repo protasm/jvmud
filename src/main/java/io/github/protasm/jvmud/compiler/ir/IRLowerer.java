@@ -24,6 +24,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCollectionTransfo
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFromEndIndex;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFunctionReference;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
@@ -758,6 +759,11 @@ public final class IRLowerer {
                     mutation.delta(),
                     mutation.isPrefix());
 
+        if (expression instanceof ASTExprFromEndIndex fromEnd) {
+            IRExpression distance = coerceIfNeeded(lowerExpression(fromEnd.distance(), context, problems), RuntimeTypes.INT);
+            return new IRFromEndIndex(fromEnd.line(), distance);
+        }
+
         if (expression instanceof ASTExprArrayAccess arrayAccess) {
             IRExpression target = lowerExpression(arrayAccess.target(), context, problems);
             RuntimeType targetType = runtimeType(arrayAccess.target().lpcType());
@@ -767,7 +773,7 @@ public final class IRLowerer {
             }
 
             IRExpression rawIndex = lowerExpression(arrayAccess.index(), context, problems);
-            IRExpression index = coerceIfNeeded(rawIndex, RuntimeTypes.INT);
+            IRExpression index = indexExpression(rawIndex);
             if (targetType != null && targetType.kind() == RuntimeValueKind.STRING)
                 return new IRStringGet(arrayAccess.line(), target, index, RuntimeTypes.INT);
 
@@ -783,11 +789,10 @@ public final class IRLowerer {
 
         if (expression instanceof ASTExprSliceAccess sliceAccess) {
             IRExpression target = lowerExpression(sliceAccess.target(), context, problems);
-            IRExpression start = coerceIfNeeded(
-                    lowerExpression(sliceAccess.start(), context, problems), RuntimeTypes.INT);
+            IRExpression start = indexExpression(lowerExpression(sliceAccess.start(), context, problems));
             IRExpression end = sliceAccess.end() == null
                     ? new IRConstant(sliceAccess.line(), null, RuntimeTypes.INTERNAL_NULL)
-                    : coerceIfNeeded(lowerExpression(sliceAccess.end(), context, problems), RuntimeTypes.INT);
+                    : indexExpression(lowerExpression(sliceAccess.end(), context, problems));
             RuntimeType targetType = runtimeType(sliceAccess.target().lpcType());
             RuntimeType resultType = RuntimeTypes.MIXED;
             if (targetType != null && targetType.kind() == RuntimeValueKind.STRING)
@@ -816,18 +821,17 @@ public final class IRLowerer {
                         coerceIfNeeded(rawIndex, RuntimeTypes.MIXED),
                         coerceIfNeeded(value, RuntimeTypes.MIXED),
                         value.type());
-            IRExpression index = coerceIfNeeded(rawIndex, RuntimeTypes.INT);
+            IRExpression index = indexExpression(rawIndex);
             return new IRArraySet(
                     arrayStore.line(), target, index, coerceIfNeeded(value, RuntimeTypes.MIXED), value.type());
         }
 
         if (expression instanceof ASTExprSliceStore sliceStore) {
             IRExpression target = lowerExpression(sliceStore.target(), context, problems);
-            IRExpression start = coerceIfNeeded(
-                    lowerExpression(sliceStore.start(), context, problems), RuntimeTypes.INT);
+            IRExpression start = indexExpression(lowerExpression(sliceStore.start(), context, problems));
             IRExpression end = sliceStore.end() == null
                     ? new IRConstant(sliceStore.line(), null, RuntimeTypes.INTERNAL_NULL)
-                    : coerceIfNeeded(lowerExpression(sliceStore.end(), context, problems), RuntimeTypes.INT);
+                    : indexExpression(lowerExpression(sliceStore.end(), context, problems));
             IRExpression value = coerceIfNeeded(lowerExpression(sliceStore.value(), context, problems), RuntimeTypes.MIXED);
             return new IRArraySliceSet(
                     sliceStore.line(), target, start, end, value, RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
@@ -835,7 +839,7 @@ public final class IRLowerer {
 
         if (expression instanceof ASTExprArrayMutation mutation) {
             IRExpression target = lowerExpression(mutation.target(), context, problems);
-            IRExpression index = coerceIfNeeded(lowerExpression(mutation.index(), context, problems), RuntimeTypes.INT);
+            IRExpression index = indexExpression(lowerExpression(mutation.index(), context, problems));
             return new IRArrayMutation(
                     mutation.line(), target, index, mutation.delta(), mutation.isPrefix(), RuntimeTypes.MIXED);
         }
@@ -1152,6 +1156,13 @@ public final class IRLowerer {
         }
 
         return new IRCoerce(value.line(), value, targetType);
+    }
+
+    /** Keeps from-end index markers boxed while coercing ordinary bounds to integer indexes. */
+    private IRExpression indexExpression(IRExpression value) {
+        if (value instanceof IRFromEndIndex)
+            return value;
+        return coerceIfNeeded(value, RuntimeTypes.INT);
     }
 
     private RuntimeType runtimeType(LPCType lpcType) {
