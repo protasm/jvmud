@@ -1,10 +1,9 @@
 # JVMud
 
-JVMud is an experimental LPC/LPMud text-world engine for the JVM. This
-repository is a monorepo: the engine module currently lives under `runtime/`,
-the LPC compiler lives under `compiler/`, the native JVMud LPMuseum mudlib
-lives under `mudlibs/lpmuseum/`, and vanilla LPMUD 2.4.5 exhibit source lives
-under `mudlibs/lp245/`.
+JVMud is an experimental LPC/LPMud text-world engine for the JVM. The project
+is organized around the compiler-engine-mudlib triangle: JVMud-owned Java code
+lives under the conventional Maven `src/` tree, while third-party and authored
+mudlibs live under `mudlibs/`.
 
 `PRINCIPLES.md` is the controlling design document for the engine, and
 `GLOSSARY.md` defines JVMud vocabulary. The engine is being built around
@@ -24,18 +23,18 @@ call_outs, or master objects as engine ontology.
 
 | Path | Purpose |
 | --- | --- |
-| `runtime/` | JVMud engine module source under the Java package `io.github.protasm.jvmud.engine`. It contains subpackages for world ontology, player/session/persona identity, time, mudlib boundaries, output formatting, and small shared support helpers. |
-| `compiler/` | JVMud compiler Java source. It contains the LPC preprocessor, scanner, parser, semantic analysis, IR, bytecode compiler, efun contracts/catalogs, generated-code runtime helpers, and host-facing LPC loader classes. |
-| `server/` | JVMud game-server source. It boots a mudlib, manages shared runtime/world state, and accepts Telnet player sessions. |
-| `cli/` | JVMud local admin CLI source. It is a single-user command-line tool for filesystem navigation, object loading, inspection, invocation, and mutation. |
+| `src/main/java/io/github/protasm/jvmud/engine/` | JVMud engine source. It contains subpackages for world ontology, player/session/persona identity, time, mudlib boundaries, output formatting, and small shared support helpers. |
+| `src/main/java/io/github/protasm/jvmud/compiler/` | JVMud compiler Java source. It contains the LPC preprocessor, scanner, parser, semantic analysis, IR, bytecode compiler, efun contracts/catalogs, generated-code runtime helpers, and host-facing LPC loader classes. |
+| `src/main/java/io/github/protasm/jvmud/server/` | JVMud game-server source. It boots a mudlib, manages shared runtime/world state, and accepts Telnet player sessions. |
+| `src/main/java/io/github/protasm/jvmud/cli/` | JVMud local admin CLI source. It is a single-user command-line tool for filesystem navigation, object loading, inspection, invocation, and mutation. |
+| `src/test/java/io/github/protasm/jvmud/` | JVMud Java test source, following the same package layout. |
 | `mudlibs/lpmuseum/` | Native JVMud mudlib content. This is the free-standing Telnet landing experience and museum concourse for exhibit mudlibs. |
 | `mudlibs/lp245/` | Vanilla LPMUD 2.4.5 exhibit mudlib content. Treat upstream files as read-only unless an explicit style or formatting change is requested; add compatibility through dedicated independent shim objects. |
 | `docs/` | Static project site published from simple HTML. |
 
 ## Runtime Status
 
-The top-level `runtime/` Maven module is now buildable and contains the
-engine-owned model under `io.github.protasm.jvmud.engine`:
+The engine-owned model lives under `io.github.protasm.jvmud.engine`:
 
 - `engine.world`: `World`, `WorldRuntime`, `Place`, `Entity`, `Link`, `Location`, and `Capability`
 - `engine.identity`: `Player`, `Session`, and `Persona` ids and record types
@@ -56,7 +55,7 @@ or other entities, but entities are not link endpoints.
 The compiler source is present at:
 
 ```text
-compiler/src/main/java/io/github/protasm/jvmud/compiler/
+src/main/java/io/github/protasm/jvmud/compiler/
 ```
 
 The compiler is now under the JVMud umbrella package,
@@ -84,19 +83,19 @@ JVMudCompiler <source-file> [output-dir]
 
 ## Build Notes
 
-The repository now has Maven build wiring for `runtime`, `compiler`, `server`,
-and `cli`. Run the current baseline with:
+The repository uses the conventional single-project Maven layout. Run the
+current baseline with:
 
 ```text
 mvn test
 ```
 
-The compiler module depends on ASM for bytecode generation and JUnit Jupiter for
-tests. The current test suite includes end-to-end compiler/runtime smoke tests
-and an informational mudlib compatibility scan. The scan writes:
+The project depends on ASM for bytecode generation and JUnit Jupiter for tests.
+The current test suite includes end-to-end compiler/runtime smoke tests and an
+informational mudlib compatibility scan. The scan writes:
 
 ```text
-compiler/target/jvmud-mudlib-compatibility.md
+target/jvmud-mudlib-compatibility.md
 ```
 
 That report is deliberately non-failing: it records current parser, semantic,
@@ -140,9 +139,8 @@ object runtime. After building, run it with:
 ./jvmud-admin
 ```
 
-The launcher compiles the CLI and compiler modules, then starts the shell with
-the local build output. Optionally pass a mudlib config file as the single
-argument.
+The launcher compiles the project, then starts the shell with the local build
+output. Optionally pass a mudlib config file as the single argument.
 
 The shell is admin-only: every input line is parsed as an admin command. Commands
 include `boot`, `call`, `cat`, `cd`, `clone`, `destruct`, `inspect`, `load`,
@@ -193,14 +191,14 @@ scripts/smoke-jvmud-start.sh
 
 ## Development Notes
 
-- Keep changes scoped to the relevant top-level area (`compiler/`, `runtime/`,
-  `mudlibs/lp245/`, or `docs/`).
+- Keep changes scoped to the relevant package under `src/main/java/io/github/protasm/jvmud/`,
+  `mudlibs/lp245/`, or `docs/`.
 - Use `PRINCIPLES.md` as the source of truth for engine concepts. Do not edit
   vanilla mudlib files unless explicitly asked for style or formatting changes;
   prefer dedicated compatibility shim objects and engine/compiler support.
-- Treat `runtime/` and `mudlibs/lp245/` as intentionally separate from compiler internals:
+- Treat `io.github.protasm.jvmud.engine` and `mudlibs/lp245/` as intentionally separate from compiler internals:
   compiler helpers used by generated bytecode currently remain under
-  `compiler/src/main/java/io/github/protasm/jvmud/compiler/runtime/`.
+  `src/main/java/io/github/protasm/jvmud/compiler/runtime/`.
 - Keep untyped LPC methods and untyped method parameters as compiler errors.
   Mudlib compatibility work should add explicit LPC signatures to mudlib source
   files rather than relaxing semantic analysis.

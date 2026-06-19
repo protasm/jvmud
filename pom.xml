@@ -4,19 +4,12 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.github.protasm.jvmud</groupId>
-  <artifactId>jvmud-parent</artifactId>
+  <artifactId>jvmud</artifactId>
   <version>0.1.0-SNAPSHOT</version>
-  <packaging>pom</packaging>
+  <packaging>jar</packaging>
 
   <name>JVMud</name>
   <description>Experimental Java-based LPMud platform.</description>
-
-  <modules>
-    <module>runtime</module>
-    <module>compiler</module>
-    <module>server</module>
-    <module>cli</module>
-  </modules>
 
   <properties>
     <maven.compiler.release>21</maven.compiler.release>
@@ -37,6 +30,24 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm</artifactId>
+      <version>${asm.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
   <build>
     <pluginManagement>
@@ -61,6 +72,16 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <useModulePath>false</useModulePath>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
 
   <profiles>
@@ -75,7 +96,7 @@
               <doctitle>JVMud Compiler and Engine API</doctitle>
               <windowtitle>JVMud API</windowtitle>
               <outputDirectory>${maven.multiModuleProjectDirectory}/docs/api</outputDirectory>
-              <sourcepath>${maven.multiModuleProjectDirectory}/runtime/src/main/java:${maven.multiModuleProjectDirectory}/compiler/src/main/java</sourcepath>
+              <sourcepath>${maven.multiModuleProjectDirectory}/src/main/java</sourcepath>
               <subpackages>io.github.protasm.jvmud.engine:io.github.protasm.jvmud.compiler</subpackages>
               <source>${maven.compiler.release}</source>
               <doclint>all,-missing</doclint>

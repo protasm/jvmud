@@ -4,8 +4,8 @@ set -eu
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 cd "$ROOT"
-mvn -q -pl compiler -am compile
+mvn -q compile
 
 exec java \
-  -cp "compiler/target/classes" \
+  -cp "target/classes" \
   io.github.protasm.jvmud.compiler.formatter.LPCFormatterCli "$@"
