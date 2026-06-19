@@ -7,6 +7,8 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COLON;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CONTINUE;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DEFAULT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DO;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_ELSE;
@@ -870,6 +872,8 @@ public class Parser {
                     || tokens.match(T_PIPE_EQUAL)
                     || tokens.match(T_AMP_EQUAL)
                     || tokens.match(T_CARET_EQUAL)
+                    || tokens.match(T_DBL_PIPE_EQUAL)
+                    || tokens.match(T_DBL_AMP_EQUAL)
                     || tokens.match(T_LESS_LESS_EQUAL)
                     || tokens.match(T_GREATER_GREATER_EQUAL))
                 throw new ParseException("Invalid assignment target.", tokens.current());

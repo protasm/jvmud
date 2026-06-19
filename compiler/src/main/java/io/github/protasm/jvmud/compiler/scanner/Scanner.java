@@ -10,7 +10,9 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COLON;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DOT_DOT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DOLLAR;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EOF;
@@ -195,14 +197,14 @@ public class Scanner {
             return token(T_DOLLAR);
         case '&':
             if (ss.match('&'))
-                return token(T_DBL_AMP);
+                return token(ss.match('=') ? T_DBL_AMP_EQUAL : T_DBL_AMP);
             else if (ss.match('='))
                 return token(T_AMP_EQUAL);
             else
                 return token(T_AMP);
         case '|':
             if (ss.match('|'))
-                return token(T_DBL_PIPE);
+                return token(ss.match('=') ? T_DBL_PIPE_EQUAL : T_DBL_PIPE);
             else if (ss.match('='))
                 return token(T_PIPE_EQUAL);
             else

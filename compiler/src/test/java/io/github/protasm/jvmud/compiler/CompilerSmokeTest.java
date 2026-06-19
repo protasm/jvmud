@@ -550,6 +550,72 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsLogicalAndAssignment() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/logical_and_assignment.c", """
+                int value() {
+                    int ret;
+
+                    ret = 1;
+                    ret &&= 0;
+                    return ret;
+                }
+                """);
+
+        assertEquals(0, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsLogicalOrAssignment() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/logical_or_assignment.c", """
+                int value() {
+                    int ret;
+
+                    ret = 0;
+                    ret ||= 1;
+                    return ret;
+                }
+                """);
+
+        assertEquals(1, object.invoke("value"));
+    }
+
+    @Test
+    void logicalCompoundAssignmentShortCircuits() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/logical_assignment_short_circuit.c", """
+                int calls;
+
+                int touch() {
+                    calls++;
+                    return 1;
+                }
+
+                int andCalls() {
+                    int ret;
+
+                    calls = 0;
+                    ret = 0;
+                    ret &&= touch();
+                    return calls;
+                }
+
+                int orCalls() {
+                    int ret;
+
+                    calls = 0;
+                    ret = 1;
+                    ret ||= touch();
+                    return calls;
+                }
+                """);
+
+        assertEquals(0, object.invoke("andCalls"));
+        assertEquals(0, object.invoke("orCalls"));
+    }
+
+    @Test
     void runtimeSupportsQualifiedEfunCalls() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         EngineEfuns.registerCore(runtime);

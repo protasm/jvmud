@@ -1305,6 +1305,8 @@ public final class SemanticAnalyzer {
             case BIT_OR -> BinaryOpType.BOP_BIT_OR;
             case BIT_AND -> BinaryOpType.BOP_BIT_AND;
             case BIT_XOR -> BinaryOpType.BOP_BIT_XOR;
+            case LOGICAL_OR -> BinaryOpType.BOP_OR;
+            case LOGICAL_AND -> BinaryOpType.BOP_AND;
             case SHL -> BinaryOpType.BOP_SHL;
             case SHR -> BinaryOpType.BOP_SHR;
             };

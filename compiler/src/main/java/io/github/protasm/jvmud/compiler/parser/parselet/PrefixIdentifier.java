@@ -2,6 +2,8 @@ package io.github.protasm.jvmud.compiler.parser.parselet;
 
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_IDENTIFIER;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_INT_LITERAL;
@@ -56,6 +58,10 @@ public class PrefixIdentifier implements PrefixParselet {
             return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.BIT_AND, parser.expression());
         else if (canAssign && parser.tokens().match(T_CARET_EQUAL))
             return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.BIT_XOR, parser.expression());
+        else if (canAssign && parser.tokens().match(T_DBL_PIPE_EQUAL))
+            return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.LOGICAL_OR, parser.expression());
+        else if (canAssign && parser.tokens().match(T_DBL_AMP_EQUAL))
+            return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.LOGICAL_AND, parser.expression());
         else if (canAssign && parser.tokens().match(T_LESS_LESS_EQUAL))
             return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.SHL, parser.expression());
         else if (canAssign && parser.tokens().match(T_GREATER_GREATER_EQUAL))
