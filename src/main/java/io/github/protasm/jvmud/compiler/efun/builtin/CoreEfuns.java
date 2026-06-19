@@ -5,6 +5,7 @@ import io.github.protasm.jvmud.compiler.efun.EfunSignature;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
@@ -177,8 +179,12 @@ import javax.crypto.spec.PBEKeySpec;
  *       object.</li>
  *   <li>{@code jvmud_is_array(mixed value) : status} reports whether a value is Java-backed LPC
  *       array data.</li>
- *   <li>{@code allocate(int size) : array} returns a zero-filled LPC array of non-negative size.</li>
- *   <li>{@code sscanf(mixed input, mixed format, mixed ...captures) : int} is registered for
+ *   <li>{@code jvmud_filter_indices(mapping values, function callback, mixed ...args) : mapping} returns
+ *       a mapping containing the entries whose keys satisfy a callable predicate; this overload is
+ *       registered for arities 2 through 8.</li>
+ *   <li>{@code jvmud_allocate(int size) : array} returns a zero-filled LPC array of non-negative
+ *       size.</li>
+ *   <li>{@code jvmud_sscanf(mixed input, mixed format, mixed ...captures) : int} is registered for
  *       arities 3 through 8.</li>
  *   <li>{@code jvmud_invoke_entity(mixed target, string methodName, mixed ...args) : mixed}
  *       invokes an optional method on an entity or path-resolved object; this overload is
@@ -325,10 +331,13 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.objectId(args[0]) != null ? 1 : 0));
         efuns.add(efun("jvmud_is_array", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof List<?> ? 1 : 0));
+        for (int arity = 2; arity <= 8; arity++) {
+            efuns.add(filterIndicesEfun(arity));
+        }
         for (int arity = 3; arity <= 8; arity++) {
             efuns.add(sscanfEfun(arity));
         }
-        efuns.add(efun("allocate", LPCType.LPCARRAY, List.of(LPCType.LPCINT),
+        efuns.add(efun("jvmud_allocate", LPCType.LPCARRAY, List.of(LPCType.LPCINT),
                 (runtime, args) -> new ArrayList<>(
                         Collections.nCopies(Math.max(0, ((Number) args[0]).intValue()), Integer.valueOf(0)))));
         for (int arity = 2; arity <= 6; arity++) {
@@ -547,6 +556,40 @@ public final class CoreEfuns {
         return ThreadLocalRandom.current().nextInt(max);
     }
 
+    private static Efun filterIndicesEfun(int arity) {
+        List<LPCType> parameters = new ArrayList<>();
+        parameters.add(LPCType.LPCMAPPING);
+        parameters.add(LPCType.LPCFUNCTION);
+        for (int i = 2; i < arity; i++) {
+            parameters.add(LPCType.LPCMIXED);
+        }
+        return efun("jvmud_filter_indices", LPCType.LPCMAPPING, parameters,
+                (runtime, args) -> filterIndices(runtime, args));
+    }
+
+    private static Object filterIndices(RuntimeContext runtime, Object[] args) {
+        if (!(args[0] instanceof Map<?, ?> source)) {
+            throw new IllegalArgumentException("jvmud_filter_indices expects a mapping as its first argument");
+        }
+        if (!(args[1] instanceof RuntimeCallable callback)) {
+            throw new IllegalArgumentException("jvmud_filter_indices expects a callable as its second argument");
+        }
+
+        Map<Object, Object> result = new LinkedHashMap<>();
+        Object[] callbackArgs = new Object[args.length - 1];
+        if (args.length > 2) {
+            System.arraycopy(args, 2, callbackArgs, 1, args.length - 2);
+        }
+
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            callbackArgs[0] = entry.getKey();
+            if (Truth.isTruthy(callback.call(runtime, callbackArgs))) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
+    }
+
     private static Efun invokeEntityEfun(int arity) {
         List<LPCType> parameters = new ArrayList<>();
         parameters.add(LPCType.LPCMIXED);
@@ -607,7 +650,7 @@ public final class CoreEfuns {
     }
 
     private static Efun sscanfEfun(int arity) {
-        return efun("sscanf", LPCType.LPCINT, Collections.nCopies(arity, LPCType.LPCMIXED),
+        return efun("jvmud_sscanf", LPCType.LPCINT, Collections.nCopies(arity, LPCType.LPCMIXED),
                 (runtime, args) -> RuntimeScanf.scan(args[0], args[1], args.length - 2)[0]);
     }
 

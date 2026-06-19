@@ -21,6 +21,17 @@ public final class RuntimeTypes {
     public static final RuntimeType OBJECT =
             new RuntimeType(RuntimeValueKind.OBJECT, JType.JOBJECT, "java/lang/Object", RuntimeTruthiness.REFERENCE_NULL_FALSE, null);
 
+    /**
+     * Runtime representation for first-class LPC callable values.
+     */
+    public static final RuntimeType CALLABLE =
+            new RuntimeType(
+                    RuntimeValueKind.CALLABLE,
+                    JType.JOBJECT,
+                    "io/github/protasm/jvmud/compiler/runtime/RuntimeCallable",
+                    RuntimeTruthiness.REFERENCE_NULL_FALSE,
+                    null);
+
     public static final RuntimeType MIXED =
             new RuntimeType(RuntimeValueKind.MIXED, JType.JOBJECT, "java/lang/Object", RuntimeTruthiness.REFERENCE_NULL_FALSE, null);
 
@@ -71,7 +82,7 @@ public final class RuntimeTypes {
         case LPCMAPPING -> MAPPING;
         case LPCMIXED -> MIXED;
         case LPCERROR -> ERROR;
-        case LPCFUNCTION -> MIXED;
+        case LPCFUNCTION -> CALLABLE;
         case LPCOBJECT -> OBJECT;
         case LPCSTATUS -> STATUS;
         case LPCSTRING -> STRING;

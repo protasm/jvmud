@@ -20,6 +20,10 @@ void add_verb(string verb) {
   jvmud_add_verb(verb);
 }
 
+mixed *allocate(int size) {
+  return jvmud_allocate(size);
+}
+
 mixed call_other(mixed target, string method) {
   return jvmud_invoke_entity(target, method);
 }
@@ -292,6 +296,34 @@ void set_living_name(mixed name) {
 
 int sizeof(mixed value) {
   return jvmud_size(value);
+}
+
+int sscanf(mixed input, mixed format, mixed capture1) {
+  return jvmud_sscanf(input, format, capture1);
+}
+
+int sscanf(mixed input, mixed format, mixed capture1, mixed capture2) {
+  return jvmud_sscanf(input, format, capture1, capture2);
+}
+
+int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3) {
+  return jvmud_sscanf(input, format, capture1, capture2, capture3);
+}
+
+int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3,
+  mixed capture4) {
+  return jvmud_sscanf(input, format, capture1, capture2, capture3, capture4);
+}
+
+int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3,
+  mixed capture4, mixed capture5) {
+  return jvmud_sscanf(input, format, capture1, capture2, capture3, capture4, capture5);
+}
+
+int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3,
+  mixed capture4, mixed capture5, mixed capture6) {
+  return jvmud_sscanf(input, format, capture1, capture2, capture3, capture4, capture5,
+    capture6);
 }
 
 int strlen(mixed value) {

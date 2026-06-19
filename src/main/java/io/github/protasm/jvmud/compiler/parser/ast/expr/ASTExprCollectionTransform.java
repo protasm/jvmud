@@ -13,14 +13,14 @@ public final class ASTExprCollectionTransform extends ASTExpression {
 
     private final Operation operation;
     private final ASTExpression source;
-    private final ASTExprInlineCallable callback;
+    private final ASTExpression callback;
     private final List<ASTExpression> extraArguments;
 
     public ASTExprCollectionTransform(
             int line,
             Operation operation,
             ASTExpression source,
-            ASTExprInlineCallable callback,
+            ASTExpression callback,
             List<ASTExpression> extraArguments) {
         super(line);
         this.operation = Objects.requireNonNull(operation, "operation");
@@ -37,7 +37,7 @@ public final class ASTExprCollectionTransform extends ASTExpression {
         return source;
     }
 
-    public ASTExprInlineCallable callback() {
+    public ASTExpression callback() {
         return callback;
     }
 

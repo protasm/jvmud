@@ -27,6 +27,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFromEndIndex;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFunctionReference;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInlineCallable;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralFalse;
@@ -783,11 +784,15 @@ public final class IRLowerer {
             return new IRConstant(symbolLiteral.line(), symbolLiteral.name(), RuntimeTypes.MIXED);
 
         if (expression instanceof ASTExprFunctionReference functionReference)
-            return new IRConstant(functionReference.line(), "#'" + functionReference.name(), RuntimeTypes.MIXED);
+            return new IRFunctionReferenceLiteral(
+                    functionReference.line(), functionReference.name(), RuntimeTypes.CALLABLE);
 
         if (expression instanceof ASTExprTypedFunctionLiteral typedFunction)
             return new IRTypedFunctionLiteral(
-                    typedFunction.line(), typedFunctionSignature(typedFunction), RuntimeTypes.MIXED);
+                    typedFunction.line(), typedFunctionSignature(typedFunction), RuntimeTypes.CALLABLE);
+
+        if (expression instanceof ASTExprInlineCallable inlineCallable)
+            return lowerInlineCallableLiteral(inlineCallable, context, problems);
 
         if (expression instanceof ASTExprClosureArgument closureArgument) {
             IRLocal local = context.closureArgumentLocal(closureArgument.index());
@@ -1094,15 +1099,7 @@ public final class IRLowerer {
         IRLocal itemsLocal = context.addSyntheticLocal(transform.line(), "closure_items", RuntimeTypes.MIXED);
         IRLocal resultLocal = context.addSyntheticLocal(transform.line(), "closure_result", RuntimeTypes.MIXED);
         IRLocal indexLocal = context.addSyntheticLocal(transform.line(), "closure_index", RuntimeTypes.INT);
-
-        int argumentCount = Math.max(1 + extras.size(), maxClosureArgumentIndex(transform.callback().body()));
-        List<IRLocal> argumentLocals = new ArrayList<>();
-        for (int i = 1; i <= argumentCount; i++)
-            argumentLocals.add(context.addSyntheticLocal(transform.line(), "closure_arg" + i, RuntimeTypes.MIXED));
-
-        context.pushClosureArguments(argumentLocals);
-        IRExpression callbackBody = lowerExpression(transform.callback().body(), context, problems);
-        context.popClosureArguments();
+        IRExpression callback = lowerExpression(transform.callback(), context, problems);
 
         IRCollectionTransform.Operation operation = transform.operation() == ASTExprCollectionTransform.Operation.FILTER
                 ? IRCollectionTransform.Operation.FILTER
@@ -1115,13 +1112,25 @@ public final class IRLowerer {
                 operation,
                 coerceIfNeeded(source, RuntimeTypes.MIXED),
                 extras,
-                callbackBody,
+                callback,
                 sourceLocal,
                 itemsLocal,
                 resultLocal,
                 indexLocal,
-                argumentLocals,
                 resultType);
+    }
+
+    private IRExpression lowerInlineCallableLiteral(
+            ASTExprInlineCallable inlineCallable, MethodContext context, List<CompilationProblem> problems) {
+        int argumentCount = maxClosureArgumentIndex(inlineCallable.body());
+        List<IRLocal> argumentLocals = new ArrayList<>();
+        for (int i = 1; i <= argumentCount; i++)
+            argumentLocals.add(new IRLocal(inlineCallable.line(), "callable_arg" + i, RuntimeTypes.MIXED, i + 2, false));
+
+        context.pushClosureArguments(argumentLocals);
+        IRExpression body = lowerExpression(inlineCallable.body(), context, problems);
+        context.popClosureArguments();
+        return new IRInlineCallableLiteral(inlineCallable.line(), body, argumentCount, argumentLocals, RuntimeTypes.CALLABLE);
     }
 
     private IRExpression lowerSortArray(
@@ -1136,25 +1145,17 @@ public final class IRLowerer {
         IRLocal innerIndexLocal = context.addSyntheticLocal(sortArray.line(), "sort_inner_index", RuntimeTypes.INT);
         IRLocal swapLocal = context.addSyntheticLocal(sortArray.line(), "sort_swap", RuntimeTypes.MIXED);
 
-        int argumentCount = Math.max(2 + extras.size(), maxClosureArgumentIndex(sortArray.comparator().body()));
-        List<IRLocal> argumentLocals = new ArrayList<>();
-        for (int i = 1; i <= argumentCount; i++)
-            argumentLocals.add(context.addSyntheticLocal(sortArray.line(), "sort_arg" + i, RuntimeTypes.MIXED));
-
-        context.pushClosureArguments(argumentLocals);
-        IRExpression comparatorBody = lowerExpression(sortArray.comparator().body(), context, problems);
-        context.popClosureArguments();
+        IRExpression comparator = lowerExpression(sortArray.comparator(), context, problems);
 
         return new IRSortArray(
                 sortArray.line(),
                 coerceIfNeeded(source, RuntimeTypes.MIXED),
-                comparatorBody,
+                comparator,
                 itemsLocal,
                 indexLocal,
                 innerIndexLocal,
                 swapLocal,
                 extras,
-                argumentLocals,
                 RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
     }
 
@@ -1197,6 +1198,8 @@ public final class IRLowerer {
             return Math.max(
                     Math.max(maxClosureArgumentIndex(ternary.condition()), maxClosureArgumentIndex(ternary.thenBranch())),
                     maxClosureArgumentIndex(ternary.elseBranch()));
+        if (expression instanceof ASTExprInlineCallable)
+            return 0;
         if (expression instanceof ASTExprCallEfun callEfun)
             return maxClosureArgumentIndex(callEfun.arguments());
         if (expression instanceof ASTExprCallMethod callMethod)
@@ -1308,7 +1311,7 @@ public final class IRLowerer {
         return switch (returnType.kind()) {
         case INT, STATUS -> new IRConstant(line, 0, returnType);
         case FLOAT -> new IRConstant(line, 0.0f, returnType);
-        case STRING, OBJECT, MAPPING, MIXED, ARRAY, EFUN, INTERNAL_NULL, ERROR ->
+        case STRING, OBJECT, CALLABLE, MAPPING, MIXED, ARRAY, EFUN, INTERNAL_NULL, ERROR ->
             new IRConstant(line, null, returnType);
         case VOID -> null;
         };

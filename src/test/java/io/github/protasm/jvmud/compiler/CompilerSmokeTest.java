@@ -20,7 +20,9 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationStage;
 import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeFunctionLiteral;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
@@ -268,15 +270,21 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void runtimeParsesFunctionReferencesAsCompatibilityValues() {
+    void runtimeParsesFunctionReferencesAsCallableValues() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/function_reference.c", """
-                mixed value() {
+                function value() {
                     return #'moveHook;
+                }
+
+                mixed moveHook(mixed value) {
+                    return value + 1;
                 }
                 """);
 
-        assertEquals("#'moveHook", object.invoke("value"));
+        Object callable = object.invoke("value");
+        assertTrue(callable instanceof RuntimeCallable);
+        assertEquals(8, ((RuntimeCallable) callable).call(new RuntimeContext(null), 7));
     }
 
     @Test
@@ -1503,6 +1511,54 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeRepresentsInlineCallableAsFirstClassValue() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_callable_value.c", """
+                function value() {
+                    return (: $1 :);
+                }
+                """);
+
+        Object callable = object.invoke("value");
+        assertTrue(callable instanceof RuntimeCallable);
+        assertTrue(callable instanceof RuntimeFunctionLiteral);
+        assertEquals(1, ((RuntimeFunctionLiteral) callable).arity());
+        assertEquals(7, ((RuntimeCallable) callable).call(new RuntimeContext(null), 7));
+    }
+
+    @Test
+    void runtimeStoresInlineCallableInFunctionLocal() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_callable_local.c", """
+                function value() {
+                    function callback = (: $1 + $2 :);
+                    return callback;
+                }
+                """);
+
+        Object callable = object.invoke("value");
+        assertTrue(callable instanceof RuntimeCallable);
+        assertEquals(2, ((RuntimeFunctionLiteral) callable).arity());
+        assertEquals(9, ((RuntimeCallable) callable).call(new RuntimeContext(null), 4, 5));
+    }
+
+    @Test
+    void runtimeInlineCallableReadsObjectState() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_callable_object_state.c", """
+                int bonus = 3;
+
+                function value() {
+                    return (: $1 + bonus :);
+                }
+                """);
+
+        Object callable = object.invoke("value");
+        assertTrue(callable instanceof RuntimeCallable);
+        assertEquals(10, ((RuntimeCallable) callable).call(new RuntimeContext(null), 7));
+    }
+
+    @Test
     void runtimeSupportsInlineCallableReturnShorthand() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_filter_return_shorthand.c", """
@@ -1583,6 +1639,125 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(List.of("keep"), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsFunctionReferenceFilterArguments() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/function_reference_filter.c", """
+                int matches(mixed value) {
+                    return value;
+                }
+
+                mixed value() {
+                    return filter(({1, 0, 2, 0, 3}), #'matches);
+                }
+                """);
+
+        assertEquals(List.of(1, 2, 3), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsFunctionReferenceExtraArgumentsAndMappingLookup() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/function_reference_filter_extra_arguments.c", """
+                int selected(string key, mapping values, string expected) {
+                    return values[key] == expected;
+                }
+
+                mixed value() {
+                    mapping values;
+
+                    values = ([ "keep": "yes", "drop": "no" ]);
+                    return filter(({"keep", "drop"}), #'selected, values, "yes");
+                }
+                """);
+
+        assertEquals(List.of("keep"), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsNativeFilterIndicesWithInlineCallable() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/native_filter_indices_inline_callable.c", """
+                mapping value() {
+                    mapping inventory;
+
+                    inventory = ([
+                        "sword": ([ "type": "weapon", "subType": "blade" ]),
+                        "shield": ([ "type": "armor", "subType": "shield" ]),
+                        "bow": ([ "type": "weapon", "subType": "ranged" ]),
+                    ]);
+                    return jvmud_filter_indices(inventory,
+                        (: (($2[$1]["type"] == $3) && (($4 == "all") || ($2[$1]["subType"] == $4))) :),
+                        inventory, "weapon", "blade");
+                }
+                """);
+
+        assertEquals(
+                Map.of("sword", Map.of("type", "weapon", "subType", "blade")),
+                object.invoke("value"));
+    }
+
+    @Test
+    void mfunFilterIndicesCompatibilityWrapsNativeCallableEfun() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                mapping filter_indices(mapping values, function callback) {
+                    return jvmud_filter_indices(values, callback);
+                }
+
+                mapping filter_indices(mapping values, function callback, mixed arg1) {
+                    return jvmud_filter_indices(values, callback, arg1);
+                }
+
+                mapping filter_indices(mapping values, function callback, mixed arg1, mixed arg2) {
+                    return jvmud_filter_indices(values, callback, arg1, arg2);
+                }
+
+                mapping filter_indices(mapping values, function callback, mixed arg1, mixed arg2, mixed arg3) {
+                    return jvmud_filter_indices(values, callback, arg1, arg2, arg3);
+                }
+
+                mapping filter_indices(mapping values, function callback,
+                    mixed arg1, mixed arg2, mixed arg3, mixed arg4) {
+                    return jvmud_filter_indices(values, callback, arg1, arg2, arg3, arg4);
+                }
+
+                mapping filter_indices(mapping values, function callback,
+                    mixed arg1, mixed arg2, mixed arg3, mixed arg4, mixed arg5) {
+                    return jvmud_filter_indices(values, callback, arg1, arg2, arg3, arg4, arg5);
+                }
+
+                mapping filter_indices(mapping values, function callback,
+                    mixed arg1, mixed arg2, mixed arg3, mixed arg4, mixed arg5, mixed arg6) {
+                    return jvmud_filter_indices(values, callback, arg1, arg2, arg3, arg4, arg5, arg6);
+                }
+                """);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mfun_filter_indices_inline_callable.c", """
+                mapping value() {
+                    mapping inventory;
+
+                    inventory = ([
+                        "sword": ([ "type": "weapon", "subType": "blade" ]),
+                        "shield": ([ "type": "armor", "subType": "shield" ]),
+                        "bow": ([ "type": "weapon", "subType": "ranged" ]),
+                    ]);
+                    return filter_indices(inventory,
+                        (: (($2[$1]["type"] == $3) && (($4 == "all") || ($2[$1]["subType"] == $4))) :),
+                        inventory, "weapon", "blade");
+                }
+                """);
+
+        assertEquals(
+                Map.of("sword", Map.of("type", "weapon", "subType", "blade")),
+                object.invoke("value"));
     }
 
     @Test
@@ -2170,13 +2345,47 @@ final class CompilerSmokeTest {
                 string values;
 
                 mixed value() {
-                    values = allocate(3);
+                    values = jvmud_allocate(3);
                     values[1] = "middle";
                     return values[1];
                 }
                 """);
 
         assertEquals("middle", object.invoke("value"));
+    }
+
+    @Test
+    void mfunAllocateAndSscanfCompatibilityWrapNativeEfuns() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                mixed *allocate(int size) {
+                    return jvmud_allocate(size);
+                }
+
+                int sscanf(mixed input, mixed format, mixed capture1, mixed capture2) {
+                    return jvmud_sscanf(input, format, capture1, capture2);
+                }
+                """);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mfun_legacy_efun_names.c", """
+                mixed value(mixed input) {
+                    string dir, dest;
+                    mixed *values;
+
+                    values = allocate(2);
+                    values[0] = "prefix";
+                    if (sscanf(input, "%s#%s", dir, dest) != 2)
+                        return "bad";
+                    values[1] = dir + ":" + dest;
+                    return values;
+                }
+                """);
+
+        assertEquals(List.of("prefix", "north:room/church"), object.invoke("value", "north#room/church"));
     }
 
     @Test
@@ -2255,6 +2464,9 @@ final class CompilerSmokeTest {
                 static nomask varargs void helper(mixed *values) {
                 }
 
+                public nomask void call_out(string method, int delay, varargs mixed *data) {
+                }
+
                 protected void setup() {
                 }
                 """;
@@ -2275,6 +2487,8 @@ final class CompilerSmokeTest {
         assertTrue(ast.methods().get("helper").modifiers().isStatic());
         assertTrue(ast.methods().get("helper").modifiers().isNomask());
         assertTrue(ast.methods().get("helper").modifiers().isVarargs());
+
+        assertTrue(ast.methods().get("call_out").parameters().get(2).isVarargs());
 
         assertTrue(ast.methods().get("setup").modifiers().isProtected());
     }
@@ -4231,7 +4445,7 @@ final class CompilerSmokeTest {
         LPCObjectHandle object = runtime.loadSource("smoke/sscanf.c", """
                 mixed parse(mixed value) {
                     string dir, dest;
-                    if (sscanf(value, "%s#%s", dir, dest) != 2)
+                    if (jvmud_sscanf(value, "%s#%s", dir, dest) != 2)
                         return "bad";
                     return dir + ":" + dest;
                 }
@@ -4260,14 +4474,14 @@ final class CompilerSmokeTest {
 
                 int parse(string value) {
                     string who, rest;
-                    if (sscanf(value, format(), who, rest) != 2)
+                    if (jvmud_sscanf(value, format(), who, rest) != 2)
                         return 0;
                     return rest == match;
                 }
 
                 string parsed(string value) {
                     string who, rest;
-                    if (sscanf(value, format(), who, rest) != 2)
+                    if (jvmud_sscanf(value, format(), who, rest) != 2)
                         return "bad";
                     return who + ":" + rest + ":" + match;
                 }
@@ -4290,7 +4504,7 @@ final class CompilerSmokeTest {
                 int parse(string value) {
                     int number;
                     number = 7;
-                    if (sscanf(value, "r %d", number) == 1)
+                    if (jvmud_sscanf(value, "r %d", number) == 1)
                         return number;
                     return number;
                 }
@@ -4310,7 +4524,7 @@ final class CompilerSmokeTest {
 
                 int parse(string value) {
                     number = 7;
-                    if (sscanf(value, "r %d", number) == 1)
+                    if (jvmud_sscanf(value, "r %d", number) == 1)
                         return number;
                     return number;
                 }

@@ -43,6 +43,7 @@ final class RealmsMudCompatibilityScanTest {
                     "secure/master.c",
                     "secure/simul_efun.c",
                     "secure/login.c",
+                    "jvmud/mfuns.c",
                     "lib/core/baseSelector.c",
                     "lib/core/events.c",
                     "lib/core/messageParser.c",

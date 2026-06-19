@@ -7,6 +7,8 @@ public enum RuntimeValueKind {
     STATUS,
     STRING,
     OBJECT,
+    /** First-class LPC callable value such as {@code (: ... :)} or a typed function literal. */
+    CALLABLE,
     MAPPING,
     MIXED,
     ARRAY,

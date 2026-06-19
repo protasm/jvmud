@@ -451,6 +451,12 @@ public class Parser {
             Token<String> firstToken = tokens.consume(T_IDENTIFIER, "Expect parameter name or type.");
             Token<String> nameToken = null;
             String declaredType = null;
+            boolean parameterVarargs = false;
+
+            if ("varargs".equals(firstToken.lexeme())) {
+                parameterVarargs = true;
+                firstToken = tokens.consume(T_IDENTIFIER, "Expect parameter type after 'varargs'.");
+            }
 
             String arraySuffix = arrayDeclaratorSuffix();
 
@@ -458,15 +464,17 @@ public class Parser {
                 nameToken = tokens.consume(T_IDENTIFIER, "Expect parameter name.");
                 declaredType = firstToken.lexeme() + arraySuffix;
             } else {
+                if (parameterVarargs)
+                    throw new ParseException("Expect parameter name after varargs parameter type.", tokens.current());
                 nameToken = firstToken;
             }
 
             Symbol symbol = new Symbol(declaredType, nameToken.lexeme());
 
-                        ASTParameter param = new ASTParameter(currLine(), symbol);
-                        ASTLocal local = new ASTLocal(currLine(), symbol);
+            ASTParameter param = new ASTParameter(currLine(), symbol, parameterVarargs);
+            ASTLocal local = new ASTLocal(currLine(), symbol);
 
-                        params.add(param);
+            params.add(param);
 
             locals.add(local);
             paramLocals.add(local);

@@ -240,7 +240,7 @@ public final class SemanticTypeChecker {
             return LPCType.LPCMIXED;
         if (expression instanceof ASTExprInlineCallable inlineCallable) {
             inferExpressionType(inlineCallable.body(), context);
-            return LPCType.LPCMIXED;
+            return LPCType.LPCFUNCTION;
         }
         if (expression instanceof ASTExprTypedFunctionLiteral typedFunction) {
             inferExpressionType(typedFunction.body(), context, typedFunction.returnSymbol().lpcType());
@@ -248,19 +248,21 @@ public final class SemanticTypeChecker {
         }
         if (expression instanceof ASTExprCollectionTransform transform) {
             inferExpressionType(transform.source(), context, LPCType.LPCARRAY);
-            inferExpressionType(transform.callback().body(), context);
+            inferExpressionType(transform.callback(), context, LPCType.LPCFUNCTION);
             for (ASTExpression extra : transform.extraArguments())
                 inferExpressionType(extra, context);
             return transform.lpcType();
         }
         if (expression instanceof ASTExprSortArray sortArray) {
             inferExpressionType(sortArray.source(), context);
-            inferExpressionType(sortArray.comparator().body(), context);
+            inferExpressionType(sortArray.comparator(), context, LPCType.LPCFUNCTION);
             for (ASTExpression extra : sortArray.extraArguments())
                 inferExpressionType(extra, context);
             return sortArray.lpcType();
         }
-        if (expression instanceof ASTExprSymbolLiteral || expression instanceof ASTExprFunctionReference)
+        if (expression instanceof ASTExprFunctionReference)
+            return LPCType.LPCFUNCTION;
+        if (expression instanceof ASTExprSymbolLiteral)
             return LPCType.LPCMIXED;
 
         if (expression instanceof ASTExprLocalAccess access)

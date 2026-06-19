@@ -937,11 +937,9 @@ public final class SemanticAnalyzer {
 
             if (expression instanceof ASTExprCollectionTransform transform) {
                 ASTExpression resolvedSource = resolveExpression(transform.source(), context);
-                context.enterInlineCallable();
-                ASTExpression resolvedBody = resolveExpression(transform.callback().body(), context);
-                context.exitInlineCallable();
+                ASTExpression resolvedCallback = resolveCallableExpression(transform.callback(), context);
                 List<ASTExpression> resolvedExtras = new ArrayList<>();
-                boolean changed = resolvedSource != transform.source() || resolvedBody != transform.callback().body();
+                boolean changed = resolvedSource != transform.source() || resolvedCallback != transform.callback();
                 for (ASTExpression extra : transform.extraArguments()) {
                     ASTExpression resolved = resolveExpression(extra, context);
                     changed |= resolved != extra;
@@ -953,7 +951,7 @@ public final class SemanticAnalyzer {
                         transform.line(),
                         transform.operation(),
                         resolvedSource,
-                        new ASTExprInlineCallable(transform.callback().line(), resolvedBody),
+                        resolvedCallback,
                         resolvedExtras);
             }
 
@@ -967,17 +965,15 @@ public final class SemanticAnalyzer {
                     if (resolvedExtra != extra)
                         extrasChanged = true;
                 }
-                context.enterInlineCallable();
-                ASTExpression resolvedBody = resolveExpression(sortArray.comparator().body(), context);
-                context.exitInlineCallable();
+                ASTExpression resolvedComparator = resolveCallableExpression(sortArray.comparator(), context);
                 if (resolvedSource == sortArray.source()
-                        && resolvedBody == sortArray.comparator().body()
+                        && resolvedComparator == sortArray.comparator()
                         && !extrasChanged)
                     return sortArray;
                 return new ASTExprSortArray(
                         sortArray.line(),
                         resolvedSource,
-                        new ASTExprInlineCallable(sortArray.comparator().line(), resolvedBody),
+                        resolvedComparator,
                         resolvedExtras);
             }
 
@@ -1176,6 +1172,18 @@ public final class SemanticAnalyzer {
             return expression;
         }
 
+        private ASTExpression resolveCallableExpression(ASTExpression expression, LocalResolutionContext context) {
+            if (expression instanceof ASTExprInlineCallable inlineCallable) {
+                context.enterInlineCallable();
+                ASTExpression resolvedBody = resolveExpression(inlineCallable.body(), context);
+                context.exitInlineCallable();
+                if (resolvedBody == inlineCallable.body())
+                    return inlineCallable;
+                return new ASTExprInlineCallable(inlineCallable.line(), resolvedBody);
+            }
+            return resolveExpression(expression, context);
+        }
+
         private ASTExpression resolveInvoke(ASTExprUnresolvedInvoke unresolvedInvoke, LocalResolutionContext context) {
             ASTArguments resolvedArgs = resolveArguments(unresolvedInvoke.arguments(), context);
             ASTLocal local = resolveLocal(context, unresolvedInvoke.targetName());
@@ -1251,7 +1259,7 @@ public final class SemanticAnalyzer {
                 return null;
 
             ASTExpression callback = args.get(1).expression();
-            if (!(callback instanceof ASTExprInlineCallable inlineCallable))
+            if (!isCallableArgument(callback))
                 return null;
 
             List<ASTExpression> extras = new ArrayList<>();
@@ -1262,7 +1270,7 @@ public final class SemanticAnalyzer {
                     ? ASTExprCollectionTransform.Operation.FILTER
                     : ASTExprCollectionTransform.Operation.MAP;
             return new ASTExprCollectionTransform(
-                    unresolvedCall.line(), operation, args.get(0).expression(), inlineCallable, extras);
+                    unresolvedCall.line(), operation, args.get(0).expression(), callback, extras);
         }
 
         private ASTExprSortArray sortArrayTransform(ASTExprUnresolvedCall unresolvedCall, ASTArguments args) {
@@ -1273,14 +1281,18 @@ public final class SemanticAnalyzer {
                 return null;
 
             ASTExpression callback = args.get(1).expression();
-            if (!(callback instanceof ASTExprInlineCallable inlineCallable))
+            if (!isCallableArgument(callback))
                 return null;
 
             List<ASTExpression> extras = new ArrayList<>();
             for (int i = 2; i < args.size(); i++)
                 extras.add(args.get(i).expression());
 
-            return new ASTExprSortArray(unresolvedCall.line(), args.get(0).expression(), inlineCallable, extras);
+            return new ASTExprSortArray(unresolvedCall.line(), args.get(0).expression(), callback, extras);
+        }
+
+        private boolean isCallableArgument(ASTExpression expression) {
+            return expression instanceof ASTExprInlineCallable || expression.lpcType() == LPCType.LPCFUNCTION;
         }
 
         private ASTExpression resolveQualifiedCall(

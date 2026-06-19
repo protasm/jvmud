@@ -6,11 +6,13 @@ import io.github.protasm.jvmud.compiler.ir.*;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeComparison;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCoercions;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeArray;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeEquality;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeForeach;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeFunctionLiteral;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeIndex;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeTypes;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
@@ -39,13 +41,17 @@ public final class BytecodeCompiler {
     private static final String INIT_GUARD_FIELD = "$lpc$initialized";
     private static final String FIELD_INITIALIZER_HELPER_PREFIX = "$lpc$field$";
     private static final String LITERAL_HELPER_PREFIX = "$lpc$literal$";
+    private static final String CALLABLE_HELPER_PREFIX = "$lpc$callable$";
     private static final int LITERAL_HELPER_CHUNK_SIZE = 64;
     private static final String OBJECT_INTERNAL_NAME = Type.getInternalName(Object.class);
+    private static final String RUNTIME_CONTEXT_DESCRIPTOR =
+            "Lio/github/protasm/jvmud/compiler/runtime/RuntimeContext;";
     private final String defaultParentInternalName;
     private ClassWriter activeClassWriter;
     private String activeInternalName;
     private int fieldInitializerHelperCounter;
     private int literalHelperCounter;
+    private int callableHelperCounter;
 
     public BytecodeCompiler(String defaultParentInternalName) {
         this.defaultParentInternalName =
@@ -71,6 +77,7 @@ public final class BytecodeCompiler {
         activeInternalName = internalName;
         fieldInitializerHelperCounter = 0;
         literalHelperCounter = 0;
+        callableHelperCounter = 0;
         try {
             emitEngineManagedFields(cw);
             emitFields(cw, object);
@@ -342,6 +349,16 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRFunctionReferenceLiteral functionReferenceLiteral) {
+            emitFunctionReferenceLiteral(mv, functionReferenceLiteral);
+            return;
+        }
+
+        if (expression instanceof IRInlineCallableLiteral inlineCallableLiteral) {
+            emitInlineCallableLiteral(mv, inlineCallableLiteral);
+            return;
+        }
+
         if (expression instanceof IRLocalLoad localLoad) {
             emitLocalLoad(mv, localLoad.local());
             return;
@@ -544,6 +561,80 @@ public final class BytecodeCompiler {
                 "<init>",
                 "(Ljava/lang/String;)V",
                 false);
+    }
+
+    /** Emits a callable value for an LPC quoted function symbol such as {@code #'helper}. */
+    private void emitFunctionReferenceLiteral(MethodVisitor mv, IRFunctionReferenceLiteral literal) {
+        mv.visitLdcInsn(literal.methodName());
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeFunctionLiteral.class),
+                "namedFunction",
+                "(Ljava/lang/String;Ljava/lang/Object;)"
+                        + Type.getDescriptor(RuntimeFunctionLiteral.class),
+                false);
+    }
+
+    /** Emits the first runtime value form for LPC inline closures. */
+    private void emitInlineCallableLiteral(MethodVisitor mv, IRInlineCallableLiteral literal) {
+        String helperName = nextCallableHelperName();
+        emitInlineCallableHelper(helperName, literal);
+
+        mv.visitTypeInsn(NEW, Type.getInternalName(RuntimeFunctionLiteral.class));
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn("inline/" + literal.line());
+        pushInt(mv, literal.arity());
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitLdcInsn(helperName);
+        mv.visitMethodInsn(
+                INVOKESPECIAL,
+                Type.getInternalName(RuntimeFunctionLiteral.class),
+                "<init>",
+                "(Ljava/lang/String;ILjava/lang/Object;Ljava/lang/String;)V",
+                false);
+    }
+
+    private void emitInlineCallableHelper(String helperName, IRInlineCallableLiteral literal) {
+        MethodVisitor mv = activeClassWriter.visitMethod(
+                ACC_PUBLIC | ACC_SYNTHETIC,
+                helperName,
+                "(" + RUNTIME_CONTEXT_DESCRIPTOR + "[Ljava/lang/Object;)Ljava/lang/Object;",
+                null,
+                null);
+        mv.visitCode();
+
+        for (int i = 0; i < literal.argumentLocals().size(); i++) {
+            IRLocal local = literal.argumentLocals().get(i);
+            mv.visitVarInsn(ALOAD, 2);
+            pushInt(mv, i);
+            mv.visitInsn(AALOAD);
+            coerceValue(mv, RuntimeTypes.MIXED, local.type());
+            switch (kindToOpcode(local.type(), false)) {
+            case ISTORE -> mv.visitVarInsn(ISTORE, local.slot());
+            case FSTORE -> mv.visitVarInsn(FSTORE, local.slot());
+            default -> mv.visitVarInsn(ASTORE, local.slot());
+            }
+        }
+
+        IRMethod callableMethod = new IRMethod(
+                literal.line(),
+                helperName,
+                RuntimeTypes.MIXED,
+                List.of(),
+                literal.argumentLocals(),
+                List.of(),
+                helperName,
+                false,
+                null);
+        emitExpression(mv, activeInternalName, callableMethod, literal.body());
+        if (literal.body().type().kind() == RuntimeValueKind.VOID)
+            mv.visitInsn(ACONST_NULL);
+        else
+            boxIfNeeded(mv, literal.body().type());
+        mv.visitInsn(ARETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
     }
 
     private void emitLocalLoad(MethodVisitor mv, IRLocal local) {
@@ -991,7 +1082,7 @@ public final class BytecodeCompiler {
     }
 
     private void emitEfunCall(MethodVisitor mv, String internalName, IRMethod method, IREfunCall efunCall) {
-        if ("sscanf".equals(efunCall.name()) && efunCall.arguments().size() >= 2) {
+        if (isSscanfCall(efunCall.name()) && efunCall.arguments().size() >= 2) {
             emitSscanfCall(mv, internalName, method, efunCall);
             return;
         }
@@ -1019,6 +1110,10 @@ public final class BytecodeCompiler {
         }
 
         emitCoerceToRuntimeTypeIfNeeded(mv, RuntimeTypes.MIXED, efunCall.type());
+    }
+
+    private boolean isSscanfCall(String name) {
+        return "sscanf".equals(name) || "jvmud_sscanf".equals(name);
     }
 
     private void emitSscanfCall(MethodVisitor mv, String internalName, IRMethod method, IREfunCall efunCall) {
@@ -1388,6 +1483,12 @@ public final class BytecodeCompiler {
         boxIfNeeded(mv, transform.source().type());
         mv.visitVarInsn(ASTORE, transform.sourceLocal().slot());
 
+        int callbackSlot = scratchObjectSlot(method);
+        emitExpression(mv, internalName, method, transform.callback());
+        boxIfNeeded(mv, transform.callback().type());
+        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(RuntimeCallable.class));
+        mv.visitVarInsn(ASTORE, callbackSlot);
+
         mv.visitVarInsn(ALOAD, transform.sourceLocal().slot());
         mv.visitMethodInsn(
                 INVOKESTATIC,
@@ -1404,10 +1505,9 @@ public final class BytecodeCompiler {
 
         for (int i = 0; i < transform.extraArguments().size(); i++) {
             IRExpression extra = transform.extraArguments().get(i);
-            IRLocal local = transform.callbackArgumentLocals().get(i + 1);
             emitExpression(mv, internalName, method, extra);
             boxIfNeeded(mv, extra.type());
-            mv.visitVarInsn(ASTORE, local.slot());
+            mv.visitVarInsn(ASTORE, callbackSlot + i + 1);
         }
 
         pushInt(mv, 0);
@@ -1426,11 +1526,17 @@ public final class BytecodeCompiler {
         mv.visitTypeInsn(CHECKCAST, "java/util/List");
         mv.visitVarInsn(ILOAD, transform.indexLocal().slot());
         mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "get", "(I)Ljava/lang/Object;", true);
-        mv.visitVarInsn(ASTORE, transform.callbackArgumentLocals().get(0).slot());
+        mv.visitVarInsn(ASTORE, callbackSlot + transform.extraArguments().size() + 1);
 
         if (transform.operation() == IRCollectionTransform.Operation.FILTER) {
-            emitExpression(mv, internalName, method, transform.callbackBody());
-            boxIfNeeded(mv, transform.callbackBody().type());
+            emitCallableCall(
+                    mv,
+                    callbackSlot,
+                    callbackSlot + transform.extraArguments().size() + 1,
+                    null,
+                    List.of(),
+                    callbackSlot + 1,
+                    transform.extraArguments().size());
             mv.visitMethodInsn(
                     INVOKESTATIC,
                     Type.getInternalName(Truth.class),
@@ -1441,15 +1547,21 @@ public final class BytecodeCompiler {
             mv.visitJumpInsn(IFEQ, skipAdd);
             mv.visitVarInsn(ALOAD, transform.resultLocal().slot());
             mv.visitTypeInsn(CHECKCAST, "java/util/List");
-            mv.visitVarInsn(ALOAD, transform.callbackArgumentLocals().get(0).slot());
+            mv.visitVarInsn(ALOAD, callbackSlot + transform.extraArguments().size() + 1);
             mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z", true);
             mv.visitInsn(POP);
             mv.visitLabel(skipAdd);
         } else {
             mv.visitVarInsn(ALOAD, transform.resultLocal().slot());
             mv.visitTypeInsn(CHECKCAST, "java/util/List");
-            emitExpression(mv, internalName, method, transform.callbackBody());
-            boxIfNeeded(mv, transform.callbackBody().type());
+            emitCallableCall(
+                    mv,
+                    callbackSlot,
+                    callbackSlot + transform.extraArguments().size() + 1,
+                    null,
+                    List.of(),
+                    callbackSlot + 1,
+                    transform.extraArguments().size());
             mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z", true);
             mv.visitInsn(POP);
         }
@@ -1478,12 +1590,17 @@ public final class BytecodeCompiler {
                 INVOKESPECIAL, "java/util/ArrayList", "<init>", "(Ljava/util/Collection;)V", false);
         mv.visitVarInsn(ASTORE, sortArray.itemsLocal().slot());
 
+        int comparatorSlot = scratchObjectSlot(method);
+        emitExpression(mv, internalName, method, sortArray.comparator());
+        boxIfNeeded(mv, sortArray.comparator().type());
+        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(RuntimeCallable.class));
+        mv.visitVarInsn(ASTORE, comparatorSlot);
+
         for (int i = 0; i < sortArray.extraArguments().size(); i++) {
             IRExpression extra = sortArray.extraArguments().get(i);
-            IRLocal local = sortArray.comparatorArgumentLocals().get(i + 2);
             emitExpression(mv, internalName, method, extra);
             boxIfNeeded(mv, extra.type());
-            mv.visitVarInsn(ASTORE, local.slot());
+            mv.visitVarInsn(ASTORE, comparatorSlot + i + 1);
         }
 
         pushInt(mv, 0);
@@ -1510,13 +1627,14 @@ public final class BytecodeCompiler {
         emitListSize(mv, sortArray.itemsLocal());
         mv.visitJumpInsn(IF_ICMPGE, innerEnd);
 
-        emitListGet(mv, sortArray.itemsLocal(), sortArray.indexLocal());
-        mv.visitVarInsn(ASTORE, sortArray.comparatorArgumentLocals().get(0).slot());
-        emitListGet(mv, sortArray.itemsLocal(), sortArray.innerIndexLocal());
-        mv.visitVarInsn(ASTORE, sortArray.comparatorArgumentLocals().get(1).slot());
-
-        emitExpression(mv, internalName, method, sortArray.comparatorBody());
-        boxIfNeeded(mv, sortArray.comparatorBody().type());
+        emitCallableCall(
+                mv,
+                comparatorSlot,
+                -1,
+                sortArray.itemsLocal(),
+                List.of(sortArray.indexLocal(), sortArray.innerIndexLocal()),
+                comparatorSlot + 1,
+                sortArray.extraArguments().size());
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Type.getInternalName(Truth.class),
@@ -1555,6 +1673,61 @@ public final class BytecodeCompiler {
         mv.visitLabel(outerEnd);
         mv.visitVarInsn(ALOAD, sortArray.itemsLocal().slot());
         mv.visitTypeInsn(CHECKCAST, "java/util/List");
+    }
+
+    /**
+     * Emits a call to an LPC callable with a leading item local or list lookups followed by extra
+     * callback arguments.
+     */
+    private void emitCallableCall(
+            MethodVisitor mv,
+            int callableSlot,
+            int itemLocalSlot,
+            IRLocal listLocal,
+            List<IRLocal> listIndexLocals,
+            int extraStartSlot,
+            int extraCount) {
+        int leadingCount = itemLocalSlot >= 0 ? 1 : listIndexLocals.size();
+        int argumentCount = leadingCount + extraCount;
+
+        mv.visitVarInsn(ALOAD, callableSlot);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeContextHolder.class),
+                "requireCurrent",
+                "()Lio/github/protasm/jvmud/compiler/runtime/RuntimeContext;",
+                false);
+        pushInt(mv, argumentCount);
+        mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
+
+        int arrayIndex = 0;
+        if (itemLocalSlot >= 0) {
+            mv.visitInsn(DUP);
+            pushInt(mv, arrayIndex++);
+            mv.visitVarInsn(ALOAD, itemLocalSlot);
+            mv.visitInsn(AASTORE);
+        } else {
+            for (IRLocal indexLocal : listIndexLocals) {
+                mv.visitInsn(DUP);
+                pushInt(mv, arrayIndex++);
+                emitListGet(mv, listLocal, indexLocal);
+                mv.visitInsn(AASTORE);
+            }
+        }
+
+        for (int i = 0; i < extraCount; i++) {
+            mv.visitInsn(DUP);
+            pushInt(mv, arrayIndex++);
+            mv.visitVarInsn(ALOAD, extraStartSlot + i);
+            mv.visitInsn(AASTORE);
+        }
+
+        mv.visitMethodInsn(
+                INVOKEINTERFACE,
+                Type.getInternalName(RuntimeCallable.class),
+                "call",
+                "(Lio/github/protasm/jvmud/compiler/runtime/RuntimeContext;[Ljava/lang/Object;)Ljava/lang/Object;",
+                true);
     }
 
     private void emitListSize(MethodVisitor mv, IRLocal listLocal) {
@@ -1901,6 +2074,10 @@ public final class BytecodeCompiler {
 
     private String nextLiteralHelperName() {
         return LITERAL_HELPER_PREFIX + literalHelperCounter++;
+    }
+
+    private String nextCallableHelperName() {
+        return CALLABLE_HELPER_PREFIX + callableHelperCounter++;
     }
 
     private String nextFieldInitializerHelperName() {

@@ -9,12 +9,11 @@ public record IRCollectionTransform(
         Operation operation,
         IRExpression source,
         List<IRExpression> extraArguments,
-        IRExpression callbackBody,
+        IRExpression callback,
         IRLocal sourceLocal,
         IRLocal itemsLocal,
         IRLocal resultLocal,
         IRLocal indexLocal,
-        List<IRLocal> callbackArgumentLocals,
         RuntimeType type)
         implements IRExpression {
     public enum Operation {
@@ -26,12 +25,11 @@ public record IRCollectionTransform(
         Objects.requireNonNull(operation, "operation");
         Objects.requireNonNull(source, "source");
         extraArguments = List.copyOf(extraArguments);
-        Objects.requireNonNull(callbackBody, "callbackBody");
+        Objects.requireNonNull(callback, "callback");
         Objects.requireNonNull(sourceLocal, "sourceLocal");
         Objects.requireNonNull(itemsLocal, "itemsLocal");
         Objects.requireNonNull(resultLocal, "resultLocal");
         Objects.requireNonNull(indexLocal, "indexLocal");
-        callbackArgumentLocals = List.copyOf(callbackArgumentLocals);
         Objects.requireNonNull(type, "type");
     }
 }

@@ -19,6 +19,6 @@ public final class ASTExprFunctionReference extends ASTExpression {
 
     @Override
     public LPCType lpcType() {
-        return LPCType.LPCMIXED;
+        return LPCType.LPCFUNCTION;
     }
 }
