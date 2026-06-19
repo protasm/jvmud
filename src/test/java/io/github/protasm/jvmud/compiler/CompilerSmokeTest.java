@@ -1069,6 +1069,18 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsInlineCallableReturnShorthand() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_filter_return_shorthand.c", """
+                mixed value() {
+                    return filter(({1, 0, 2, 0, 3}), (: return $1; :));
+                }
+                """);
+
+        assertEquals(List.of(1, 2, 3), object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsInlineCallableMapArguments() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_map.c", """

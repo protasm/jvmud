@@ -5,6 +5,8 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_BRACKET;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_BRACKET;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_PAREN;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_RETURN;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_SEMICOLON;
 
 import io.github.protasm.jvmud.compiler.parser.Parser;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
@@ -33,9 +35,13 @@ public class PrefixLParen implements PrefixParselet {
         return expr;
     }
 
+    /** Parses expression-bodied inline callables, including the {@code return expr;} shorthand. */
     private ASTExpression parseInlineCallable(Parser parser) {
         int line = parser.currLine();
+        boolean returnShorthand = parser.tokens().match(T_RETURN);
         ASTExpression body = parser.expression();
+        if (returnShorthand)
+            parser.tokens().match(T_SEMICOLON);
         parser.tokens().consume(T_COLON, "Expect ':' before ')' after inline callable expression.");
         parser.tokens().consume(T_RIGHT_PAREN, "Expect ')' after inline callable expression.");
         return new ASTExprInlineCallable(line, body);
