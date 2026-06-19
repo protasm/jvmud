@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
+import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
@@ -20,11 +20,11 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
-import io.github.protasm.jvmud.runtime.MudlibBoundary;
-import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
-import io.github.protasm.jvmud.runtime.MudlibProjection;
-import io.github.protasm.jvmud.runtime.MudlibProjectionRole;
-import io.github.protasm.jvmud.runtime.WorldScheduler;
+import io.github.protasm.jvmud.engine.MudlibBoundary;
+import io.github.protasm.jvmud.engine.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.engine.MudlibProjection;
+import io.github.protasm.jvmud.engine.MudlibProjectionRole;
+import io.github.protasm.jvmud.engine.WorldScheduler;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -618,7 +618,7 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsQualifiedEfunCalls() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .directEfunAlias("sizeof", "jvmud_size")
                 .build());
@@ -1060,7 +1060,7 @@ final class CompilerSmokeTest {
     @Test
     void runtimeReturnsZeroForDynamicCallToMissingStringTarget() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         LPCObjectHandle object = runtime.loadSource("smoke/missing_call_other.c", """
                 mixed optional_call() {
                     return jvmud_invoke_entity("room/missing", "advance", 0);
@@ -1175,7 +1175,7 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsAllocateAndLegacyStringDeclaredArrays() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         LPCObjectHandle object = runtime.loadSource("smoke/allocate.c", """
                 string values;
 
@@ -1522,7 +1522,7 @@ final class CompilerSmokeTest {
     @Test
     void sizeofRejectsScalarObjects() {
         RuntimeContext context = new RuntimeContext(null);
-        EngineEfuns.registerCore(context);
+        CoreEfuns.registerCore(context);
         context.setMfunObjectPath("jvmud/functions");
 
         CompilationResult result = new CompilationPipeline("java/lang/Object", context).run("""
@@ -1542,7 +1542,7 @@ final class CompilerSmokeTest {
     @Test
     void usersMfunIsTypedAsArrayForSizeofAndIndexing() {
         RuntimeContext context = new RuntimeContext(null);
-        EngineEfuns.registerCore(context);
+        CoreEfuns.registerCore(context);
         context.setMfunObjectPath("jvmud/functions");
 
         CompilationResult result = new CompilationPipeline("java/lang/Object", context).run("""
@@ -1561,7 +1561,7 @@ final class CompilerSmokeTest {
     @Test
     void runtimeRoutesPersonaSessionOutputAndPresenceQueries() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         LPCObjectHandle first = runtime.loadSource("smoke/first_player.c", """
                 void write_self() {
                     jvmud_write("first-only");
@@ -1777,7 +1777,7 @@ final class CompilerSmokeTest {
     @Test
     void runtimeCapturesNextSessionInputForPersona() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         LPCObjectHandle player = runtime.loadSource("smoke/input_player.c", """
                 string response;
 
@@ -1814,7 +1814,7 @@ final class CompilerSmokeTest {
         Files.writeString(tempDir.resolve("WELCOME"), "Welcome to JVMud.\n");
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         LPCObjectHandle reader = runtime.loadSource("smoke/text_reader.c", """
                 mixed welcome() {
                     return jvmud_read_mudlib_text("/WELCOME");
@@ -1871,7 +1871,7 @@ final class CompilerSmokeTest {
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mudlibRootPath(sourceRoot)
                 .build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         LPCObjectHandle logger = runtime.loadSource("logger.c", """
                 int log_it(string value) {
                     return jvmud_append_mudlib_text("/log/RUNTIME", value + "\\n");
@@ -1892,7 +1892,7 @@ final class CompilerSmokeTest {
     @Test
     void missingObjectSourceCanBeSuppliedByMudlibBoundary() throws Exception {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.loadSource("jvmud/mudlib.c", """
                 object compile_object(string filename) {
                     object ob;
@@ -1933,7 +1933,7 @@ final class CompilerSmokeTest {
     @Test
     void missingObjectSourceFailureContinuesWhenMudlibDeclines() throws Exception {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.loadSource("jvmud/mudlib.c", """
                 object compile_object(string filename) {
                     return 0;
@@ -2028,7 +2028,7 @@ final class CompilerSmokeTest {
         Files.createDirectories(tempDir.resolve("players"));
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         LPCObjectHandle stateful = runtime.loadSource("obj/stateful.c", """
                 string name;
                 int level;
@@ -2153,7 +2153,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -2210,7 +2210,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -2259,7 +2259,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -2317,7 +2317,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
@@ -2366,7 +2366,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
@@ -2417,7 +2417,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
@@ -2460,7 +2460,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
@@ -2532,7 +2532,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
@@ -2609,7 +2609,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -2674,7 +2674,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -2708,7 +2708,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -2746,7 +2746,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -2778,7 +2778,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -2813,7 +2813,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -2852,7 +2852,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -2880,7 +2880,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/functions")
                 .build());
@@ -3051,7 +3051,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .build());
@@ -3063,7 +3063,7 @@ final class CompilerSmokeTest {
     @Test
     void coreTypePredicatesReportIntsAndLiveObjects() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle object = runtime.loadSource("smoke/type_predicates.c", """
                 int int_status(mixed value) {
@@ -3170,7 +3170,7 @@ final class CompilerSmokeTest {
     @Test
     void sscanfAssignsCapturedOutputLocals() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle object = runtime.loadSource("smoke/sscanf.c", """
                 mixed parse(mixed value) {
@@ -3187,7 +3187,7 @@ final class CompilerSmokeTest {
     @Test
     void sscanfAssignsCapturesWithDynamicFormatString() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle object = runtime.loadSource("smoke/sscanf_dynamic.c", """
                 string type;
@@ -3228,7 +3228,7 @@ final class CompilerSmokeTest {
     @Test
     void sscanfDoesNotAssignMissingOutputLocalCaptures() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle object = runtime.loadSource("smoke/sscanf_no_match.c", """
                 int parse(string value) {
@@ -3247,7 +3247,7 @@ final class CompilerSmokeTest {
     @Test
     void sscanfDoesNotAssignMissingOutputFieldCaptures() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle object = runtime.loadSource("smoke/sscanf_no_field_match.c", """
                 int number;
@@ -3267,7 +3267,7 @@ final class CompilerSmokeTest {
     @Test
     void currentObjectSeesEnvironmentLight() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle room = runtime.loadSource("smoke/lit_room.c", """
                 void light() {
@@ -3294,7 +3294,7 @@ final class CompilerSmokeTest {
     @Test
     void currentObjectSeesInventoryLightInDarkEnvironment() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle room = runtime.loadSource("smoke/dark_room.c", "");
         LPCObjectHandle actor = runtime.loadSource("smoke/light_actor.c", """
@@ -3318,7 +3318,7 @@ final class CompilerSmokeTest {
     @Test
     void inventoryLightDoesNotPassThroughOpaqueContainers() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle room = runtime.loadSource("smoke/dark_room.c", "");
         LPCObjectHandle actor = runtime.loadSource("smoke/light_actor.c", """
@@ -3882,7 +3882,7 @@ final class CompilerSmokeTest {
     @Test
     void runtimeDispatchesCoreEngineFunctionsWithCurrentObjectContext() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle object = runtime.loadSource("engine_function/caller.c", """
                 int value() {
@@ -3900,7 +3900,7 @@ final class CompilerSmokeTest {
     @Test
     void writeEngineFunctionCapturesOutputForCliAndTests() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle object = runtime.loadSource("engine_function/writer.c", """
                 void describe() {
@@ -3934,7 +3934,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         LPCObjectHandle room = runtime.load(tempDir.resolve("room.c"));
         Object thing = runtime.cloneObject("thing");
@@ -3969,7 +3969,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         LPCObjectHandle object = runtime.load(tempDir.resolve("corpse_shape.c"));
 
         object.invoke("reset");
@@ -4003,7 +4003,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder().mfunObjectPath("jvmud/mfuns").build());
 
         LPCObjectHandle roller = runtime.load(tempDir.resolve("roller.c"));
@@ -4036,7 +4036,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder().mfunObjectPath("jvmud/mfuns").build());
         LPCObjectHandle room = runtime.load(tempDir.resolve("room.c"));
         LPCObjectHandle actor = runtime.load(tempDir.resolve("actor.c"));
@@ -4085,7 +4085,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
@@ -4112,7 +4112,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         Object parent = runtime.cloneObject("thing");
         Object child = runtime.cloneObject("thing");
@@ -4138,7 +4138,7 @@ final class CompilerSmokeTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         LPCObjectHandle controller = runtime.loadSource("controller.c", """
                 void setup() {
                     object thing;
@@ -4156,7 +4156,7 @@ final class CompilerSmokeTest {
 
     private LPCRuntime temporalRuntime(WorldScheduler scheduler, int defaultIntervalSeconds) {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.setScheduler(scheduler);
         runtime.loadSource("jvmud/mfuns.c", """
                 void set_heart_beat(int enabled) {
@@ -4189,7 +4189,7 @@ final class CompilerSmokeTest {
 
     private LPCRuntime temporalRuntimeWithErrorHandlers(WorldScheduler scheduler) {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.setScheduler(scheduler);
         runtime.loadSource("jvmud/mfuns.c", """
                 void set_heart_beat(int enabled) {
@@ -4225,7 +4225,7 @@ final class CompilerSmokeTest {
 
     private LPCRuntime destructionRuntime(String mudlibSource) {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.loadSource("jvmud/mudlib.c", mudlibSource);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .boundaryObjectPath("jvmud/mudlib")

@@ -1,17 +1,17 @@
 package io.github.protasm.jvmud.server;
 
-import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
+import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
-import io.github.protasm.jvmud.runtime.Capability;
-import io.github.protasm.jvmud.runtime.Entity;
-import io.github.protasm.jvmud.runtime.Location;
-import io.github.protasm.jvmud.runtime.MudlibBoundary;
-import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
-import io.github.protasm.jvmud.runtime.MudlibProjection;
-import io.github.protasm.jvmud.runtime.OutgoingTextFormatter;
-import io.github.protasm.jvmud.runtime.Place;
-import io.github.protasm.jvmud.runtime.WorldRuntime;
+import io.github.protasm.jvmud.engine.Capability;
+import io.github.protasm.jvmud.engine.Entity;
+import io.github.protasm.jvmud.engine.Location;
+import io.github.protasm.jvmud.engine.MudlibBoundary;
+import io.github.protasm.jvmud.engine.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.engine.MudlibProjection;
+import io.github.protasm.jvmud.engine.OutgoingTextFormatter;
+import io.github.protasm.jvmud.engine.Place;
+import io.github.protasm.jvmud.engine.WorldRuntime;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -96,7 +96,7 @@ final class TelnetMud implements TelnetHost {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(normalizedRoot)
                 .build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         MudlibBootResult result =
                 new MudlibBoot(runtime, normalizedRoot, configObjectPath, false).boot();

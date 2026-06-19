@@ -1,6 +1,6 @@
 package io.github.protasm.jvmud.server;
 
-import io.github.protasm.jvmud.runtime.MudlibProjection;
+import io.github.protasm.jvmud.engine.MudlibProjection;
 import java.util.Objects;
 
 /**

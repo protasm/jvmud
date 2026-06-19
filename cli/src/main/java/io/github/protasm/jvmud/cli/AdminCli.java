@@ -1,6 +1,6 @@
 package io.github.protasm.jvmud.cli;
 
-import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
+import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectInspection;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
@@ -153,7 +153,7 @@ public final class AdminCli {
                 .baseIncludePath(this.mudlibRoot)
                 .compilationObserver(new CliCompilationObserver())
                 .build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         handles.clear();
         objectNames.clear();
         info("Booted runtime with mudlib root " + this.mudlibRoot);

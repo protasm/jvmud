@@ -4,16 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
+import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
-import io.github.protasm.jvmud.runtime.MudlibBoundary;
-import io.github.protasm.jvmud.runtime.MudlibBoundaryConfigReader;
-import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.engine.MudlibBoundary;
+import io.github.protasm.jvmud.engine.MudlibBoundaryConfigReader;
+import io.github.protasm.jvmud.engine.MudlibLifecycleEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,7 +50,7 @@ final class RealmsMudCompatibilityScanTest {
         assertConfiguredBoundary(boundary);
 
         RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(sourceRoot, List.of()));
-        EngineEfuns.registerCore(context);
+        CoreEfuns.registerCore(context);
         context.setMudlibBoundary(boundary);
         context.setMfunObjectPath(boundary.mfunObjectPath().orElse(null));
         CompilationPipeline pipeline = new CompilationPipeline("java/lang/Object", context);

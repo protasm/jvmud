@@ -1,3 +1,57 @@
 === Compiler Pipeline
 
-Content to be written.
+JVMud is easiest to understand as a collaboration between compiler, engine, and
+mudlib. The compiler turns LPC source into JVM classes. The engine owns the live
+world model. The mudlib supplies authored behavior and compatibility policy.
+
+The compiler pipeline is deliberately staged so each step has a small job and a
+clear artifact:
+
+[cols="1,2,2", options="header"]
+|===
+| Stage
+| Input
+| Output
+
+| Preprocess
+| LPC source text plus include paths and macro definitions
+| Expanded source with mappings back to the original files
+
+| Scan
+| Preprocessed source
+| A token stream
+
+| Parse
+| Tokens
+| An abstract syntax tree for one LPC object
+
+| Analyze
+| AST plus inherited object metadata and registered efun signatures
+| A semantic model with resolved names, signatures, and type information
+
+| Lower
+| Semantic model
+| Typed intermediate representation
+
+| Compile
+| Typed IR
+| JVM bytecode
+
+| Execute
+| Bytecode plus host runtime configuration
+| A loaded LPC object instance managed by the host-facing LPC runtime
+|===
+
+The package layout follows that path. `preproc`, `scanner`, `token`, `parser`,
+`semantic`, `ir`, and `bytecode` are compiler stages. `pipeline` coordinates the
+stages and reports `CompilationProblem` values when a source unit cannot move
+forward. `efun` defines the LPC-facing function contract, and
+`efun.builtin.CoreEfuns` provides JVMud's built-in catalog.
+
+The package `io.github.protasm.jvmud.compiler.runtime` is support code for
+compiled LPC bytecode: active execution context, truthiness, coercions,
+indexing, strings, arrays, and runtime type descriptors. It is not the JVMud
+engine ontology. Engine-owned concepts such as `WorldRuntime`, `Place`,
+`Entity`, `Player`, `Session`, `Persona`, scheduling, and mudlib lifecycle
+boundaries live under `io.github.protasm.jvmud.engine` in the current
+`runtime/` Maven module.

@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
+import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCLoadResult;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeException;
@@ -46,9 +46,9 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationStage;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
-import io.github.protasm.jvmud.runtime.MudlibBoundary;
-import io.github.protasm.jvmud.runtime.MudlibBoundaryConfigReader;
-import io.github.protasm.jvmud.runtime.WorldScheduler;
+import io.github.protasm.jvmud.engine.MudlibBoundary;
+import io.github.protasm.jvmud.engine.MudlibBoundaryConfigReader;
+import io.github.protasm.jvmud.engine.WorldScheduler;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -90,7 +90,7 @@ final class MudlibCompatibilityScanTest {
     @Test
     void selectedMudlibFilesProduceCompatibilityReport() throws IOException {
         RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(MUDLIB_SOURCE_ROOT, List.of()));
-        EngineEfuns.registerCore(context);
+        CoreEfuns.registerCore(context);
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         context.setMfunObjectPath(boundary.mfunObjectPath().orElse(null));
         CompilationPipeline pipeline = new CompilationPipeline("java/lang/Object", context);
@@ -119,7 +119,7 @@ final class MudlibCompatibilityScanTest {
 
     private static void assertLoadsThroughJvmVerification(MudlibBoundary boundary) {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         LPCObjectHandle player = runtime.load(stripExtension(PLAYER_SOURCE));
@@ -131,7 +131,7 @@ final class MudlibCompatibilityScanTest {
     void initFilePreloadCompatibilityRadarProducesReport() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         List<PreloadEntry> entries = readInitFilePreloads();
@@ -150,7 +150,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaForestRoomsCompileForCompatibilityRadar() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         assertNotNull(runtime.load("room/wild1"));
@@ -161,7 +161,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaClearingCompilesForCompatibilityRadar() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         assertNotNull(runtime.load("room/clearing"));
@@ -171,7 +171,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaAdventurersGuildCompilesForCompatibilityRadar() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         assertNotNull(runtime.load("room/adv_guild"));
@@ -181,7 +181,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaHumpResetCreatesPresentPickupObjects() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         LPCObjectHandle hump = runtime.load("room/hump");
@@ -194,7 +194,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaChestLoadsAndHandlesOpenCloseActions() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         Object player = runtime.cloneObject("obj/player");
@@ -225,7 +225,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaRandLoadsAndRunsDistributionCommand() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         Object player = runtime.cloneObject("obj/player");
@@ -249,7 +249,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaOrcCatchTalkMatchesAndDelegatesToStringObject() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
         LPCObjectHandle target = runtime.loadSource("smoke/orc_talk_target.c", """
                 string heard;
@@ -280,7 +280,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaVillageHarryLoadsAndRespondsToTalkMatch() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         LPCObjectHandle villageRoad = runtime.load("room/vill_road2");
@@ -300,7 +300,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaOrcValleyExposesAttackChatsForFortress() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         Object orcValley = runtime.loadOrGetObject("room/orc_vall");
@@ -314,7 +314,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaTraceLoadsAndLarsWorkroomContainsTracer() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         LPCObjectHandle trace = runtime.load("obj/trace");
@@ -330,7 +330,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaDeathRoomLoadsAndCreatesDeath() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         LPCObjectHandle deathRoom = runtime.load("room/death/death_room");
@@ -344,7 +344,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaFortressLoadsWithArmedOrcsBlockingTreasureRoom() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         LPCObjectHandle fortress = runtime.load("room/fortress");
@@ -367,7 +367,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaPlayerCanPickUpBridgeStick() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         Object player = runtime.cloneObject("obj/player");
@@ -400,7 +400,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaPlayerCanUpdateAlignmentThroughIntPredicate() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         Object player = runtime.cloneObject("obj/player");
@@ -413,7 +413,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaSlopeCompilesForCompatibilityRadar() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         assertNotNull(runtime.load("room/slope"));
@@ -423,7 +423,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaChurchLoadsAndRendersFromConfiguredInitialPlace() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         LPCObjectHandle church = runtime.load("room/church");
@@ -436,7 +436,7 @@ final class MudlibCompatibilityScanTest {
     void vanillaLeoHasUpstreamDisplayedNameAndId() throws IOException {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
 
         LPCObjectHandle leo = runtime.load("obj/leo");
@@ -450,7 +450,7 @@ final class MudlibCompatibilityScanTest {
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
         WorldScheduler scheduler = new WorldScheduler();
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(MUDLIB_ROOT).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(boundary);
         runtime.setScheduler(scheduler);
 

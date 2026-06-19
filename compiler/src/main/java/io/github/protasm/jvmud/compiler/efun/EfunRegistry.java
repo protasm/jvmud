@@ -11,7 +11,7 @@ import java.util.Objects;
  *
  * <p>The registry is owned by a runtime context rather than by global process state, so each hosted
  * mudlib/runtime can choose which efuns it exposes. Built-in JVMud efuns are registered from
- * {@code EngineEfuns}; embedders and tests may register additional implementations before compiled
+ * {@code CoreEfuns}; embedders and tests may register additional implementations before compiled
  * LPC code executes.</p>
  *
  * <p>Lookup is by function name and exact arity. Multiple arities for the same name are valid and

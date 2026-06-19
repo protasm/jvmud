@@ -1473,7 +1473,80 @@ by compiler or telnet smoke tests.</p>
 <div class="sect2">
 <h3 id="_compiler_pipeline"><a class="anchor" href="#_compiler_pipeline"></a><a class="link" href="#_compiler_pipeline">Compiler Pipeline</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>JVMud is easiest to understand as a collaboration between compiler, engine, and
+mudlib. The compiler turns LPC source into JVM classes. The engine owns the live
+world model. The mudlib supplies authored behavior and compatibility policy.</p>
+</div>
+<div class="paragraph">
+<p>The compiler pipeline is deliberately staged so each step has a small job and a
+clear artifact:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Stage</th>
+<th class="tableblock halign-left valign-top">Input</th>
+<th class="tableblock halign-left valign-top">Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Preprocess</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LPC source text plus include paths and macro definitions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expanded source with mappings back to the original files</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scan</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Preprocessed source</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A token stream</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parse</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tokens</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An abstract syntax tree for one LPC object</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Analyze</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AST plus inherited object metadata and registered efun signatures</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A semantic model with resolved names, signatures, and type information</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lower</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Semantic model</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Typed intermediate representation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Compile</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Typed IR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JVM bytecode</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Execute</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bytecode plus host runtime configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A loaded LPC object instance managed by the host-facing LPC runtime</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The package layout follows that path. <code>preproc</code>, <code>scanner</code>, <code>token</code>, <code>parser</code>,
+<code>semantic</code>, <code>ir</code>, and <code>bytecode</code> are compiler stages. <code>pipeline</code> coordinates the
+stages and reports <code>CompilationProblem</code> values when a source unit cannot move
+forward. <code>efun</code> defines the LPC-facing function contract, and
+<code>efun.builtin.CoreEfuns</code> provides JVMud&#8217;s built-in catalog.</p>
+</div>
+<div class="paragraph">
+<p>The package <code>io.github.protasm.jvmud.compiler.runtime</code> is support code for
+compiled LPC bytecode: active execution context, truthiness, coercions,
+indexing, strings, arrays, and runtime type descriptors. It is not the JVMud
+engine ontology. Engine-owned concepts such as <code>WorldRuntime</code>, <code>Place</code>,
+<code>Entity</code>, <code>Player</code>, <code>Session</code>, <code>Persona</code>, scheduling, and mudlib lifecycle
+boundaries live under <code>io.github.protasm.jvmud.engine</code> in the current
+<code>runtime/</code> Maven module.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1558,7 +1631,7 @@ by compiler or telnet smoke tests.</p>
 <div id="footer">
 <div id="footer-text">
 Version 0.1.0-SNAPSHOT<br>
-Last updated 2026-06-19 09:50:02 -0400
+Last updated 2026-06-19 10:31:01 -0400
 </div>
 </div>
 </body>

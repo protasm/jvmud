@@ -5,18 +5,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.protasm.jvmud.compiler.engine.EngineEfuns;
+import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
-import io.github.protasm.jvmud.runtime.Capability;
-import io.github.protasm.jvmud.runtime.Entity;
-import io.github.protasm.jvmud.runtime.Link;
-import io.github.protasm.jvmud.runtime.MudlibBoundary;
-import io.github.protasm.jvmud.runtime.MudlibLifecycleEvent;
-import io.github.protasm.jvmud.runtime.MudlibProjectionRole;
-import io.github.protasm.jvmud.runtime.Place;
-import io.github.protasm.jvmud.runtime.World;
-import io.github.protasm.jvmud.runtime.WorldRuntime;
+import io.github.protasm.jvmud.engine.Capability;
+import io.github.protasm.jvmud.engine.Entity;
+import io.github.protasm.jvmud.engine.Link;
+import io.github.protasm.jvmud.engine.MudlibBoundary;
+import io.github.protasm.jvmud.engine.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.engine.MudlibProjectionRole;
+import io.github.protasm.jvmud.engine.Place;
+import io.github.protasm.jvmud.engine.World;
+import io.github.protasm.jvmud.engine.WorldRuntime;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -735,7 +735,7 @@ final class TelnetServerTest {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(museum)
                 .build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         MudlibBootResult result = new MudlibBoot(runtime, museum, MudlibBoot.DEFAULT_CONFIG_PATH, false).boot();
         Object concourse = runtime.loadOrGetObject("place/concourse");
@@ -762,7 +762,7 @@ final class TelnetServerTest {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(museum)
                 .build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         MudlibBootResult result = new MudlibBoot(runtime, museum, MudlibBoot.DEFAULT_CONFIG_PATH, false).boot();
         Object workshop = runtime.loadOrGetObject("place/workshop");
@@ -1748,7 +1748,7 @@ final class TelnetServerTest {
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
         WorldRuntime worldRuntime = new WorldRuntime(new World("test", "Test World"));
         Place church = worldRuntime.createPlace("room/village/church", "Village church");
         Entity actorEntity = worldRuntime.createEntity(
@@ -1823,7 +1823,7 @@ final class TelnetServerTest {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(tempDir)
                 .build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         MudlibBootResult result = new MudlibBoot(runtime, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH, false).boot();
 
@@ -1857,7 +1857,7 @@ final class TelnetServerTest {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(tempDir)
                 .build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         MudlibBootResult result = new MudlibBoot(runtime, tempDir).boot();
         MudlibBoundary boundary = result.worldRuntime().mudlibBoundary();
@@ -1908,7 +1908,7 @@ final class TelnetServerTest {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(tempDir)
                 .build());
-        EngineEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime);
 
         MudlibBootResult result = new MudlibBoot(runtime, tempDir, "config/startup").boot();
         MudlibBoundary boundary = result.worldRuntime().mudlibBoundary();

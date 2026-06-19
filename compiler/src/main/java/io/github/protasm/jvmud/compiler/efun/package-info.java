@@ -19,7 +19,7 @@
  * </ul>
  *
  * <p>The built-in JVMud efuns are defined in {@link
- * io.github.protasm.jvmud.compiler.engine.EngineEfuns}. Compatibility mudlibs can expose familiar
+ * io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns}. Compatibility mudlibs can expose familiar
  * LPC driver names by wrapping or delegating to those JVMud-native operations, while keeping the
  * engine-facing contract centered on entities, command dispatch, scheduling, persistence, session
  * input, and host integration.</p>
