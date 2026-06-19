@@ -304,6 +304,11 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRLocalMutation localMutation) {
+            emitLocalMutation(mv, localMutation);
+            return;
+        }
+
         if (expression instanceof IRFieldLoad fieldLoad) {
             emitFieldLoad(mv, internalName, fieldLoad.field());
             return;
@@ -311,6 +316,11 @@ public final class BytecodeCompiler {
 
         if (expression instanceof IRFieldStore fieldStore) {
             emitFieldStore(mv, internalName, method, fieldStore);
+            return;
+        }
+
+        if (expression instanceof IRFieldMutation fieldMutation) {
+            emitFieldMutation(mv, fieldMutation);
             return;
         }
 
@@ -492,6 +502,56 @@ public final class BytecodeCompiler {
         }
     }
 
+    private void emitLocalMutation(MethodVisitor mv, IRLocalMutation mutation) {
+        RuntimeType type = mutation.local().type();
+        if (type.kind() == RuntimeValueKind.MIXED) {
+            emitLocalMutationMixed(mv, mutation);
+            return;
+        }
+        if (type.kind() == RuntimeValueKind.FLOAT) {
+            emitLocalMutationFloat(mv, mutation);
+            return;
+        }
+        if (type.kind() != RuntimeValueKind.INT && type.kind() != RuntimeValueKind.STATUS)
+            throw new BytecodeCompileException("Local increment expects primitive numeric target.");
+
+        mv.visitVarInsn(ILOAD, mutation.local().slot());
+        if (!mutation.isPrefix())
+            mv.visitInsn(DUP);
+        pushInt(mv, mutation.delta());
+        mv.visitInsn(IADD);
+        if (mutation.isPrefix())
+            mv.visitInsn(DUP);
+        mv.visitVarInsn(ISTORE, mutation.local().slot());
+    }
+
+    private void emitLocalMutationMixed(MethodVisitor mv, IRLocalMutation mutation) {
+        mv.visitVarInsn(ALOAD, mutation.local().slot());
+        if (!mutation.isPrefix())
+            mv.visitInsn(DUP);
+        pushInt(mv, mutation.delta());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeCoercions.class),
+                "incrementNumber",
+                "(Ljava/lang/Object;I)Ljava/lang/Object;",
+                false);
+        if (mutation.isPrefix())
+            mv.visitInsn(DUP);
+        mv.visitVarInsn(ASTORE, mutation.local().slot());
+    }
+
+    private void emitLocalMutationFloat(MethodVisitor mv, IRLocalMutation mutation) {
+        mv.visitVarInsn(FLOAD, mutation.local().slot());
+        if (!mutation.isPrefix())
+            mv.visitInsn(DUP);
+        mv.visitLdcInsn((float) mutation.delta());
+        mv.visitInsn(FADD);
+        if (mutation.isPrefix())
+            mv.visitInsn(DUP);
+        mv.visitVarInsn(FSTORE, mutation.local().slot());
+    }
+
     private void emitFieldLoad(MethodVisitor mv, String internalName, IRField field) {
         mv.visitVarInsn(ALOAD, 0);
         // Target the owning class so inherited fields resolve through the JVM hierarchy while
@@ -511,6 +571,91 @@ public final class BytecodeCompiler {
                 fieldStore.field().ownerInternalName(),
                 fieldStore.field().name(),
                 descriptor(fieldStore.field().type()));
+    }
+
+    private void emitFieldMutation(MethodVisitor mv, IRFieldMutation mutation) {
+        RuntimeType type = mutation.field().type();
+        if (type.kind() == RuntimeValueKind.MIXED) {
+            emitFieldMutationMixed(mv, mutation);
+            return;
+        }
+        if (type.kind() == RuntimeValueKind.FLOAT) {
+            emitFieldMutationFloat(mv, mutation);
+            return;
+        }
+        if (type.kind() != RuntimeValueKind.INT && type.kind() != RuntimeValueKind.STATUS)
+            throw new BytecodeCompileException("Field increment expects primitive numeric target.");
+
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitFieldInsn(
+                GETFIELD,
+                mutation.field().ownerInternalName(),
+                mutation.field().name(),
+                descriptor(type));
+        if (!mutation.isPrefix())
+            mv.visitInsn(DUP);
+        pushInt(mv, mutation.delta());
+        mv.visitInsn(IADD);
+        if (mutation.isPrefix())
+            mv.visitInsn(DUP);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitInsn(SWAP);
+        mv.visitFieldInsn(
+                PUTFIELD,
+                mutation.field().ownerInternalName(),
+                mutation.field().name(),
+                descriptor(type));
+    }
+
+    private void emitFieldMutationMixed(MethodVisitor mv, IRFieldMutation mutation) {
+        RuntimeType type = mutation.field().type();
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitFieldInsn(
+                GETFIELD,
+                mutation.field().ownerInternalName(),
+                mutation.field().name(),
+                descriptor(type));
+        if (!mutation.isPrefix())
+            mv.visitInsn(DUP);
+        pushInt(mv, mutation.delta());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeCoercions.class),
+                "incrementNumber",
+                "(Ljava/lang/Object;I)Ljava/lang/Object;",
+                false);
+        if (mutation.isPrefix())
+            mv.visitInsn(DUP);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitInsn(SWAP);
+        mv.visitFieldInsn(
+                PUTFIELD,
+                mutation.field().ownerInternalName(),
+                mutation.field().name(),
+                descriptor(type));
+    }
+
+    private void emitFieldMutationFloat(MethodVisitor mv, IRFieldMutation mutation) {
+        RuntimeType type = mutation.field().type();
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitFieldInsn(
+                GETFIELD,
+                mutation.field().ownerInternalName(),
+                mutation.field().name(),
+                descriptor(type));
+        if (!mutation.isPrefix())
+            mv.visitInsn(DUP);
+        mv.visitLdcInsn((float) mutation.delta());
+        mv.visitInsn(FADD);
+        if (mutation.isPrefix())
+            mv.visitInsn(DUP);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitInsn(SWAP);
+        mv.visitFieldInsn(
+                PUTFIELD,
+                mutation.field().ownerInternalName(),
+                mutation.field().name(),
+                descriptor(type));
     }
 
     private void emitUnaryOperation(MethodVisitor mv, String internalName, IRMethod method, IRUnaryOperation unary) {
@@ -1373,7 +1518,7 @@ public final class BytecodeCompiler {
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Type.getInternalName(RuntimeIndex.class),
-                "mutateNumber",
+                mutation.isPrefix() ? "mutateNumberPrefix" : "mutateNumber",
                 "(Ljava/lang/Object;II)Ljava/lang/Object;",
                 false);
     }

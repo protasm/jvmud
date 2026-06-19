@@ -25,12 +25,14 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprClosureArgument;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCollectionTransform;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInlineCallable;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeField;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInvokeLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingEntry;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
@@ -47,6 +49,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignm
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedCall;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedIdentifier;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedInvoke;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedParentCall;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedQualifiedCall;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
@@ -860,6 +863,9 @@ public final class SemanticAnalyzer {
             if (expression instanceof ASTExprUnresolvedAssignment unresolvedAssignment)
                 return resolveAssignment(unresolvedAssignment, context);
 
+            if (expression instanceof ASTExprUnresolvedMutation unresolvedMutation)
+                return resolveMutation(unresolvedMutation, context);
+
             if (expression instanceof ASTExprUnresolvedCall unresolvedCall)
                 return resolveCall(unresolvedCall, context);
 
@@ -973,7 +979,8 @@ public final class SemanticAnalyzer {
                 ASTExpression resolvedIndex = resolveExpression(mutation.index(), context);
                 if (resolvedTarget == mutation.target() && resolvedIndex == mutation.index())
                     return mutation;
-                return new ASTExprArrayMutation(mutation.line(), resolvedTarget, resolvedIndex, mutation.delta());
+                return new ASTExprArrayMutation(
+                        mutation.line(), resolvedTarget, resolvedIndex, mutation.delta(), mutation.isPrefix());
             }
 
             if (expression instanceof ASTExprArrayAccess access) {
@@ -1287,6 +1294,25 @@ public final class SemanticAnalyzer {
                             "Unrecognized local or field '" + unresolvedAssignment.name() + "'.",
                             unresolvedAssignment.line()));
             return new ASTExprError(unresolvedAssignment.line());
+        }
+
+        private ASTExpression resolveMutation(ASTExprUnresolvedMutation mutation, LocalResolutionContext context) {
+            ASTLocal local = resolveLocal(context, mutation.name());
+            if (local != null)
+                return new ASTExprLocalMutation(
+                        mutation.line(), local, mutation.delta(), mutation.isPrefix());
+
+            ScopedSymbol scopedSymbol = resolveFieldSymbol(mutation.name());
+            if (scopedSymbol != null && scopedSymbol.field() != null)
+                return new ASTExprFieldMutation(
+                        mutation.line(), scopedSymbol.field(), mutation.delta(), mutation.isPrefix());
+
+            problems.add(
+                    new CompilationProblem(
+                            CompilationStage.ANALYZE,
+                            "Unrecognized local or field '" + mutation.name() + "'.",
+                            mutation.line()));
+            return new ASTExprError(mutation.line());
         }
 
         private ASTExpression resolveIdentifier(

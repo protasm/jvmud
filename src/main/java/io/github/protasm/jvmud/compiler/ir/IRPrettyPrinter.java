@@ -102,11 +102,21 @@ public final class IRPrettyPrinter {
         if (expression instanceof IRLocalStore store) {
             return "store " + local(store.local()) + " = " + expression(store.value());
         }
+        if (expression instanceof IRLocalMutation mutation) {
+            String op = mutation.delta() >= 0 ? "++" : "--";
+            String target = local(mutation.local());
+            return (mutation.isPrefix() ? op + target : target + op) + ":" + type(mutation.type());
+        }
         if (expression instanceof IRFieldLoad load) {
             return "field " + fieldRef(load.field());
         }
         if (expression instanceof IRFieldStore store) {
             return "field " + fieldRef(store.field()) + " = " + expression(store.value());
+        }
+        if (expression instanceof IRFieldMutation mutation) {
+            String op = mutation.delta() >= 0 ? "++" : "--";
+            String target = "field " + fieldRef(mutation.field());
+            return (mutation.isPrefix() ? op + target : target + op) + ":" + type(mutation.type());
         }
         if (expression instanceof IRBinaryOperation binary) {
             return "(" + expression(binary.left()) + " " + binary.operator() + " " + expression(binary.right())
@@ -141,7 +151,8 @@ public final class IRPrettyPrinter {
         }
         if (expression instanceof IRArrayMutation mutation) {
             String op = mutation.delta() >= 0 ? "++" : "--";
-            return expression(mutation.array()) + "[" + expression(mutation.index()) + "]" + op
+            String target = expression(mutation.array()) + "[" + expression(mutation.index()) + "]";
+            return (mutation.isPrefix() ? op + target : target + op)
                     + ":" + type(mutation.type());
         }
         if (expression instanceof IRStringGet get) {

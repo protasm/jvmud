@@ -22,6 +22,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprClosureArgument;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCollectionTransform;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFunctionReference;
@@ -32,6 +33,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralString;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralTrue;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingEntry;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
@@ -730,6 +732,13 @@ public final class IRLowerer {
             return new IRLocalStore(store.line(), target, value);
         }
 
+        if (expression instanceof ASTExprLocalMutation mutation)
+            return new IRLocalMutation(
+                    mutation.line(),
+                    context.requireLocal(mutation.local(), problems),
+                    mutation.delta(),
+                    mutation.isPrefix());
+
         if (expression instanceof ASTExprFieldAccess fieldAccess) {
             IRField field = context.requireField(fieldAccess.field(), problems);
             return new IRFieldLoad(fieldAccess.line(), field);
@@ -741,6 +750,13 @@ public final class IRLowerer {
                     coerceIfNeeded(lowerExpression(fieldStore.value(), context, problems), field.type());
             return new IRFieldStore(fieldStore.line(), field, value);
         }
+
+        if (expression instanceof ASTExprFieldMutation mutation)
+            return new IRFieldMutation(
+                    mutation.line(),
+                    context.requireField(mutation.field(), problems),
+                    mutation.delta(),
+                    mutation.isPrefix());
 
         if (expression instanceof ASTExprArrayAccess arrayAccess) {
             IRExpression target = lowerExpression(arrayAccess.target(), context, problems);
@@ -820,7 +836,8 @@ public final class IRLowerer {
         if (expression instanceof ASTExprArrayMutation mutation) {
             IRExpression target = lowerExpression(mutation.target(), context, problems);
             IRExpression index = coerceIfNeeded(lowerExpression(mutation.index(), context, problems), RuntimeTypes.INT);
-            return new IRArrayMutation(mutation.line(), target, index, mutation.delta(), RuntimeTypes.MIXED);
+            return new IRArrayMutation(
+                    mutation.line(), target, index, mutation.delta(), mutation.isPrefix(), RuntimeTypes.MIXED);
         }
 
         if (expression instanceof ASTExprOpUnary unary) {

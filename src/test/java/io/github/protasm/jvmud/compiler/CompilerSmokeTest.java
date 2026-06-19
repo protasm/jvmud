@@ -370,6 +370,33 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsTrailingCommaInArrayLiteral() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/trailing_array_comma.c", """
+                mixed value() {
+                    return ({ 1, 2, 3, });
+                }
+                """);
+
+        assertEquals(List.of(1, 2, 3), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsTrailingCommaAfterNestedArrayLiteralEntries() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/trailing_nested_array_comma.c", """
+                mixed value() {
+                    return ({
+                        ({ 1, 2, 3 }),
+                        ({ 4, 5, 6 }),
+                    });
+                }
+                """);
+
+        assertEquals(List.of(List.of(1, 2, 3), List.of(4, 5, 6)), object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsMappingMergeFromMixedMappingValue() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/mixed_mapping_merge.c", """
@@ -385,6 +412,21 @@ final class CompilerSmokeTest {
 
                 int mappingp(mixed value) {
                     return 1;
+                }
+                """);
+
+        assertEquals(2, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsTrailingCommaInMappingLiteral() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/trailing_mapping_comma.c", """
+                mixed value() {
+                    mapping values;
+
+                    values = ([ "a": 1, "b": 2, ]);
+                    return values["b"];
                 }
                 """);
 
@@ -1152,6 +1194,130 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(9, object.invoke("incremented"));
+    }
+
+    @Test
+    void runtimeSupportsPrefixIncrementAndDecrementExpressionValues() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/prefix_increment.c", """
+                int value() {
+                    int count;
+                    int next;
+
+                    count = 4;
+                    next = ++count;
+                    return (next * 10) + --count;
+                }
+                """);
+
+        assertEquals(54, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsLocalPostfixIncrementAndDecrementExpressionValues() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/postfix_increment_value.c", """
+                int value() {
+                    int count;
+                    int old;
+
+                    count = 4;
+                    old = count++;
+                    return (old * 10) + count--;
+                }
+                """);
+
+        assertEquals(45, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsFieldPostfixIncrementAndDecrementExpressionValues() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/postfix_field_increment_value.c", """
+                int count;
+
+                int value() {
+                    int old;
+
+                    count = 4;
+                    old = count++;
+                    return (old * 10) + count--;
+                }
+                """);
+
+        assertEquals(45, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsPrefixIncrementInFunctionArguments() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/prefix_increment_argument.c", """
+                int wrap(int value) {
+                    return value * 10;
+                }
+
+                int value() {
+                    int count;
+
+                    return wrap(++count) + count;
+                }
+                """);
+
+        assertEquals(11, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsPostfixIncrementInFunctionArguments() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/postfix_increment_argument.c", """
+                int wrap(int value) {
+                    return value * 10;
+                }
+
+                int value() {
+                    int count;
+
+                    return wrap(count++) + count;
+                }
+                """);
+
+        assertEquals(1, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsMixedLocalPostfixIncrementExpressionValue() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/postfix_mixed_increment.c", """
+                mixed value() {
+                    mixed count;
+                    mixed old;
+
+                    count = 4;
+                    old = count++;
+                    return (old * 10) + count;
+                }
+                """);
+
+        assertEquals(45, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsIndexedPrefixIncrementAndDecrement() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/indexed_prefix.c", """
+                mixed value() {
+                    mixed *values;
+                    int first;
+                    int second;
+
+                    values = ({ 1, 1 });
+                    first = ++values[0];
+                    second = --values[1];
+                    return (first * 100) + (values[0] * 10) + second;
+                }
+                """);
+
+        assertEquals(220, object.invoke("value"));
     }
 
     @Test

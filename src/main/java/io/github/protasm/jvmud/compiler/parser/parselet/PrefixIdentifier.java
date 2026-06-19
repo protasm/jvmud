@@ -6,7 +6,6 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_IDENTIFIER;
-import static io.github.protasm.jvmud.compiler.token.TokenType.T_INT_LITERAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LEFT_PAREN;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_LESS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_EQUAL;
@@ -21,12 +20,11 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_STAR_EQUAL;
 import io.github.protasm.jvmud.compiler.parser.Parser;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTArguments;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignment;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedCall;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedIdentifier;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedMutation;
 import io.github.protasm.jvmud.compiler.parser.type.AssignOpType;
-import io.github.protasm.jvmud.compiler.token.Token;
 
 public class PrefixIdentifier implements PrefixParselet {
     @Override
@@ -67,17 +65,9 @@ public class PrefixIdentifier implements PrefixParselet {
         else if (canAssign && parser.tokens().match(T_GREATER_GREATER_EQUAL))
             return new ASTExprUnresolvedAssignment(line, identifier, AssignOpType.SHR, parser.expression());
         else if (canAssign && parser.tokens().match(T_PLUS_PLUS))
-            return new ASTExprUnresolvedAssignment(
-                    line,
-                    identifier,
-                    AssignOpType.ADD,
-                    new ASTExprLiteralInteger(line, new Token<>(T_INT_LITERAL, "1", 1, null)));
+            return new ASTExprUnresolvedMutation(line, identifier, 1, false);
         else if (canAssign && parser.tokens().match(T_MINUS_MINUS))
-            return new ASTExprUnresolvedAssignment(
-                    line,
-                    identifier,
-                    AssignOpType.SUB,
-                    new ASTExprLiteralInteger(line, new Token<>(T_INT_LITERAL, "1", 1, null)));
+            return new ASTExprUnresolvedMutation(line, identifier, -1, false);
 
         return new ASTExprUnresolvedIdentifier(line, identifier);
     }

@@ -39,6 +39,7 @@ public final class RuntimeIndex {
         throw new IllegalArgumentException("Cannot assign indexed value: " + target);
     }
 
+    /** Mutates a numeric indexed value and returns the previous value for postfix operators. */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object mutateNumber(Object target, int index, int delta) {
         if (target instanceof List list) {
@@ -46,6 +47,19 @@ public final class RuntimeIndex {
             int oldNumber = oldValue instanceof Number number ? number.intValue() : 0;
             list.set(index, Integer.valueOf(oldNumber + delta));
             return oldValue;
+        }
+        throw new IllegalArgumentException("Cannot mutate indexed value: " + target);
+    }
+
+    /** Mutates a numeric indexed value and returns the updated value for prefix operators. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Object mutateNumberPrefix(Object target, int index, int delta) {
+        if (target instanceof List list) {
+            Object oldValue = list.get(index);
+            int oldNumber = oldValue instanceof Number number ? number.intValue() : 0;
+            Integer newValue = Integer.valueOf(oldNumber + delta);
+            list.set(index, newValue);
+            return newValue;
         }
         throw new IllegalArgumentException("Cannot mutate indexed value: " + target);
     }

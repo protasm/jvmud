@@ -24,6 +24,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprClosureArgument;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCollectionTransform;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFunctionReference;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInlineCallable;
@@ -34,6 +35,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralInteger;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralString;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralTrue;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprError;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
@@ -271,6 +273,10 @@ public final class SemanticTypeChecker {
             return fieldType(store.field().symbol(), valueType);
         }
 
+        if (expression instanceof ASTExprFieldMutation mutation)
+            return inferVariableMutationType(
+                    valueType(mutation.field().symbol()), mutation.line(), "Field increment expects numeric target");
+
         if (expression instanceof ASTExprLocalStore store) {
             LPCType localType = valueType(store.local().symbol());
             LPCType valueType = inferExpressionType(store.value(), context, explicitExpectedType(store.local().symbol()));
@@ -280,6 +286,10 @@ public final class SemanticTypeChecker {
             ensureAssignable(localType, valueType, store.line(), "Local assignment type mismatch");
             return localType != null ? localType : valueType;
         }
+
+        if (expression instanceof ASTExprLocalMutation mutation)
+            return inferVariableMutationType(
+                    valueType(mutation.local().symbol()), mutation.line(), "Local increment expects numeric target");
 
         if (expression instanceof ASTExprArrayStore store)
             return inferIndexStoreType(store, context);
@@ -732,6 +742,16 @@ public final class SemanticTypeChecker {
         problems.add(new CompilationProblem(
                 CompilationStage.ANALYZE, "Indexed increment expects array target", mutation.line()));
         return LPCType.LPCMIXED;
+    }
+
+    private LPCType inferVariableMutationType(LPCType targetType, int line, String message) {
+        if (targetType == LPCType.LPCINT || targetType == LPCType.LPCFLOAT || targetType == LPCType.LPCMIXED)
+            return targetType;
+        if (targetType == null)
+            return LPCType.LPCMIXED;
+
+        problems.add(new CompilationProblem(CompilationStage.ANALYZE, message, line));
+        return targetType;
     }
 
     private boolean promoteIndexedStringTarget(ASTExpression target) {

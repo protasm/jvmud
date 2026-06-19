@@ -36,8 +36,10 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_LESS_LESS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_MINUS_MINUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PERCENT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_PLUS_PLUS;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_PIPE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_QUESTION;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_RIGHT_ARROW;
@@ -54,6 +56,7 @@ import java.util.Map;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixBinaryOp;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixIndex;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixInvoke;
+import io.github.protasm.jvmud.compiler.parser.parselet.InfixPostfixMutation;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixQualifiedCall;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixTernary;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixIdentifier;
@@ -109,6 +112,8 @@ public class PrattParser {
 
         tokenTypeToRule.put(T_BANG, new ParseRule(new PrefixUnaryOp(), null, PREC_NONE));
         tokenTypeToRule.put(T_TILDE, new ParseRule(new PrefixUnaryOp(), null, PREC_NONE));
+        tokenTypeToRule.put(T_PLUS_PLUS, new ParseRule(new PrefixUnaryOp(), new InfixPostfixMutation(), Precedence.PREC_CALL));
+        tokenTypeToRule.put(T_MINUS_MINUS, new ParseRule(new PrefixUnaryOp(), new InfixPostfixMutation(), Precedence.PREC_CALL));
 
         tokenTypeToRule.put(T_MINUS, new ParseRule(new PrefixUnaryOp(), new InfixBinaryOp(), PREC_TERM));
         tokenTypeToRule.put(T_PLUS, new ParseRule(null, new InfixBinaryOp(), PREC_TERM));

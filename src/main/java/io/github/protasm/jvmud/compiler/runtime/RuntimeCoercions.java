@@ -10,4 +10,10 @@ public final class RuntimeCoercions {
         }
         return value;
     }
+
+    /** Returns an incremented numeric value for dynamically typed mutation expressions. */
+    public static Object incrementNumber(Object value, int delta) {
+        int oldNumber = value instanceof Number number ? number.intValue() : 0;
+        return Integer.valueOf(oldNumber + delta);
+    }
 }
