@@ -47,6 +47,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtSwitch;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 
 /**
@@ -105,6 +106,7 @@ public interface ASTVisitor {
         case ASTStmtFor stmtFor -> visitStmtFor(stmtFor);
         case ASTStmtIfThenElse stmtIfThenElse -> visitStmtIfThenElse(stmtIfThenElse);
         case ASTStmtReturn stmtReturn -> visitStmtReturn(stmtReturn);
+        case ASTStmtSwitch stmtSwitch -> visitStmtSwitch(stmtSwitch);
         case ASTStmtWhile stmtWhile -> visitStmtWhile(stmtWhile);
         case ASTStatement statement -> visitStatement(statement);
         default -> throw new IllegalStateException("Unhandled AST node: " + node.getClass().getName());
@@ -210,6 +212,14 @@ public interface ASTVisitor {
     default void visitStmtIfThenElse(ASTStmtIfThenElse stmt) {}
 
     default void visitStmtReturn(ASTStmtReturn stmt) {}
+
+    default void visitStmtSwitch(ASTStmtSwitch stmt) {
+        visit(stmt.expression());
+        for (ASTStmtSwitch.SwitchCase switchCase : stmt.cases()) {
+            visit(switchCase.expression());
+            switchCase.statements().forEach(this::visit);
+        }
+    }
 
     default void visitStmtWhile(ASTStmtWhile stmt) {}
 }

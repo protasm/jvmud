@@ -13,7 +13,9 @@ public final class TokenClassifier {
     private static final Map<String, TokenType> RESERVED_KEYWORDS =
             Map.ofEntries(
                     Map.entry("break", TokenType.T_BREAK),
+                    Map.entry("case", TokenType.T_CASE),
                     Map.entry("continue", TokenType.T_CONTINUE),
+                    Map.entry("default", TokenType.T_DEFAULT),
                     Map.entry("do", TokenType.T_DO),
                     Map.entry("else", TokenType.T_ELSE),
                     Map.entry("false", TokenType.T_FALSE),
@@ -24,6 +26,7 @@ public final class TokenClassifier {
                     Map.entry("inherit", TokenType.T_INHERIT),
                     Map.entry("nil", TokenType.T_NIL),
                     Map.entry("return", TokenType.T_RETURN),
+                    Map.entry("switch", TokenType.T_SWITCH),
                     Map.entry("true", TokenType.T_TRUE),
                     Map.entry("while", TokenType.T_WHILE));
 

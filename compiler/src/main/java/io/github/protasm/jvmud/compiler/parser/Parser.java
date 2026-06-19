@@ -2,10 +2,12 @@ package io.github.protasm.jvmud.compiler.parser;
 
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_BREAK;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_CASE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COLON;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CONTINUE;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_DEFAULT;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DO;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_ELSE;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_EQUAL;
@@ -31,6 +33,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_SEMICOLON;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_SLASH_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_STAR_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_STRING_LITERAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_SWITCH;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_WHILE;
 
 import java.util.ArrayList;
@@ -64,6 +67,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtSwitch;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 import io.github.protasm.jvmud.compiler.parser.parselet.InfixParselet;
 import io.github.protasm.jvmud.compiler.parser.parselet.PrefixParselet;
@@ -571,6 +575,8 @@ public class Parser {
                         return foreachStatement();
                 else if (tokens.match(T_WHILE))
                         return whileStatement();
+                else if (tokens.match(T_SWITCH))
+                        return switchStatement();
                 else if (tokens.match(T_BREAK))
                         return breakStatement();
                 else if (tokens.match(T_CONTINUE))
@@ -643,6 +649,51 @@ public class Parser {
     private ASTStatement continueStatement() {
         tokens.consume(T_SEMICOLON, "Expect ';' after continue.");
         return new ASTStmtContinue(currLine());
+    }
+
+    private ASTStmtSwitch switchStatement() {
+        int line = tokens.previous().line();
+        tokens.consume(T_LEFT_PAREN, "Expect '(' after switch.");
+        ASTExpression expression = expression();
+        tokens.consume(T_RIGHT_PAREN, "Expect ')' after switch expression.");
+        tokens.consume(T_LEFT_BRACE, "Expect '{' after switch expression.");
+
+        List<ASTStmtSwitch.SwitchCase> cases = new ArrayList<>();
+        while (!tokens.check(T_RIGHT_BRACE) && !tokens.isAtEnd()) {
+            int caseLine = currLine();
+            ASTExpression caseExpression = null;
+            boolean isDefault = false;
+
+            if (tokens.match(T_CASE)) {
+                caseLine = tokens.previous().line();
+                caseExpression = expression();
+                tokens.consume(T_COLON, "Expect ':' after case expression.");
+            } else if (tokens.match(T_DEFAULT)) {
+                caseLine = tokens.previous().line();
+                isDefault = true;
+                tokens.consume(T_COLON, "Expect ':' after default.");
+            } else {
+                throw new ParseException("Expect 'case' or 'default' in switch body.", tokens.current());
+            }
+
+            List<ASTStatement> statements = new ArrayList<>();
+            while (!tokens.check(T_CASE)
+                    && !tokens.check(T_DEFAULT)
+                    && !tokens.check(T_RIGHT_BRACE)
+                    && !tokens.isAtEnd()) {
+                if (startsLocalDeclaration()) {
+                    Token<String> typeToken = tokens.consume(T_IDENTIFIER, "Expect local type.");
+                    locals(typeToken, statements);
+                } else {
+                    statements.add(statement());
+                }
+            }
+
+            cases.add(new ASTStmtSwitch.SwitchCase(caseLine, caseExpression, isDefault, statements));
+        }
+
+        tokens.consume(T_RIGHT_BRACE, "Expect '}' after switch body.");
+        return new ASTStmtSwitch(line, expression, cases);
     }
 
     private ASTStmtWhile whileStatement() {

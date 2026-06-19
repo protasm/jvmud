@@ -42,6 +42,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtSwitch;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 
 public final class PrintVisitor implements ASTVisitor {
@@ -439,6 +440,27 @@ public final class PrintVisitor implements ASTVisitor {
         out.println();
         doOutput("[CONDITION]");
         stmt.condition().accept(this);
+        indentLvl--;
+    }
+
+    @Override
+    public void visitStmtSwitch(ASTStmtSwitch stmt) {
+        doOutput(stmt.className());
+        indentLvl++;
+        doOutput("[EXPRESSION]");
+        stmt.expression().accept(this);
+        for (ASTStmtSwitch.SwitchCase switchCase : stmt.cases()) {
+            out.println();
+            doOutput(switchCase.isDefault() ? "[DEFAULT]" : "[CASE]");
+            indentLvl++;
+            if (!switchCase.isDefault())
+                switchCase.expression().accept(this);
+            for (ASTStatement statement : switchCase.statements()) {
+                out.println();
+                statement.accept(this);
+            }
+            indentLvl--;
+        }
         indentLvl--;
     }
 

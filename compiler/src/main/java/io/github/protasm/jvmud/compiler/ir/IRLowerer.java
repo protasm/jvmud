@@ -41,6 +41,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
@@ -52,6 +53,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtSwitch;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
@@ -300,14 +302,18 @@ public final class IRLowerer {
             return lowerDoWhileStatement(doWhileStmt, current, context, problems);
         }
 
+        if (statement instanceof ASTStmtSwitch switchStmt) {
+            return lowerSwitchStatement(switchStmt, current, context, problems);
+        }
+
         if (statement instanceof ASTStmtBreak) {
             String breakTarget = context.currentBreakTarget();
             if (breakTarget == null) {
                 problems.add(
-                        new CompilationProblem(
-                                CompilationStage.LOWER,
-                                "Encountered break statement outside of a loop.",
-                                statement.line()));
+                            new CompilationProblem(
+                                    CompilationStage.LOWER,
+                                    "Encountered break statement outside of a loop or switch.",
+                                    statement.line()));
                 return current;
             }
 
@@ -564,6 +570,82 @@ public final class IRLowerer {
         return mergeBlock;
     }
 
+    private BlockBuilder lowerSwitchStatement(
+            ASTStmtSwitch switchStmt,
+            BlockBuilder current,
+            MethodContext context,
+            List<CompilationProblem> problems) {
+        IRLocal valueLocal = context.addSyntheticLocal(switchStmt.line(), "$switch_value", RuntimeTypes.MIXED);
+        IRExpression value = lowerExpression(switchStmt.expression(), context, problems);
+        current.addStatement(new IRExpressionStatement(
+                switchStmt.line(),
+                new IRLocalStore(switchStmt.line(), valueLocal, coerceIfNeeded(value, RuntimeTypes.MIXED))));
+
+        BlockBuilder mergeBlock = context.newBlock("switch_end");
+        if (switchStmt.cases().isEmpty()) {
+            current.terminate(new IRJump(switchStmt.line(), mergeBlock.label()));
+            return mergeBlock;
+        }
+
+        List<ASTStmtSwitch.SwitchCase> cases = switchStmt.cases();
+        List<BlockBuilder> bodyBlocks = new ArrayList<>();
+        for (int i = 0; i < cases.size(); i++)
+            bodyBlocks.add(context.newBlock("switch_case"));
+
+        List<Integer> testCaseIndexes = new ArrayList<>();
+        int defaultIndex = -1;
+        for (int i = 0; i < cases.size(); i++) {
+            ASTStmtSwitch.SwitchCase switchCase = cases.get(i);
+            if (switchCase.isDefault() && defaultIndex < 0)
+                defaultIndex = i;
+            else if (!switchCase.isDefault())
+                testCaseIndexes.add(i);
+        }
+
+        List<BlockBuilder> testBlocks = new ArrayList<>();
+        for (int ignored : testCaseIndexes)
+            testBlocks.add(context.newBlock("switch_test"));
+
+        String defaultOrEndLabel = defaultIndex >= 0 ? bodyBlocks.get(defaultIndex).label() : mergeBlock.label();
+        current.terminate(new IRJump(
+                switchStmt.line(), testBlocks.isEmpty() ? defaultOrEndLabel : testBlocks.get(0).label()));
+
+        for (int i = 0; i < testCaseIndexes.size(); i++) {
+            int caseIndex = testCaseIndexes.get(i);
+            ASTStmtSwitch.SwitchCase switchCase = cases.get(caseIndex);
+            BlockBuilder testBlock = testBlocks.get(i);
+            IRExpression caseValue = coerceIfNeeded(
+                    lowerExpression(switchCase.expression(), context, problems), RuntimeTypes.MIXED);
+            IRExpression condition = new IRBinaryOperation(
+                    switchCase.line(),
+                    BinaryOpType.BOP_EQ,
+                    new IRLocalLoad(switchCase.line(), valueLocal),
+                    caseValue,
+                    RuntimeTypes.STATUS);
+            String falseLabel = (i + 1 < testBlocks.size()) ? testBlocks.get(i + 1).label() : defaultOrEndLabel;
+            testBlock.terminate(
+                    new IRConditionalJump(switchCase.line(), condition, bodyBlocks.get(caseIndex).label(), falseLabel));
+        }
+
+        context.pushBreakTarget(mergeBlock.label());
+        for (int i = 0; i < cases.size(); i++) {
+            BlockBuilder bodyTail = bodyBlocks.get(i);
+            for (ASTStatement nested : cases.get(i).statements()) {
+                if (bodyTail == null || bodyTail.isTerminated())
+                    break;
+                bodyTail = lowerStatement(nested, bodyTail, context, problems);
+            }
+
+            if (bodyTail != null && !bodyTail.isTerminated()) {
+                String nextLabel = (i + 1 < cases.size()) ? bodyBlocks.get(i + 1).label() : mergeBlock.label();
+                bodyTail.terminate(new IRJump(cases.get(i).line(), nextLabel));
+            }
+        }
+        context.popBreakTarget();
+
+        return mergeBlock;
+    }
+
     private IRExpression lowerExpression(
             ASTExpression expression, MethodContext context, List<CompilationProblem> problems) {
         if (expression == null)
@@ -702,6 +784,18 @@ public final class IRLowerer {
             IRExpression value = lowerExpression(arrayStore.value(), context, problems);
             return new IRArraySet(
                     arrayStore.line(), target, index, coerceIfNeeded(value, RuntimeTypes.MIXED), value.type());
+        }
+
+        if (expression instanceof ASTExprSliceStore sliceStore) {
+            IRExpression target = lowerExpression(sliceStore.target(), context, problems);
+            IRExpression start = coerceIfNeeded(
+                    lowerExpression(sliceStore.start(), context, problems), RuntimeTypes.INT);
+            IRExpression end = sliceStore.end() == null
+                    ? new IRConstant(sliceStore.line(), null, RuntimeTypes.NULL)
+                    : coerceIfNeeded(lowerExpression(sliceStore.end(), context, problems), RuntimeTypes.INT);
+            IRExpression value = coerceIfNeeded(lowerExpression(sliceStore.value(), context, problems), RuntimeTypes.MIXED);
+            return new IRArraySliceSet(
+                    sliceStore.line(), target, start, end, value, RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
         }
 
         if (expression instanceof ASTExprArrayMutation mutation) {
@@ -887,6 +981,12 @@ public final class IRLowerer {
             return Math.max(
                     Math.max(maxClosureArgumentIndex(access.target()), maxClosureArgumentIndex(access.start())),
                     maxClosureArgumentIndex(access.end()));
+        if (expression instanceof ASTExprSliceStore store)
+            return Math.max(
+                    Math.max(
+                            Math.max(maxClosureArgumentIndex(store.target()), maxClosureArgumentIndex(store.start())),
+                            maxClosureArgumentIndex(store.end())),
+                    maxClosureArgumentIndex(store.value()));
         if (expression instanceof ASTExprOpUnary unary)
             return maxClosureArgumentIndex(unary.right());
         if (expression instanceof ASTExprOpBinary binary)
@@ -1091,6 +1191,15 @@ public final class IRLowerer {
                 breakTargets.pop();
             if (!continueTargets.isEmpty())
                 continueTargets.pop();
+        }
+
+        public void pushBreakTarget(String breakTarget) {
+            breakTargets.push(breakTarget);
+        }
+
+        public void popBreakTarget() {
+            if (!breakTargets.isEmpty())
+                breakTargets.pop();
         }
 
         public String currentBreakTarget() {

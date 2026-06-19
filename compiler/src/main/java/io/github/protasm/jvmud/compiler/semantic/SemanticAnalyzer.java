@@ -40,6 +40,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignment;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedCall;
@@ -56,6 +57,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtSwitch;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 import io.github.protasm.jvmud.compiler.parser.type.AssignOpType;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
@@ -364,6 +366,16 @@ public final class SemanticAnalyzer {
             return;
         }
 
+        if (statement instanceof ASTStmtSwitch stmtSwitch) {
+            inspectInitializerExpression(stmtSwitch.expression(), problems);
+            for (ASTStmtSwitch.SwitchCase switchCase : stmtSwitch.cases()) {
+                inspectInitializerExpression(switchCase.expression(), problems);
+                for (ASTStatement nested : switchCase.statements())
+                    validateInitializers(nested, problems);
+            }
+            return;
+        }
+
         if (statement instanceof ASTStmtExpression stmtExpression)
             inspectInitializerExpression(stmtExpression.expression(), problems);
     }
@@ -424,6 +436,12 @@ public final class SemanticAnalyzer {
             return referencesLocal(access.target(), local)
                     || referencesLocal(access.start(), local)
                     || (access.end() != null && referencesLocal(access.end(), local));
+
+        if (expression instanceof ASTExprSliceStore store)
+            return referencesLocal(store.target(), local)
+                    || referencesLocal(store.start(), local)
+                    || (store.end() != null && referencesLocal(store.end(), local))
+                    || referencesLocal(store.value(), local);
 
         if (expression instanceof ASTExprArrayLiteral arrayLiteral)
             return arrayLiteral.elements().stream().anyMatch(elem -> referencesLocal(elem, local));
@@ -959,6 +977,20 @@ public final class SemanticAnalyzer {
                 return new ASTExprSliceAccess(access.line(), resolvedTarget, resolvedStart, resolvedEnd);
             }
 
+            if (expression instanceof ASTExprSliceStore store) {
+                ASTExpression resolvedTarget = resolveExpression(store.target(), context);
+                ASTExpression resolvedStart = resolveExpression(store.start(), context);
+                ASTExpression resolvedEnd = store.end() == null ? null : resolveExpression(store.end(), context);
+                ASTExpression resolvedValue = resolveExpression(store.value(), context);
+                if (resolvedTarget == store.target()
+                        && resolvedStart == store.start()
+                        && resolvedEnd == store.end()
+                        && resolvedValue == store.value())
+                    return store;
+                return new ASTExprSliceStore(
+                        store.line(), resolvedTarget, resolvedStart, resolvedEnd, resolvedValue);
+            }
+
             if (expression instanceof ASTExprLocalAccess access) {
                 return access;
             }
@@ -1439,6 +1471,32 @@ public final class SemanticAnalyzer {
                 if (resolvedBody == stmtDoWhile.body() && resolvedCondition == stmtDoWhile.condition())
                     return stmtDoWhile;
                 return new ASTStmtDoWhile(stmtDoWhile.line(), resolvedBody, resolvedCondition);
+            }
+
+            if (statement instanceof ASTStmtSwitch stmtSwitch) {
+                ASTExpression resolvedExpression = resolveExpression(stmtSwitch.expression(), context);
+                List<ASTStmtSwitch.SwitchCase> resolvedCases = new ArrayList<>();
+                boolean changed = resolvedExpression != stmtSwitch.expression();
+                for (ASTStmtSwitch.SwitchCase switchCase : stmtSwitch.cases()) {
+                    ASTExpression resolvedCaseExpression = resolveExpression(switchCase.expression(), context);
+                    List<ASTStatement> resolvedStatements = new ArrayList<>();
+                    for (ASTStatement nested : switchCase.statements()) {
+                        ASTStatement resolvedNested = resolveStatement(nested, context);
+                        resolvedStatements.add(resolvedNested);
+                        if (resolvedNested != nested)
+                            changed = true;
+                    }
+                    if (resolvedCaseExpression != switchCase.expression())
+                        changed = true;
+                    resolvedCases.add(new ASTStmtSwitch.SwitchCase(
+                            switchCase.line(),
+                            resolvedCaseExpression,
+                            switchCase.isDefault(),
+                            resolvedStatements));
+                }
+                if (!changed)
+                    return stmtSwitch;
+                return new ASTStmtSwitch(stmtSwitch.line(), resolvedExpression, resolvedCases);
             }
 
         if (statement instanceof ASTStmtBreak stmtBreak)

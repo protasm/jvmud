@@ -29,7 +29,8 @@ public enum TokenType {
 
     // Control flow
     T_IF(String.class), T_ELSE(String.class), T_DO(String.class), T_FOR(String.class), T_FOREACH(String.class), T_IN(String.class),
-    T_WHILE(String.class), T_BREAK(String.class), T_CONTINUE(String.class),
+    T_WHILE(String.class), T_SWITCH(String.class), T_CASE(String.class), T_DEFAULT(String.class), T_BREAK(String.class),
+    T_CONTINUE(String.class),
 
     // Reserved words
     T_INHERIT(String.class), T_FALSE(String.class), T_NIL(String.class), T_RETURN(String.class), T_SUPER(String.class),

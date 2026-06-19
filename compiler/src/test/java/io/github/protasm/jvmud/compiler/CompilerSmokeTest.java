@@ -322,6 +322,56 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsArraySliceReplacement() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/array_slice_replacement.c", """
+                mixed value() {
+                    mixed* values;
+
+                    values = ({1, 2, 3, 4});
+                    values[1..2] = ({9});
+                    return values;
+                }
+                """);
+
+        assertEquals(List.of(1, 9, 4), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsArraySliceDeletion() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/array_slice_deletion.c", """
+                mixed value() {
+                    mixed* values;
+
+                    values = ({1, 2, 3, 4});
+                    values[1..2] = ({});
+                    return values;
+                }
+                """);
+
+        assertEquals(List.of(1, 4), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsComputedArraySliceDeletion() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/computed_array_slice_deletion.c", """
+                mixed value() {
+                    mixed* values;
+                    int i;
+
+                    values = ({"a", "b", "..", "c"});
+                    i = 2;
+                    values[i - 1..i] = ({});
+                    return values;
+                }
+                """);
+
+        assertEquals(List.of("a", "c"), object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsHexIntegerLiterals() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/hex_integer.c", """
@@ -420,6 +470,83 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(8, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSupportsStringSwitchCases() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/switch_string.c", """
+                int value(string name) {
+                    int result;
+
+                    switch(name) {
+                        case "alpha":
+                            result = 1;
+                            break;
+                        case "beta":
+                            result = 2;
+                            break;
+                        default:
+                            result = 9;
+                            break;
+                    }
+
+                    return result;
+                }
+                """);
+
+        assertEquals(2, object.invoke("value", "beta"));
+        assertEquals(9, object.invoke("value", "gamma"));
+    }
+
+    @Test
+    void runtimeSupportsSwitchFallthroughLabels() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/switch_fallthrough.c", """
+                int value(string name) {
+                    int result;
+
+                    switch(name) {
+                        case "alpha":
+                        case "beta":
+                            result = 7;
+                            break;
+                        default:
+                            result = 3;
+                            break;
+                    }
+
+                    return result;
+                }
+                """);
+
+        assertEquals(7, object.invoke("value", "alpha"));
+        assertEquals(7, object.invoke("value", "beta"));
+        assertEquals(3, object.invoke("value", "omega"));
+    }
+
+    @Test
+    void switchBreakLeavesOnlyTheSwitch() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/switch_break.c", """
+                int value(int number) {
+                    int result;
+
+                    switch(number) {
+                        case 1:
+                            result = 4;
+                            break;
+                        default:
+                            result = 8;
+                            break;
+                    }
+
+                    result += 1;
+                    return result;
+                }
+                """);
+
+        assertEquals(5, object.invoke("value", 1));
     }
 
     @Test

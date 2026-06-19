@@ -348,6 +348,11 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (expression instanceof IRArraySliceSet arraySliceSet) {
+            emitArraySliceSet(mv, internalName, method, arraySliceSet);
+            return;
+        }
+
         if (expression instanceof IRArrayMutation arrayMutation) {
             emitArrayMutation(mv, internalName, method, arrayMutation);
             return;
@@ -1183,6 +1188,24 @@ public final class BytecodeCompiler {
         emitExpression(mv, internalName, method, arraySet.value());
         boxIfNeeded(mv, arraySet.value().type());
         mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "set", "(ILjava/lang/Object;)Ljava/lang/Object;", true);
+    }
+
+    private void emitArraySliceSet(MethodVisitor mv, String internalName, IRMethod method, IRArraySliceSet arraySliceSet) {
+        emitExpression(mv, internalName, method, arraySliceSet.array());
+        boxIfNeeded(mv, arraySliceSet.array().type());
+        emitExpression(mv, internalName, method, arraySliceSet.start());
+        coerceValue(mv, arraySliceSet.start().type(), RuntimeTypes.INT);
+        emitExpression(mv, internalName, method, arraySliceSet.end());
+        boxIfNeeded(mv, arraySliceSet.end().type());
+        emitExpression(mv, internalName, method, arraySliceSet.value());
+        boxIfNeeded(mv, arraySliceSet.value().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeIndex.class),
+                "replaceSlice",
+                "(Ljava/lang/Object;ILjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                false);
+        coerceValue(mv, RuntimeTypes.MIXED, arraySliceSet.type());
     }
 
     private void emitArrayMutation(MethodVisitor mv, String internalName, IRMethod method, IRArrayMutation mutation) {

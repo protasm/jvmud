@@ -41,6 +41,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
@@ -53,6 +54,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtFor;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtForeach;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtIfThenElse;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtReturn;
+import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtSwitch;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtWhile;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
@@ -135,6 +137,16 @@ public final class SemanticTypeChecker {
             return;
         }
 
+        if (statement instanceof ASTStmtSwitch stmtSwitch) {
+            inferExpressionType(stmtSwitch.expression(), context);
+            for (ASTStmtSwitch.SwitchCase switchCase : stmtSwitch.cases()) {
+                inferExpressionType(switchCase.expression(), context);
+                for (ASTStatement nested : switchCase.statements())
+                    checkStatement(nested, context);
+            }
+            return;
+        }
+
         if (statement instanceof ASTStmtBreak)
             return;
 
@@ -204,6 +216,9 @@ public final class SemanticTypeChecker {
 
         if (expression instanceof ASTExprSliceAccess sliceAccess)
             return inferSliceAccessType(sliceAccess, context);
+
+        if (expression instanceof ASTExprSliceStore sliceStore)
+            return inferSliceStoreType(sliceStore, context);
 
         if (expression instanceof ASTExprFieldStore store) {
             LPCType valueType = inferExpressionType(store.value(), context);
@@ -587,6 +602,26 @@ public final class SemanticTypeChecker {
         problems.add(
                 new CompilationProblem(
                         CompilationStage.ANALYZE, "Assignment expects array or mapping target", store.line()));
+        return valueType;
+    }
+
+    private LPCType inferSliceStoreType(ASTExprSliceStore store, MethodContext context) {
+        LPCType targetType = inferExpressionType(store.target(), context);
+        LPCType startType = inferExpressionType(store.start(), context);
+        LPCType valueType = inferExpressionType(store.value(), context);
+        ensureAssignable(LPCType.LPCINT, startType, store.line(), "Slice start expects integer");
+        if (store.end() != null) {
+            LPCType endType = inferExpressionType(store.end(), context);
+            ensureAssignable(LPCType.LPCINT, endType, store.line(), "Slice end expects integer");
+        }
+
+        if (targetType == LPCType.LPCARRAY || targetType == LPCType.LPCMIXED || targetType == null) {
+            ensureAssignable(LPCType.LPCARRAY, valueType, store.line(), "Array slice assignment expects array value");
+            return LPCType.LPCARRAY;
+        }
+
+        problems.add(new CompilationProblem(
+                CompilationStage.ANALYZE, "Slice assignment expects array target", store.line()));
         return valueType;
     }
 

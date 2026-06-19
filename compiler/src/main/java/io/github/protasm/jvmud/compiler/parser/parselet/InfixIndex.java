@@ -12,6 +12,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
 
 public class InfixIndex implements InfixParselet {
     @Override
@@ -22,6 +23,8 @@ public class InfixIndex implements InfixParselet {
         if (parser.tokens().match(T_DOT_DOT)) {
             ASTExpression end = parser.tokens().check(T_RIGHT_BRACKET) ? null : parser.expression();
             parser.tokens().consume(T_RIGHT_BRACKET, "Expect ']' after slice range.");
+            if (canAssign && parser.tokens().match(T_EQUAL))
+                return new ASTExprSliceStore(line, left, index, end, parser.expression());
             return new ASTExprSliceAccess(line, left, index, end);
         }
 

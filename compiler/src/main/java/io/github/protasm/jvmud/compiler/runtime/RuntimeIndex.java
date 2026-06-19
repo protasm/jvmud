@@ -56,6 +56,26 @@ public final class RuntimeIndex {
         throw new IllegalArgumentException("Cannot slice value: " + target);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Object replaceSlice(Object target, int start, Object endValue, Object replacement) {
+        if (!(target instanceof List list))
+            throw new IllegalArgumentException("Cannot assign slice on value: " + target);
+        if (!(replacement instanceof List<?> replacementList))
+            throw new IllegalArgumentException("Slice assignment expects array replacement: " + replacement);
+
+        int end = inclusiveEnd(endValue, list.size());
+        if (start < 0 || start > list.size())
+            throw new IndexOutOfBoundsException("Slice start out of range: " + start);
+        if (end < start - 1)
+            throw new IndexOutOfBoundsException("Slice end before start: " + end);
+        if (end >= list.size())
+            throw new IndexOutOfBoundsException("Slice end out of range: " + end);
+
+        list.subList(start, end + 1).clear();
+        list.addAll(start, replacementList);
+        return replacement;
+    }
+
     private static int inclusiveEnd(Object endValue, int size) {
         if (size == 0) {
             return -1;
