@@ -51,7 +51,8 @@ forward. `efun` defines the LPC-facing function contract, and
 The package `io.github.protasm.jvmud.compiler.runtime` is support code for
 compiled LPC bytecode: active execution context, truthiness, coercions,
 indexing, strings, arrays, and runtime type descriptors. It is not the JVMud
-engine ontology. Engine-owned concepts such as `WorldRuntime`, `Place`,
-`Entity`, `Player`, `Session`, `Persona`, scheduling, and mudlib lifecycle
-boundaries live under `io.github.protasm.jvmud.engine` in the current
-`runtime/` Maven module.
+engine ontology. Engine-owned concepts live under `io.github.protasm.jvmud.engine`
+in the current `runtime/` Maven module: `engine.world` for `WorldRuntime`,
+`Place`, and `Entity`; `engine.identity` for `Player`, `Session`, and `Persona`
+records; `engine.time` for scheduling; and `engine.mudlib` for mudlib lifecycle
+boundaries.

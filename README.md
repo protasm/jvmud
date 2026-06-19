@@ -24,7 +24,7 @@ call_outs, or master objects as engine ontology.
 
 | Path | Purpose |
 | --- | --- |
-| `runtime/` | JVMud engine module source under the Java package `io.github.protasm.jvmud.engine`. It contains world, place, link, entity, player/session/persona, lifecycle, scheduling, boundary, and containment concepts. |
+| `runtime/` | JVMud engine module source under the Java package `io.github.protasm.jvmud.engine`. It contains subpackages for world ontology, player/session/persona identity, time, mudlib boundaries, output formatting, and small shared support helpers. |
 | `compiler/` | JVMud compiler Java source. It contains the LPC preprocessor, scanner, parser, semantic analysis, IR, bytecode compiler, efun contracts/catalogs, generated-code runtime helpers, and host-facing LPC loader classes. |
 | `server/` | JVMud game-server source. It boots a mudlib, manages shared runtime/world state, and accepts Telnet player sessions. |
 | `cli/` | JVMud local admin CLI source. It is a single-user command-line tool for filesystem navigation, object loading, inspection, invocation, and mutation. |
@@ -37,15 +37,12 @@ call_outs, or master objects as engine ontology.
 The top-level `runtime/` Maven module is now buildable and contains the
 engine-owned model under `io.github.protasm.jvmud.engine`:
 
-- `World`
-- `Place`
-- `Link`
-- `Entity`
-- `Location`
-- `Capability`
-- `WorldRuntime`
-- `Player`, `Session`, and `Persona` record types
-- `MudlibBoundary` and lifecycle events
+- `engine.world`: `World`, `WorldRuntime`, `Place`, `Entity`, `Link`, `Location`, and `Capability`
+- `engine.identity`: `Player`, `Session`, and `Persona` ids and record types
+- `engine.time`: `WorldScheduler`, `ScheduledTask`, and `WorldClock`
+- `engine.mudlib`: `MudlibBoundary`, lifecycle events, and mudlib projections
+- `engine.output`: text presentation helpers for output leaving the runtime
+- `engine.support`: small shared model helpers that do not define engine ontology
 
 `WorldRuntime` owns single containment: every `Entity` has one immediate
 `Location`, movement updates the containment graph, and containment cycles are

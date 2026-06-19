@@ -2,6 +2,9 @@ package io.github.protasm.jvmud.engine;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.protasm.jvmud.engine.time.WorldClock;
+import io.github.protasm.jvmud.engine.world.World;
+import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;

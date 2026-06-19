@@ -2,6 +2,7 @@ package io.github.protasm.jvmud.engine;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import io.github.protasm.jvmud.engine.output.OutgoingTextFormatter;
 import org.junit.jupiter.api.Test;
 
 final class OutgoingTextFormatterTest {

@@ -5,6 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
+import io.github.protasm.jvmud.engine.mudlib.MudlibBoundaryConfigReader;
+import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.engine.world.World;
+import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

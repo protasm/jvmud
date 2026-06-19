@@ -1,10 +1,10 @@
 package io.github.protasm.jvmud.server;
 
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
-import io.github.protasm.jvmud.engine.Entity;
-import io.github.protasm.jvmud.engine.Location;
-import io.github.protasm.jvmud.engine.Place;
-import io.github.protasm.jvmud.engine.WorldRuntime;
+import io.github.protasm.jvmud.engine.world.Entity;
+import io.github.protasm.jvmud.engine.world.Location;
+import io.github.protasm.jvmud.engine.world.Place;
+import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import java.util.Objects;
 
 /** Host-owned actor for the local CLI session. */

@@ -5,6 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.protasm.jvmud.engine.time.ScheduledTask;
+import io.github.protasm.jvmud.engine.time.WorldScheduler;
+import io.github.protasm.jvmud.engine.world.World;
+import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;

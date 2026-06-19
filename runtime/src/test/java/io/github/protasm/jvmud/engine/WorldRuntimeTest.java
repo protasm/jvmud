@@ -4,6 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.protasm.jvmud.engine.world.Capability;
+import io.github.protasm.jvmud.engine.world.Entity;
+import io.github.protasm.jvmud.engine.world.Link;
+import io.github.protasm.jvmud.engine.world.Place;
+import io.github.protasm.jvmud.engine.world.World;
+import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import org.junit.jupiter.api.Test;
 
 final class WorldRuntimeTest {

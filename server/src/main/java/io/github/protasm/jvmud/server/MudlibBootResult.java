@@ -1,7 +1,7 @@
 package io.github.protasm.jvmud.server;
 
-import io.github.protasm.jvmud.engine.WorldRuntime;
-import io.github.protasm.jvmud.engine.MudlibBoundary;
+import io.github.protasm.jvmud.engine.world.WorldRuntime;
+import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import java.util.List;
 
 public record MudlibBootResult(

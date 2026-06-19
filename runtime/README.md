@@ -7,18 +7,19 @@ model.
 
 The engine model is present under
 `src/main/java/io/github/protasm/jvmud/engine/`. It defines JVMud ontology and
-boundary concepts:
+boundary concepts through focused subpackages:
 
-- `World`
-- `Place`
-- `Link`
-- `Entity`
-- `Location`
-- `Capability`
-- `WorldRuntime`
-- `PlayerRecord`, `SessionRecord`, and `PersonaRecord`
-- `MudlibBoundary` and `MudlibLifecycleEvent`
-- `WorldScheduler` and `WorldClock`
+- `world`: `World`, `WorldRuntime`, `Place`, `Entity`, `Link`, `Location`, and `Capability`
+- `identity`: `PlayerRecord`, `SessionRecord`, `PersonaRecord`, and their ids
+- `time`: `WorldScheduler`, `ScheduledTask`, and `WorldClock`
+- `mudlib`: `MudlibBoundary`, lifecycle events, config reading, and mudlib projections
+- `output`: text formatting for output leaving the runtime
+- `support`: small shared helpers that do not define MUD concepts
+
+The Eight Pillars of MUD are used as an educational checklist for this layout:
+interactive, text-only, multiplayer, world-based, persistent, temporal,
+player-present games. The package names stay concrete because several pillars
+are cross-cutting rather than one-class-per-pillar homes.
 
 `WorldRuntime` owns the current containment graph. Every `Entity` has exactly
 one immediate `Location`, and movement rejects containment cycles. It also owns

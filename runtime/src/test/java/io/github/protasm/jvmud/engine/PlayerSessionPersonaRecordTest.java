@@ -4,6 +4,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.protasm.jvmud.engine.identity.PersonaId;
+import io.github.protasm.jvmud.engine.identity.PersonaRecord;
+import io.github.protasm.jvmud.engine.identity.PlayerId;
+import io.github.protasm.jvmud.engine.identity.PlayerRecord;
+import io.github.protasm.jvmud.engine.identity.SessionId;
+import io.github.protasm.jvmud.engine.identity.SessionRecord;
+import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
+import io.github.protasm.jvmud.engine.mudlib.MudlibProjectionRole;
+import io.github.protasm.jvmud.engine.world.Capability;
+import io.github.protasm.jvmud.engine.world.Entity;
+import io.github.protasm.jvmud.engine.world.Place;
+import io.github.protasm.jvmud.engine.world.World;
+import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Optional;
@@ -61,7 +74,9 @@ final class PlayerSessionPersonaRecordTest {
 
     @Test
     void personaRecordKeepsEntityAndMudlibBehaviorProjectionSeparate() {
-        Entity entity = new Entity("entity/alice", "Alice", Set.of(Capability.ACTOR));
+        WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
+        Place start = runtime.createPlace("place/start", "Start");
+        Entity entity = runtime.createEntity("entity/alice", "Alice", start, Capability.ACTOR);
         PersonaId personaId = new PersonaId("persona/alice");
         PlayerId playerId = new PlayerId("player/alice");
         Object behaviorProjection = new Object();

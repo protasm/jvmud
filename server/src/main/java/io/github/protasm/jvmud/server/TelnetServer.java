@@ -1,6 +1,6 @@
 package io.github.protasm.jvmud.server;
 
-import io.github.protasm.jvmud.engine.WorldClock;
+import io.github.protasm.jvmud.engine.time.WorldClock;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
