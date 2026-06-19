@@ -617,7 +617,7 @@ public final class SemanticTypeChecker {
         }
 
         if (targetType == LPCType.LPCMAPPING) {
-            ensureAssignable(LPCType.LPCSTRING, indexType, access.line(), "Mapping key expects string");
+            ensureMappingKey(indexType, access.line());
             return LPCType.LPCMIXED;
         }
 
@@ -669,7 +669,7 @@ public final class SemanticTypeChecker {
         }
 
         if (targetType == LPCType.LPCMAPPING) {
-            ensureAssignable(LPCType.LPCSTRING, indexType, store.line(), "Mapping key expects string");
+            ensureMappingKey(indexType, store.line());
             return valueType;
         }
 
@@ -705,6 +705,16 @@ public final class SemanticTypeChecker {
         problems.add(new CompilationProblem(
                 CompilationStage.ANALYZE, "Slice assignment expects array target", store.line()));
         return valueType;
+    }
+
+    private void ensureMappingKey(LPCType keyType, int line) {
+        if (keyType == LPCType.LPCVOID) {
+            problems.add(
+                    new CompilationProblem(
+                            CompilationStage.ANALYZE,
+                            "Mapping key expects a value",
+                            line));
+        }
     }
 
     private LPCType inferIndexMutationType(ASTExprArrayMutation mutation, MethodContext context) {

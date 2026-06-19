@@ -168,7 +168,7 @@ final class CompilerSmokeTest {
     @Test
     void preprocessorEvaluatesIfExpressionsAfterDirectiveWhitespace() {
         String processed = Preprocessor.preprocess("""
-                #if ! __EFUN_DEFINED__(enable_commands)
+                #if ! defined(enable_commands)
                 int enabled() { return 1; }
                 #endif
                 #if 1
@@ -190,6 +190,7 @@ final class CompilerSmokeTest {
                 .compatibilityPredefine("__VERSION_MAJOR__", "3")
                 .compatibilityPredefine("__VERSION_MINOR__", "6")
                 .compatibilityPredefine("__VERSION_MICRO__", "3")
+                .compatibilityFunctionPredefine("PROBE", "text_width", "0")
                 .build());
 
         CompilationResult result = new CompilationPipeline("java/lang/Object", context).run("""
@@ -199,7 +200,7 @@ final class CompilerSmokeTest {
 
                 int supports_text_width() {
                     return (__VERSION_MAJOR__ >= 3) && (__VERSION_MINOR__ >= 6)
-                        && (__VERSION_MICRO__ >= 3);
+                        && (__VERSION_MICRO__ >= 3) || PROBE(text_width);
                 }
                 """);
 
@@ -214,7 +215,7 @@ final class CompilerSmokeTest {
                     map(efun::db_handles(), #'db_close); // closes handles
                 }
 
-                #if ! __EFUN_DEFINED__(enable_commands)
+                #if ! defined(enable_commands)
                 int enabled() { return 1; }
                 #endif
                 """);
@@ -871,6 +872,112 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(5, object.invoke("value"));
+    }
+
+    @Test
+    void runtimePreservesIntegerMappingKeys() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mapping_integer_keys.c", """
+                int value() {
+                    mapping values;
+
+                    values = ([ 10: 7 ]);
+                    values[20] = 11;
+
+                    return values[10] + values[20];
+                }
+                """);
+
+        assertEquals(18, object.invoke("value"));
+    }
+
+    @Test
+    void runtimePreservesObjectTypedMappingKeys() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mapping_object_keys.c", """
+                int value() {
+                    mapping values;
+                    object key;
+
+                    values = ([ ]);
+                    values[key] = 13;
+
+                    return values[key];
+                }
+                """);
+
+        assertEquals(13, object.invoke("value"));
+    }
+
+    @Test
+    void foreachVariablesAreScopedToSiblingLoops() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/foreach_sibling_scopes.c", """
+                int value() {
+                    int total;
+
+                    foreach(int item in ({1, 2}))
+                    {
+                        total += item;
+                    }
+
+                    foreach(int item in ({3, 4}))
+                    {
+                        total += item;
+                    }
+
+                    return total;
+                }
+                """);
+
+        assertEquals(10, object.invoke("value"));
+    }
+
+    @Test
+    void foreachMappingVariablesAreScopedToSiblingLoops() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/foreach_mapping_sibling_scopes.c", """
+                int value() {
+                    mapping values;
+                    int total;
+
+                    values = ([ "a": 2, "b": 3 ]);
+                    foreach(string key, int amount in values)
+                    {
+                        total += amount;
+                    }
+
+                    foreach(string key, int amount in values)
+                    {
+                        total += amount;
+                    }
+
+                    return total;
+                }
+                """);
+
+        assertEquals(10, object.invoke("value"));
+    }
+
+    @Test
+    void foreachHeaderRejectsDuplicateVariableNamesInOneScope() {
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
+                int value() {
+                    mapping values;
+
+                    values = ([ "a": 2 ]);
+                    foreach(string key, int key in values)
+                    {
+                    }
+
+                    return 1;
+                }
+                """);
+
+        assertTrue(
+                result.getProblems().stream()
+                        .anyMatch(problem -> problem.getMessage().contains("Duplicate local 'key' in scope")),
+                () -> problemMessages(result));
     }
 
     @Test

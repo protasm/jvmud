@@ -1570,8 +1570,10 @@ public final class SemanticAnalyzer {
             alignScopes(targetDepth);
 
             ScopeFrame frame = scopes.peek();
-            ASTLocal existing = frame.locals.get(local.symbol().name());
-            if (existing != null && existing != local) {
+            List<ASTLocal> namedLocals = frame.locals.computeIfAbsent(local.symbol().name(), ignored -> new ArrayList<>());
+            boolean duplicate = namedLocals.stream()
+                    .anyMatch(existing -> existing != local && existing.scopeId() == local.scopeId());
+            if (duplicate) {
                 problems.add(
                         new CompilationProblem(
                                 CompilationStage.ANALYZE,
@@ -1582,7 +1584,7 @@ public final class SemanticAnalyzer {
             int slot = (!freeSlots.isEmpty()) ? freeSlots.pop() : nextSlot++;
             local.setSlot(slot);
             local.setScopeDepth(targetDepth);
-            frame.locals.put(local.symbol().name(), local);
+            namedLocals.add(local);
         }
 
         private void alignScopes(int targetDepth) {
@@ -1600,15 +1602,17 @@ public final class SemanticAnalyzer {
 
         private void releaseScope() {
             ScopeFrame expired = scopes.pop();
-            for (ASTLocal local : expired.locals.values()) {
-                if (local.slot() >= 0)
-                    freeSlots.push(local.slot());
+            for (List<ASTLocal> locals : expired.locals.values()) {
+                for (ASTLocal local : locals) {
+                    if (local.slot() >= 0)
+                        freeSlots.push(local.slot());
+                }
             }
             currentDepth--;
         }
 
         private static final class ScopeFrame {
-            private final Map<String, ASTLocal> locals = new HashMap<>();
+            private final Map<String, List<ASTLocal>> locals = new HashMap<>();
         }
     }
 

@@ -802,18 +802,23 @@ public class Parser {
         int line = tokens.previous().line();
         tokens.consume(T_LEFT_PAREN, "Expect '(' after foreach.");
 
-        ASTLocal keyLocal = foreachLocal();
-        ASTLocal valueLocal = null;
-        if (tokens.match(T_COMMA))
-            valueLocal = foreachLocal();
+        locals.beginScope();
+        try {
+            ASTLocal keyLocal = foreachLocal();
+            ASTLocal valueLocal = null;
+            if (tokens.match(T_COMMA))
+                valueLocal = foreachLocal();
 
-        if (!tokens.match(T_IN) && !tokens.match(T_COLON))
-            throw new ParseException("Expect 'in' or ':' in foreach clause.", tokens.current());
+            if (!tokens.match(T_IN) && !tokens.match(T_COLON))
+                throw new ParseException("Expect 'in' or ':' in foreach clause.", tokens.current());
 
-        ASTExpression iterable = expression();
-        tokens.consume(T_RIGHT_PAREN, "Expect ')' after foreach clause.");
+            ASTExpression iterable = expression();
+            tokens.consume(T_RIGHT_PAREN, "Expect ')' after foreach clause.");
 
-        return new ASTStmtForeach(line, keyLocal, valueLocal, iterable, statement());
+            return new ASTStmtForeach(line, keyLocal, valueLocal, iterable, statement());
+        } finally {
+            locals.endScope();
+        }
     }
 
     private ASTLocal foreachLocal() {

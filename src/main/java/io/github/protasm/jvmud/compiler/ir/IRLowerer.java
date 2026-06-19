@@ -699,7 +699,7 @@ public final class IRLowerer {
         if (expression instanceof ASTExprMappingLiteral mappingLiteral) {
             List<IRMappingEntry> entries = new ArrayList<>();
             for (ASTExprMappingEntry entry : mappingLiteral.entries()) {
-                IRExpression key = coerceIfNeeded(lowerExpression(entry.key(), context, problems), RuntimeTypes.STRING);
+                IRExpression key = lowerExpression(entry.key(), context, problems);
                 IRExpression value = lowerExpression(entry.value(), context, problems);
                 entries.add(new IRMappingEntry(key, value));
             }
@@ -746,8 +746,7 @@ public final class IRLowerer {
             IRExpression target = lowerExpression(arrayAccess.target(), context, problems);
             RuntimeType targetType = runtimeType(arrayAccess.target().lpcType());
             if (targetType != null && targetType.kind() == RuntimeValueKind.MAPPING) {
-                IRExpression key =
-                        coerceIfNeeded(lowerExpression(arrayAccess.index(), context, problems), RuntimeTypes.STRING);
+                IRExpression key = lowerExpression(arrayAccess.index(), context, problems);
                 return new IRMappingGet(arrayAccess.line(), target, key, RuntimeTypes.MIXED);
             }
 
@@ -786,8 +785,7 @@ public final class IRLowerer {
             IRExpression target = lowerExpression(arrayStore.target(), context, problems);
             RuntimeType targetType = runtimeType(arrayStore.target().lpcType());
             if (targetType != null && targetType.kind() == RuntimeValueKind.MAPPING) {
-                IRExpression key =
-                        coerceIfNeeded(lowerExpression(arrayStore.index(), context, problems), RuntimeTypes.STRING);
+                IRExpression key = lowerExpression(arrayStore.index(), context, problems);
                 IRExpression value = lowerExpression(arrayStore.value(), context, problems);
                 return new IRMappingSet(
                         arrayStore.line(), target, key, coerceIfNeeded(value, RuntimeTypes.MIXED), value.type());

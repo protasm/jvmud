@@ -125,6 +125,7 @@ final class MudlibBoundaryTest {
                 direct_efun.sizeof = jvmud_size
                 ldmud_compat_predefine.__VERSION__ = "JVMud LDMud compatibility"
                 ldmud_compat_predefine.__VERSION_MAJOR__ = 3
+                ldmud_compat_function_predefine.PROBE.text_width = 0
                 temporal_tick_method = heart_beat
                 temporal_tick_interval = 0.25
                 """);
@@ -164,6 +165,7 @@ final class MudlibBoundaryTest {
         assertEquals(
                 Map.of("__VERSION__", "\"JVMud LDMud compatibility\"", "__VERSION_MAJOR__", "3"),
                 boundary.compatibilityPredefines());
+        assertEquals(Map.of("PROBE", Map.of("text_width", "0")), boundary.compatibilityFunctionPredefines());
         assertEquals("heart_beat", boundary.temporalTickMethod().orElseThrow());
         assertEquals(Duration.ofMillis(250), boundary.temporalTickInterval());
         assertEquals(0, boundary.temporalTickIntervalSeconds());
@@ -179,6 +181,21 @@ final class MudlibBoundaryTest {
         assertThrows(
                 UnsupportedOperationException.class,
                 () -> boundary.compatibilityPredefines().put("__VERSION_MINOR__", "6"));
+    }
+
+    @Test
+    void compatibilityFunctionPredefinesAreImmutable() {
+        MudlibBoundary boundary = MudlibBoundary.builder()
+                .compatibilityFunctionPredefine("PROBE", "feature", "1")
+                .build();
+
+        assertTrue(boundary.declared());
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> boundary.compatibilityFunctionPredefines().put("OTHER", Map.of()));
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> boundary.compatibilityFunctionPredefines().get("PROBE").put("other", "0"));
     }
 
     @Test

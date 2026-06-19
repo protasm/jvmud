@@ -60,6 +60,8 @@ public final class Preprocessor {
 
   private final IncludeResolver resolver;
   private final Map<String, Macro> macros = new HashMap<>();
+  private final Map<String, Map<String, List<PPToken>>> compatibilityFunctionPredefines =
+      new HashMap<>();
 
   public Preprocessor(IncludeResolver resolver) {
     this(resolver, Map.of());
@@ -77,6 +79,26 @@ public final class Preprocessor {
    *     mudlib boundary
    */
   public Preprocessor(IncludeResolver resolver, Map<String, String> compatibilityPredefines) {
+    this(resolver, compatibilityPredefines, Map.of());
+  }
+
+  /**
+   * Creates a preprocessor with object-like and function-like compatibility predefines.
+   *
+   * <p>Function-like entries are keyed by macro name and first-argument spelling. They let mudlib
+   * boundary profiles answer compile-time feature probes without hardcoding another driver's probe
+   * macro names in JVMud's compiler.</p>
+   *
+   * @param resolver include resolver for {@code #include} directives
+   * @param compatibilityPredefines object-like macro names and replacement source text supplied by
+   *     the active mudlib boundary
+   * @param compatibilityFunctionPredefines function-like macro replacements supplied by the active
+   *     mudlib boundary
+   */
+  public Preprocessor(
+      IncludeResolver resolver,
+      Map<String, String> compatibilityPredefines,
+      Map<String, Map<String, String>> compatibilityFunctionPredefines) {
     this.resolver = Objects.requireNonNull(resolver);
 
     // predefineds you may want:
@@ -84,6 +106,7 @@ public final class Preprocessor {
     if (compatibilityPredefines != null) {
       compatibilityPredefines.forEach(this::defineObject);
     }
+    defineCompatibilityFunctionPredefines(compatibilityFunctionPredefines);
   }
 
   /* ========================= public API ========================== */
@@ -733,6 +756,28 @@ public final class Preprocessor {
     macros.put(name, new Macro(name, null, List.of(syntheticToken(body))));
   }
 
+  private void defineCompatibilityFunctionPredefines(Map<String, Map<String, String>> configured) {
+    if (configured == null || configured.isEmpty()) return;
+
+    configured.forEach(
+        (macroName, replacements) -> {
+          if (macroName == null || macroName.isBlank() || replacements == null || replacements.isEmpty())
+            return;
+
+          Map<String, List<PPToken>> tokenized = new HashMap<>();
+          replacements.forEach(
+              (argument, replacement) -> {
+                if (argument != null && !argument.isBlank() && replacement != null && !replacement.isBlank())
+                  tokenized.put(argument.trim(), tokenizeReplacement(replacement));
+              });
+          if (!tokenized.isEmpty()) compatibilityFunctionPredefines.put(macroName.trim(), tokenized);
+        });
+  }
+
+  private List<PPToken> tokenizeReplacement(String replacement) {
+    return tokenizeUntilNewline(new CharCursor(new LineMap("<built-in>", replacement))).tokens();
+  }
+
   private PPToken syntheticToken(String body) {
     LineMap map = new LineMap("<built-in>", body);
 
@@ -752,6 +797,27 @@ public final class Preprocessor {
       }
 
       if ((t.kind == PPToken.Kind.IDENT)
+          && compatibilityFunctionPredefines.containsKey(t.lexeme)
+          && !hideset.contains(t.lexeme)) {
+        ParsedMacroCall call = parseMacroCall(in, i);
+        if (call == null) {
+          out.add(t);
+          i++;
+          continue;
+        }
+
+        List<PPToken> replacement = compatibilityReplacement(t.lexeme, call.actuals());
+        if (replacement == null) {
+          out.add(t);
+          i++;
+          continue;
+        }
+
+        Set<String> nextHide = new HashSet<>(hideset);
+        nextHide.add(t.lexeme);
+        out.addAll(expandMacros(replacement, nextHide));
+        i = call.nextIndex();
+      } else if ((t.kind == PPToken.Kind.IDENT)
           && macros.containsKey(t.lexeme)
           && !hideset.contains(t.lexeme)) {
         Macro m = macros.get(t.lexeme);
@@ -767,54 +833,13 @@ public final class Preprocessor {
           i++;
         } else {
           // function-like: collect actual args
-          int save = i;
-
-          i++; // consume name
-
-          if ((i >= in.size()) || !in.get(i).lexeme.equals("(")) {
+          ParsedMacroCall call = parseMacroCall(in, i);
+          if (call == null) {
             // not a call site; leave as-is
-            i = save;
-
-            out.add(in.get(i++));
+            out.add(t);
+            i++;
 
             continue;
-          }
-
-          i++; // consume '('
-
-          List<List<PPToken>> actuals = new ArrayList<>();
-          List<PPToken> current = new ArrayList<>();
-          int depth = 1;
-
-          while ((i < in.size()) && (depth > 0)) {
-            PPToken x = in.get(i++);
-
-            if (x.lexeme.equals("(")) {
-              depth++;
-
-              current.add(x);
-
-              continue;
-            }
-
-            if (x.lexeme.equals(")")) {
-              depth--;
-
-              if (depth == 0) {
-                actuals.add(current);
-
-                break;
-              }
-
-              current.add(x);
-
-              continue;
-            }
-            if (x.lexeme.equals(",") && (depth == 1)) {
-              actuals.add(current);
-
-              current = new ArrayList<>();
-            } else current.add(x);
           }
 
           // substitute params
@@ -822,7 +847,7 @@ public final class Preprocessor {
 
           if (m.params != null)
             for (int pi = 0; pi < m.params.size(); pi++) {
-              List<PPToken> val = (pi < actuals.size()) ? actuals.get(pi) : List.of();
+              List<PPToken> val = (pi < call.actuals().size()) ? call.actuals().get(pi) : List.of();
 
               paramMap.put(m.params.get(pi), val);
             }
@@ -833,6 +858,7 @@ public final class Preprocessor {
           nextHide.add(m.name());
 
           out.addAll(expandMacros(substituted, nextHide));
+          i = call.nextIndex();
         }
       } else {
         out.add(t);
@@ -842,6 +868,61 @@ public final class Preprocessor {
     }
 
     return out;
+  }
+
+  private record ParsedMacroCall(List<List<PPToken>> actuals, int nextIndex) {}
+
+  private ParsedMacroCall parseMacroCall(List<PPToken> in, int macroIndex) {
+    int i = macroIndex + 1;
+    if ((i >= in.size()) || !in.get(i).lexeme.equals("(")) return null;
+
+    i++;
+    List<List<PPToken>> actuals = new ArrayList<>();
+    List<PPToken> current = new ArrayList<>();
+    int depth = 1;
+
+    while ((i < in.size()) && (depth > 0)) {
+      PPToken x = in.get(i++);
+
+      if (x.lexeme.equals("(")) {
+        depth++;
+        current.add(x);
+        continue;
+      }
+
+      if (x.lexeme.equals(")")) {
+        depth--;
+        if (depth == 0) {
+          actuals.add(current);
+          return new ParsedMacroCall(actuals, i);
+        }
+        current.add(x);
+        continue;
+      }
+
+      if (x.lexeme.equals(",") && (depth == 1)) {
+        actuals.add(current);
+        current = new ArrayList<>();
+      } else current.add(x);
+    }
+
+    return null;
+  }
+
+  private List<PPToken> compatibilityReplacement(String macroName, List<List<PPToken>> actuals) {
+    if (actuals.isEmpty()) return null;
+
+    String argumentKey = argumentKey(actuals.get(0));
+    if (argumentKey.isBlank()) return null;
+
+    Map<String, List<PPToken>> replacements = compatibilityFunctionPredefines.get(macroName);
+    return replacements != null ? replacements.get(argumentKey) : null;
+  }
+
+  private String argumentKey(List<PPToken> argument) {
+    StringBuilder key = new StringBuilder();
+    for (PPToken token : argument) key.append(token.lexeme);
+    return key.toString().trim();
   }
 
   private List<PPToken> substitute(List<PPToken> body, Map<String, List<PPToken>> params) {

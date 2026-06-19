@@ -1450,7 +1450,7 @@ public final class BytecodeCompiler {
         for (IRMappingEntry entry : literal.entries()) {
             mv.visitInsn(DUP);
             emitExpression(mv, internalName, method, entry.key());
-            coerceValue(mv, entry.key().type(), RuntimeTypes.STRING);
+            boxIfNeeded(mv, entry.key().type());
             emitExpression(mv, internalName, method, entry.value());
             boxIfNeeded(mv, entry.value().type());
             mv.visitMethodInsn(
@@ -1479,7 +1479,7 @@ public final class BytecodeCompiler {
         emitExpression(mv, internalName, method, mappingGet.mapping());
         mv.visitTypeInsn(CHECKCAST, "java/util/Map");
         emitExpression(mv, internalName, method, mappingGet.key());
-        coerceValue(mv, mappingGet.key().type(), RuntimeTypes.STRING);
+        boxIfNeeded(mv, mappingGet.key().type());
         mv.visitMethodInsn(
                 INVOKEINTERFACE, "java/util/Map", "get", "(Ljava/lang/Object;)Ljava/lang/Object;", true);
     }
@@ -1488,7 +1488,7 @@ public final class BytecodeCompiler {
         emitExpression(mv, internalName, method, mappingSet.mapping());
         mv.visitTypeInsn(CHECKCAST, "java/util/Map");
         emitExpression(mv, internalName, method, mappingSet.key());
-        coerceValue(mv, mappingSet.key().type(), RuntimeTypes.STRING);
+        boxIfNeeded(mv, mappingSet.key().type());
         emitExpression(mv, internalName, method, mappingSet.value());
         boxIfNeeded(mv, mappingSet.value().type());
         mv.visitMethodInsn(

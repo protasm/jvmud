@@ -79,6 +79,7 @@ public final class MudlibBoundaryConfigReader {
         addPreloadObjects(builder, allValues(values, "preload_objects"));
         addDirectEfunAliases(builder, values);
         addLdmudCompatibilityPredefines(builder, values);
+        addLdmudCompatibilityFunctionPredefines(builder, values);
         addLifecycleEvents(builder, allValues(values, "handled_lifecycle_events"));
         addLifecycleMethods(builder, values);
         addString(builder::temporalTickMethod, firstValue(values, "temporal_tick_method"));
@@ -174,7 +175,9 @@ public final class MudlibBoundaryConfigReader {
     }
 
     private static boolean shouldPreserveReplacementText(String key) {
-        return key.trim().startsWith("ldmud_compat_predefine.");
+        String trimmed = key.trim();
+        return trimmed.startsWith("ldmud_compat_predefine.")
+                || trimmed.startsWith("ldmud_compat_function_predefine.");
     }
 
     private static String firstValue(Map<String, List<String>> values, String... keys) {
@@ -340,6 +343,29 @@ public final class MudlibBoundaryConfigReader {
             String replacementText = entry.getValue().get(0);
             if (!replacementText.isBlank()) {
                 builder.compatibilityPredefine(macroName, replacementText);
+            }
+        }
+    }
+
+    private static void addLdmudCompatibilityFunctionPredefines(
+            MudlibBoundary.Builder builder, Map<String, List<String>> values) {
+        for (Map.Entry<String, List<String>> entry : values.entrySet()) {
+            String key = entry.getKey().trim();
+            if (!key.startsWith("ldmud_compat_function_predefine.")) {
+                continue;
+            }
+
+            String spec = key.substring("ldmud_compat_function_predefine.".length());
+            int separator = spec.lastIndexOf('.');
+            if (separator <= 0 || separator == spec.length() - 1 || entry.getValue().isEmpty()) {
+                continue;
+            }
+
+            String macroName = spec.substring(0, separator);
+            String argumentName = spec.substring(separator + 1);
+            String replacementText = entry.getValue().get(0);
+            if (!replacementText.isBlank()) {
+                builder.compatibilityFunctionPredefine(macroName, argumentName, replacementText);
             }
         }
     }

@@ -39,6 +39,10 @@ public final class RuntimeTypes {
     public static final RuntimeType VOID =
             new RuntimeType(RuntimeValueKind.VOID, JType.JVOID, null, RuntimeTruthiness.NONE, null);
 
+    /**
+     * Runtime representation for LPC mappings. JVMud treats mapping keys as general LPC values,
+     * matching the Map-backed runtime model instead of narrowing keys to strings.
+     */
     public static final RuntimeType MAPPING =
             new RuntimeType(RuntimeValueKind.MAPPING, JType.JOBJECT, "java/util/Map", RuntimeTruthiness.REFERENCE_NULL_FALSE, null);
 

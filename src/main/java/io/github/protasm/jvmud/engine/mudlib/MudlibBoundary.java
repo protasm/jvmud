@@ -52,6 +52,7 @@ public final class MudlibBoundary {
     private final Map<MudlibLifecycleEvent, String> lifecycleMethods;
     private final Map<String, String> directEfunAliases;
     private final Map<String, String> compatibilityPredefines;
+    private final Map<String, Map<String, String>> compatibilityFunctionPredefines;
 
     private MudlibBoundary(Builder builder) {
         this.gameId = normalizeOptionalText(builder.gameId);
@@ -72,6 +73,7 @@ public final class MudlibBoundary {
         this.lifecycleMethods = immutableCopy(builder.lifecycleMethods);
         this.directEfunAliases = normalizeTextMap(builder.directEfunAliases);
         this.compatibilityPredefines = normalizeTextMap(builder.compatibilityPredefines);
+        this.compatibilityFunctionPredefines = normalizeNestedTextMap(builder.compatibilityFunctionPredefines);
     }
 
     /** Returns a boundary with no declared mudlib integration points. */
@@ -218,6 +220,19 @@ public final class MudlibBoundary {
     }
 
     /**
+     * Returns configured function-like preprocessor compatibility probes.
+     *
+     * <p>The outer key is the macro name exposed to mudlib source. The inner key is the first
+     * argument spelling, and the inner value is replacement source text. This supports driver
+     * compatibility probes without baking another driver's macro names into JVMud's compiler.</p>
+     *
+     * @return immutable map from macro name to argument-specific replacement text
+     */
+    public Map<String, Map<String, String>> compatibilityFunctionPredefines() {
+        return compatibilityFunctionPredefines;
+    }
+
+    /**
      * Returns the configured mudlib method for an event, if one was declared.
      *
      * @param event lifecycle event to inspect
@@ -262,7 +277,8 @@ public final class MudlibBoundary {
                 || !lifecycleEvents.isEmpty()
                 || !lifecycleMethods.isEmpty()
                 || !directEfunAliases.isEmpty()
-                || !compatibilityPredefines.isEmpty();
+                || !compatibilityPredefines.isEmpty()
+                || !compatibilityFunctionPredefines.isEmpty();
     }
 
     private static Set<MudlibLifecycleEvent> immutableCopy(EnumSet<MudlibLifecycleEvent> events) {
@@ -289,6 +305,20 @@ public final class MudlibBoundary {
             normalized.put(
                     normalizeRequiredText(entry.getKey(), "Mapping key"),
                     normalizeRequiredText(entry.getValue(), "Mapping value"));
+        }
+        return Collections.unmodifiableMap(normalized);
+    }
+
+    private static Map<String, Map<String, String>> normalizeNestedTextMap(
+            Map<String, ? extends Map<String, String>> mappings) {
+        if (mappings.isEmpty()) {
+            return Map.of();
+        }
+        java.util.LinkedHashMap<String, Map<String, String>> normalized = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, ? extends Map<String, String>> entry : mappings.entrySet()) {
+            normalized.put(
+                    normalizeRequiredText(entry.getKey(), "Compatibility function predefine name"),
+                    normalizeTextMap(entry.getValue()));
         }
         return Collections.unmodifiableMap(normalized);
     }
@@ -383,6 +413,8 @@ public final class MudlibBoundary {
                 new java.util.LinkedHashMap<>();
         private final java.util.LinkedHashMap<String, String> compatibilityPredefines =
                 new java.util.LinkedHashMap<>();
+        private final java.util.LinkedHashMap<String, java.util.LinkedHashMap<String, String>>
+                compatibilityFunctionPredefines = new java.util.LinkedHashMap<>();
 
         private Builder() {}
 
@@ -553,6 +585,38 @@ public final class MudlibBoundary {
                 compatibilityPredefines.remove(normalizedName);
             } else {
                 compatibilityPredefines.put(normalizedName, normalizedReplacement);
+            }
+            return this;
+        }
+
+        /**
+         * Declares an argument-specific function-like preprocessor compatibility replacement.
+         *
+         * <p>For a configured macro {@code PROBE} and argument {@code feature}, the preprocessor can
+         * replace {@code PROBE(feature)} with the supplied replacement source text. JVMud treats the
+         * macro name and argument as mudlib-boundary data, not as engine-native LPC vocabulary.</p>
+         *
+         * @param macroName function-like macro name exposed to mudlib source
+         * @param argumentName first argument spelling that should match
+         * @param replacementText replacement source text for that call
+         * @return this builder
+         * @throws IllegalArgumentException if {@code macroName} or {@code argumentName} is blank
+         */
+        public Builder compatibilityFunctionPredefine(
+                String macroName, String argumentName, String replacementText) {
+            String normalizedName = normalizeRequiredText(macroName, "Compatibility function predefine name");
+            String normalizedArgument =
+                    normalizeRequiredText(argumentName, "Compatibility function predefine argument");
+            String normalizedReplacement = normalizeOptionalText(replacementText);
+            java.util.LinkedHashMap<String, String> replacements =
+                    compatibilityFunctionPredefines.computeIfAbsent(normalizedName, ignored -> new java.util.LinkedHashMap<>());
+            if (normalizedReplacement == null) {
+                replacements.remove(normalizedArgument);
+                if (replacements.isEmpty()) {
+                    compatibilityFunctionPredefines.remove(normalizedName);
+                }
+            } else {
+                replacements.put(normalizedArgument, normalizedReplacement);
             }
             return this;
         }
