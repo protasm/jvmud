@@ -137,13 +137,22 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jdbc:mysql://localhost:3306/RealmsLib", boundary.databaseJdbcUrl().orElseThrow());
         assertEquals("realmslib", boundary.databaseUser().orElseThrow());
         assertFalse(boundary.databasePassword().orElseThrow().isBlank());
+        assertEquals("jvmud_allocate", boundary.directEfunAlias("allocate").orElseThrow());
         assertEquals("jvmud_db_exec", boundary.directEfunAlias("db_exec").orElseThrow());
         assertEquals("jvmud_db_fetch", boundary.directEfunAlias("db_fetch").orElseThrow());
         assertEquals("jvmud_current_entity", boundary.directEfunAlias("this_object").orElseThrow());
         assertEquals("jvmud_list_mudlib_paths", boundary.directEfunAlias("get_dir").orElseThrow());
+        assertEquals("jvmud_load_lpc_object", boundary.directEfunAlias("load_object").orElseThrow());
         assertEquals("jvmud_to_int", boundary.directEfunAlias("to_int").orElseThrow());
+        assertEquals("jvmud_member", boundary.directEfunAlias("member").orElseThrow());
         assertEquals("jvmud_mapping_keys", boundary.directEfunAlias("m_indices").orElseThrow());
         assertEquals("jvmud_mapping_values", boundary.directEfunAlias("m_values").orElseThrow());
+        assertEquals("jvmud_inherited_programs", boundary.directEfunAlias("inherit_list").orElseThrow());
+        assertEquals("jvmud_random", boundary.directEfunAlias("random").orElseThrow());
+        assertEquals("jvmud_is_mapping", boundary.directEfunAlias("mappingp").orElseThrow());
+        assertEquals("jvmud_is_object", boundary.directEfunAlias("objectp").orElseThrow());
+        assertEquals("jvmud_is_array", boundary.directEfunAlias("pointerp").orElseThrow());
+        assertEquals("jvmud_is_string", boundary.directEfunAlias("stringp").orElseThrow());
         assertEquals(
                 "\"JVMud RealmsMUD LDMud compatibility\"",
                 boundary.compatibilityPredefines().get("__VERSION__"));

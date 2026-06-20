@@ -105,8 +105,8 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_entity_id(mixed entity) : string} returns an engine object identifier.</li>
  *   <li>{@code jvmud_inherited_programs(mixed entity) : array} returns the transitive LPC program
  *       paths inherited by a generated object.</li>
- *   <li>{@code jvmud_load_entity(string path) : object} loads or returns the shared object for a
- *       mudlib path.</li>
+ *   <li>{@code jvmud_load_lpc_object(string path) : object} loads or returns the shared LPC
+ *       runtime object for a mudlib path.</li>
  *   <li>{@code jvmud_spawn_entity(string path) : object} clones an LPC object.</li>
  *   <li>{@code jvmud_move_entity(mixed entity, mixed destination) : void} moves an entity or
  *       path-resolved object.</li>
@@ -477,7 +477,7 @@ public final class CoreEfuns {
         for (int arity = 2; arity <= 6; arity++) {
             efuns.add(invokeEntityEfun(arity));
         }
-        efuns.add(efun("jvmud_load_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
+        efuns.add(efun("jvmud_load_lpc_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.loadOrGetObject(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_spawn_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.cloneObject(String.valueOf(args[0]))));

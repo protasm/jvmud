@@ -1,7 +1,3 @@
-mixed *allocate(int size) {
-    return jvmud_allocate(size);
-}
-
 void call_out(string method, int delay) {
     jvmud_schedule_deferred_callback(method, delay);
 }
@@ -51,30 +47,6 @@ object getService(string service) {
     return load_object("/secure/simul_efun.c")->getService(service);
 }
 
-string *inherit_list(mixed ob) {
-    return jvmud_inherited_programs(ob);
-}
-
-object load_object(string path) {
-    return jvmud_load_entity(path);
-}
-
-int member(mixed value, mixed needle) {
-    return jvmud_member(value, needle);
-}
-
-int mappingp(mixed value) {
-    return jvmud_is_mapping(value);
-}
-
-int objectp(mixed value) {
-    return jvmud_is_object(value);
-}
-
-int pointerp(mixed value) {
-    return jvmud_is_array(value);
-}
-
 string program_name(mixed ob) {
     string ret = jvmud_entity_id(ob);
     if (ret && sizeof(ret)) {
@@ -94,10 +66,6 @@ string RealmsDatabase() {
 
 int sizeof(mixed value) {
     return jvmud_size(value);
-}
-
-int stringp(mixed value) {
-    return jvmud_is_string(value);
 }
 
 object this_object() {

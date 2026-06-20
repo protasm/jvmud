@@ -3115,6 +3115,19 @@ final class CompilerSmokeTest {
                     return jvmud_mapping_values(([ "dawn": 1, "night": 2 ]));
                 }
 
+                int random_zero() {
+                    return jvmud_random(0);
+                }
+
+                int random_one() {
+                    return jvmud_random(1);
+                }
+
+                int random_range() {
+                    int value = jvmud_random(4);
+                    return (value >= 0) && (value < 4);
+                }
+
                 mixed *filtered_mapping_values() {
                     mapping values = ([ "keep": ([ "name": "keep", "amount": 7 ]),
                         "drop": ([ "name": "drop", "amount": 3 ]) ]);
@@ -3140,6 +3153,9 @@ final class CompilerSmokeTest {
         assertEquals(10, reader.invoke("number"));
         assertEquals(Set.of("dawn", "night"), Set.copyOf((List<?>) reader.invoke("mapping_keys")));
         assertEquals(Set.of(1, 2), Set.copyOf((List<?>) reader.invoke("mapping_values")));
+        assertEquals(0, reader.invoke("random_zero"));
+        assertEquals(0, reader.invoke("random_one"));
+        assertEquals(1, reader.invoke("random_range"));
         assertEquals(List.of(Map.of("name", "keep", "amount", 7)), reader.invoke("filtered_mapping_values"));
         assertTrue(((String) reader.invoke("epoch")).contains("1970"));
     }
