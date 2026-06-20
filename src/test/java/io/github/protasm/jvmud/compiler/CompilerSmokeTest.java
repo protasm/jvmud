@@ -3107,6 +3107,14 @@ final class CompilerSmokeTest {
                     return jvmud_to_int(jvmud_regex_replace("0010_constructed_research.sql", "([0-9]+)_.*", "\\\\1", 1));
                 }
 
+                string *regex_matches() {
+                    return jvmud_regex_match(({ "alpha.c", "beta.txt", "gamma.c" }), "[.]c$");
+                }
+
+                int regex_no_match_is_false() {
+                    return jvmud_regex_match(({ "bonus" }), "^-") ? 1 : 0;
+                }
+
                 string *mapping_keys() {
                     return jvmud_mapping_keys(([ "dawn": 1, "night": 2 ]));
                 }
@@ -3151,6 +3159,8 @@ final class CompilerSmokeTest {
         assertEquals("Alice", reader.invoke("capitalized"));
         assertEquals(List.of("alpha", "beta", ""), reader.invoke("split"));
         assertEquals(10, reader.invoke("number"));
+        assertEquals(List.of("alpha.c", "gamma.c"), reader.invoke("regex_matches"));
+        assertEquals(0, reader.invoke("regex_no_match_is_false"));
         assertEquals(Set.of("dawn", "night"), Set.copyOf((List<?>) reader.invoke("mapping_keys")));
         assertEquals(Set.of(1, 2), Set.copyOf((List<?>) reader.invoke("mapping_values")));
         assertEquals(0, reader.invoke("random_zero"));

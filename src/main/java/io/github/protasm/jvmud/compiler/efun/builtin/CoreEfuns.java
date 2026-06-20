@@ -205,6 +205,9 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_uppercase_text(mixed value) : string} uppercases text.</li>
  *   <li>{@code jvmud_split_text(string text, string delimiter) : array} splits text on a literal
  *       delimiter while preserving empty trailing fields.</li>
+ *   <li>{@code jvmud_regex_match(array values, string pattern[, int flags]) : mixed} returns the
+ *       values whose string forms match a Java regular expression, or LPC false when no value
+ *       matches.</li>
  *   <li>{@code jvmud_regex_replace(string input, string pattern, string replacement, int flags) :
  *       string} performs a Java-regex replacement for legacy mudlib text helpers.</li>
  *   <li>{@code jvmud_to_int(mixed value) : int} converts numeric values and base-10 text to an
@@ -416,6 +419,12 @@ public final class CoreEfuns {
         efuns.add(efun("jvmud_split_text", LPCType.LPCARRAY,
                 List.of(LPCType.LPCSTRING, LPCType.LPCSTRING),
                 (runtime, args) -> splitText(String.valueOf(args[0]), String.valueOf(args[1]))));
+        efuns.add(efun("jvmud_regex_match", LPCType.LPCMIXED,
+                List.of(LPCType.LPCARRAY, LPCType.LPCSTRING),
+                (runtime, args) -> regexMatch(args[0], String.valueOf(args[1]), 0)));
+        efuns.add(efun("jvmud_regex_match", LPCType.LPCMIXED,
+                List.of(LPCType.LPCARRAY, LPCType.LPCSTRING, LPCType.LPCINT),
+                (runtime, args) -> regexMatch(args[0], String.valueOf(args[1]), ((Number) args[2]).intValue())));
         efuns.add(efun("jvmud_regex_replace", LPCType.LPCSTRING,
                 List.of(LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> regexReplace(
@@ -762,6 +771,22 @@ public final class CoreEfuns {
         return flags == 0
                 ? input.replaceFirst(pattern, javaReplacement)
                 : input.replaceAll(pattern, javaReplacement);
+    }
+
+    private static Object regexMatch(Object values, String pattern, int flags) {
+        if (!(values instanceof List<?> source)) {
+            throw new IllegalArgumentException("jvmud_regex_match expects an array of values");
+        }
+        int javaFlags = flags == 0 ? 0 : java.util.regex.Pattern.DOTALL;
+        java.util.regex.Pattern compiled = java.util.regex.Pattern.compile(pattern, javaFlags);
+        List<Object> matches = new ArrayList<>();
+        for (Object value : source) {
+            String text = String.valueOf(value);
+            if (compiled.matcher(text).find()) {
+                matches.add(value);
+            }
+        }
+        return matches.isEmpty() ? 0 : matches;
     }
 
     private static int toInt(Object value) {
