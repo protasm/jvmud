@@ -261,7 +261,7 @@ public final class MudInstance implements InstanceHost {
         });
         runtime.clearOutputTranscript();
         if (announceConnection) {
-            messagePlayerForSession(sessionId, CONNECTED_BANNER);
+            writeToPlayerForSession(sessionId, CONNECTED_BANNER);
         }
         LpmuseumLoginSession login = new LpmuseumLoginSession(this, sessionId, remoteAddress);
         InstancePersona persona = new InstancePersona(
@@ -346,8 +346,8 @@ public final class MudInstance implements InstanceHost {
             }, projection);
             runtime.clearOutputTranscript();
             if (announceConnection) {
-                messagePlayerForSession(sessionId, CONNECTED_BANNER);
-                messagePlayerForSession(sessionId, "Attached " + name + " as " + objectId
+                writeToPlayerForSession(sessionId, CONNECTED_BANNER);
+                writeToPlayerForSession(sessionId, "Attached " + name + " as " + objectId
                         + " in " + startingPlacePath + ".\n");
             }
             if (visitingUserId != null) {
@@ -401,15 +401,15 @@ public final class MudInstance implements InstanceHost {
         });
         runtime.clearOutputTranscript();
         if (announceConnection) {
-            messagePlayerForSession(sessionId, CONNECTED_BANNER);
-            messagePlayerForSession(sessionId, "Attached " + name + " in " + startingPlacePath + ".\n");
+            writeToPlayerForSession(sessionId, CONNECTED_BANNER);
+            writeToPlayerForSession(sessionId, "Attached " + name + " in " + startingPlacePath + ".\n");
         }
         return new InstancePersona(this, sessionId, objectId, name, actor, remoteAddress);
     }
 
-    private void messagePlayerForSession(String sessionId, String text) {
+    private void writeToPlayerForSession(String sessionId, String text) {
         runtime.playerRecordForSession(sessionId)
-                .ifPresent(player -> runtime.messagePlayer(player.id(), text));
+                .ifPresent(player -> runtime.writeToPlayer(player.id(), text));
     }
 
     private void invokePlayerSessionConnected(Object actor) {
@@ -649,7 +649,7 @@ public final class MudInstance implements InstanceHost {
     }
 
     private void messageLoginPlayer(String sessionId, String text) {
-        messagePlayerForSession(sessionId, text);
+        writeToPlayerForSession(sessionId, text);
     }
 
     private Optional<Account> loadLpmuseumAccount(String accountId) {

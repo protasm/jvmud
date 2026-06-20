@@ -162,9 +162,9 @@ on a boundary object, a profile/account shim, a Persona behavior shim, or a
 legacy combined player object. If a mapping is absent, JVMud proceeds with the
 engine-owned step.
 
-JVMud-native messaging uses message terminology. Engine APIs should prefer names
-such as messagePlayer, messageSession, and messagePersona rather than legacy
-LPMud tell vocabulary. Direct Player messaging is for login prompts,
+JVMud-native text output uses write terminology. Engine APIs should prefer names
+such as `writeToPlayer`, `writeToSession`, and `writeToPersona` rather than legacy
+LPMud tell vocabulary or transport-oriented send vocabulary. Direct Player output is for login prompts,
 character-selection prompts, server notices, and other control-plane text aimed
 at the human endpoint. Normal gameplay output is Persona-routed because it is
 perspectival and may depend on location, perception, command actor, inventory,
@@ -181,7 +181,7 @@ The first playable implementation should prefer the smallest coherent contract:
   text through Player messaging;
 - route `write` and `tell_object` to the bound session when their target is the
   active Persona;
-- route `say` and `shout` through presence-aware text delivery, even if the
+- route `say` and `shout` through presence-aware text output, even if the
   first slice uses simple broadcast behavior;
 - make `users()` return connected Persona entities or their compatibility
   mudlib projections, not all loaded objects;

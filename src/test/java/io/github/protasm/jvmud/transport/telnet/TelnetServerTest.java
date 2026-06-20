@@ -1107,7 +1107,7 @@ final class TelnetServerTest {
                 """);
         Files.writeString(tempDir.resolve("jvmud/mudlib.c"), """
                 void runtime_error(mixed actor, mixed context, mixed operation, mixed detail) {
-                    jvmud_send_to_entity(actor, "A velvet curtain falls over the machinery.\\n");
+                    jvmud_write_to_lpc_object(actor, "A velvet curtain falls over the machinery.\\n");
                     jvmud_append_mudlib_text("/log/RUNTIME", context + ":" + operation + ":" + detail + "\\n");
                 }
                 """);
@@ -1172,7 +1172,7 @@ final class TelnetServerTest {
                 }
 
                 void runtime_error(mixed actor, mixed context, mixed operation, mixed detail) {
-                    jvmud_send_to_entity(actor, "Your sensitive mind notices a wrongness in the fabric of space.\\n");
+                    jvmud_write_to_lpc_object(actor, "Your sensitive mind notices a wrongness in the fabric of space.\\n");
                     jvmud_append_mudlib_text("/log/RUNTIME", context + ":" + operation + ":" + detail + "\\n");
                 }
                 """);
@@ -2234,7 +2234,7 @@ final class TelnetServerTest {
                 }
 
                 void tell_object(object target, mixed value) {
-                    jvmud_send_to_entity(target, value);
+                    jvmud_write_to_lpc_object(target, value);
                 }
 
                 void say(mixed value) {

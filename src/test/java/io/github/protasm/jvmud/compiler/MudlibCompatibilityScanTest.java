@@ -719,7 +719,7 @@ final class MudlibCompatibilityScanTest {
         case "set_living_name" -> support("Implemented", "Registers the current object in the mudlib living-name alias namespace.");
         case "sizeof" -> support("Implemented", "Typed and runtime-checked for arrays, mappings, strings, and dynamic mixed values.");
         case "strlen" -> support("Implemented", "Mudlib mfun delegates to JVMud size handling for strings.");
-        case "tell_object" -> support("Partial", "Routes to a bound target session, with shared-output fallback for unbound objects.");
+        case "tell_object" -> support("Partial", "Writes to a bound target session and ignores unbound non-interactive objects.");
         case "this_object" -> support("Implemented", "Backed by RuntimeContext current-object stack.");
         case "this_player" -> support("Partial", "Maps to JVMud's active Agent, returning LPC false when no Agent is active.");
         case "time" -> support("Implemented", "Returns current Unix time in seconds.");

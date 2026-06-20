@@ -2891,7 +2891,7 @@ final class CompilerSmokeTest {
                 }
 
                 void tell(mixed target) {
-                    jvmud_send_to_entity(target, "second-only");
+                    jvmud_write_to_lpc_object(target, "second-only");
                 }
 
                 void say_to_place() {
@@ -2953,6 +2953,12 @@ final class CompilerSmokeTest {
         assertEquals("first-only", firstOutput.toString());
         assertEquals("second-only", secondOutput.toString());
 
+        runtime.clearOutputTranscript();
+        first.invoke("tell", unconnected.instance());
+        assertEquals("first-only", firstOutput.toString());
+        assertEquals("second-only", secondOutput.toString());
+        assertEquals("", runtime.outputTranscript());
+
         runtime.moveObject(first.instance(), unconnected.instance());
         runtime.moveObject(second.instance(), unconnected.instance());
 
@@ -3002,18 +3008,18 @@ final class CompilerSmokeTest {
         var firstPlayer = runtime.playerRecordForSession("s1").orElseThrow();
         var firstPersona = runtime.personaRecordForProjection(first.instance()).orElseThrow();
 
-        assertTrue(runtime.messageSession(firstSession.id(), "session-only\\n"));
-        assertTrue(runtime.messagePlayer(firstPlayer.id(), "player-only\\n"));
-        assertTrue(runtime.messagePersona(firstPersona.id(), "persona-only\\n"));
+        assertTrue(runtime.writeToSession(firstSession.id(), "session-only\\n"));
+        assertTrue(runtime.writeToPlayer(firstPlayer.id(), "player-only\\n"));
+        assertTrue(runtime.writeToPersona(firstPersona.id(), "persona-only\\n"));
         assertEquals("session-only\nplayer-only\npersona-only\n", firstOutput.toString());
         assertEquals("", secondOutput.toString());
         assertEquals(firstOutput.toString(), runtime.outputTranscript());
 
         runtime.unbindSession("s1");
 
-        assertFalse(runtime.messageSession(firstSession.id(), "after-unbind"));
-        assertFalse(runtime.messagePlayer(firstPlayer.id(), "after-unbind"));
-        assertFalse(runtime.messagePersona(firstPersona.id(), "after-unbind"));
+        assertFalse(runtime.writeToSession(firstSession.id(), "after-unbind"));
+        assertFalse(runtime.writeToPlayer(firstPlayer.id(), "after-unbind"));
+        assertFalse(runtime.writeToPersona(firstPersona.id(), "after-unbind"));
     }
 
     @Test
@@ -3032,7 +3038,7 @@ final class CompilerSmokeTest {
         runtime.bindSession("s1", player.instance(), "127.0.0.1", output::append);
         var session = runtime.sessionRecord("s1").orElseThrow();
 
-        assertTrue(runtime.messageSession(session.id(), "one two three four five six\\n"));
+        assertTrue(runtime.writeToSession(session.id(), "one two three four five six\\n"));
         assertEquals("one two three four\nfive six\n", output.toString());
         assertEquals(output.toString(), runtime.outputTranscript());
     }
@@ -3050,7 +3056,7 @@ final class CompilerSmokeTest {
         assertTrue(loginSession.attachedPersonaId().isEmpty());
         assertTrue(loginPlayer.activePersonaId().isEmpty());
         assertEquals("127.0.0.1", loginSession.remoteAddress().orElseThrow());
-        assertTrue(runtime.messagePlayer(loginPlayer.id(), "login-control\\n"));
+        assertTrue(runtime.writeToPlayer(loginPlayer.id(), "login-control\\n"));
         assertEquals("login-control\n", output.toString());
 
         LPCObjectHandle player = runtime.loadSource("smoke/login_player.c", """
@@ -3067,7 +3073,7 @@ final class CompilerSmokeTest {
         assertEquals(loginSession.connectedAt(), attachedSession.connectedAt());
         assertEquals(persona.id(), attachedSession.attachedPersonaId().orElseThrow());
         assertEquals(persona.id(), attachedPlayer.activePersonaId().orElseThrow());
-        assertTrue(runtime.messagePersona(persona.id(), "persona-gameplay\\n"));
+        assertTrue(runtime.writeToPersona(persona.id(), "persona-gameplay\\n"));
         assertEquals("login-control\npersona-gameplay\n", output.toString());
     }
 
@@ -3092,8 +3098,8 @@ final class CompilerSmokeTest {
         assertTrue(projection.hasRole(MudlibProjectionRole.PERSONA_BEHAVIOR));
         assertTrue(projection.hasRole(MudlibProjectionRole.COMBINED_PLAYER_PERSONA));
 
-        assertTrue(runtime.messagePersona(personaRecord.id(), "projected-persona\\n"));
-        assertTrue(runtime.messagePersona(personaRecord.id(), "\\tindented\\n"));
+        assertTrue(runtime.writeToPersona(personaRecord.id(), "projected-persona\\n"));
+        assertTrue(runtime.writeToPersona(personaRecord.id(), "\\tindented\\n"));
         assertEquals("projected-persona\n\tindented\n", output.toString());
     }
 

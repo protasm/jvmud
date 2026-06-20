@@ -49,9 +49,10 @@ import javax.crypto.spec.PBEKeySpec;
  *
  * <h2>Output and perception</h2>
  * <ul>
- *   <li>{@code jvmud_write(mixed message) : void} writes to the current execution output sink.</li>
- *   <li>{@code jvmud_send_to_entity(object entity, mixed message) : void} delivers text directly
- *       to an entity-backed recipient.</li>
+ *   <li>{@code jvmud_write(mixed message) : void} writes text to the current execution
+ *       recipient.</li>
+ *   <li>{@code jvmud_write_to_lpc_object(object target, mixed message) : void} writes text to the
+ *       target object's bound session, when it has one.</li>
  *   <li>{@code jvmud_emit_perceivable(mixed emitter, mixed message) : void} emits near an entity
  *       or path-resolved object.</li>
  *   <li>{@code jvmud_emit_perceivable_except(mixed emitter, mixed message, mixed excluded) : void}
@@ -321,12 +322,12 @@ public final class CoreEfuns {
         List<Efun> efuns = new ArrayList<>();
         efuns.add(efun("jvmud_write", LPCType.LPCVOID, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> {
-                    runtime.writeOutput(args[0]);
+                    runtime.write(args[0]);
                     return null;
                 }));
-        efuns.add(efun("jvmud_send_to_entity", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT, LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_write_to_lpc_object", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT, LPCType.LPCMIXED),
                 (runtime, args) -> {
-                    runtime.tellObject(args[0], args[1]);
+                    runtime.writeToLpcObject(args[0], args[1]);
                     return null;
                 }));
         efuns.add(efun("jvmud_emit_perceivable", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),

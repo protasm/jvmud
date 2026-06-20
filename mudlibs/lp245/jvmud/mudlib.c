@@ -37,7 +37,7 @@ void runtime_error(mixed actor, mixed context, mixed operation, mixed detail) {
 
   message = "Your sensitive mind notices a wrongness in the fabric of space.\n";
   if (actor) {
-    jvmud_send_to_entity(actor, message);
+    jvmud_write_to_lpc_object(actor, message);
   } else {
     jvmud_write(message);
   }
@@ -48,7 +48,7 @@ void runtime_error(mixed actor, mixed context, mixed operation, mixed detail) {
 
 mixed heart_beat_error(mixed culprit, mixed err, mixed prg, mixed curobj, mixed line) {
   if (culprit) {
-    jvmud_send_to_entity(culprit, "Game driver tells you: You have no heart beat !\n");
+    jvmud_write_to_lpc_object(culprit, "Game driver tells you: You have no heart beat !\n");
   }
 
   jvmud_append_mudlib_text("/log/HEART_BEAT", "culprit=" + curobj + " program=" + prg + " line=" + line + "\n");

@@ -201,25 +201,38 @@ public final class RuntimeContext {
         this.outputSink = (outputSink != null) ? outputSink : ignored -> {};
     }
 
-    public void writeOutput(Object value) {
-        writeOutputToProjection(outputTarget(), value, false);
+    /** Writes text to the current execution recipient, or to the transcript in detached contexts. */
+    public void write(Object value) {
+        writeToProjection(outputTarget(), value, false);
     }
 
-    public void tellObject(Object target, Object value) {
-        writeOutputToProjection(target, value, true);
+    /**
+     * Writes text only to the target object's bound session.
+     *
+     * <p>Unlike {@link #write(Object)}, this targeted write deliberately does not fall back to the
+     * ambient output transcript when the target is not interactive. A mudlib can attempt to write
+     * text to an ordinary LPC object, but that should not leak text to the current actor.</p>
+     */
+    public void writeToLpcObject(Object target, Object value) {
+        SessionBinding binding = target != null ? sessionsByPersona.get(target) : null;
+        if (binding != null && receivesPlayerBoundMessages(target)) {
+            writeToSession(binding, value);
+        }
     }
 
-    public boolean messageSession(SessionId sessionId, Object value) {
+    /** Writes engine control-plane or transport text to one bound Session. */
+    public boolean writeToSession(SessionId sessionId, Object value) {
         Objects.requireNonNull(sessionId, "sessionId");
         SessionBinding binding = sessions.get(sessionId);
         if (binding == null) {
             return false;
         }
-        deliverToSession(binding, value);
+        writeToSession(binding, value);
         return true;
     }
 
-    public boolean messagePlayer(PlayerId playerId, Object value) {
+    /** Writes engine control-plane text to all active Sessions for one Player. */
+    public boolean writeToPlayer(PlayerId playerId, Object value) {
         Objects.requireNonNull(playerId, "playerId");
         PlayerRecord player = players.get(playerId);
         if (player == null) {
@@ -227,12 +240,13 @@ public final class RuntimeContext {
         }
         boolean delivered = false;
         for (SessionId sessionId : player.activeSessionIds()) {
-            delivered |= messageSession(sessionId, value);
+            delivered |= writeToSession(sessionId, value);
         }
         return delivered;
     }
 
-    public boolean messagePersona(PersonaId personaId, Object value) {
+    /** Writes engine gameplay text to the bound Session for one Persona. */
+    public boolean writeToPersona(PersonaId personaId, Object value) {
         Objects.requireNonNull(personaId, "personaId");
         PersonaRecord persona = personas.get(personaId);
         if (persona == null || persona.mudlibBehaviorProjection().isEmpty()) {
@@ -242,7 +256,7 @@ public final class RuntimeContext {
         if (binding == null) {
             return false;
         }
-        deliverToSession(binding, value);
+        writeToSession(binding, value);
         return true;
     }
 
@@ -265,7 +279,7 @@ public final class RuntimeContext {
 
         for (Object target : List.copyOf(inventoryFor(location))) {
             if (!isExcluded(target, excluded) && sessionsByPersona.containsKey(target)) {
-                writeOutputToProjection(target, value, true);
+                writeToProjection(target, value, true);
             }
         }
     }
@@ -279,11 +293,11 @@ public final class RuntimeContext {
         return false;
     }
 
-    private void writeOutputToProjection(Object target, Object value, boolean playerBound) {
+    private void writeToProjection(Object target, Object value, boolean playerBound) {
         SessionBinding binding = target != null ? sessionsByPersona.get(target) : null;
         if (binding != null) {
             if (!playerBound || receivesPlayerBoundMessages(target)) {
-                deliverToSession(binding, value);
+                writeToSession(binding, value);
             }
         } else {
             String text = formattedMessageText(value);
@@ -320,7 +334,7 @@ public final class RuntimeContext {
         }
     }
 
-    private void deliverToSession(SessionBinding binding, Object value) {
+    private void writeToSession(SessionBinding binding, Object value) {
         String text = formattedMessageText(value);
         outputTranscript.append(text);
         binding.outputSink().accept(text);

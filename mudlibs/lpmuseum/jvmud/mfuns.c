@@ -179,7 +179,7 @@ int strlen(mixed value) {
 }
 
 void tell_object(object target, mixed value) {
-  jvmud_send_to_entity(target, value);
+  jvmud_write_to_lpc_object(target, value);
 }
 
 void tell_place(mixed place, mixed value) {

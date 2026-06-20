@@ -660,19 +660,19 @@ public final class LPCRuntime {
         return runtimeContext.personaRecordForProjection(persona);
     }
 
-    /** Delivers engine control-plane or transport text to one bound Session. */
-    public boolean messageSession(SessionId sessionId, Object value) {
-        return runtimeContext.messageSession(sessionId, value);
+    /** Writes engine control-plane or transport text to one bound Session. */
+    public boolean writeToSession(SessionId sessionId, Object value) {
+        return runtimeContext.writeToSession(sessionId, value);
     }
 
-    /** Delivers engine control-plane text to all active Sessions for one Player. */
-    public boolean messagePlayer(PlayerId playerId, Object value) {
-        return runtimeContext.messagePlayer(playerId, value);
+    /** Writes engine control-plane text to all active Sessions for one Player. */
+    public boolean writeToPlayer(PlayerId playerId, Object value) {
+        return runtimeContext.writeToPlayer(playerId, value);
     }
 
-    /** Delivers engine gameplay text to one bound Persona. */
-    public boolean messagePersona(PersonaId personaId, Object value) {
-        return runtimeContext.messagePersona(personaId, value);
+    /** Writes engine gameplay text to one bound Persona. */
+    public boolean writeToPersona(PersonaId personaId, Object value) {
+        return runtimeContext.writeToPersona(personaId, value);
     }
 
     /** Returns the accumulated default output transcript for diagnostics and tests. */

@@ -80,8 +80,8 @@
               <td>Writes text to the active output sink.</td>
             </tr>
             <tr>
-              <td><code>void jvmud_send_to_entity(object target, mixed message)</code></td>
-              <td>Delivers text to a target entity through runtime output routing.</td>
+              <td><code>void jvmud_write_to_lpc_object(object target, mixed message)</code></td>
+              <td>Writes text to a target LPC object's bound session, when it has one.</td>
             </tr>
             <tr>
               <td><code>void jvmud_emit_perceivable(mixed emitter, mixed message)</code></td>
