@@ -103,8 +103,8 @@ import javax.crypto.spec.PBEKeySpec;
  * <h2>Entity identity, lookup, containment, and lifecycle</h2>
  * <ul>
  *   <li>{@code jvmud_entity_id(mixed entity) : string} returns an engine object identifier.</li>
- *   <li>{@code jvmud_direct_inherited_programs(mixed entity) : array} returns the direct LPC
- *       program paths inherited by a generated object.</li>
+ *   <li>{@code jvmud_inherited_programs(mixed entity) : array} returns the transitive LPC program
+ *       paths inherited by a generated object.</li>
  *   <li>{@code jvmud_load_entity(string path) : object} loads or returns the shared object for a
  *       mudlib path.</li>
  *   <li>{@code jvmud_spawn_entity(string path) : object} clones an LPC object.</li>
@@ -221,6 +221,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       returns the index of a value in an array or string.</li>
  *   <li>{@code jvmud_mapping_keys(mapping value) : array} returns the mapping's keys in runtime
  *       iteration order.</li>
+ *   <li>{@code jvmud_mapping_values(mapping value) : array} returns the mapping's values in
+ *       runtime iteration order.</li>
  *   <li>{@code jvmud_is_string(mixed value) : status} reports whether a value is Java-backed LPC
  *       string data.</li>
  *   <li>{@code jvmud_is_int(mixed value) : status} reports whether a value is Java-backed LPC
@@ -326,8 +328,8 @@ public final class CoreEfuns {
                 (runtime, args) -> formatTime(((Number) args[0]).longValue())));
         efuns.add(efun("jvmud_entity_id", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.objectId(args[0])));
-        efuns.add(efun("jvmud_direct_inherited_programs", LPCType.LPCARRAY, List.of(LPCType.LPCMIXED),
-                (runtime, args) -> runtime.directInheritedPrograms(args[0])));
+        efuns.add(efun("jvmud_inherited_programs", LPCType.LPCARRAY, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.inheritedPrograms(args[0])));
         efuns.add(efun("jvmud_size", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> sizeOf(args[0])));
         efuns.add(efun("jvmud_random", LPCType.LPCINT, List.of(LPCType.LPCINT),
@@ -442,6 +444,8 @@ public final class CoreEfuns {
                 (runtime, args) -> member(args[0], args[1])));
         efuns.add(efun("jvmud_mapping_keys", LPCType.LPCARRAY, List.of(LPCType.LPCMAPPING),
                 (runtime, args) -> mappingKeys(args[0])));
+        efuns.add(efun("jvmud_mapping_values", LPCType.LPCARRAY, List.of(LPCType.LPCMAPPING),
+                (runtime, args) -> mappingValues(args[0])));
         efuns.add(efun("jvmud_capture_session_input", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> {
                     runtime.captureSessionInput(
@@ -618,6 +622,13 @@ public final class CoreEfuns {
             return new ArrayList<>(map.keySet());
         }
         throw new IllegalArgumentException("jvmud_mapping_keys expects a mapping value");
+    }
+
+    private static List<Object> mappingValues(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            return new ArrayList<>(map.values());
+        }
+        throw new IllegalArgumentException("jvmud_mapping_values expects a mapping value");
     }
 
     private static String capitalizeText(String value) {

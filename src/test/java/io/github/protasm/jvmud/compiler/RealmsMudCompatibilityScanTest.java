@@ -143,6 +143,7 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jvmud_list_mudlib_paths", boundary.directEfunAlias("get_dir").orElseThrow());
         assertEquals("jvmud_to_int", boundary.directEfunAlias("to_int").orElseThrow());
         assertEquals("jvmud_mapping_keys", boundary.directEfunAlias("m_indices").orElseThrow());
+        assertEquals("jvmud_mapping_values", boundary.directEfunAlias("m_values").orElseThrow());
         assertEquals(
                 "\"JVMud RealmsMUD LDMud compatibility\"",
                 boundary.compatibilityPredefines().get("__VERSION__"));

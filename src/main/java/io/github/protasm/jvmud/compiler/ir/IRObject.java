@@ -7,13 +7,13 @@ public record IRObject(
         int line,
         String name,
         String parentInternalName,
-        List<String> directInheritPaths,
+        List<String> inheritedProgramPaths,
         List<IRField> fields,
         List<IRMethod> methods) {
     public IRObject {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(parentInternalName, "parentInternalName");
-        directInheritPaths = List.copyOf(directInheritPaths);
+        inheritedProgramPaths = List.copyOf(inheritedProgramPaths);
         fields = List.copyOf(fields);
         methods = List.copyOf(methods);
     }

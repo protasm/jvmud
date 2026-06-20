@@ -183,7 +183,7 @@ public final class SemanticAnalyzer {
         SemanticTypeChecker typeChecker = new SemanticTypeChecker(problems);
         typeChecker.check(astObject);
 
-        return new SemanticAnalysisResult(new SemanticModel(astObject, objectScope), problems);
+        return new SemanticAnalysisResult(new SemanticModel(astObject, objectScope, unit), problems);
     }
 
     private List<CompilationUnit> directParentUnits(CompilationUnit unit, CompilationUnit parentUnit) {

@@ -3111,6 +3111,17 @@ final class CompilerSmokeTest {
                     return jvmud_mapping_keys(([ "dawn": 1, "night": 2 ]));
                 }
 
+                int *mapping_values() {
+                    return jvmud_mapping_values(([ "dawn": 1, "night": 2 ]));
+                }
+
+                mixed *filtered_mapping_values() {
+                    mapping values = ([ "keep": ([ "name": "keep", "amount": 7 ]),
+                        "drop": ([ "name": "drop", "amount": 3 ]) ]);
+                    mapping filtered = filter(values, (: $1 == $2["name"] && $1 == "keep" :));
+                    return jvmud_mapping_values(filtered);
+                }
+
                 string epoch() {
                     return jvmud_format_time(86400);
                 }
@@ -3128,6 +3139,8 @@ final class CompilerSmokeTest {
         assertEquals(List.of("alpha", "beta", ""), reader.invoke("split"));
         assertEquals(10, reader.invoke("number"));
         assertEquals(Set.of("dawn", "night"), Set.copyOf((List<?>) reader.invoke("mapping_keys")));
+        assertEquals(Set.of(1, 2), Set.copyOf((List<?>) reader.invoke("mapping_values")));
+        assertEquals(List.of(Map.of("name", "keep", "amount", 7)), reader.invoke("filtered_mapping_values"));
         assertTrue(((String) reader.invoke("epoch")).contains("1970"));
     }
 
@@ -4238,8 +4251,15 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void runtimeReportsDirectInheritedLpcPrograms() throws Exception {
+    void runtimeReportsTransitiveInheritedLpcPrograms() throws Exception {
+        Files.writeString(tempDir.resolve("grandparent.c"), """
+                int grand_value() {
+                    return 3;
+                }
+                """);
         Files.writeString(tempDir.resolve("base_one.c"), """
+                inherit "grandparent.c";
+
                 int first_value() {
                     return 1;
                 }
@@ -4255,7 +4275,7 @@ final class CompilerSmokeTest {
                 inherit "base_two.c";
 
                 string *inherited_programs() {
-                    return jvmud_direct_inherited_programs(jvmud_current_entity());
+                    return jvmud_inherited_programs(jvmud_current_entity());
                 }
                 """);
 
@@ -4263,7 +4283,7 @@ final class CompilerSmokeTest {
         CoreEfuns.registerCore(runtime);
         LPCObjectHandle child = runtime.load(childPath);
 
-        assertEquals(List.of("/base_one.c", "/base_two.c"), child.invoke("inherited_programs"));
+        assertEquals(List.of("/base_one.c", "/grandparent.c", "/base_two.c"), child.invoke("inherited_programs"));
     }
 
     @Test

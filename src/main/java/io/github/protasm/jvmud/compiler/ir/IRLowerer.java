@@ -78,6 +78,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -138,22 +139,37 @@ public final class IRLowerer {
                 astObject.line(),
                 astObject.name(),
                 parentInternalName,
-                directInheritPaths(astObject),
+                inheritedProgramPaths(astObject, semanticModel.compilationUnit()),
                 fields,
                 methods));
 
         return new IRLoweringResult(typedIr, problems);
     }
 
-    private List<String> directInheritPaths(ASTObject astObject) {
-        List<String> paths = new ArrayList<>();
+    private List<String> inheritedProgramPaths(ASTObject astObject, CompilationUnit unit) {
+        Set<String> paths = new LinkedHashSet<>();
+        collectInheritedProgramPaths(astObject, unit, paths);
+        return new ArrayList<>(paths);
+    }
+
+    private void collectInheritedProgramPaths(ASTObject astObject, CompilationUnit unit, Set<String> paths) {
+        if (astObject == null) {
+            return;
+        }
+        List<CompilationUnit> parentUnits = unit != null ? unit.directParentUnits() : List.of();
+        int parentIndex = 0;
         for (ASTInherit inherit : astObject.inherits()) {
             String path = normalizeInheritPath(inherit.path());
             if (path != null && !path.isBlank()) {
                 paths.add(path);
             }
+
+            CompilationUnit parentUnit = parentIndex < parentUnits.size() ? parentUnits.get(parentIndex) : null;
+            parentIndex++;
+            if (parentUnit != null && parentUnit.astObject() != null) {
+                collectInheritedProgramPaths(parentUnit.astObject(), parentUnit, paths);
+            }
         }
-        return paths;
     }
 
     private String normalizeInheritPath(String rawPath) {

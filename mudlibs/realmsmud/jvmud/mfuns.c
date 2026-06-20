@@ -52,7 +52,7 @@ object getService(string service) {
 }
 
 string *inherit_list(mixed ob) {
-    return jvmud_direct_inherited_programs(ob);
+    return jvmud_inherited_programs(ob);
 }
 
 object load_object(string path) {

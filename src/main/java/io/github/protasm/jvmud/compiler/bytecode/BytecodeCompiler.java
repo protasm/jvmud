@@ -8,6 +8,7 @@ import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeComparison;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCoercions;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeCollectionTransform;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeArray;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeEquality;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeForeach;
@@ -39,8 +40,8 @@ public final class BytecodeCompiler {
     private static final String INIT_METHOD_NAME = "$lpc$init";
     private static final String INIT_METHOD_DESCRIPTOR = "()V";
     private static final String INIT_GUARD_FIELD = "$lpc$initialized";
-    private static final String DIRECT_INHERITS_METHOD_NAME = "$jvmud$direct_inherits";
-    private static final String DIRECT_INHERITS_METHOD_DESCRIPTOR = "()[Ljava/lang/String;";
+    private static final String INHERITED_PROGRAMS_METHOD_NAME = "$jvmud$inherited_programs";
+    private static final String INHERITED_PROGRAMS_METHOD_DESCRIPTOR = "()[Ljava/lang/String;";
     private static final String FIELD_INITIALIZER_HELPER_PREFIX = "$lpc$field$";
     private static final String LITERAL_HELPER_PREFIX = "$lpc$literal$";
     private static final String CALLABLE_HELPER_PREFIX = "$lpc$callable$";
@@ -85,7 +86,7 @@ public final class BytecodeCompiler {
             emitFields(cw, object);
             emitPrivateInitializer(cw, internalName, parentName, object.fields());
             emitDefaultConstructor(cw, internalName, parentName);
-            emitDirectInheritsMethod(cw, object.directInheritPaths());
+            emitInheritedProgramsMethod(cw, object.inheritedProgramPaths());
 
             for (IRMethod method : object.methods())
                 emitMethod(cw, internalName, method);
@@ -127,20 +128,20 @@ public final class BytecodeCompiler {
         mv.visitEnd();
     }
 
-    private void emitDirectInheritsMethod(ClassWriter cw, List<String> directInheritPaths) {
+    private void emitInheritedProgramsMethod(ClassWriter cw, List<String> inheritedProgramPaths) {
         MethodVisitor mv = cw.visitMethod(
                 ACC_PUBLIC | ACC_SYNTHETIC,
-                DIRECT_INHERITS_METHOD_NAME,
-                DIRECT_INHERITS_METHOD_DESCRIPTOR,
+                INHERITED_PROGRAMS_METHOD_NAME,
+                INHERITED_PROGRAMS_METHOD_DESCRIPTOR,
                 null,
                 null);
         mv.visitCode();
-        pushInt(mv, directInheritPaths.size());
+        pushInt(mv, inheritedProgramPaths.size());
         mv.visitTypeInsn(ANEWARRAY, "java/lang/String");
-        for (int i = 0; i < directInheritPaths.size(); i++) {
+        for (int i = 0; i < inheritedProgramPaths.size(); i++) {
             mv.visitInsn(DUP);
             pushInt(mv, i);
-            mv.visitLdcInsn(directInheritPaths.get(i));
+            mv.visitLdcInsn(inheritedProgramPaths.get(i));
             mv.visitInsn(AASTORE);
         }
         mv.visitInsn(ARETURN);
@@ -1534,98 +1535,38 @@ public final class BytecodeCompiler {
             MethodVisitor mv, String internalName, IRMethod method, IRCollectionTransform transform) {
         emitExpression(mv, internalName, method, transform.source());
         boxIfNeeded(mv, transform.source().type());
-        mv.visitVarInsn(ASTORE, transform.sourceLocal().slot());
 
-        int callbackSlot = scratchObjectSlot(method);
         emitExpression(mv, internalName, method, transform.callback());
         boxIfNeeded(mv, transform.callback().type());
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(RuntimeCallable.class));
-        mv.visitVarInsn(ASTORE, callbackSlot);
 
-        mv.visitVarInsn(ALOAD, transform.sourceLocal().slot());
-        mv.visitMethodInsn(
-                INVOKESTATIC,
-                Type.getInternalName(RuntimeForeach.class),
-                "items",
-                "(Ljava/lang/Object;)Ljava/util/List;",
-                false);
-        mv.visitVarInsn(ASTORE, transform.itemsLocal().slot());
-
-        mv.visitTypeInsn(NEW, "java/util/ArrayList");
-        mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false);
-        mv.visitVarInsn(ASTORE, transform.resultLocal().slot());
-
+        pushInt(mv, transform.extraArguments().size());
+        mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
         for (int i = 0; i < transform.extraArguments().size(); i++) {
             IRExpression extra = transform.extraArguments().get(i);
+            mv.visitInsn(DUP);
+            pushInt(mv, i);
             emitExpression(mv, internalName, method, extra);
             boxIfNeeded(mv, extra.type());
-            mv.visitVarInsn(ASTORE, callbackSlot + i + 1);
+            mv.visitInsn(AASTORE);
         }
 
-        pushInt(mv, 0);
-        mv.visitVarInsn(ISTORE, transform.indexLocal().slot());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeContextHolder.class),
+                "requireCurrent",
+                "()Lio/github/protasm/jvmud/compiler/runtime/RuntimeContext;",
+                false);
 
-        Label conditionLabel = new Label();
-        Label endLabel = new Label();
-        mv.visitLabel(conditionLabel);
-        mv.visitVarInsn(ILOAD, transform.indexLocal().slot());
-        mv.visitVarInsn(ALOAD, transform.itemsLocal().slot());
-        mv.visitTypeInsn(CHECKCAST, "java/util/List");
-        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "size", "()I", true);
-        mv.visitJumpInsn(IF_ICMPGE, endLabel);
-
-        mv.visitVarInsn(ALOAD, transform.itemsLocal().slot());
-        mv.visitTypeInsn(CHECKCAST, "java/util/List");
-        mv.visitVarInsn(ILOAD, transform.indexLocal().slot());
-        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "get", "(I)Ljava/lang/Object;", true);
-        mv.visitVarInsn(ASTORE, callbackSlot + transform.extraArguments().size() + 1);
-
-        if (transform.operation() == IRCollectionTransform.Operation.FILTER) {
-            emitCallableCall(
-                    mv,
-                    callbackSlot,
-                    callbackSlot + transform.extraArguments().size() + 1,
-                    null,
-                    List.of(),
-                    callbackSlot + 1,
-                    transform.extraArguments().size());
-            mv.visitMethodInsn(
-                    INVOKESTATIC,
-                    Type.getInternalName(Truth.class),
-                    "isTruthy",
-                    "(Ljava/lang/Object;)Z",
-                    false);
-            Label skipAdd = new Label();
-            mv.visitJumpInsn(IFEQ, skipAdd);
-            mv.visitVarInsn(ALOAD, transform.resultLocal().slot());
-            mv.visitTypeInsn(CHECKCAST, "java/util/List");
-            mv.visitVarInsn(ALOAD, callbackSlot + transform.extraArguments().size() + 1);
-            mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z", true);
-            mv.visitInsn(POP);
-            mv.visitLabel(skipAdd);
-        } else {
-            mv.visitVarInsn(ALOAD, transform.resultLocal().slot());
-            mv.visitTypeInsn(CHECKCAST, "java/util/List");
-            emitCallableCall(
-                    mv,
-                    callbackSlot,
-                    callbackSlot + transform.extraArguments().size() + 1,
-                    null,
-                    List.of(),
-                    callbackSlot + 1,
-                    transform.extraArguments().size());
-            mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "add", "(Ljava/lang/Object;)Z", true);
-            mv.visitInsn(POP);
-        }
-
-        mv.visitIincInsn(transform.indexLocal().slot(), 1);
-        mv.visitJumpInsn(GOTO, conditionLabel);
-        mv.visitLabel(endLabel);
-
-        mv.visitVarInsn(ALOAD, transform.resultLocal().slot());
-        if (transform.type().kind() == RuntimeValueKind.ARRAY)
-            mv.visitTypeInsn(CHECKCAST, "java/util/List");
+        String helperName = transform.operation() == IRCollectionTransform.Operation.FILTER ? "filter" : "map";
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeCollectionTransform.class),
+                helperName,
+                "(Ljava/lang/Object;Lio/github/protasm/jvmud/compiler/runtime/RuntimeCallable;[Ljava/lang/Object;"
+                        + "Lio/github/protasm/jvmud/compiler/runtime/RuntimeContext;)Ljava/lang/Object;",
+                false);
+        return;
     }
 
     private void emitSortArray(MethodVisitor mv, String internalName, IRMethod method, IRSortArray sortArray) {
