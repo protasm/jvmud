@@ -66,6 +66,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       call chain, where one is available.</li>
  *   <li>{@code jvmud_current_actor() : object} returns the active command actor, falling back to
  *       the current object outside command dispatch.</li>
+ *   <li>{@code jvmud_current_agent() : object} returns the active world-present agent responsible
+ *       for the current action scope, or LPC false when no agent is active.</li>
  *   <li>{@code jvmud_current_verb() : string} returns the verb being dispatched for the current
  *       command.</li>
  * </ul>
@@ -154,8 +156,6 @@ import javax.crypto.spec.PBEKeySpec;
  * <h2>Session, users, persistence, and security helpers</h2>
  * <ul>
  *   <li>{@code jvmud_users() : array} returns the active user/player objects known to the runtime.</li>
- *   <li>{@code jvmud_this_player() : object} returns JVMud's current LPC execution object as a
- *       conservative player-compatible value for legacy mudlibs.</li>
  *   <li>{@code jvmud_previous_object() : object} returns the previous LPC object on the runtime call
  *       stack.</li>
  *   <li>{@code jvmud_interactive(mixed user) : status} reports whether an object is bound to an active
@@ -223,6 +223,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       integer, returning LPC false-style zero for non-numeric input.</li>
  *   <li>{@code jvmud_capitalize_text(mixed value) : string} capitalizes the first character of
  *       text.</li>
+ *   <li>{@code jvmud_wrap_text(mixed text[, int width]) : string} wraps description text at a
+ *       requested line width, defaulting to 78 columns for compatibility text helpers.</li>
  *   <li>{@code jvmud_format_text(string format, mixed ...args) : string} formats text using the
  *       host formatter with LPC {@code %O} object placeholders treated as string placeholders; this
  *       overload is registered for arities 1 through 8.</li>
@@ -332,6 +334,8 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.currentCommandActor() != null
                         ? runtime.currentCommandActor()
                         : runtime.currentObject()));
+        efuns.add(efun("jvmud_current_agent", LPCType.LPCOBJECT, List.of(),
+                (runtime, args) -> currentAgent(runtime)));
         efuns.add(efun("jvmud_current_verb", LPCType.LPCSTRING, List.of(),
                 (runtime, args) -> runtime.currentCommandVerb()));
         efuns.add(efun("jvmud_dispatch_entity_command", LPCType.LPCMIXED,
@@ -355,8 +359,6 @@ public final class CoreEfuns {
                 (runtime, args) -> random(((Number) args[0]).intValue())));
         efuns.add(efun("jvmud_users", LPCType.LPCARRAY, List.of(),
                 (runtime, args) -> runtime.users()));
-        efuns.add(efun("jvmud_this_player", LPCType.LPCOBJECT, List.of(),
-                (runtime, args) -> runtime.currentObject()));
         efuns.add(efun("jvmud_previous_object", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.previousObject()));
         efuns.add(efun("jvmud_interactive", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
@@ -451,6 +453,10 @@ public final class CoreEfuns {
                 (runtime, args) -> toInt(args[0])));
         efuns.add(efun("jvmud_capitalize_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> capitalizeText(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_wrap_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> wrapText(args[0], 78)));
+        efuns.add(efun("jvmud_wrap_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
+                (runtime, args) -> wrapText(args[0], ((Number) args[1]).intValue())));
         for (int arity = 1; arity <= 8; arity++) {
             efuns.add(formatTextEfun(arity));
         }
@@ -791,6 +797,18 @@ public final class CoreEfuns {
         return runtime.withCommandActor(resolvedActor, () -> runtime.dispatchCommand(resolvedActor, commandLine));
     }
 
+    /**
+     * Returns the active world-present agent for legacy command-giver semantics.
+     *
+     * <p>This deliberately does not fall back to the currently executing LPC object: service objects,
+     * daemons, and other non-agent code can execute during an action without becoming the action's
+     * agent.</p>
+     */
+    private static Object currentAgent(RuntimeContext runtime) {
+        Object agent = runtime.currentCommandActor();
+        return agent != null ? agent : 0;
+    }
+
     private static int random(int max) {
         if (max <= 0) {
             return 0;
@@ -816,6 +834,55 @@ public final class CoreEfuns {
             System.arraycopy(args, 1, values, 0, values.length);
         }
         return String.format(Locale.ROOT, format, values);
+    }
+
+    /**
+     * Wraps mudlib-owned description text while preserving LPC's false/empty text convention.
+     *
+     * <p>This helper intentionally lives beside the efuns instead of using the engine's outgoing
+     * presentation formatter: mudlibs may store or compare the result, and legacy compatibility
+     * expects a trailing newline for non-empty formatted text.</p>
+     */
+    private static String wrapText(Object value, int requestedWidth) {
+        String text = String.valueOf(value);
+        if (text.isEmpty()) {
+            return "";
+        }
+
+        int width = requestedWidth > 0 ? requestedWidth : 78;
+        StringBuilder wrapped = new StringBuilder(text.length() + 1);
+        String[] lines = text.split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) {
+                wrapped.append('\n');
+            }
+            appendWrappedPlainLine(wrapped, lines[i], width);
+        }
+        if (!wrapped.isEmpty() && wrapped.charAt(wrapped.length() - 1) != '\n') {
+            wrapped.append('\n');
+        }
+        return wrapped.toString();
+    }
+
+    private static void appendWrappedPlainLine(StringBuilder output, String line, int width) {
+        String trimmed = line.strip();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+
+        StringBuilder current = new StringBuilder();
+        for (String word : trimmed.split("\\s+")) {
+            if (current.isEmpty()) {
+                current.append(word);
+            } else if (current.length() + 1 + word.length() <= width) {
+                current.append(' ').append(word);
+            } else {
+                output.append(current).append('\n');
+                current.setLength(0);
+                current.append(word);
+            }
+        }
+        output.append(current);
     }
 
     private static String regexReplace(String input, String pattern, String replacement, int flags) {

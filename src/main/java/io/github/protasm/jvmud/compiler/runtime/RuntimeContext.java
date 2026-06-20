@@ -875,8 +875,10 @@ public final class RuntimeContext {
                             e);
                 } catch (InvocationTargetException e) {
                     Throwable targetException = e.getTargetException();
-                    String message = "Failed to call " + describeInvocation(invocation, resolvedTarget)
-                            + causeSummary(targetException);
+                    String message = new StringBuilder("Failed to call ")
+                            .append(safeDescribeInvocation(invocation, resolvedTarget))
+                            .append(safeCauseSummary(targetException))
+                            .toString();
                     if (targetException instanceof LinkageError linkageError) {
                         throw new IllegalStateException(message, linkageError);
                     }
@@ -1831,14 +1833,28 @@ public final class RuntimeContext {
 
     private String causeSummary(Throwable throwable) {
         Throwable cause = throwable;
-        while (cause.getCause() != null) {
+        int depth = 0;
+        while (cause.getCause() != null && depth < 25) {
             cause = cause.getCause();
+            depth++;
         }
         String message = cause.getMessage();
         if (message == null || message.isBlank()) {
             message = cause.getClass().getSimpleName();
         }
-        return ": " + message;
+        return new StringBuilder(": ").append(message).toString();
+    }
+
+    /**
+     * Summarizes a reflected failure while preserving the original throwable if cause inspection
+     * itself trips over a linkage problem.
+     */
+    private String safeCauseSummary(Throwable throwable) {
+        try {
+            return causeSummary(throwable);
+        } catch (LinkageError | RuntimeException e) {
+            return ": " + throwable.getClass().getSimpleName();
+        }
     }
 
     private String describeInvocation(InvocationPlan invocation, Object target) {
@@ -1866,6 +1882,19 @@ public final class RuntimeContext {
         }
         builder.append("]");
         return builder.toString();
+    }
+
+    /**
+     * Describes a reflective LPC call without letting diagnostic formatting hide the original
+     * invocation failure.
+     */
+    private String safeDescribeInvocation(InvocationPlan invocation, Object target) {
+        try {
+            return describeInvocation(invocation, target);
+        } catch (LinkageError | RuntimeException e) {
+            return invocation.method().getName() + "/" + invocation.method().getParameterCount()
+                    + " on " + target.getClass().getName();
+        }
     }
 
     private void removeCommandHandler(Object handler) {

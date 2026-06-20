@@ -3195,6 +3195,18 @@ final class CompilerSmokeTest {
                     return (value >= 0) && (value < 4);
                 }
 
+                string wrapped() {
+                    return jvmud_wrap_text("This is the land loving mother pigeon of all strings.", 10);
+                }
+
+                string wrapped_default() {
+                    return jvmud_wrap_text("kept", 0);
+                }
+
+                string wrapped_empty() {
+                    return jvmud_wrap_text("", 10);
+                }
+
                 mixed *filtered_mapping_values() {
                     mapping values = ([ "keep": ([ "name": "keep", "amount": 7 ]),
                         "drop": ([ "name": "drop", "amount": 3 ]) ]);
@@ -3231,6 +3243,9 @@ final class CompilerSmokeTest {
         assertEquals(0, reader.invoke("random_zero"));
         assertEquals(0, reader.invoke("random_one"));
         assertEquals(1, reader.invoke("random_range"));
+        assertEquals("This is\nthe land\nloving\nmother\npigeon of\nall\nstrings.\n", reader.invoke("wrapped"));
+        assertEquals("kept\n", reader.invoke("wrapped_default"));
+        assertEquals("", reader.invoke("wrapped_empty"));
         assertEquals(List.of(Map.of("name", "keep", "amount", 7)), reader.invoke("filtered_mapping_values"));
         assertTrue(((String) reader.invoke("epoch")).contains("1970"));
     }
@@ -3710,6 +3725,34 @@ final class CompilerSmokeTest {
 
         assertEquals("caller", caller.invoke("value"));
         assertEquals("target", target.invoke("self_name"));
+    }
+
+    @Test
+    void currentAgentDoesNotFallBackToCurrentObject() throws Exception {
+        Files.writeString(tempDir.resolve("probe.c"), """
+                mixed strict_agent() {
+                    return jvmud_current_agent();
+                }
+
+                mixed loose_actor() {
+                    return jvmud_current_actor();
+                }
+                """);
+        Files.writeString(tempDir.resolve("agent.c"), """
+                string id() {
+                    return "agent";
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+
+        LPCObjectHandle probe = runtime.load(tempDir.resolve("probe.c"));
+        LPCObjectHandle agent = runtime.load(tempDir.resolve("agent.c"));
+
+        assertNull(probe.invoke("strict_agent"));
+        assertSame(probe.instance(), probe.invoke("loose_actor"));
+        assertSame(agent.instance(), runtime.withCommandActor(agent.instance(), () -> probe.invoke("strict_agent")));
     }
 
     @Test

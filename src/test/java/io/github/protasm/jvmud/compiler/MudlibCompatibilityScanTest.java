@@ -721,7 +721,7 @@ final class MudlibCompatibilityScanTest {
         case "strlen" -> support("Implemented", "Mudlib mfun delegates to JVMud size handling for strings.");
         case "tell_object" -> support("Partial", "Routes to a bound target session, with shared-output fallback for unbound objects.");
         case "this_object" -> support("Implemented", "Backed by RuntimeContext current-object stack.");
-        case "this_player" -> support("Partial", "Uses command actor when present, otherwise current object; real telnet persona binding still pending.");
+        case "this_player" -> support("Partial", "Maps to JVMud's active Agent, returning LPC false when no Agent is active.");
         case "time" -> support("Implemented", "Returns current Unix time in seconds.");
         case "transfer" -> support("Partial", "Moves an entity to a destination and returns LP-style success code 0; weight and failure policy remain future work.");
         case "users" -> support("Implemented", "Returns connected persona objects from the session/persona registry.");

@@ -103,7 +103,11 @@
             </tr>
             <tr>
               <td><code>object jvmud_current_actor()</code></td>
-              <td>Returns the current command Persona, falling back to the current object.</td>
+              <td>Returns the current command actor, falling back to the current object.</td>
+            </tr>
+            <tr>
+              <td><code>object jvmud_current_agent()</code></td>
+              <td>Returns the active world-present Agent for the current action scope, or LPC false when none is active.</td>
             </tr>
             <tr>
               <td><code>string jvmud_current_verb()</code></td>

@@ -43,6 +43,14 @@ int file_size(string path) {
     return jvmud_is_string(text) ? jvmud_size(text) : -1;
 }
 
+string format(mixed text) {
+    return jvmud_wrap_text(text);
+}
+
+string format(mixed text, int width) {
+    return jvmud_wrap_text(text, width);
+}
+
 object getService(string service) {
     return load_object("/secure/simul_efun.c")->getService(service);
 }
