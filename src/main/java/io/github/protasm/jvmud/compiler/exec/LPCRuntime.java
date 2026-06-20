@@ -979,15 +979,15 @@ public final class LPCRuntime {
         if (hasExtension(resolved)) {
             return resolved;
         }
-        if (Files.exists(resolved)) {
+        if (Files.isRegularFile(resolved)) {
             return resolved;
         }
         Path cCandidate = resolveSourcePath(sourcePath + ".c");
-        if (Files.exists(cCandidate)) {
+        if (Files.isRegularFile(cCandidate)) {
             return cCandidate;
         }
         Path lpcCandidate = resolveSourcePath(sourcePath + ".lpc");
-        if (Files.exists(lpcCandidate)) {
+        if (Files.isRegularFile(lpcCandidate)) {
             return lpcCandidate;
         }
         return resolved;
@@ -998,15 +998,15 @@ public final class LPCRuntime {
         if (hasExtension(sourcePath)) {
             return normalized;
         }
-        if (Files.exists(normalized)) {
+        if (Files.isRegularFile(normalized)) {
             return normalized;
         }
         Path cCandidate = normalizeSourcePath(appendExtension(sourcePath, ".c"));
-        if (Files.exists(cCandidate)) {
+        if (Files.isRegularFile(cCandidate)) {
             return cCandidate;
         }
         Path lpcCandidate = normalizeSourcePath(appendExtension(sourcePath, ".lpc"));
-        if (Files.exists(lpcCandidate)) {
+        if (Files.isRegularFile(lpcCandidate)) {
             return lpcCandidate;
         }
         return normalized;

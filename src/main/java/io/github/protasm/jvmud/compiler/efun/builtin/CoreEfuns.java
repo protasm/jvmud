@@ -9,6 +9,8 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -104,6 +106,10 @@ import javax.crypto.spec.PBEKeySpec;
  * <ul>
  *   <li>{@code jvmud_lpc_object_id(mixed object) : string} returns the runtime object identifier
  *       for a loaded LPC object.</li>
+ *   <li>{@code jvmud_method_exists(string name) : status} returns whether the current LPC object
+ *       exposes a public mudlib method with that name.</li>
+ *   <li>{@code jvmud_method_exists(string name, mixed object) : status} checks another loaded LPC
+ *       object for a public mudlib method.</li>
  *   <li>{@code jvmud_inherited_programs(mixed object) : array} returns the transitive LPC program
  *       paths inherited by a generated object.</li>
  *   <li>{@code jvmud_load_lpc_object(string path) : object} loads or returns the shared LPC
@@ -334,6 +340,10 @@ public final class CoreEfuns {
                 (runtime, args) -> formatTime(((Number) args[0]).longValue())));
         efuns.add(efun("jvmud_lpc_object_id", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.objectId(args[0])));
+        efuns.add(efun("jvmud_method_exists", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> methodExists(runtime.currentObject(), String.valueOf(args[0])) ? 1 : 0));
+        efuns.add(efun("jvmud_method_exists", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING, LPCType.LPCMIXED),
+                (runtime, args) -> methodExists(args[1], String.valueOf(args[0])) ? 1 : 0));
         efuns.add(efun("jvmud_inherited_programs", LPCType.LPCARRAY, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.inheritedPrograms(args[0])));
         efuns.add(efun("jvmud_size", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
@@ -654,6 +664,24 @@ public final class CoreEfuns {
             return mapping;
         }
         throw new IllegalArgumentException("jvmud_mapping_from_keys expects an array value");
+    }
+
+    private static boolean methodExists(Object target, String methodName) {
+        if (target == null || (target instanceof Number number && number.intValue() == 0) || methodName == null) {
+            return false;
+        }
+        for (Method method : target.getClass().getMethods()) {
+            if (method.isSynthetic() || method.isBridge() || method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+            if (!Modifier.isPublic(method.getModifiers()) || method.getName().startsWith("$")) {
+                continue;
+            }
+            if (method.getName().equals(methodName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String capitalizeText(String value) {

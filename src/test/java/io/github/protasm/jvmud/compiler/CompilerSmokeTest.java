@@ -3115,6 +3115,22 @@ final class CompilerSmokeTest {
                     return jvmud_regex_match(({ "bonus" }), "^-") ? 1 : 0;
                 }
 
+                int local_method_probe() {
+                    return jvmud_method_exists("local_method_probe");
+                }
+
+                int explicit_method_probe() {
+                    return jvmud_method_exists("local_method_probe", jvmud_current_lpc_object());
+                }
+
+                int missing_method_probe() {
+                    return jvmud_method_exists("not_here");
+                }
+
+                int java_object_method_probe() {
+                    return jvmud_method_exists("toString");
+                }
+
                 string *mapping_keys() {
                     return jvmud_mapping_keys(([ "dawn": 1, "night": 2 ]));
                 }
@@ -3169,6 +3185,10 @@ final class CompilerSmokeTest {
         assertEquals(10, reader.invoke("number"));
         assertEquals(List.of("alpha.c", "gamma.c"), reader.invoke("regex_matches"));
         assertEquals(0, reader.invoke("regex_no_match_is_false"));
+        assertEquals(1, reader.invoke("local_method_probe"));
+        assertEquals(1, reader.invoke("explicit_method_probe"));
+        assertEquals(0, reader.invoke("missing_method_probe"));
+        assertEquals(0, reader.invoke("java_object_method_probe"));
         assertEquals(Set.of("dawn", "night"), Set.copyOf((List<?>) reader.invoke("mapping_keys")));
         assertEquals(Set.of(1, 2), Set.copyOf((List<?>) reader.invoke("mapping_values")));
         assertEquals(Map.of("north", 1, "south", 1), reader.invoke("mapping_from_keys"));
@@ -3178,6 +3198,22 @@ final class CompilerSmokeTest {
         assertEquals(1, reader.invoke("random_range"));
         assertEquals(List.of(Map.of("name", "keep", "amount", 7)), reader.invoke("filtered_mapping_values"));
         assertTrue(((String) reader.invoke("epoch")).contains("1970"));
+    }
+
+    @Test
+    void extensionlessLoadPrefersSourceFileOverDirectoryWithSameStem() throws Exception {
+        Path sourceRoot = tempDir.resolve("source");
+        Files.createDirectories(sourceRoot.resolve("secure/master"));
+        Files.writeString(sourceRoot.resolve("secure/master.c"), """
+                string marker() {
+                    return "master source";
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(sourceRoot).build());
+        LPCObjectHandle object = runtime.load("secure/master");
+
+        assertEquals("master source", object.invoke("marker"));
     }
 
     @Test
