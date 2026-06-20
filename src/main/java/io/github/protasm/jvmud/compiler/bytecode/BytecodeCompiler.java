@@ -2163,11 +2163,15 @@ public final class BytecodeCompiler {
 
     private void emitMappingGet(MethodVisitor mv, String internalName, IRMethod method, IRMappingGet mappingGet) {
         emitExpression(mv, internalName, method, mappingGet.mapping());
-        mv.visitTypeInsn(CHECKCAST, "java/util/Map");
+        boxIfNeeded(mv, mappingGet.mapping().type());
         emitExpression(mv, internalName, method, mappingGet.key());
         boxIfNeeded(mv, mappingGet.key().type());
         mv.visitMethodInsn(
-                INVOKEINTERFACE, "java/util/Map", "get", "(Ljava/lang/Object;)Ljava/lang/Object;", true);
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeIndex.class),
+                "get",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                false);
     }
 
     private void emitMappingSet(MethodVisitor mv, String internalName, IRMethod method, IRMappingSet mappingSet) {

@@ -2,6 +2,38 @@ mixed *allocate(int size) {
     return jvmud_allocate(size);
 }
 
+int db_close(int handle) {
+    return load_object("/secure/simul_efun.c")->db_close(handle);
+}
+
+int db_connect(string database) {
+    return load_object("/secure/simul_efun.c")->db_connect(database);
+}
+
+int db_connect(string database, string user, string password) {
+    return load_object("/secure/simul_efun.c")->db_connect(database, user, password);
+}
+
+string db_conv_string(mixed value) {
+    return jvmud_db_escape(value);
+}
+
+mixed db_error(int handle) {
+    return jvmud_db_error(handle);
+}
+
+int db_exec(int handle, string sql) {
+    return load_object("/secure/simul_efun.c")->db_exec(handle, sql);
+}
+
+mixed db_fetch(int handle) {
+    return jvmud_db_fetch(handle);
+}
+
+int *db_handles() {
+    return load_object("/secure/simul_efun.c")->db_handles();
+}
+
 int file_size(string path) {
     mixed text = jvmud_read_mudlib_text(path);
     return jvmud_is_string(text) ? jvmud_size(text) : -1;
@@ -19,12 +51,20 @@ int member(mixed value, mixed needle) {
     return jvmud_member(value, needle);
 }
 
+int mappingp(mixed value) {
+    return jvmud_is_mapping(value);
+}
+
 int objectp(mixed value) {
     return jvmud_is_object(value);
 }
 
 int pointerp(mixed value) {
     return jvmud_is_array(value);
+}
+
+string RealmsDatabase() {
+    return "RealmsLib";
 }
 
 int sizeof(mixed value) {

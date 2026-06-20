@@ -25,9 +25,16 @@ public final class RuntimeIndex {
         throw new IllegalArgumentException("Cannot index value: " + target);
     }
 
+    /**
+     * Reads a value through a dynamically typed LPC index target.
+     *
+     * <p>Missing mapping keys evaluate as LPC false, represented by {@code 0}, rather than leaking
+     * Java {@code null} into generated LPC code.
+     */
     public static Object get(Object target, Object index) {
         if (target instanceof Map<?, ?> map) {
-            return map.get(index);
+            Object value = map.get(index);
+            return value != null ? value : Integer.valueOf(0);
         }
         int numericIndex = resolveIndex(index, sizeOf(target));
         return get(target, numericIndex);

@@ -46,6 +46,9 @@ public final class MudlibBoundary {
     private final String initialPlacePath;
     private final String preloadFilePath;
     private final Set<String> preloadObjectPaths;
+    private final String databaseJdbcUrl;
+    private final String databaseUser;
+    private final String databasePassword;
     private final String temporalTickMethod;
     private final Duration temporalTickInterval;
     private final Set<MudlibLifecycleEvent> lifecycleEvents;
@@ -67,6 +70,9 @@ public final class MudlibBoundary {
         this.initialPlacePath = normalizeOptionalPath(builder.initialPlacePath);
         this.preloadFilePath = normalizeOptionalPath(builder.preloadFilePath);
         this.preloadObjectPaths = normalizePathSet(builder.preloadObjectPaths);
+        this.databaseJdbcUrl = normalizeOptionalText(builder.databaseJdbcUrl);
+        this.databaseUser = normalizeOptionalText(builder.databaseUser);
+        this.databasePassword = builder.databasePassword != null ? builder.databasePassword : null;
         this.temporalTickMethod = normalizeOptionalText(builder.temporalTickMethod);
         this.temporalTickInterval = builder.temporalTickInterval;
         this.lifecycleEvents = immutableCopy(builder.lifecycleEvents);
@@ -144,6 +150,21 @@ public final class MudlibBoundary {
     /** Returns additional mudlib object paths to preload at startup. */
     public Set<String> preloadObjectPaths() {
         return preloadObjectPaths;
+    }
+
+    /** Returns the optional JDBC URL used by JVMud-native database efuns. */
+    public Optional<String> databaseJdbcUrl() {
+        return Optional.ofNullable(databaseJdbcUrl);
+    }
+
+    /** Returns the optional JDBC user used by JVMud-native database efuns. */
+    public Optional<String> databaseUser() {
+        return Optional.ofNullable(databaseUser);
+    }
+
+    /** Returns the optional JDBC password used by JVMud-native database efuns. */
+    public Optional<String> databasePassword() {
+        return Optional.ofNullable(databasePassword);
     }
 
     /** Returns the optional mudlib method to invoke for deterministic temporal ticks. */
@@ -272,6 +293,9 @@ public final class MudlibBoundary {
                 || initialPlacePath != null
                 || preloadFilePath != null
                 || !preloadObjectPaths.isEmpty()
+                || databaseJdbcUrl != null
+                || databaseUser != null
+                || databasePassword != null
                 || temporalTickMethod != null
                 || !temporalTickInterval.isZero()
                 || !lifecycleEvents.isEmpty()
@@ -403,6 +427,9 @@ public final class MudlibBoundary {
         private String preloadFilePath;
         private final java.util.LinkedHashSet<String> preloadObjectPaths =
                 new java.util.LinkedHashSet<>();
+        private String databaseJdbcUrl;
+        private String databaseUser;
+        private String databasePassword;
         private String temporalTickMethod;
         private Duration temporalTickInterval = Duration.ZERO;
         private final EnumSet<MudlibLifecycleEvent> lifecycleEvents =
@@ -487,6 +514,24 @@ public final class MudlibBoundary {
         /** Adds a startup preload object path. */
         public Builder preloadObjectPath(String preloadObjectPath) {
             this.preloadObjectPaths.add(preloadObjectPath);
+            return this;
+        }
+
+        /** Sets the JDBC URL used by JVMud-native database efuns. */
+        public Builder databaseJdbcUrl(String databaseJdbcUrl) {
+            this.databaseJdbcUrl = databaseJdbcUrl;
+            return this;
+        }
+
+        /** Sets the JDBC user used by JVMud-native database efuns. */
+        public Builder databaseUser(String databaseUser) {
+            this.databaseUser = databaseUser;
+            return this;
+        }
+
+        /** Sets the JDBC password used by JVMud-native database efuns. */
+        public Builder databasePassword(String databasePassword) {
+            this.databasePassword = databasePassword;
             return this;
         }
 

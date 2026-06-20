@@ -19,6 +19,7 @@ import io.github.protasm.jvmud.engine.time.ScheduledTask;
 import io.github.protasm.jvmud.engine.identity.SessionId;
 import io.github.protasm.jvmud.engine.identity.SessionRecord;
 import io.github.protasm.jvmud.engine.time.WorldScheduler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -69,6 +70,7 @@ public final class RuntimeContext {
     private final Map<Object, SessionBinding> sessionsByPersona = new IdentityHashMap<>();
     private final Map<Object, PersonaId> personaIdsByProjection = new IdentityHashMap<>();
     private final Map<Object, PendingSessionInput> pendingInputsByPersona = new IdentityHashMap<>();
+    private final RuntimeDatabaseService databaseService = new RuntimeDatabaseService();
     private final StringBuilder outputTranscript = new StringBuilder();
     private final ThreadLocal<Deque<Object>> currentObjectStack =
             ThreadLocal.withInitial(ArrayDeque::new);
@@ -174,6 +176,10 @@ public final class RuntimeContext {
 
     public void setMudlibBoundary(MudlibBoundary mudlibBoundary) {
         this.mudlibBoundary = mudlibBoundary != null ? mudlibBoundary : MudlibBoundary.empty();
+        databaseService.configure(
+                this.mudlibBoundary.databaseJdbcUrl().orElse(null),
+                this.mudlibBoundary.databaseUser().orElse(null),
+                this.mudlibBoundary.databasePassword().orElse(null));
     }
 
     public String directEfunName(String mudlibName) {
@@ -331,14 +337,24 @@ public final class RuntimeContext {
 
     public Efun resolveEfun(String name, int arity) {
         Efun mfun = resolveMfun(name, arity);
-        return mfun != null ? mfun : efunRegistry.lookup(name, arity);
+        return mfun != null ? mfun : lookupEngineEfun(name, arity);
+    }
+
+    /**
+     * Resolves an engine efun without consulting mudlib compatibility functions.
+     *
+     * <p>This is used for LPC {@code efun::name(...)} calls, where the source explicitly asks to
+     * bypass mudlib-level shadowing and invoke the driver/engine function directly.
+     */
+    public Efun resolveEngineEfun(String name, int arity) {
+        return efunRegistry.lookup(name, arity);
     }
 
     public Object invokeEfun(String name, int arity, Object[] args) {
         Efun efun = resolveMfun(name, arity);
 
         if (efun == null)
-            efun = efunRegistry.lookup(name, arity);
+            efun = lookupEngineEfun(name, arity);
 
         if (efun == null)
             throw new IllegalArgumentException("Unknown function '" + name + "' with arity " + arity);
@@ -360,7 +376,7 @@ public final class RuntimeContext {
             public Object call(RuntimeContext context, Object[] args) {
                 Object mfunObject = loadMfunObject();
                 if (!hasMethod(mfunObject, name, args.length)) {
-                    Efun efun = efunRegistry.lookup(name, arity);
+                    Efun efun = lookupEngineEfun(name, arity);
                     if (efun != null) {
                         return efun.invoke(context, args);
                     }
@@ -369,6 +385,16 @@ public final class RuntimeContext {
                 return invokeObjectPreservingCurrentObject(mfunObject, name, args);
             }
         };
+    }
+
+    private Efun lookupEngineEfun(String name, int arity) {
+        Efun efun = efunRegistry.lookup(name, arity);
+        if (efun != null) {
+            return efun;
+        }
+
+        String engineName = directEfunName(name);
+        return name.equals(engineName) ? null : efunRegistry.lookup(engineName, arity);
     }
 
     private EfunSignature mfunSignature(String name, int arity) {
@@ -485,6 +511,11 @@ public final class RuntimeContext {
                 .map(SessionBinding::personaProjection)
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    /** Returns true when the supplied LPC object is currently bound to an active JVMud session. */
+    public boolean isInteractive(Object user) {
+        return user != null && sessionsByPersona.containsKey(user);
     }
 
     public void bindPlayerSession(String sessionId, String remoteAddress, Consumer<String> sessionOutputSink) {
@@ -676,6 +707,46 @@ public final class RuntimeContext {
         return actor != null ? playerTransferHandler.apply(actor, normalizedGameId) : 0;
     }
 
+    /** Opens a configured JDBC database connection and returns a JVMud database handle. */
+    public int dbConnect(String databaseName) {
+        return databaseService.connect(databaseName, null, null);
+    }
+
+    /** Opens a JDBC database connection with mudlib-supplied credentials. */
+    public int dbConnect(String databaseName, String user, String password) {
+        return databaseService.connect(databaseName, user, password);
+    }
+
+    /** Executes SQL for a JVMud database handle and returns the handle on success. */
+    public int dbExec(int handle, String sql) {
+        return databaseService.execute(handle, sql);
+    }
+
+    /** Fetches one row from a JVMud database handle's current result cursor. */
+    public Object dbFetch(int handle) {
+        return databaseService.fetch(handle);
+    }
+
+    /** Returns the last JDBC error for a JVMud database handle, or LPC false when clear. */
+    public Object dbError(int handle) {
+        return databaseService.error(handle);
+    }
+
+    /** Closes a JVMud database handle. */
+    public int dbClose(int handle) {
+        return databaseService.close(handle);
+    }
+
+    /** Returns the currently open JVMud database handles. */
+    public List<Integer> dbHandles() {
+        return databaseService.handles();
+    }
+
+    /** Escapes a string for interpolation into mudlib-generated SQL. */
+    public String dbEscape(String value) {
+        return databaseService.escape(value);
+    }
+
     public int saveCurrentLPCObjectState(String path) {
         Object object = currentObject();
         return object != null ? lpcObjectStateSaver.apply(path, object) : 0;
@@ -727,6 +798,12 @@ public final class RuntimeContext {
                             "Failed to call " + describeInvocation(invocation, resolvedTarget)
                                     + causeSummary(e),
                             e);
+                } catch (InvocationTargetException e) {
+                    Throwable targetException = e.getTargetException();
+                    if (targetException instanceof LinkageError linkageError) {
+                        throw new IllegalStateException("Failed to call generated LPC method", linkageError);
+                    }
+                    throw new IllegalArgumentException("Failed to call generated LPC method" + causeSummary(targetException), e);
                 } catch (ReflectiveOperationException e) {
                     throw new IllegalArgumentException(
                             "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(resolvedTarget)
@@ -759,9 +836,22 @@ public final class RuntimeContext {
                             "Failed to call " + describeInvocation(invocation, resolvedTarget)
                                     + causeSummary(e),
                             e);
+                } catch (InvocationTargetException e) {
+                    Throwable targetException = e.getTargetException();
+                    String message = "Failed to call " + describeInvocation(invocation, resolvedTarget)
+                            + causeSummary(targetException);
+                    if (targetException instanceof LinkageError linkageError) {
+                        throw new IllegalStateException(message, linkageError);
+                    }
+                    throw new IllegalArgumentException(message, e);
                 } catch (ReflectiveOperationException e) {
                     throw new IllegalArgumentException(
                             "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(resolvedTarget)
+                                    + causeSummary(e),
+                            e);
+                } catch (LinkageError e) {
+                    throw new IllegalStateException(
+                            "Failed to link " + describeInvocation(invocation, resolvedTarget)
                                     + causeSummary(e),
                             e);
                 }
@@ -787,9 +877,20 @@ public final class RuntimeContext {
                         "Failed to call " + describeInvocation(invocation, target)
                                 + causeSummary(e),
                         e);
+            } catch (InvocationTargetException e) {
+                Throwable targetException = e.getTargetException();
+                if (targetException instanceof LinkageError linkageError) {
+                    throw new IllegalStateException("Failed to call generated LPC method", linkageError);
+                }
+                throw new IllegalArgumentException("Failed to call generated LPC method" + causeSummary(targetException), e);
             } catch (ReflectiveOperationException e) {
                 throw new IllegalArgumentException(
                         "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(target)
+                                + causeSummary(e),
+                        e);
+            } catch (LinkageError e) {
+                throw new IllegalStateException(
+                        "Failed to link " + describeInvocation(invocation, target)
                                 + causeSummary(e),
                         e);
             }

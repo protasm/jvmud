@@ -111,6 +111,9 @@ final class MudlibBoundaryTest {
                 initial_place = room/village/vill_green
                 preload_file = init_file
                 preload_objects = obj/torch, obj/money.c
+                database.url = jdbc:mysql://localhost:3306/RealmsLib
+                database.user = realmslib
+                database.password = realmsdev
                 handled_lifecycle_events = scheduled-tick
                 lifecycle.object_loaded = reset
                 lifecycle.object_source_missing = compile_object
@@ -145,6 +148,9 @@ final class MudlibBoundaryTest {
         assertEquals("init_file", boundary.preloadFilePath().orElseThrow());
         assertTrue(boundary.preloadObjectPaths().contains("obj/torch"));
         assertTrue(boundary.preloadObjectPaths().contains("obj/money"));
+        assertEquals("jdbc:mysql://localhost:3306/RealmsLib", boundary.databaseJdbcUrl().orElseThrow());
+        assertEquals("realmslib", boundary.databaseUser().orElseThrow());
+        assertEquals("realmsdev", boundary.databasePassword().orElseThrow());
         assertTrue(boundary.handles(MudlibLifecycleEvent.SCHEDULED_TICK));
         assertEquals("reset", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED).orElseThrow());
         assertEquals(

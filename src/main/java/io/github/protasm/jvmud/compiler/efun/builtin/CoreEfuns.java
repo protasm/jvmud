@@ -142,6 +142,25 @@ import javax.crypto.spec.PBEKeySpec;
  * <h2>Session, users, persistence, and security helpers</h2>
  * <ul>
  *   <li>{@code jvmud_users() : array} returns the active user/player objects known to the runtime.</li>
+ *   <li>{@code jvmud_this_player() : object} returns JVMud's current LPC execution object as a
+ *       conservative player-compatible value for legacy mudlibs.</li>
+ *   <li>{@code jvmud_previous_object() : object} returns the previous LPC object on the runtime call
+ *       stack.</li>
+ *   <li>{@code jvmud_interactive(mixed user) : status} reports whether an object is bound to an active
+ *       session.</li>
+ *   <li>{@code jvmud_interactive_info(mixed user, int key) : mixed} returns LPC false for
+ *       driver-specific interactive metadata JVMud does not expose.</li>
+ *   <li>{@code jvmud_object_info(mixed object, int key) : mixed} returns LPC false for
+ *       driver-specific object metadata JVMud does not expose.</li>
+ *   <li>{@code jvmud_configure_object(mixed object, int key, mixed value) : status} accepts
+ *       driver-specific object configuration requests conservatively.</li>
+ *   <li>{@code jvmud_find_object(string path) : mixed} returns an already loaded object, or LPC false
+ *       when the path is not loaded.</li>
+ *   <li>{@code jvmud_shutdown() : void} accepts legacy mudlib shutdown requests.</li>
+ *   <li>{@code jvmud_set_this_player(mixed player) : void} accepts legacy current-player mutation
+ *       requests while JVMud keeps session ownership on the engine side.</li>
+ *   <li>{@code jvmud_raise_error(mixed message) : void} raises a JVMud runtime exception with the
+ *       supplied LPC message.</li>
  *   <li>{@code jvmud_query_idle(mixed user) : int} returns idle time for a user/player object.</li>
  *   <li>{@code jvmud_query_ip_number(mixed user) : mixed} returns the user's remote IP address, or
  *       the runtime's false/null value when unavailable.</li>
@@ -153,6 +172,17 @@ import javax.crypto.spec.PBEKeySpec;
  *       fields.</li>
  *   <li>{@code jvmud_restore_lpc_object_state(string path) : status} restores the current object's
  *       LPC fields.</li>
+ *   <li>{@code jvmud_db_connect(string database) : int} opens a configured JDBC database handle.</li>
+ *   <li>{@code jvmud_db_connect(string database, string user, string password) : int} opens a JDBC
+ *       database handle with mudlib-supplied credentials.</li>
+ *   <li>{@code jvmud_db_exec(int handle, string sql) : int} executes SQL and retains any result
+ *       cursor for later fetches.</li>
+ *   <li>{@code jvmud_db_fetch(int handle) : mixed} returns the next result row as an LPC array, or
+ *       LPC false when no row remains.</li>
+ *   <li>{@code jvmud_db_error(int handle) : mixed} returns the last SQL error for a handle.</li>
+ *   <li>{@code jvmud_db_close(int handle) : status} closes a database handle.</li>
+ *   <li>{@code jvmud_db_handles() : array} returns currently open database handles.</li>
+ *   <li>{@code jvmud_db_escape(mixed value) : string} escapes text for mudlib-generated SQL.</li>
  *   <li>{@code jvmud_hash_password(string password) : string} returns a PBKDF2-SHA256 password
  *       hash string.</li>
  *   <li>{@code jvmud_verify_password(string password, string encodedHash) : status} verifies a
@@ -167,6 +197,9 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_size(mixed value) : int} returns the size of a string, collection, mapping, or
  *       array.</li>
  *   <li>{@code jvmud_lowercase_text(mixed value) : string} lowercases text.</li>
+ *   <li>{@code jvmud_uppercase_text(mixed value) : string} uppercases text.</li>
+ *   <li>{@code jvmud_regex_replace(string input, string pattern, string replacement, int flags) :
+ *       string} performs a Java-regex replacement for legacy mudlib text helpers.</li>
  *   <li>{@code jvmud_capitalize_text(mixed value) : string} capitalizes the first character of
  *       text.</li>
  *   <li>{@code jvmud_format_text(string format, mixed ...args) : string} formats text using the
@@ -186,6 +219,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       object.</li>
  *   <li>{@code jvmud_is_array(mixed value) : status} reports whether a value is Java-backed LPC
  *       array data.</li>
+ *   <li>{@code jvmud_is_mapping(mixed value) : status} reports whether a value is Java-backed LPC
+ *       mapping data.</li>
  *   <li>{@code jvmud_filter_indices(mapping values, function callback, mixed ...args) : mapping} returns
  *       a mapping containing the entries whose keys satisfy a callable predicate; this overload is
  *       registered for arities 2 through 8.</li>
@@ -287,6 +322,32 @@ public final class CoreEfuns {
                 (runtime, args) -> random(((Number) args[0]).intValue())));
         efuns.add(efun("jvmud_users", LPCType.LPCARRAY, List.of(),
                 (runtime, args) -> runtime.users()));
+        efuns.add(efun("jvmud_this_player", LPCType.LPCOBJECT, List.of(),
+                (runtime, args) -> runtime.currentObject()));
+        efuns.add(efun("jvmud_previous_object", LPCType.LPCOBJECT, List.of(),
+                (runtime, args) -> runtime.previousObject()));
+        efuns.add(efun("jvmud_interactive", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.isInteractive(args[0]) ? 1 : 0));
+        efuns.add(efun("jvmud_interactive_info", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
+                (runtime, args) -> 0));
+        efuns.add(efun("jvmud_object_info", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
+                (runtime, args) -> 0));
+        efuns.add(efun("jvmud_configure_object", LPCType.LPCSTATUS,
+                List.of(LPCType.LPCMIXED, LPCType.LPCINT, LPCType.LPCMIXED),
+                (runtime, args) -> 1));
+        efuns.add(efun("jvmud_find_object", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> {
+                    Object object = runtime.getObject(String.valueOf(args[0]));
+                    return object != null ? object : 0;
+                }));
+        efuns.add(efun("jvmud_shutdown", LPCType.LPCVOID, List.of(),
+                (runtime, args) -> null));
+        efuns.add(efun("jvmud_set_this_player", LPCType.LPCVOID, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> null));
+        efuns.add(efun("jvmud_raise_error", LPCType.LPCVOID, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> {
+                    throw new IllegalStateException(String.valueOf(args[0]));
+                }));
         efuns.add(efun("jvmud_query_idle", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.queryIdle(args[0])));
         efuns.add(efun("jvmud_query_ip_number", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED),
@@ -302,12 +363,41 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.saveCurrentLPCObjectState(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_restore_lpc_object_state", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.restoreCurrentLPCObjectState(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_db_connect", LPCType.LPCINT, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.dbConnect(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_db_connect", LPCType.LPCINT,
+                List.of(LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCSTRING),
+                (runtime, args) -> runtime.dbConnect(
+                        String.valueOf(args[0]),
+                        String.valueOf(args[1]),
+                        String.valueOf(args[2]))));
+        efuns.add(efun("jvmud_db_exec", LPCType.LPCINT, List.of(LPCType.LPCINT, LPCType.LPCSTRING),
+                (runtime, args) -> runtime.dbExec(((Number) args[0]).intValue(), String.valueOf(args[1]))));
+        efuns.add(efun("jvmud_db_fetch", LPCType.LPCMIXED, List.of(LPCType.LPCINT),
+                (runtime, args) -> runtime.dbFetch(((Number) args[0]).intValue())));
+        efuns.add(efun("jvmud_db_error", LPCType.LPCMIXED, List.of(LPCType.LPCINT),
+                (runtime, args) -> runtime.dbError(((Number) args[0]).intValue())));
+        efuns.add(efun("jvmud_db_close", LPCType.LPCSTATUS, List.of(LPCType.LPCINT),
+                (runtime, args) -> runtime.dbClose(((Number) args[0]).intValue())));
+        efuns.add(efun("jvmud_db_handles", LPCType.LPCARRAY, List.of(),
+                (runtime, args) -> runtime.dbHandles()));
+        efuns.add(efun("jvmud_db_escape", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.dbEscape(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_hash_password", LPCType.LPCSTRING, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> hashPassword(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_verify_password", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING, LPCType.LPCSTRING),
                 (runtime, args) -> verifyPassword(String.valueOf(args[0]), String.valueOf(args[1])) ? 1 : 0));
         efuns.add(efun("jvmud_lowercase_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> String.valueOf(args[0]).toLowerCase()));
+        efuns.add(efun("jvmud_uppercase_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> String.valueOf(args[0]).toUpperCase()));
+        efuns.add(efun("jvmud_regex_replace", LPCType.LPCSTRING,
+                List.of(LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCINT),
+                (runtime, args) -> regexReplace(
+                        String.valueOf(args[0]),
+                        String.valueOf(args[1]),
+                        String.valueOf(args[2]),
+                        ((Number) args[3]).intValue())));
         efuns.add(efun("jvmud_capitalize_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> capitalizeText(String.valueOf(args[0]))));
         for (int arity = 1; arity <= 8; arity++) {
@@ -343,6 +433,8 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.objectId(args[0]) != null ? 1 : 0));
         efuns.add(efun("jvmud_is_array", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof List<?> ? 1 : 0));
+        efuns.add(efun("jvmud_is_mapping", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> args[0] instanceof Map<?, ?> ? 1 : 0));
         for (int arity = 2; arity <= 8; arity++) {
             efuns.add(filterIndicesEfun(arity));
         }
@@ -458,6 +550,9 @@ public final class CoreEfuns {
 
     private static int sizeOf(Object value) {
         if (value == null) {
+            return 0;
+        }
+        if (Integer.valueOf(0).equals(value)) {
             return 0;
         }
         if (value instanceof CharSequence text) {
@@ -604,6 +699,30 @@ public final class CoreEfuns {
             System.arraycopy(args, 1, values, 0, values.length);
         }
         return String.format(Locale.ROOT, format, values);
+    }
+
+    private static String regexReplace(String input, String pattern, String replacement, int flags) {
+        String javaReplacement = javaRegexReplacement(replacement);
+        return flags == 0
+                ? input.replaceFirst(pattern, javaReplacement)
+                : input.replaceAll(pattern, javaReplacement);
+    }
+
+    private static String javaRegexReplacement(String replacement) {
+        StringBuilder converted = new StringBuilder();
+        for (int i = 0; i < replacement.length(); i++) {
+            char current = replacement.charAt(i);
+            if (current == '\\' && i + 1 < replacement.length() && Character.isDigit(replacement.charAt(i + 1))) {
+                converted.append('$').append(replacement.charAt(++i));
+            } else if (current == '\\') {
+                converted.append("\\\\");
+            } else if (current == '$') {
+                converted.append("\\$");
+            } else {
+                converted.append(current);
+            }
+        }
+        return converted.toString();
     }
 
     private static Efun filterIndicesEfun(int arity) {

@@ -1135,19 +1135,38 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void runtimeSupportsQualifiedEfunCalls() {
-        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        CoreEfuns.registerCore(runtime);
-        runtime.registerMudlibBoundary(MudlibBoundary.builder()
-                .directEfunAlias("sizeof", "jvmud_size")
-                .build());
-        LPCObjectHandle object = runtime.loadSource("smoke/qualified_efun.c", """
-                int value() {
-                    return efun::sizeof(({1, 2, 3}));
+    void runtimeSupportsQualifiedEfunCalls() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                int sizeof(mixed value) {
+                    return 99;
                 }
                 """);
 
-        assertEquals(3, object.invoke("value"));
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .directEfunAlias("sizeof", "jvmud_size")
+                .directEfunAlias("lower_case", "jvmud_lowercase_text")
+                .build());
+        LPCObjectHandle object = runtime.loadSource("smoke/qualified_efun.c", """
+                int shadowed() {
+                    return sizeof(({1, 2, 3}));
+                }
+
+                int direct() {
+                    return efun::sizeof(({1, 2, 3}));
+                }
+
+                string fallback_alias() {
+                    return lower_case("LOUD");
+                }
+                """);
+
+        assertEquals(99, object.invoke("shadowed"));
+        assertEquals(3, object.invoke("direct"));
+        assertEquals("loud", object.invoke("fallback_alias"));
     }
 
     @Test
@@ -1255,6 +1274,21 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(18, object.invoke("value"));
+    }
+
+    @Test
+    void runtimeReturnsZeroForMissingMappingKeys() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/missing_mapping_key.c", """
+                int value() {
+                    mapping values;
+
+                    values = ([ ]);
+                    return values["missing"];
+                }
+                """);
+
+        assertEquals(0, object.invoke("value"));
     }
 
     @Test

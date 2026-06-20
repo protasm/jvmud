@@ -1300,7 +1300,7 @@ public final class SemanticAnalyzer {
             ASTArguments resolvedArgs = resolveArguments(unresolvedCall.arguments(), context);
 
             if ("efun".equals(unresolvedCall.qualifier())) {
-                Efun efun = resolveDirectEfun(unresolvedCall.name(), resolvedArgs.size());
+                Efun efun = resolveEngineDirectEfun(unresolvedCall.name(), resolvedArgs.size());
 
                 if (efun != null)
                     return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
@@ -1373,6 +1373,19 @@ public final class SemanticAnalyzer {
 
             String engineName = runtimeContext.directEfunName(name);
             return name.equals(engineName) ? null : runtimeContext.resolveEfun(engineName, arity);
+        }
+
+        /**
+         * Resolves {@code efun::name(...)} against the engine efun registry only, while still
+         * honoring the mudlib boundary's direct-efun alias table.
+         */
+        private Efun resolveEngineDirectEfun(String name, int arity) {
+            String engineName = runtimeContext.directEfunName(name);
+            Efun efun = runtimeContext.resolveEngineEfun(engineName, arity);
+            if (efun != null)
+                return efun;
+
+            return name.equals(engineName) ? null : runtimeContext.resolveEngineEfun(name, arity);
         }
 
         private ASTExpression resolveParentCall(

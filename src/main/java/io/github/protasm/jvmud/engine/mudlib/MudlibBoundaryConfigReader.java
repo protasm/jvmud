@@ -77,6 +77,9 @@ public final class MudlibBoundaryConfigReader {
         addString(builder::initialPlacePath, firstValue(values, "initial_place"));
         addString(builder::preloadFilePath, firstValue(values, "preload_file"));
         addPreloadObjects(builder, allValues(values, "preload_objects"));
+        addString(builder::databaseJdbcUrl, firstValue(values, "database.url", "database.jdbc_url"));
+        addString(builder::databaseUser, firstValue(values, "database.user"));
+        addString(builder::databasePassword, firstValue(values, "database.password"));
         addDirectEfunAliases(builder, values);
         addLdmudCompatibilityPredefines(builder, values);
         addLdmudCompatibilityFunctionPredefines(builder, values);
