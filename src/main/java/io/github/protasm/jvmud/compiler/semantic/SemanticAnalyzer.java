@@ -1313,6 +1313,20 @@ public final class SemanticAnalyzer {
                 return new ASTExprError(unresolvedCall.line());
             }
 
+            if ("jvmud".equals(unresolvedCall.qualifier())) {
+                Efun efun = resolveJvmudDirectEfun(unresolvedCall.name(), resolvedArgs.size());
+
+                if (efun != null)
+                    return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
+
+                problems.add(
+                        new CompilationProblem(
+                                CompilationStage.ANALYZE,
+                                "Unrecognized JVMud efun '" + unresolvedCall.name() + "'.",
+                                unresolvedCall.line()));
+                return new ASTExprError(unresolvedCall.line());
+            }
+
             ASTExpression inheritedCall = resolveQualifiedPrimaryParentCall(unresolvedCall, resolvedArgs);
             if (inheritedCall != null)
                 return inheritedCall;
@@ -1386,6 +1400,22 @@ public final class SemanticAnalyzer {
                 return efun;
 
             return name.equals(engineName) ? null : runtimeContext.resolveEngineEfun(name, arity);
+        }
+
+        /**
+         * Resolves {@code jvmud::name(...)} against JVMud-native efun names only.
+         *
+         * <p>The namespace accepts both the full engine name, such as {@code jvmud_size}, and the
+         * shortened namespace form {@code size}. It intentionally bypasses mudlib compatibility
+         * aliases so legacy names like {@code sizeof} remain an {@code efun::} concern.</p>
+         */
+        private Efun resolveJvmudDirectEfun(String name, int arity) {
+            Efun efun = runtimeContext.resolveEngineEfun(name, arity);
+            if (efun != null)
+                return efun;
+
+            String nativeName = name.startsWith("jvmud_") ? name : "jvmud_" + name;
+            return name.equals(nativeName) ? null : runtimeContext.resolveEngineEfun(nativeName, arity);
         }
 
         private ASTExpression resolveParentCall(

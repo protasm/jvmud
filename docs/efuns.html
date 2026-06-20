@@ -47,6 +47,18 @@
     </section>
 
     <section>
+      <h2>Qualified Calls</h2>
+      <p>
+        <code>efun::name(...)</code> asks JVMud to bypass mudlib shim methods
+        while still honoring configured direct-efun aliases for imported
+        mudlibs. <code>jvmud::name(...)</code> is stricter: it resolves only
+        JVMud-native efuns, using either the full name
+        <code>jvmud_size(...)</code> or the shortened namespace form
+        <code>jvmud::size(...)</code>.
+      </p>
+    </section>
+
+    <section>
       <h2>Current Core Efuns</h2>
       <p>
         This is the core set currently registered by JVMud's engine efun

@@ -673,14 +673,22 @@ public final class RuntimeContext {
         return personaId != null ? Optional.ofNullable(personas.get(personaId)) : Optional.empty();
     }
 
-    public void captureSessionInput(String methodName, boolean noEcho) {
+    /**
+     * Captures the next line of interactive session input for the current output persona.
+     *
+     * <p>The line is delivered to {@code methodName} on the current LPC object. Any supplied extra
+     * arguments are appended after the typed line, matching legacy {@code input_to()} callback
+     * shapes such as {@code input_to("method", flags, arg1, arg2)}.</p>
+     */
+    public void captureSessionInput(String methodName, boolean noEcho, Object... extraArgs) {
         Objects.requireNonNull(methodName, "methodName");
         Object persona = outputTarget();
         Object handler = currentObject();
         if (persona == null || handler == null || !sessionsByPersona.containsKey(persona)) {
             return;
         }
-        pendingInputsByPersona.put(persona, new PendingSessionInput(handler, methodName, noEcho));
+        Object[] capturedArgs = extraArgs == null ? new Object[0] : extraArgs.clone();
+        pendingInputsByPersona.put(persona, new PendingSessionInput(handler, methodName, noEcho, capturedArgs));
     }
 
     public boolean hasCapturedSessionInput(Object persona) {
@@ -700,8 +708,12 @@ public final class RuntimeContext {
         if (pendingInput == null) {
             return 0;
         }
+        Object[] extraArgs = pendingInput.extraArgs();
+        Object[] invocationArgs = new Object[extraArgs.length + 1];
+        invocationArgs[0] = line;
+        System.arraycopy(extraArgs, 0, invocationArgs, 1, extraArgs.length);
         return withCommandActor(persona, () ->
-                invokeObject(pendingInput.handler(), pendingInput.methodName(), line));
+                invokeObject(pendingInput.handler(), pendingInput.methodName(), invocationArgs));
     }
 
     public int queryIdle(Object persona) {
@@ -1926,7 +1938,16 @@ public final class RuntimeContext {
 
     private record CommandAction(Object handler, String methodName, boolean prefixMatch, boolean persistent) {}
 
-    private record PendingSessionInput(Object handler, String methodName, boolean noEcho) {}
+    private record PendingSessionInput(Object handler, String methodName, boolean noEcho, Object[] extraArgs) {
+        private PendingSessionInput {
+            extraArgs = extraArgs == null ? new Object[0] : extraArgs.clone();
+        }
+
+        @Override
+        public Object[] extraArgs() {
+            return extraArgs.clone();
+        }
+    }
 
     private record SessionBinding(
             SessionRecord sessionRecord,

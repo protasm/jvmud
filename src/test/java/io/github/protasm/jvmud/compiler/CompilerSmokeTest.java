@@ -1195,6 +1195,18 @@ final class CompilerSmokeTest {
                     return efun::sizeof(({1, 2, 3}));
                 }
 
+                int jvmud_short_name() {
+                    return jvmud::size(({1, 2, 3, 4}));
+                }
+
+                int jvmud_full_name() {
+                    return jvmud::jvmud_size(({1, 2}));
+                }
+
+                string jvmud_text_helper() {
+                    return jvmud::lowercase_text("LOUD");
+                }
+
                 string fallback_alias() {
                     return lower_case("LOUD");
                 }
@@ -1202,7 +1214,28 @@ final class CompilerSmokeTest {
 
         assertEquals(99, object.invoke("shadowed"));
         assertEquals(3, object.invoke("direct"));
+        assertEquals(4, object.invoke("jvmud_short_name"));
+        assertEquals(2, object.invoke("jvmud_full_name"));
+        assertEquals("loud", object.invoke("jvmud_text_helper"));
         assertEquals("loud", object.invoke("fallback_alias"));
+    }
+
+    @Test
+    void jvmudQualifiedCallsBypassLegacyEfunAliases() {
+        RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(tempDir, List.of()));
+        CoreEfuns.registerCore(context);
+        context.setMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("sizeof", "jvmud_size")
+                .build());
+
+        CompilationResult result = new CompilationPipeline("java/lang/Object", context).run("""
+                int value() {
+                    return jvmud::sizeof(({1}));
+                }
+                """);
+
+        assertTrue(result.getProblems().stream()
+                .anyMatch(problem -> problem.getMessage().contains("Unrecognized JVMud efun 'sizeof'")));
     }
 
     @Test

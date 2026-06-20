@@ -1433,6 +1433,53 @@ final class TelnetServerTest {
     }
 
     @Test
+    void telnetInputCaptureDeliversExtraCompatibilityArguments() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                mfun_object = jvmud/mfuns
+                player_object = obj/test_player
+                initial_place = room/start
+                lifecycle.player_session_connected = logon
+                """);
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.writeString(tempDir.resolve("obj/test_player.c"), """
+                int logon() {
+                    write("Code: ");
+                    input_to("capture", 0, "left", 7);
+                    return 1;
+                }
+
+                void capture(string line, string label, int count) {
+                    write(label + ":" + line + ":" + count + "\\n");
+                }
+                """);
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void long(mixed str) {
+                    write("Start room.\\n");
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                String prompt = readUntilQuietAfterContains(socket, "Code: ");
+                assertTrue(prompt.contains("Code: "), prompt);
+
+                socket.getOutputStream().write("blue\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilContains(socket, "left:blue:7").contains("left:blue:7"));
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
     void telnetLoginRestoresSavedPlayerInsteadOfCreatingAgain() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
@@ -2248,6 +2295,14 @@ final class TelnetServerTest {
 
                 void input_to(string method, int noecho) {
                     jvmud_capture_session_input(method, noecho);
+                }
+
+                void input_to(string method, int noecho, mixed arg1) {
+                    jvmud_capture_session_input(method, noecho, arg1);
+                }
+
+                void input_to(string method, int noecho, mixed arg1, mixed arg2) {
+                    jvmud_capture_session_input(method, noecho, arg1, arg2);
                 }
 
                 object this_player() {

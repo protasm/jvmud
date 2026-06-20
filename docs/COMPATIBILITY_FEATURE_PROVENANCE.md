@@ -130,6 +130,17 @@ Imported mudlibs may call driver-facing names such as `efun::sizeof`. JVMud can
 translate those names through a mudlib/profile compatibility registry without
 exposing legacy names as preferred engine APIs.
 
+### JVMud Qualified Efun Namespace
+
+- Source: `JVMUD_NATIVE`
+- Reason: `CORE_LANGUAGE`
+- Native guidance: `PREFERRED`
+
+JVMud supports `jvmud::name(...)` as a direct namespace for JVMud-native efuns.
+The namespace accepts shortened calls such as `jvmud::size(...)` for
+`jvmud_size(...)`, but it deliberately bypasses mudlib compatibility aliases so
+legacy driver names remain a boundary concern.
+
 ### Protected Evaluation Syntax
 
 - Source: `LDMUD`

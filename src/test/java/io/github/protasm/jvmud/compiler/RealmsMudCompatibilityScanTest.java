@@ -141,6 +141,7 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jvmud_db_exec", boundary.directEfunAlias("db_exec").orElseThrow());
         assertEquals("jvmud_db_fetch", boundary.directEfunAlias("db_fetch").orElseThrow());
         assertEquals("jvmud_current_lpc_object", boundary.directEfunAlias("this_object").orElseThrow());
+        assertEquals("jvmud_query_ip_number", boundary.directEfunAlias("query_ip_number").orElseThrow());
         assertEquals("jvmud_list_mudlib_paths", boundary.directEfunAlias("get_dir").orElseThrow());
         assertEquals("jvmud_load_lpc_object", boundary.directEfunAlias("load_object").orElseThrow());
         assertEquals("jvmud_clone_lpc_object", boundary.directEfunAlias("clone_object").orElseThrow());

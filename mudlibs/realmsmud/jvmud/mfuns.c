@@ -55,6 +55,22 @@ object getService(string service) {
     return load_object("/secure/simul_efun.c")->getService(service);
 }
 
+void input_to(string method) {
+    jvmud_capture_session_input(method, 0);
+}
+
+void input_to(string method, int flags) {
+    jvmud_capture_session_input(method, flags & 1);
+}
+
+void input_to(string method, int flags, mixed arg1) {
+    jvmud_capture_session_input(method, flags & 1, arg1);
+}
+
+void input_to(string method, int flags, mixed arg1, mixed arg2) {
+    jvmud_capture_session_input(method, flags & 1, arg1, arg2);
+}
+
 string program_name(mixed ob) {
     string ret = jvmud_lpc_object_id(ob);
     if (ret && sizeof(ret)) {
@@ -68,8 +84,50 @@ string program_name(mixed ob) {
     return ret;
 }
 
+object *players() {
+    return load_object("/secure/simul_efun.c")->players();
+}
+
+void printf(string format) {
+    jvmud_write(jvmud_format_text(format));
+}
+
+void printf(string format, mixed arg1) {
+    jvmud_write(jvmud_format_text(format, arg1));
+}
+
+void printf(string format, mixed arg1, mixed arg2) {
+    jvmud_write(jvmud_format_text(format, arg1, arg2));
+}
+
+void printf(string format, mixed arg1, mixed arg2, mixed arg3) {
+    jvmud_write(jvmud_format_text(format, arg1, arg2, arg3));
+}
+
+void printf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4) {
+    jvmud_write(jvmud_format_text(format, arg1, arg2, arg3, arg4));
+}
+
+void printf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5) {
+    jvmud_write(jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5));
+}
+
+void printf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5, mixed arg6) {
+    jvmud_write(jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6));
+}
+
 string RealmsDatabase() {
     return "RealmsLib";
+}
+
+int remove_call_out(string method) {
+    return jvmud_cancel_deferred_callback(method);
+}
+
+object *wizards() {
+    return load_object("/secure/simul_efun.c")->wizards();
 }
 
 int sizeof(mixed value) {
@@ -78,6 +136,14 @@ int sizeof(mixed value) {
 
 object this_object() {
     return jvmud_current_lpc_object();
+}
+
+string version() {
+    return "JVMud RealmsMUD LDMud compatibility";
+}
+
+void write(mixed message) {
+    jvmud_write(message);
 }
 
 string sprintf(string format) {

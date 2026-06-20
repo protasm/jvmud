@@ -177,8 +177,9 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_query_idle(mixed user) : int} returns idle time for a user/player object.</li>
  *   <li>{@code jvmud_query_ip_number(mixed user) : mixed} returns the user's remote IP address, or
  *       the runtime's false/null value when unavailable.</li>
- *   <li>{@code jvmud_capture_session_input(string methodName, int echo) : void} routes the next
- *       session input line to a method on the current object.</li>
+ *   <li>{@code jvmud_capture_session_input(string methodName, int noEcho[, mixed ...args]) : void}
+ *       routes the next session input line to a method on the current object, followed by any
+ *       captured compatibility arguments.</li>
  *   <li>{@code jvmud_transfer_player_to_game(string gameId) : status} asks the host to transfer
  *       the current player to another registered game.</li>
  *   <li>{@code jvmud_save_lpc_object_state(string path) : status} persists the current object's LPC
@@ -492,13 +493,9 @@ public final class CoreEfuns {
                 (runtime, args) -> mappingFromKeys(args[0])));
         efuns.add(efun("jvmud_mapping_delete", LPCType.LPCMAPPING, List.of(LPCType.LPCMAPPING, LPCType.LPCMIXED),
                 (runtime, args) -> mappingDelete(args[0], args[1])));
-        efuns.add(efun("jvmud_capture_session_input", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
-                (runtime, args) -> {
-                    runtime.captureSessionInput(
-                            String.valueOf(args[0]),
-                            ((Number) args[1]).intValue() != 0);
-                    return null;
-                }));
+        for (int arity = 2; arity <= 8; arity++) {
+            efuns.add(captureSessionInputEfun(arity));
+        }
         efuns.add(efun("jvmud_is_string", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof String ? 1 : 0));
         efuns.add(efun("jvmud_is_int", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
@@ -995,6 +992,27 @@ public final class CoreEfuns {
             }
         }
         return result;
+    }
+
+    private static Efun captureSessionInputEfun(int arity) {
+        List<LPCType> parameters = new ArrayList<>();
+        parameters.add(LPCType.LPCSTRING);
+        parameters.add(LPCType.LPCINT);
+        for (int i = 2; i < arity; i++) {
+            parameters.add(LPCType.LPCMIXED);
+        }
+        return efun("jvmud_capture_session_input", LPCType.LPCVOID, parameters,
+                (runtime, args) -> {
+                    Object[] extraArgs = new Object[Math.max(0, args.length - 2)];
+                    if (extraArgs.length > 0) {
+                        System.arraycopy(args, 2, extraArgs, 0, extraArgs.length);
+                    }
+                    runtime.captureSessionInput(
+                            String.valueOf(args[0]),
+                            ((Number) args[1]).intValue() != 0,
+                            extraArgs);
+                    return null;
+                });
     }
 
     private static Efun invokeLpcObjectEfun(int arity) {
