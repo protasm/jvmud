@@ -1182,7 +1182,7 @@ final class TelnetServerTest {
                 }
 
                 int loadbroken(mixed arg) {
-                    jvmud_spawn_entity("obj/broken");
+                    jvmud_spawn_lpc_object("obj/broken");
                     return 1;
                 }
                 """);
@@ -2217,11 +2217,11 @@ final class TelnetServerTest {
                 }
 
                 mixed call_other(mixed target, string method) {
-                    return jvmud_invoke_entity(target, method);
+                    return jvmud_invoke_lpc_object(target, method);
                 }
 
                 mixed call_other(mixed target, string method, mixed arg) {
-                    return jvmud_invoke_entity(target, method, arg);
+                    return jvmud_invoke_lpc_object(target, method, arg);
                 }
 
                 int cat(string path) {
@@ -2272,11 +2272,11 @@ final class TelnetServerTest {
                 }
 
                 object this_object() {
-                    return jvmud_current_entity();
+                    return jvmud_current_lpc_object();
                 }
 
                 void destruct(object ob) {
-                    jvmud_destroy_entity(ob);
+                    jvmud_destroy_lpc_object(ob);
                 }
                 """);
     }

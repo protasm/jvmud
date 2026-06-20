@@ -118,8 +118,8 @@ host-facing <a href="../../exec/LPCRuntime.html" title="class in io.github.prota
 
 <h2 id="current-execution-context-heading">Current execution context</h2>
 <ul>
-  <li><code>jvmud_current_entity() : object</code> returns the currently executing LPC object.</li>
-  <li><code>jvmud_previous_entity() : object</code> returns the previous LPC object in the current
+  <li><code>jvmud_current_lpc_object() : object</code> returns the currently executing LPC object.</li>
+  <li><code>jvmud_previous_lpc_object() : object</code> returns the previous LPC object in the current
       call chain, where one is available.</li>
   <li><code>jvmud_current_actor() : object</code> returns the active command actor, falling back to
       the current object outside command dispatch.</li>
@@ -159,10 +159,11 @@ host-facing <a href="../../exec/LPCRuntime.html" title="class in io.github.prota
       callbacks and returns the runtime's cancellation count/status.</li>
 </ul>
 
-<h2 id="entity-identity-lookup-containment-and-lifecycle-heading">Entity identity, lookup, containment, and lifecycle</h2>
+<h2 id="entity-identity-lookup-containment-and-lifecycle-heading">LPC object identity plus entity lookup, containment, and lifecycle</h2>
 <ul>
-  <li><code>jvmud_entity_id(mixed entity) : string</code> returns an engine object identifier.</li>
-  <li><code>jvmud_spawn_entity(string path) : object</code> clones an LPC object.</li>
+  <li><code>jvmud_lpc_object_id(mixed object) : string</code> returns the runtime object identifier
+      for a loaded LPC object.</li>
+  <li><code>jvmud_spawn_lpc_object(string path) : object</code> clones an LPC object.</li>
   <li><code>jvmud_move_entity(mixed entity, mixed destination) : void</code> moves an entity or
       path-resolved object.</li>
   <li><code>jvmud_find_entity(string id) : object</code> searches for an entity in the default
@@ -175,8 +176,8 @@ host-facing <a href="../../exec/LPCRuntime.html" title="class in io.github.prota
       location or container.</li>
   <li><code>jvmud_next_entity_at(mixed entity) : object</code> returns the next entity in the same
       inventory walk.</li>
-  <li><code>jvmud_destroy_entity(object entity) : void</code> destroys an LPC object and removes its
-      engine-side entity state.</li>
+  <li><code>jvmud_destroy_lpc_object(object object) : void</code> destroys an LPC object and removes
+      its runtime state.</li>
 </ul>
 
 <h2 id="aliases-and-command-capability-heading">Aliases and command capability</h2>
@@ -241,8 +242,8 @@ host-facing <a href="../../exec/LPCRuntime.html" title="class in io.github.prota
   <li><code>allocate(int size) : array</code> returns a zero-filled LPC array of non-negative size.</li>
   <li><code>sscanf(mixed input, mixed format, mixed ...captures) : int</code> is registered for
       arities 3 through 8.</li>
-  <li><code>jvmud_invoke_entity(mixed target, string methodName, mixed ...args) : mixed</code>
-      invokes an optional method on an entity or path-resolved object; this overload is
+  <li><code>jvmud_invoke_lpc_object(mixed target, string methodName, mixed ...args) : mixed</code>
+      invokes an optional method on an LPC object or path-resolved shared object; this overload is
       registered for arities 2 through 6.</li>
   <li><code>jvmud_set_light(int delta) : int</code> adjusts the current runtime light level and
       returns the resulting value.</li>

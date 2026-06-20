@@ -25,23 +25,23 @@ mixed *allocate(int size) {
 }
 
 mixed call_other(mixed target, string method) {
-  return jvmud_invoke_entity(target, method);
+  return jvmud_invoke_lpc_object(target, method);
 }
 
 mixed call_other(mixed target, string method, mixed arg) {
-  return jvmud_invoke_entity(target, method, arg);
+  return jvmud_invoke_lpc_object(target, method, arg);
 }
 
 mixed call_other(mixed target, string method, mixed arg1, mixed arg2) {
-  return jvmud_invoke_entity(target, method, arg1, arg2);
+  return jvmud_invoke_lpc_object(target, method, arg1, arg2);
 }
 
 mixed call_other(mixed target, string method, mixed arg1, mixed arg2, mixed arg3) {
-  return jvmud_invoke_entity(target, method, arg1, arg2, arg3);
+  return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3);
 }
 
 mixed call_other(mixed target, string method, mixed arg1, mixed arg2, mixed arg3, mixed arg4) {
-  return jvmud_invoke_entity(target, method, arg1, arg2, arg3, arg4);
+  return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3, arg4);
 }
 
 void call_out(string method, int delay) {
@@ -70,7 +70,7 @@ int cat(string path, int line, int count) {
 }
 
 object clone_object(string path) {
-  return jvmud_spawn_entity(path);
+  return jvmud_spawn_lpc_object(path);
 }
 
 string capitalize(mixed value) {
@@ -135,7 +135,7 @@ mixed command(string command_line, mixed actor) {
 }
 
 void destruct(object ob) {
-  jvmud_destroy_entity(ob);
+  jvmud_destroy_lpc_object(ob);
 }
 
 void enable_commands() {
@@ -171,11 +171,11 @@ string extract(mixed value, int from, int to) {
 }
 
 string file_name(mixed ob) {
-  return jvmud_entity_id(ob);
+  return jvmud_lpc_object_id(ob);
 }
 
 string object_name(mixed ob) {
-  return jvmud_entity_id(ob);
+  return jvmud_lpc_object_id(ob);
 }
 
 object first_inventory(mixed container) {
@@ -235,7 +235,7 @@ object present(mixed id, mixed container) {
 }
 
 object previous_object() {
-  return jvmud_previous_entity();
+  return jvmud_previous_lpc_object();
 }
 
 string query_verb() {
@@ -291,7 +291,7 @@ int set_light(int delta) {
 }
 
 void set_living_name(mixed name) {
-  jvmud_bind_entity_alias(jvmud_current_entity(), "living", name);
+  jvmud_bind_entity_alias(jvmud_current_lpc_object(), "living", name);
 }
 
 int sizeof(mixed value) {
@@ -362,7 +362,7 @@ int transfer(mixed ob, mixed destination) {
 }
 
 object this_object() {
-  return jvmud_current_entity();
+  return jvmud_current_lpc_object();
 }
 
 object this_player() {

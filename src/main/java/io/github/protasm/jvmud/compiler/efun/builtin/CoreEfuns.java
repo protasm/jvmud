@@ -59,8 +59,8 @@ import javax.crypto.spec.PBEKeySpec;
  *
  * <h2>Current execution context</h2>
  * <ul>
- *   <li>{@code jvmud_current_entity() : object} returns the currently executing LPC object.</li>
- *   <li>{@code jvmud_previous_entity() : object} returns the previous LPC object in the current
+ *   <li>{@code jvmud_current_lpc_object() : object} returns the currently executing LPC object.</li>
+ *   <li>{@code jvmud_previous_lpc_object() : object} returns the previous LPC object in the current
  *       call chain, where one is available.</li>
  *   <li>{@code jvmud_current_actor() : object} returns the active command actor, falling back to
  *       the current object outside command dispatch.</li>
@@ -100,14 +100,15 @@ import javax.crypto.spec.PBEKeySpec;
  *       callbacks and returns the runtime's cancellation count/status.</li>
  * </ul>
  *
- * <h2>Entity identity, lookup, containment, and lifecycle</h2>
+ * <h2>LPC object identity plus entity lookup, containment, and lifecycle</h2>
  * <ul>
- *   <li>{@code jvmud_entity_id(mixed entity) : string} returns an engine object identifier.</li>
- *   <li>{@code jvmud_inherited_programs(mixed entity) : array} returns the transitive LPC program
+ *   <li>{@code jvmud_lpc_object_id(mixed object) : string} returns the runtime object identifier
+ *       for a loaded LPC object.</li>
+ *   <li>{@code jvmud_inherited_programs(mixed object) : array} returns the transitive LPC program
  *       paths inherited by a generated object.</li>
  *   <li>{@code jvmud_load_lpc_object(string path) : object} loads or returns the shared LPC
  *       runtime object for a mudlib path.</li>
- *   <li>{@code jvmud_spawn_entity(string path) : object} clones an LPC object.</li>
+ *   <li>{@code jvmud_spawn_lpc_object(string path) : object} clones an LPC object.</li>
  *   <li>{@code jvmud_move_entity(mixed entity, mixed destination) : void} moves an entity or
  *       path-resolved object.</li>
  *   <li>{@code jvmud_find_entity(string id) : object} searches for an entity in the default
@@ -120,8 +121,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       location or container.</li>
  *   <li>{@code jvmud_next_entity_at(mixed entity) : object} returns the next entity in the same
  *       inventory walk.</li>
- *   <li>{@code jvmud_destroy_entity(object entity) : void} destroys an LPC object and removes its
- *       engine-side entity state.</li>
+ *   <li>{@code jvmud_destroy_lpc_object(object object) : void} destroys an LPC object and removes
+ *       its runtime state.</li>
  * </ul>
  *
  * <h2>Aliases and command capability</h2>
@@ -240,8 +241,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       size.</li>
  *   <li>{@code jvmud_sscanf(mixed input, mixed format, mixed ...captures) : int} is registered for
  *       arities 3 through 8.</li>
- *   <li>{@code jvmud_invoke_entity(mixed target, string methodName, mixed ...args) : mixed}
- *       invokes an optional method on an entity or path-resolved object; this overload is
+ *   <li>{@code jvmud_invoke_lpc_object(mixed target, string methodName, mixed ...args) : mixed}
+ *       invokes an optional method on an LPC object or path-resolved shared object; this overload is
  *       registered for arities 2 through 6.</li>
  *   <li>{@code jvmud_set_light(int delta) : int} adjusts the current runtime light level and
  *       returns the resulting value.</li>
@@ -309,9 +310,9 @@ public final class CoreEfuns {
                 (runtime, args) -> emitPerceivableExcept(runtime, args[0], args[1], args[2])));
         efuns.add(efun("jvmud_emit_perceivable_at", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> emitPerceivableAt(runtime, args[0], args[1])));
-        efuns.add(efun("jvmud_current_entity", LPCType.LPCOBJECT, List.of(),
+        efuns.add(efun("jvmud_current_lpc_object", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.currentObject()));
-        efuns.add(efun("jvmud_previous_entity", LPCType.LPCOBJECT, List.of(),
+        efuns.add(efun("jvmud_previous_lpc_object", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.previousObject()));
         efuns.add(efun("jvmud_current_actor", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.currentCommandActor() != null
@@ -326,7 +327,7 @@ public final class CoreEfuns {
                 (runtime, args) -> (int) (System.currentTimeMillis() / 1000L)));
         efuns.add(efun("jvmud_format_time", LPCType.LPCSTRING, List.of(LPCType.LPCINT),
                 (runtime, args) -> formatTime(((Number) args[0]).longValue())));
-        efuns.add(efun("jvmud_entity_id", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_lpc_object_id", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.objectId(args[0])));
         efuns.add(efun("jvmud_inherited_programs", LPCType.LPCARRAY, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.inheritedPrograms(args[0])));
@@ -475,11 +476,11 @@ public final class CoreEfuns {
                 (runtime, args) -> new ArrayList<>(
                         Collections.nCopies(Math.max(0, ((Number) args[0]).intValue()), Integer.valueOf(0)))));
         for (int arity = 2; arity <= 6; arity++) {
-            efuns.add(invokeEntityEfun(arity));
+            efuns.add(invokeLpcObjectEfun(arity));
         }
         efuns.add(efun("jvmud_load_lpc_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.loadOrGetObject(String.valueOf(args[0]))));
-        efuns.add(efun("jvmud_spawn_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
+        efuns.add(efun("jvmud_spawn_lpc_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.cloneObject(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_move_entity", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> {
@@ -570,7 +571,7 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.environment(null)));
         efuns.add(efun("jvmud_entity_location", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.environment(args[0])));
-        efuns.add(efun("jvmud_destroy_entity", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT),
+        efuns.add(efun("jvmud_destroy_lpc_object", LPCType.LPCVOID, List.of(LPCType.LPCOBJECT),
                 (runtime, args) -> {
                     runtime.destructObject(args[0]);
                     return null;
@@ -829,24 +830,24 @@ public final class CoreEfuns {
         return result;
     }
 
-    private static Efun invokeEntityEfun(int arity) {
+    private static Efun invokeLpcObjectEfun(int arity) {
         List<LPCType> parameters = new ArrayList<>();
         parameters.add(LPCType.LPCMIXED);
         parameters.add(LPCType.LPCSTRING);
         for (int i = 2; i < arity; i++) {
             parameters.add(LPCType.LPCMIXED);
         }
-        return efun("jvmud_invoke_entity", LPCType.LPCMIXED, parameters,
-                (runtime, args) -> invokeEntity(runtime, args));
+        return efun("jvmud_invoke_lpc_object", LPCType.LPCMIXED, parameters,
+                (runtime, args) -> invokeLpcObject(runtime, args));
     }
 
-    private static Object invokeEntity(RuntimeContext runtime, Object[] args) {
+    private static Object invokeLpcObject(RuntimeContext runtime, Object[] args) {
         Object[] invocationArgs = new Object[Math.max(0, args.length - 2)];
         System.arraycopy(args, 2, invocationArgs, 0, invocationArgs.length);
-        return invokeEntity(runtime, args[0], String.valueOf(args[1]), invocationArgs);
+        return invokeLpcObject(runtime, args[0], String.valueOf(args[1]), invocationArgs);
     }
 
-    private static Object invokeEntity(RuntimeContext runtime, Object target, String methodName, Object... arguments) {
+    private static Object invokeLpcObject(RuntimeContext runtime, Object target, String methodName, Object... arguments) {
         Object resolvedTarget = resolveTarget(runtime, target);
         if (resolvedTarget == null) {
             return 0;

@@ -15,11 +15,11 @@ void bind_alias(object ob, string namespace, mixed alias) {
 }
 
 mixed call_other(mixed target, string method) {
-  return jvmud_invoke_entity(target, method);
+  return jvmud_invoke_lpc_object(target, method);
 }
 
 mixed call_other(mixed target, string method, mixed arg) {
-  return jvmud_invoke_entity(target, method, arg);
+  return jvmud_invoke_lpc_object(target, method, arg);
 }
 
 void call_out(string method, int delay) {
@@ -35,7 +35,7 @@ mixed command(string command_line) {
 }
 
 object clone_object(string path) {
-  return jvmud_spawn_entity(path);
+  return jvmud_spawn_lpc_object(path);
 }
 
 string ctime(int timestamp) {
@@ -43,7 +43,7 @@ string ctime(int timestamp) {
 }
 
 void destruct(object ob) {
-  jvmud_destroy_entity(ob);
+  jvmud_destroy_lpc_object(ob);
 }
 
 void enable_commands() {
@@ -107,7 +107,7 @@ object next_inventory(mixed ob) {
 }
 
 string object_name(mixed ob) {
-  return jvmud_entity_id(ob);
+  return jvmud_lpc_object_id(ob);
 }
 
 int pointerp(mixed value) {
@@ -203,7 +203,7 @@ void tell_place_except(mixed place, mixed value, object excluded) {
 }
 
 object this_object() {
-  return jvmud_current_entity();
+  return jvmud_current_lpc_object();
 }
 
 object this_player() {

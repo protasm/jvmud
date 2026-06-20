@@ -98,7 +98,7 @@
           </thead>
           <tbody>
             <tr>
-              <td><code>object jvmud_current_entity()</code></td>
+              <td><code>object jvmud_current_lpc_object()</code></td>
               <td>Returns the current LPC object in the active runtime context.</td>
             </tr>
             <tr>
@@ -140,19 +140,19 @@
           </thead>
           <tbody>
             <tr>
-              <td><code>string jvmud_entity_id(mixed entity)</code></td>
-              <td>Returns the registered runtime entity id.</td>
+              <td><code>string jvmud_lpc_object_id(mixed object)</code></td>
+              <td>Returns the registered runtime LPC object id.</td>
             </tr>
             <tr>
-              <td><code>mixed jvmud_invoke_entity(mixed target, string method)</code></td>
-              <td>Invokes a method on an entity or path-resolved shared entity.</td>
+              <td><code>mixed jvmud_invoke_lpc_object(mixed target, string method)</code></td>
+              <td>Invokes a method on an LPC object or path-resolved shared object.</td>
             </tr>
             <tr>
-              <td><code>mixed jvmud_invoke_entity(mixed target, string method, mixed arg)</code></td>
-              <td>Invokes a method with one argument on an entity or path-resolved shared entity.</td>
+              <td><code>mixed jvmud_invoke_lpc_object(mixed target, string method, mixed arg)</code></td>
+              <td>Invokes a method with one argument on an LPC object or path-resolved shared object.</td>
             </tr>
             <tr>
-              <td><code>object jvmud_spawn_entity(string path)</code></td>
+              <td><code>object jvmud_spawn_lpc_object(string path)</code></td>
               <td>Compiles if needed and creates a new runtime clone.</td>
             </tr>
             <tr>
@@ -184,8 +184,8 @@
               <td>Returns the supplied entity's immediate location.</td>
             </tr>
             <tr>
-              <td><code>void jvmud_destroy_entity(object entity)</code></td>
-              <td>Destroys an entity and removes it from runtime indexes.</td>
+              <td><code>void jvmud_destroy_lpc_object(object object)</code></td>
+              <td>Destroys an LPC object and removes it from runtime indexes.</td>
             </tr>
           </tbody>
         </table>

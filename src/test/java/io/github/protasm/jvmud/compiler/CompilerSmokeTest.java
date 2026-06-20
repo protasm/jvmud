@@ -2262,7 +2262,7 @@ final class CompilerSmokeTest {
         CoreEfuns.registerCore(runtime);
         LPCObjectHandle object = runtime.loadSource("smoke/missing_call_other.c", """
                 mixed optional_call() {
-                    return jvmud_invoke_entity("room/missing", "advance", 0);
+                    return jvmud_invoke_lpc_object("room/missing", "advance", 0);
                 }
                 """);
 
@@ -2827,11 +2827,11 @@ final class CompilerSmokeTest {
                 }
 
                 void say_to_place() {
-                    jvmud_emit_perceivable(jvmud_current_entity(), "place-only");
+                    jvmud_emit_perceivable(jvmud_current_lpc_object(), "place-only");
                 }
 
                 void say_to_place_except(mixed target) {
-                    jvmud_emit_perceivable_except(jvmud_current_entity(), "excepted", target);
+                    jvmud_emit_perceivable_except(jvmud_current_lpc_object(), "excepted", target);
                 }
 
                 void tell_place(mixed place) {
@@ -3216,8 +3216,8 @@ final class CompilerSmokeTest {
                     if (filename != "room/generated")
                         return 0;
 
-                    ob = jvmud_spawn_entity("obj/template");
-                    jvmud_invoke_entity(ob, "set_label", filename);
+                    ob = jvmud_spawn_lpc_object("obj/template");
+                    jvmud_invoke_lpc_object(ob, "set_label", filename);
 
                     return ob;
                 }
@@ -3271,13 +3271,13 @@ final class CompilerSmokeTest {
     void objectDestructionCanNotifyMudlibBeforeCleanup() throws Exception {
         LPCRuntime runtime = destructionRuntime("""
                 mixed prepare_destruct(mixed ob) {
-                    jvmud_append_mudlib_text("/log/DESTRUCT", "prepare " + jvmud_entity_id(ob) + "\\n");
+                    jvmud_append_mudlib_text("/log/DESTRUCT", "prepare " + jvmud_lpc_object_id(ob) + "\\n");
                     return 0;
                 }
                 """);
         LPCObjectHandle object = runtime.loadSource("obj/victim.c", """
                 void destroy_self() {
-                    jvmud_destroy_entity(jvmud_current_entity());
+                    jvmud_destroy_lpc_object(jvmud_current_lpc_object());
                 }
                 """);
 
@@ -3291,13 +3291,13 @@ final class CompilerSmokeTest {
     void objectDestructionCanBeVetoedByMudlib() throws Exception {
         LPCRuntime runtime = destructionRuntime("""
                 mixed prepare_destruct(mixed ob) {
-                    jvmud_append_mudlib_text("/log/DESTRUCT", "veto " + jvmud_entity_id(ob) + "\\n");
+                    jvmud_append_mudlib_text("/log/DESTRUCT", "veto " + jvmud_lpc_object_id(ob) + "\\n");
                     return 1;
                 }
                 """);
         LPCObjectHandle object = runtime.loadSource("obj/vetoed.c", """
                 void destroy_self() {
-                    jvmud_destroy_entity(jvmud_current_entity());
+                    jvmud_destroy_lpc_object(jvmud_current_lpc_object());
                 }
                 """);
 
@@ -3326,7 +3326,7 @@ final class CompilerSmokeTest {
         LPCObjectHandle room = runtime.loadSource("room/workshop.c", "");
         LPCObjectHandle box = runtime.loadSource("obj/box.c", """
                 void destroy_self() {
-                    jvmud_destroy_entity(jvmud_current_entity());
+                    jvmud_destroy_lpc_object(jvmud_current_lpc_object());
                 }
                 """);
         LPCObjectHandle gem = runtime.loadSource("obj/gem.c", "");
@@ -3496,7 +3496,7 @@ final class CompilerSmokeTest {
                 }
 
                 void set_living_name(mixed name) {
-                    jvmud_bind_entity_alias(jvmud_current_entity(), "living", name);
+                    jvmud_bind_entity_alias(jvmud_current_lpc_object(), "living", name);
                 }
 
                 void enable_commands() {
@@ -3504,7 +3504,7 @@ final class CompilerSmokeTest {
                 }
 
                 object this_object() {
-                    return jvmud_current_entity();
+                    return jvmud_current_lpc_object();
                 }
                 """);
         Files.writeString(tempDir.resolve("player.c"), """
@@ -3548,15 +3548,15 @@ final class CompilerSmokeTest {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
                 mixed call_other(mixed target, string method) {
-                    return jvmud_invoke_entity(target, method);
+                    return jvmud_invoke_lpc_object(target, method);
                 }
 
                 string object_name(mixed ob) {
-                    return jvmud_entity_id(ob);
+                    return jvmud_lpc_object_id(ob);
                 }
 
                 object previous_object() {
-                    return jvmud_previous_entity();
+                    return jvmud_previous_lpc_object();
                 }
                 """);
         Files.writeString(tempDir.resolve("target.c"), """
@@ -3597,7 +3597,7 @@ final class CompilerSmokeTest {
                 }
 
                 mixed call_other(mixed target, string method, mixed arg) {
-                    return jvmud_invoke_entity(target, method, arg);
+                    return jvmud_invoke_lpc_object(target, method, arg);
                 }
 
                 void move_object(mixed ob, mixed destination) {
@@ -3609,7 +3609,7 @@ final class CompilerSmokeTest {
                 }
 
                 object this_object() {
-                    return jvmud_current_entity();
+                    return jvmud_current_lpc_object();
                 }
                 """);
         Files.writeString(tempDir.resolve("player.c"), """
@@ -3805,7 +3805,7 @@ final class CompilerSmokeTest {
                 }
 
                 mixed call_other(mixed target, string method, mixed arg) {
-                    return jvmud_invoke_entity(target, method, arg);
+                    return jvmud_invoke_lpc_object(target, method, arg);
                 }
 
                 void move_object(mixed ob, mixed destination) {
@@ -3813,7 +3813,7 @@ final class CompilerSmokeTest {
                 }
 
                 object this_object() {
-                    return jvmud_current_entity();
+                    return jvmud_current_lpc_object();
                 }
 
                 object this_player() {
@@ -3906,7 +3906,7 @@ final class CompilerSmokeTest {
                 }
 
                 object this_object() {
-                    return jvmud_current_entity();
+                    return jvmud_current_lpc_object();
                 }
                 """);
         Files.writeString(tempDir.resolve("obj/book.c"), """
@@ -3961,7 +3961,7 @@ final class CompilerSmokeTest {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
                 mixed call_other(mixed target, string method, mixed arg) {
-                    return jvmud_invoke_entity(target, method, arg);
+                    return jvmud_invoke_lpc_object(target, method, arg);
                 }
                 """);
         Files.writeString(tempDir.resolve("target.c"), """
@@ -4009,7 +4009,7 @@ final class CompilerSmokeTest {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
                 mixed call_other(mixed target, string method, mixed arg1, mixed arg2) {
-                    return jvmud_invoke_entity(target, method, arg1, arg2);
+                    return jvmud_invoke_lpc_object(target, method, arg1, arg2);
                 }
                 """);
         Files.writeString(tempDir.resolve("target.c"), """
@@ -4040,7 +4040,7 @@ final class CompilerSmokeTest {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
                 mixed call_other(mixed target, string method, mixed arg) {
-                    return jvmud_invoke_entity(target, method, arg);
+                    return jvmud_invoke_lpc_object(target, method, arg);
                 }
                 """);
         Files.writeString(tempDir.resolve("target.c"), """
@@ -4079,7 +4079,7 @@ final class CompilerSmokeTest {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
                 mixed call_other(mixed target, string method, mixed arg) {
-                    return jvmud_invoke_entity(target, method, arg);
+                    return jvmud_invoke_lpc_object(target, method, arg);
                 }
                 """);
         Files.writeString(tempDir.resolve("target.c"), """
@@ -4110,7 +4110,7 @@ final class CompilerSmokeTest {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
                 mixed call_other(mixed target, string method, mixed arg) {
-                    return jvmud_invoke_entity(target, method, arg);
+                    return jvmud_invoke_lpc_object(target, method, arg);
                 }
 
                 void write(mixed value) {
@@ -4291,7 +4291,7 @@ final class CompilerSmokeTest {
                 inherit "base_two.c";
 
                 string *inherited_programs() {
-                    return jvmud_inherited_programs(jvmud_current_entity());
+                    return jvmud_inherited_programs(jvmud_current_lpc_object());
                 }
                 """);
 
@@ -4429,7 +4429,7 @@ final class CompilerSmokeTest {
         Files.createDirectories(tempDir.resolve("room/village"));
         Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
                 string object_name(mixed ob) {
-                    return jvmud_entity_id(ob);
+                    return jvmud_lpc_object_id(ob);
                 }
 
                 int pointerp(mixed value) {
@@ -4437,7 +4437,7 @@ final class CompilerSmokeTest {
                 }
 
                 object this_object() {
-                    return jvmud_current_entity();
+                    return jvmud_current_lpc_object();
                 }
                 """);
         Files.writeString(tempDir.resolve("room/room.c"), """
@@ -4777,11 +4777,11 @@ final class CompilerSmokeTest {
                 """);
         LPCObjectHandle box = runtime.loadSource("smoke/opaque_box.c", """
                 void make_opaque() {
-                    jvmud_set_entity_translucent(jvmud_current_entity(), 0);
+                    jvmud_set_entity_translucent(jvmud_current_lpc_object(), 0);
                 }
 
                 int is_translucent() {
-                    return jvmud_entity_translucent(jvmud_current_entity());
+                    return jvmud_entity_translucent(jvmud_current_lpc_object());
                 }
                 """);
         LPCObjectHandle torch = runtime.loadSource("smoke/torch.c", """
@@ -5339,7 +5339,7 @@ final class CompilerSmokeTest {
                 }
 
                 mixed reflected_value() {
-                    return jvmud_invoke_entity(jvmud_current_entity(), "value", 0);
+                    return jvmud_invoke_lpc_object(jvmud_current_lpc_object(), "value", 0);
                 }
                 """);
 
@@ -5511,7 +5511,7 @@ final class CompilerSmokeTest {
                 }
 
                 object this_object() {
-                    return jvmud_current_entity();
+                    return jvmud_current_lpc_object();
                 }
 
                 void move_object(mixed ob, mixed destination) {
@@ -5591,9 +5591,9 @@ final class CompilerSmokeTest {
         LPCObjectHandle controller = runtime.loadSource("controller.c", """
                 void setup() {
                     object thing;
-                    thing = jvmud_spawn_entity("thing");
-                    jvmud_move_entity(thing, jvmud_current_entity());
-                    jvmud_write(jvmud_invoke_entity(jvmud_first_entity_at(jvmud_current_entity()), "short", 0));
+                    thing = jvmud_spawn_lpc_object("thing");
+                    jvmud_move_entity(thing, jvmud_current_lpc_object());
+                    jvmud_write(jvmud_invoke_lpc_object(jvmud_first_entity_at(jvmud_current_lpc_object()), "short", 0));
                 }
                 """);
 

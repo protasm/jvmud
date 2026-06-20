@@ -48,7 +48,7 @@ object getService(string service) {
 }
 
 string program_name(mixed ob) {
-    string ret = jvmud_entity_id(ob);
+    string ret = jvmud_lpc_object_id(ob);
     if (ret && sizeof(ret)) {
         if (ret[0] != '/') {
             ret = "/" + ret;
@@ -69,7 +69,7 @@ int sizeof(mixed value) {
 }
 
 object this_object() {
-    return jvmud_current_entity();
+    return jvmud_current_lpc_object();
 }
 
 string sprintf(string format) {

@@ -26,7 +26,7 @@ mixed prepare_destruct(mixed ob) {
       jvmud_move_entity(item, super);
   } else {
     while (item = jvmud_first_entity_at(ob))
-      jvmud_destroy_entity(item);
+      jvmud_destroy_lpc_object(item);
   }
 
   return 0;
