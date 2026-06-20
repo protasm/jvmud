@@ -6,6 +6,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTArgument;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTArguments;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTField;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTInherit;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTLocal;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTMethod;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
@@ -133,9 +134,46 @@ public final class IRLowerer {
                 objectInternalName,
                 parentInternalName);
 
-        TypedIR typedIr = new TypedIR(new IRObject(astObject.line(), astObject.name(), parentInternalName, fields, methods));
+        TypedIR typedIr = new TypedIR(new IRObject(
+                astObject.line(),
+                astObject.name(),
+                parentInternalName,
+                directInheritPaths(astObject),
+                fields,
+                methods));
 
         return new IRLoweringResult(typedIr, problems);
+    }
+
+    private List<String> directInheritPaths(ASTObject astObject) {
+        List<String> paths = new ArrayList<>();
+        for (ASTInherit inherit : astObject.inherits()) {
+            String path = normalizeInheritPath(inherit.path());
+            if (path != null && !path.isBlank()) {
+                paths.add(path);
+            }
+        }
+        return paths;
+    }
+
+    private String normalizeInheritPath(String rawPath) {
+        if (rawPath == null) {
+            return null;
+        }
+        String path = rawPath.trim();
+        if (path.length() >= 2 && path.startsWith("\"") && path.endsWith("\"")) {
+            path = path.substring(1, path.length() - 1);
+        }
+        while (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        if (path.isBlank()) {
+            return null;
+        }
+        if (!path.endsWith(".c")) {
+            path += ".c";
+        }
+        return "/" + path;
     }
 
     private List<IRField> lowerFields(

@@ -103,6 +103,8 @@ import javax.crypto.spec.PBEKeySpec;
  * <h2>Entity identity, lookup, containment, and lifecycle</h2>
  * <ul>
  *   <li>{@code jvmud_entity_id(mixed entity) : string} returns an engine object identifier.</li>
+ *   <li>{@code jvmud_direct_inherited_programs(mixed entity) : array} returns the direct LPC
+ *       program paths inherited by a generated object.</li>
  *   <li>{@code jvmud_load_entity(string path) : object} loads or returns the shared object for a
  *       mudlib path.</li>
  *   <li>{@code jvmud_spawn_entity(string path) : object} clones an LPC object.</li>
@@ -324,6 +326,8 @@ public final class CoreEfuns {
                 (runtime, args) -> formatTime(((Number) args[0]).longValue())));
         efuns.add(efun("jvmud_entity_id", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.objectId(args[0])));
+        efuns.add(efun("jvmud_direct_inherited_programs", LPCType.LPCARRAY, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.directInheritedPrograms(args[0])));
         efuns.add(efun("jvmud_size", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> sizeOf(args[0])));
         efuns.add(efun("jvmud_random", LPCType.LPCINT, List.of(LPCType.LPCINT),

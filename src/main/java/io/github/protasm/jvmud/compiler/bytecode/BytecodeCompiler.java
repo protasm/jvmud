@@ -39,6 +39,8 @@ public final class BytecodeCompiler {
     private static final String INIT_METHOD_NAME = "$lpc$init";
     private static final String INIT_METHOD_DESCRIPTOR = "()V";
     private static final String INIT_GUARD_FIELD = "$lpc$initialized";
+    private static final String DIRECT_INHERITS_METHOD_NAME = "$jvmud$direct_inherits";
+    private static final String DIRECT_INHERITS_METHOD_DESCRIPTOR = "()[Ljava/lang/String;";
     private static final String FIELD_INITIALIZER_HELPER_PREFIX = "$lpc$field$";
     private static final String LITERAL_HELPER_PREFIX = "$lpc$literal$";
     private static final String CALLABLE_HELPER_PREFIX = "$lpc$callable$";
@@ -83,6 +85,7 @@ public final class BytecodeCompiler {
             emitFields(cw, object);
             emitPrivateInitializer(cw, internalName, parentName, object.fields());
             emitDefaultConstructor(cw, internalName, parentName);
+            emitDirectInheritsMethod(cw, object.directInheritPaths());
 
             for (IRMethod method : object.methods())
                 emitMethod(cw, internalName, method);
@@ -120,6 +123,27 @@ public final class BytecodeCompiler {
         mv.visitMethodInsn(INVOKESPECIAL, internalName, INIT_METHOD_NAME, INIT_METHOD_DESCRIPTOR, false);
 
         mv.visitInsn(RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+
+    private void emitDirectInheritsMethod(ClassWriter cw, List<String> directInheritPaths) {
+        MethodVisitor mv = cw.visitMethod(
+                ACC_PUBLIC | ACC_SYNTHETIC,
+                DIRECT_INHERITS_METHOD_NAME,
+                DIRECT_INHERITS_METHOD_DESCRIPTOR,
+                null,
+                null);
+        mv.visitCode();
+        pushInt(mv, directInheritPaths.size());
+        mv.visitTypeInsn(ANEWARRAY, "java/lang/String");
+        for (int i = 0; i < directInheritPaths.size(); i++) {
+            mv.visitInsn(DUP);
+            pushInt(mv, i);
+            mv.visitLdcInsn(directInheritPaths.get(i));
+            mv.visitInsn(AASTORE);
+        }
+        mv.visitInsn(ARETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }

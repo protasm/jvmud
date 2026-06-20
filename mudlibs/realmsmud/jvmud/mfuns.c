@@ -51,6 +51,10 @@ object getService(string service) {
     return load_object("/secure/simul_efun.c")->getService(service);
 }
 
+string *inherit_list(mixed ob) {
+    return jvmud_direct_inherited_programs(ob);
+}
+
 object load_object(string path) {
     return jvmud_load_entity(path);
 }

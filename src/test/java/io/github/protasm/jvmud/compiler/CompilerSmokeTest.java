@@ -4238,6 +4238,35 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeReportsDirectInheritedLpcPrograms() throws Exception {
+        Files.writeString(tempDir.resolve("base_one.c"), """
+                int first_value() {
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("base_two.c"), """
+                int second_value() {
+                    return 2;
+                }
+                """);
+        Path childPath = tempDir.resolve("child.c");
+        Files.writeString(childPath, """
+                inherit "base_one.c";
+                inherit "base_two.c";
+
+                string *inherited_programs() {
+                    return jvmud_direct_inherited_programs(jvmud_current_entity());
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle child = runtime.load(childPath);
+
+        assertEquals(List.of("/base_one.c", "/base_two.c"), child.invoke("inherited_programs"));
+    }
+
+    @Test
     void compilerLowersInheritedFieldFromSecondaryDirectParent() throws Exception {
         Files.writeString(tempDir.resolve("base_one.c"), """
                 int first_value() {
