@@ -103,6 +103,7 @@ public final class IRLowerer {
         String parentInternalName =
                 (astObject.parentName() != null) ? astObject.parentName() : defaultParentInternalName;
         SemanticScope objectScope = semanticModel.objectScope();
+        Set<String> primaryParentLineage = primaryParentLineage(semanticModel.compilationUnit(), parentInternalName);
 
         Map<Symbol, IRField> fieldsBySymbol = new HashMap<>();
         List<IRField> flattenedInheritedFields = new ArrayList<>();
@@ -115,6 +116,7 @@ public final class IRLowerer {
                 flattenedInheritedFields,
                 objectInternalName,
                 parentInternalName,
+                primaryParentLineage,
                 problems);
         importSecondaryParentScopeFields(
                 objectScope,
@@ -123,6 +125,7 @@ public final class IRLowerer {
                 flattenedInheritedFields,
                 objectInternalName,
                 parentInternalName,
+                primaryParentLineage,
                 problems);
         List<IRField> fields = lowerFields(astObject.fields(), fieldsBySymbol, problems, objectInternalName);
         fields.addAll(0, flattenedInheritedFields);
@@ -133,7 +136,8 @@ public final class IRLowerer {
                 flattenedInheritedMethodOwners,
                 problems,
                 objectInternalName,
-                parentInternalName);
+                parentInternalName,
+                primaryParentLineage);
 
         TypedIR typedIr = new TypedIR(new IRObject(
                 astObject.line(),
@@ -238,8 +242,10 @@ public final class IRLowerer {
 
     /**
      * Imports fields already resolved by semantic analysis. Fields from secondary
-     * direct parents are flattened onto the child because JVM bytecode can only
-     * inherit storage from one superclass.
+     * parents are flattened onto the child because JVM bytecode can only inherit
+     * storage from one superclass; the primary parent lineage stays on the JVM
+     * superclass chain so overridden members continue to resolve through Java's
+     * normal dispatch.
      */
     private void importInheritedFields(
             SemanticScope scope,
@@ -249,6 +255,7 @@ public final class IRLowerer {
             List<IRField> flattenedInheritedFields,
             String objectInternalName,
             String parentInternalName,
+            Set<String> primaryParentLineage,
             List<CompilationProblem> problems) {
         if (scope == null)
             return;
@@ -267,7 +274,7 @@ public final class IRLowerer {
 
                 RuntimeType type = runtimeType(symbol.lpcType());
                 String ownerInternalName = scopedSymbol.field().ownerName();
-                if (shouldFlattenInheritedField(scope, objectScope, ownerInternalName, parentInternalName)) {
+                if (shouldFlattenInheritedField(scope, objectScope, ownerInternalName, primaryParentLineage)) {
                     IRField flattenedField = new IRField(
                             scopedSymbol.field().line(),
                             objectInternalName,
@@ -302,18 +309,19 @@ public final class IRLowerer {
                 flattenedInheritedFields,
                 objectInternalName,
                 parentInternalName,
+                primaryParentLineage,
                 problems);
     }
 
     private boolean shouldFlattenInheritedField(
-            SemanticScope scope, SemanticScope objectScope, String ownerInternalName, String parentInternalName) {
+            SemanticScope scope, SemanticScope objectScope, String ownerInternalName, Set<String> primaryParentLineage) {
         if (scope != objectScope)
             return false;
 
         if (ownerInternalName == null)
             return false;
 
-        return !Objects.equals(ownerInternalName, parentInternalName);
+        return !primaryParentLineage.contains(ownerInternalName);
     }
 
     /**
@@ -328,11 +336,13 @@ public final class IRLowerer {
             List<IRField> flattenedInheritedFields,
             String objectInternalName,
             String parentInternalName,
+            Set<String> primaryParentLineage,
             List<CompilationProblem> problems) {
         if (objectScope == null)
             return;
 
-        Set<CompilationUnit> secondaryParentUnits = visibleSecondaryParentUnits(objectScope, parentInternalName);
+        Set<CompilationUnit> secondaryParentUnits =
+                visibleSecondaryParentUnits(objectScope, objectInternalName, primaryParentLineage);
         for (CompilationUnit parentUnit : secondaryParentUnits) {
             for (ASTField field : parentUnit.semanticModel().astObject().fields()) {
                 importVisibleInheritedField(
@@ -342,6 +352,7 @@ public final class IRLowerer {
                         flattenedInheritedFields,
                         objectInternalName,
                         parentInternalName,
+                        primaryParentLineage,
                         problems);
             }
 
@@ -358,6 +369,7 @@ public final class IRLowerer {
                             flattenedInheritedFields,
                             objectInternalName,
                             parentInternalName,
+                            primaryParentLineage,
                             problems);
                 }
             }
@@ -376,6 +388,7 @@ public final class IRLowerer {
             List<IRField> flattenedInheritedFields,
             String objectInternalName,
             String parentInternalName,
+            Set<String> primaryParentLineage,
             List<CompilationProblem> problems) {
         if (field == null)
             return;
@@ -386,7 +399,7 @@ public final class IRLowerer {
 
         RuntimeType type = runtimeType(symbol.lpcType());
         String ownerInternalName = field.ownerName();
-        if (ownerInternalName != null && !Objects.equals(ownerInternalName, parentInternalName)) {
+        if (ownerInternalName != null && !primaryParentLineage.contains(ownerInternalName)) {
             IRField mapped = fieldsBySymbol.get(symbol);
             if (mapped != null && Objects.equals(mapped.ownerInternalName(), objectInternalName))
                 return;
@@ -429,7 +442,10 @@ public final class IRLowerer {
                         null));
     }
 
-    private Set<CompilationUnit> secondaryParentUnits(SemanticScope objectScope, String parentInternalName) {
+    private Set<CompilationUnit> secondaryParentUnits(
+            SemanticScope objectScope,
+            String objectInternalName,
+            Set<String> primaryParentLineage) {
         Set<CompilationUnit> units = new HashSet<>();
         for (List<SemanticScope.ScopedSymbol> scopedSymbols : objectScope.symbols().values()) {
             for (SemanticScope.ScopedSymbol scopedSymbol : scopedSymbols) {
@@ -438,18 +454,51 @@ public final class IRLowerer {
                     continue;
 
                 String originName = originUnit.semanticModel().astObject().name();
-                if (!Objects.equals(originName, parentInternalName))
+                if (!Objects.equals(originName, objectInternalName) && !primaryParentLineage.contains(originName))
                     units.add(originUnit);
             }
         }
         return units;
     }
 
-    private Set<CompilationUnit> visibleSecondaryParentUnits(SemanticScope objectScope, String parentInternalName) {
+    private Set<CompilationUnit> visibleSecondaryParentUnits(
+            SemanticScope objectScope,
+            String objectInternalName,
+            Set<String> primaryParentLineage) {
         Set<CompilationUnit> units = new HashSet<>();
-        for (CompilationUnit unit : secondaryParentUnits(objectScope, parentInternalName))
+        for (CompilationUnit unit : secondaryParentUnits(objectScope, objectInternalName, primaryParentLineage))
             collectVisibleParentUnits(unit, units);
         return units;
+    }
+
+    private Set<String> primaryParentLineage(CompilationUnit unit, String parentInternalName) {
+        Set<String> lineage = new HashSet<>();
+        collectLineageNames(primaryParentUnit(unit), lineage);
+        if (parentInternalName != null)
+            lineage.add(parentInternalName);
+        return lineage;
+    }
+
+    private CompilationUnit primaryParentUnit(CompilationUnit unit) {
+        if (unit == null)
+            return null;
+
+        if (unit.parentUnit() != null)
+            return unit.parentUnit();
+
+        return unit.directParentUnits().isEmpty() ? null : unit.directParentUnits().get(0);
+    }
+
+    private void collectLineageNames(CompilationUnit unit, Set<String> lineage) {
+        if (unit == null || unit.semanticModel() == null)
+            return;
+
+        String name = unit.semanticModel().astObject().name();
+        if (!lineage.add(name))
+            return;
+
+        for (CompilationUnit parentUnit : unit.directParentUnits())
+            collectLineageNames(parentUnit, lineage);
     }
 
     private void collectVisibleParentUnits(CompilationUnit unit, Set<CompilationUnit> units) {
@@ -467,6 +516,7 @@ public final class IRLowerer {
             List<IRField> flattenedInheritedFields,
             String objectInternalName,
             String parentInternalName,
+            Set<String> primaryParentLineage,
             List<CompilationProblem> problems) {
         Symbol symbol = scopedSymbol.symbol();
         if (declaredFieldSymbols.contains(symbol))
@@ -474,7 +524,7 @@ public final class IRLowerer {
 
         RuntimeType type = runtimeType(symbol.lpcType());
         String ownerInternalName = scopedSymbol.field().ownerName();
-        if (ownerInternalName != null && !Objects.equals(ownerInternalName, parentInternalName)) {
+        if (ownerInternalName != null && !primaryParentLineage.contains(ownerInternalName)) {
             IRField mapped = fieldsBySymbol.get(symbol);
             if (mapped != null && Objects.equals(mapped.ownerInternalName(), objectInternalName))
                 return;
@@ -537,7 +587,8 @@ public final class IRLowerer {
             Set<String> flattenedInheritedMethodOwners,
             List<CompilationProblem> problems,
             String objectInternalName,
-            String parentInternalName) {
+            String parentInternalName,
+            Set<String> primaryParentLineage) {
         List<IRMethod> methods = new ArrayList<>();
         Set<MethodKey> declaredMethodKeys = declaredMethodKeys(astObject);
         importSecondaryInheritedMethods(
@@ -548,7 +599,8 @@ public final class IRLowerer {
                 methods,
                 problems,
                 objectInternalName,
-                parentInternalName);
+                parentInternalName,
+                primaryParentLineage);
 
         for (ASTMethod method : astObject.methods()) {
             if (!method.isDefined())
@@ -570,9 +622,9 @@ public final class IRLowerer {
     }
 
     /**
-     * Copies concrete methods from secondary direct parents onto the child IR. The primary parent
-     * remains a JVM superclass, but secondary parents must be represented as child-owned bytecode
-     * because Java has no second superclass slot.
+     * Copies concrete methods from secondary inherit branches onto the child IR. The primary parent
+     * lineage remains a JVM superclass chain, but secondary branches must be represented as
+     * child-owned bytecode because Java has no second superclass slot.
      */
     private void importSecondaryInheritedMethods(
             SemanticScope objectScope,
@@ -582,7 +634,8 @@ public final class IRLowerer {
             List<IRMethod> methods,
             List<CompilationProblem> problems,
             String objectInternalName,
-            String parentInternalName) {
+            String parentInternalName,
+            Set<String> primaryParentLineage) {
         if (objectScope == null)
             return;
 
@@ -596,9 +649,11 @@ public final class IRLowerer {
                 imported,
                 methodsToFlatten,
                 objectInternalName,
-                parentInternalName);
+                parentInternalName,
+                primaryParentLineage);
 
-        for (CompilationUnit parentUnit : visibleSecondaryParentUnits(objectScope, parentInternalName)) {
+        for (CompilationUnit parentUnit :
+                visibleSecondaryParentUnits(objectScope, objectInternalName, primaryParentLineage)) {
             collectSecondaryInheritedMethods(
                     parentUnit.semanticModel().objectScope().symbols().values(),
                     fieldsBySymbol,
@@ -607,7 +662,8 @@ public final class IRLowerer {
                     imported,
                     methodsToFlatten,
                     objectInternalName,
-                    parentInternalName);
+                    parentInternalName,
+                    primaryParentLineage);
         }
 
         for (ASTMethod method : methodsToFlatten)
@@ -622,7 +678,8 @@ public final class IRLowerer {
             Set<MethodKey> imported,
             List<ASTMethod> methodsToFlatten,
             String objectInternalName,
-            String parentInternalName) {
+            String parentInternalName,
+            Set<String> primaryParentLineage) {
         for (List<SemanticScope.ScopedSymbol> scopedSymbols : symbolLists) {
             for (SemanticScope.ScopedSymbol scopedSymbol : scopedSymbols) {
                 ASTMethod method = scopedSymbol.method();
@@ -632,7 +689,7 @@ public final class IRLowerer {
                 String ownerInternalName = method.ownerName();
                 if (ownerInternalName == null || Objects.equals(ownerInternalName, objectInternalName))
                     continue;
-                if (Objects.equals(ownerInternalName, parentInternalName))
+                if (primaryParentLineage.contains(ownerInternalName))
                     continue;
 
                 MethodKey key = new MethodKey(method.symbol().name(), parameterCount(method));

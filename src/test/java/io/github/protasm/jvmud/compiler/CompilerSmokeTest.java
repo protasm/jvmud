@@ -4380,6 +4380,36 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void compilerKeepsPrimaryAncestorMethodBehindPrimaryParentOverride() throws Exception {
+        Files.writeString(tempDir.resolve("ancestor.c"), """
+                string kind() {
+                    return "ancestor";
+                }
+                """);
+        Files.writeString(tempDir.resolve("parent.c"), """
+                inherit "ancestor.c";
+
+                string kind() {
+                    return "parent";
+                }
+                """);
+        Path childPath = tempDir.resolve("child.c");
+        Files.writeString(childPath, """
+                inherit "parent.c";
+
+                string value() {
+                    return kind();
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle child = runtime.load(childPath);
+
+        assertEquals("parent", child.invoke("kind"));
+        assertEquals("parent", child.invoke("value"));
+    }
+
+    @Test
     void compilerReportsAmbiguousInheritedMethodsFromMultipleDirectParents() throws Exception {
         Files.writeString(tempDir.resolve("left.c"), """
                 int shared() {
