@@ -27,6 +27,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -86,6 +87,7 @@ public final class LPCRuntime {
         this.runtimeContext.setObjectFactory(this::cloneObject);
         this.runtimeContext.setObjectLoader(this::loadOrGetObject);
         this.runtimeContext.setMudlibTextReader(this::readMudlibText);
+        this.runtimeContext.setMudlibPathLister(this::listMudlibPaths);
         this.runtimeContext.setMudlibTextAppender(this::appendMudlibText);
         this.runtimeContext.setLPCObjectStateSaver(this::saveLPCObjectState);
         this.runtimeContext.setLPCObjectStateRestorer(this::restoreLPCObjectState);
@@ -347,6 +349,47 @@ public final class LPCRuntime {
         } catch (IOException e) {
             return 0;
         }
+    }
+
+    /**
+     * Lists mudlib-rooted files using the common LP {@code get_dir()} flag shape.
+     *
+     * <p>The initial JVMud contract supports the startup-critical name listing behavior: literal
+     * paths or single-segment globs such as {@code /dir/*.sql}, sorted unless the unsorted bit is
+     * set, and path-qualified names when the {@code GETDIR_PATH} bit is set. Metadata flags are
+     * intentionally left for later expansion.</p>
+     */
+    public Object listMudlibPaths(String path, int flags) {
+        Objects.requireNonNull(path, "path");
+        MudlibListPattern pattern = mudlibListPattern(path);
+        if (pattern == null) {
+            return List.of();
+        }
+
+        Path directory = resolveMudlibTextPath(pattern.directory());
+        if (directory == null || !Files.isDirectory(directory)) {
+            directory = resolveMudlibStoragePath(pattern.directory());
+        }
+        if (directory == null || !Files.isDirectory(directory)) {
+            return List.of();
+        }
+
+        List<String> entries = new ArrayList<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, pattern.glob())) {
+            for (Path entry : stream) {
+                String name = entry.getFileName().toString();
+                entries.add((flags & 0x10) != 0
+                        ? pattern.pathPrefix() + name
+                        : name);
+            }
+        } catch (IOException e) {
+            return List.of();
+        }
+
+        if ((flags & 0x20) == 0) {
+            entries.sort(String::compareTo);
+        }
+        return entries;
     }
 
     /** Appends text to a mudlib-rooted file, returning LP-style success. */
@@ -1078,6 +1121,28 @@ public final class LPCRuntime {
         Path resolved = normalizedRoot.resolve(normalizedPath).normalize();
         return resolved.startsWith(normalizedRoot) ? resolved : null;
     }
+
+    private MudlibListPattern mudlibListPattern(String path) {
+        String normalized = path.trim();
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        for (Path segment : Path.of(normalized.isEmpty() ? "." : normalized)) {
+            if (segment.toString().equals("..")) {
+                return null;
+            }
+        }
+        int slash = normalized.lastIndexOf('/');
+        String directory = slash >= 0 ? normalized.substring(0, slash) : "";
+        String glob = slash >= 0 ? normalized.substring(slash + 1) : normalized;
+        if (glob.isEmpty()) {
+            glob = "*";
+        }
+        String pathPrefix = "/" + (directory.isEmpty() ? "" : directory + "/");
+        return new MudlibListPattern(directory.isEmpty() ? "." : directory, glob, pathPrefix);
+    }
+
+    private record MudlibListPattern(String directory, String glob, String pathPrefix) {}
 
     private Path resolveSourcePathWithExtensions(String sourcePath) {
         Path resolved = resolveSourcePath(sourcePath);

@@ -86,6 +86,7 @@ public final class RuntimeContext {
     private Function<String, Object> objectFactory = path -> null;
     private Function<String, Object> objectLoader = path -> null;
     private Function<String, Object> mudlibTextReader = path -> 0;
+    private BiFunction<String, Integer, Object> mudlibPathLister = (path, flags) -> List.of();
     private BiFunction<String, Object, Integer> mudlibTextAppender = (path, text) -> 0;
     private BiFunction<Object, String, Integer> playerTransferHandler = (actor, gameId) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateSaver = (path, object) -> 0;
@@ -138,6 +139,11 @@ public final class RuntimeContext {
 
     public void setMudlibTextReader(Function<String, Object> mudlibTextReader) {
         this.mudlibTextReader = (mudlibTextReader != null) ? mudlibTextReader : path -> 0;
+    }
+
+    /** Sets the host callback used by file-listing efuns to enumerate mudlib-rooted paths. */
+    public void setMudlibPathLister(BiFunction<String, Integer, Object> mudlibPathLister) {
+        this.mudlibPathLister = (mudlibPathLister != null) ? mudlibPathLister : (path, flags) -> List.of();
     }
 
     public void setMudlibTextAppender(BiFunction<String, Object, Integer> mudlibTextAppender) {
@@ -692,6 +698,11 @@ public final class RuntimeContext {
 
     public Object readMudlibText(String path) {
         return mudlibTextReader.apply(path);
+    }
+
+    /** Lists mudlib-rooted paths using an LP-style flag word. */
+    public Object listMudlibPaths(String path, int flags) {
+        return mudlibPathLister.apply(path, flags);
     }
 
     public int appendMudlibText(String path, Object text) {

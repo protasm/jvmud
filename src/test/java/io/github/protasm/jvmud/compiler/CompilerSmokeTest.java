@@ -33,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -3066,6 +3067,10 @@ final class CompilerSmokeTest {
     @Test
     void runtimeReadsMudlibRootedTextForCompatibilityShims() throws Exception {
         Files.writeString(tempDir.resolve("WELCOME"), "Welcome to JVMud.\n");
+        Path migrations = tempDir.resolve("secure/simulated-efuns/database/migrations");
+        Files.createDirectories(migrations);
+        Files.writeString(migrations.resolve("0002_second.sql"), "select 2;\n");
+        Files.writeString(migrations.resolve("0001_first.sql"), "select 1;\n");
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
@@ -3076,6 +3081,14 @@ final class CompilerSmokeTest {
 
                 mixed escaped() {
                     return jvmud_read_mudlib_text("../outside");
+                }
+
+                string *migration_names() {
+                    return jvmud_list_mudlib_paths("/secure/simulated-efuns/database/migrations/*.sql");
+                }
+
+                string *migration_paths() {
+                    return jvmud_list_mudlib_paths("/secure/simulated-efuns/database/migrations/*.sql", 0x10);
                 }
 
                 string lower() {
@@ -3090,6 +3103,14 @@ final class CompilerSmokeTest {
                     return jvmud_split_text("alpha##beta##", "##");
                 }
 
+                int number() {
+                    return jvmud_to_int(jvmud_regex_replace("0010_constructed_research.sql", "([0-9]+)_.*", "\\\\1", 1));
+                }
+
+                string *mapping_keys() {
+                    return jvmud_mapping_keys(([ "dawn": 1, "night": 2 ]));
+                }
+
                 string epoch() {
                     return jvmud_format_time(86400);
                 }
@@ -3097,9 +3118,16 @@ final class CompilerSmokeTest {
 
         assertEquals("Welcome to JVMud.\n", reader.invoke("welcome"));
         assertEquals(0, reader.invoke("escaped"));
+        assertEquals(List.of("0001_first.sql", "0002_second.sql"), reader.invoke("migration_names"));
+        assertEquals(List.of(
+                "/secure/simulated-efuns/database/migrations/0001_first.sql",
+                "/secure/simulated-efuns/database/migrations/0002_second.sql"),
+                reader.invoke("migration_paths"));
         assertEquals("mixed", reader.invoke("lower"));
         assertEquals("Alice", reader.invoke("capitalized"));
         assertEquals(List.of("alpha", "beta", ""), reader.invoke("split"));
+        assertEquals(10, reader.invoke("number"));
+        assertEquals(Set.of("dawn", "night"), Set.copyOf((List<?>) reader.invoke("mapping_keys")));
         assertTrue(((String) reader.invoke("epoch")).contains("1970"));
     }
 

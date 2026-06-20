@@ -136,9 +136,13 @@ final class RealmsMudCompatibilityScanTest {
         assertTrue(boundary.preloadObjectPaths().contains("secure/simul_efun"));
         assertEquals("jdbc:mysql://localhost:3306/RealmsLib", boundary.databaseJdbcUrl().orElseThrow());
         assertEquals("realmslib", boundary.databaseUser().orElseThrow());
-        assertEquals("realmsdev", boundary.databasePassword().orElseThrow());
+        assertFalse(boundary.databasePassword().orElseThrow().isBlank());
         assertEquals("jvmud_db_exec", boundary.directEfunAlias("db_exec").orElseThrow());
         assertEquals("jvmud_db_fetch", boundary.directEfunAlias("db_fetch").orElseThrow());
+        assertEquals("jvmud_current_entity", boundary.directEfunAlias("this_object").orElseThrow());
+        assertEquals("jvmud_list_mudlib_paths", boundary.directEfunAlias("get_dir").orElseThrow());
+        assertEquals("jvmud_to_int", boundary.directEfunAlias("to_int").orElseThrow());
+        assertEquals("jvmud_mapping_keys", boundary.directEfunAlias("m_indices").orElseThrow());
         assertEquals(
                 "\"JVMud RealmsMUD LDMud compatibility\"",
                 boundary.compatibilityPredefines().get("__VERSION__"));

@@ -2,6 +2,14 @@ mixed *allocate(int size) {
     return jvmud_allocate(size);
 }
 
+void call_out(string method, int delay) {
+    jvmud_schedule_deferred_callback(method, delay);
+}
+
+void call_out(string method, int delay, mixed arg) {
+    jvmud_schedule_deferred_callback(method, delay, arg);
+}
+
 int db_close(int handle) {
     return load_object("/secure/simul_efun.c")->db_close(handle);
 }
@@ -63,6 +71,19 @@ int pointerp(mixed value) {
     return jvmud_is_array(value);
 }
 
+string program_name(mixed ob) {
+    string ret = jvmud_entity_id(ob);
+    if (ret && sizeof(ret)) {
+        if (ret[0] != '/') {
+            ret = "/" + ret;
+        }
+        if ((sizeof(ret) < 2) || (ret[<2..] != ".c")) {
+            ret += ".c";
+        }
+    }
+    return ret;
+}
+
 string RealmsDatabase() {
     return "RealmsLib";
 }
@@ -73,6 +94,10 @@ int sizeof(mixed value) {
 
 int stringp(mixed value) {
     return jvmud_is_string(value);
+}
+
+object this_object() {
+    return jvmud_current_entity();
 }
 
 string sprintf(string format) {

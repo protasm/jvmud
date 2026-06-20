@@ -192,6 +192,8 @@ import javax.crypto.spec.PBEKeySpec;
  * <h2>Text, collections, invocation, and compatibility helpers</h2>
  * <ul>
  *   <li>{@code jvmud_read_mudlib_text(string path) : mixed} reads a mudlib-relative text file.</li>
+ *   <li>{@code jvmud_list_mudlib_paths(string path[, int flags]) : array} lists mudlib-relative
+ *       file names, including simple glob support for compatibility file discovery.</li>
  *   <li>{@code jvmud_append_mudlib_text(string path, mixed text) : status} appends text to a
  *       mudlib-relative file.</li>
  *   <li>{@code jvmud_size(mixed value) : int} returns the size of a string, collection, mapping, or
@@ -202,6 +204,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       delimiter while preserving empty trailing fields.</li>
  *   <li>{@code jvmud_regex_replace(string input, string pattern, string replacement, int flags) :
  *       string} performs a Java-regex replacement for legacy mudlib text helpers.</li>
+ *   <li>{@code jvmud_to_int(mixed value) : int} converts numeric values and base-10 text to an
+ *       integer, returning LPC false-style zero for non-numeric input.</li>
  *   <li>{@code jvmud_capitalize_text(mixed value) : string} capitalizes the first character of
  *       text.</li>
  *   <li>{@code jvmud_format_text(string format, mixed ...args) : string} formats text using the
@@ -213,6 +217,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       inclusive start and end indexes.</li>
  *   <li>{@code jvmud_member(mixed value, mixed needle) : int} checks mapping key membership or
  *       returns the index of a value in an array or string.</li>
+ *   <li>{@code jvmud_mapping_keys(mapping value) : array} returns the mapping's keys in runtime
+ *       iteration order.</li>
  *   <li>{@code jvmud_is_string(mixed value) : status} reports whether a value is Java-backed LPC
  *       string data.</li>
  *   <li>{@code jvmud_is_int(mixed value) : status} reports whether a value is Java-backed LPC
@@ -356,6 +362,13 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.queryIpNumber(args[0])));
         efuns.add(efun("jvmud_read_mudlib_text", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.readMudlibText(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_list_mudlib_paths", LPCType.LPCARRAY, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.listMudlibPaths(String.valueOf(args[0]), 1)));
+        efuns.add(efun("jvmud_list_mudlib_paths", LPCType.LPCARRAY,
+                List.of(LPCType.LPCSTRING, LPCType.LPCINT),
+                (runtime, args) -> runtime.listMudlibPaths(
+                        String.valueOf(args[0]),
+                        ((Number) args[1]).intValue())));
         efuns.add(efun("jvmud_append_mudlib_text", LPCType.LPCSTATUS,
                 List.of(LPCType.LPCSTRING, LPCType.LPCMIXED),
                 (runtime, args) -> runtime.appendMudlibText(String.valueOf(args[0]), args[1])));
@@ -403,6 +416,8 @@ public final class CoreEfuns {
                         String.valueOf(args[1]),
                         String.valueOf(args[2]),
                         ((Number) args[3]).intValue())));
+        efuns.add(efun("jvmud_to_int", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> toInt(args[0])));
         efuns.add(efun("jvmud_capitalize_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> capitalizeText(String.valueOf(args[0]))));
         for (int arity = 1; arity <= 8; arity++) {
@@ -421,6 +436,8 @@ public final class CoreEfuns {
                         ((Number) args[2]).intValue())));
         efuns.add(efun("jvmud_member", LPCType.LPCINT, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> member(args[0], args[1])));
+        efuns.add(efun("jvmud_mapping_keys", LPCType.LPCARRAY, List.of(LPCType.LPCMAPPING),
+                (runtime, args) -> mappingKeys(args[0])));
         efuns.add(efun("jvmud_capture_session_input", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> {
                     runtime.captureSessionInput(
@@ -592,6 +609,13 @@ public final class CoreEfuns {
         return -1;
     }
 
+    private static List<Object> mappingKeys(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            return new ArrayList<>(map.keySet());
+        }
+        throw new IllegalArgumentException("jvmud_mapping_keys expects a mapping value");
+    }
+
     private static String capitalizeText(String value) {
         if (value.isEmpty()) {
             return value;
@@ -722,6 +746,21 @@ public final class CoreEfuns {
         return flags == 0
                 ? input.replaceFirst(pattern, javaReplacement)
                 : input.replaceAll(pattern, javaReplacement);
+    }
+
+    private static int toInt(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        String text = String.valueOf(value).trim();
+        if (text.isEmpty()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     private static String javaRegexReplacement(String replacement) {
