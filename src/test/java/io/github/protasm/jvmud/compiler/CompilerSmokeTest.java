@@ -3207,6 +3207,13 @@ final class CompilerSmokeTest {
                     return jvmud_wrap_text("", 10);
                 }
 
+                mapping restored_value() {
+                    mapping source = ([ "name": "book", "count": 3, "weight": 2.5,
+                        "tags": ({ "paper", "ink" }), 7: "numeric key" ]);
+                    string saved = jvmud_serialize_lpc_value(source);
+                    return jvmud_deserialize_lpc_value(saved);
+                }
+
                 mixed *filtered_mapping_values() {
                     mapping values = ([ "keep": ([ "name": "keep", "amount": 7 ]),
                         "drop": ([ "name": "drop", "amount": 3 ]) ]);
@@ -3246,6 +3253,12 @@ final class CompilerSmokeTest {
         assertEquals("This is\nthe land\nloving\nmother\npigeon of\nall\nstrings.\n", reader.invoke("wrapped"));
         assertEquals("kept\n", reader.invoke("wrapped_default"));
         assertEquals("", reader.invoke("wrapped_empty"));
+        assertEquals(Map.of(
+                "name", "book",
+                "count", 3,
+                "weight", 2.5d,
+                "tags", List.of("paper", "ink"),
+                7, "numeric key"), reader.invoke("restored_value"));
         assertEquals(List.of(Map.of("name", "keep", "amount", 7)), reader.invoke("filtered_mapping_values"));
         assertTrue(((String) reader.invoke("epoch")).contains("1970"));
     }

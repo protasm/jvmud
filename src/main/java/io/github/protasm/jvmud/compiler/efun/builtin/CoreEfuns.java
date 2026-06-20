@@ -8,6 +8,7 @@ import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeValueCodec;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -225,6 +226,10 @@ import javax.crypto.spec.PBEKeySpec;
  *       text.</li>
  *   <li>{@code jvmud_wrap_text(mixed text[, int width]) : string} wraps description text at a
  *       requested line width, defaulting to 78 columns for compatibility text helpers.</li>
+ *   <li>{@code jvmud_serialize_lpc_value(mixed value) : string} serializes LPC data values to a
+ *       JVMud-owned tagged JSON payload.</li>
+ *   <li>{@code jvmud_deserialize_lpc_value(string data) : mixed} restores LPC data values produced
+ *       by {@code jvmud_serialize_lpc_value}.</li>
  *   <li>{@code jvmud_format_text(string format, mixed ...args) : string} formats text using the
  *       host formatter with LPC {@code %O} object placeholders treated as string placeholders; this
  *       overload is registered for arities 1 through 8.</li>
@@ -457,6 +462,10 @@ public final class CoreEfuns {
                 (runtime, args) -> wrapText(args[0], 78)));
         efuns.add(efun("jvmud_wrap_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
                 (runtime, args) -> wrapText(args[0], ((Number) args[1]).intValue())));
+        efuns.add(efun("jvmud_serialize_lpc_value", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> RuntimeValueCodec.serialize(args[0])));
+        efuns.add(efun("jvmud_deserialize_lpc_value", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> RuntimeValueCodec.deserialize(String.valueOf(args[0]))));
         for (int arity = 1; arity <= 8; arity++) {
             efuns.add(formatTextEfun(arity));
         }
