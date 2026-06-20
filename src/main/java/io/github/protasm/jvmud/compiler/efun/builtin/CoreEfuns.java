@@ -115,6 +115,8 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_load_lpc_object(string path) : object} loads or returns the shared LPC
  *       runtime object for a mudlib path.</li>
  *   <li>{@code jvmud_spawn_lpc_object(string path) : object} clones an LPC object.</li>
+ *   <li>{@code jvmud_set_entity_location(mixed entity, mixed location) : void} sets a
+ *       world-present entity's runtime location/containment without using a mudlib movement wrapper.</li>
  *   <li>{@code jvmud_move_entity(mixed entity, mixed destination) : void} moves an entity or
  *       path-resolved object.</li>
  *   <li>{@code jvmud_find_entity(string id) : object} searches for an entity in the default
@@ -526,6 +528,12 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.entityHasAlias(args[0], args[1])));
         efuns.add(efun("jvmud_entity_commands_enabled", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.entityCommandsEnabled(args[0])));
+        efuns.add(efun("jvmud_set_entity_location", LPCType.LPCVOID,
+                List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
+                (runtime, args) -> {
+                    runtime.moveObject(args[0], args[1]);
+                    return null;
+                }));
         efuns.add(efun("jvmud_set_entity_translucent", LPCType.LPCVOID,
                 List.of(LPCType.LPCMIXED, LPCType.LPCSTATUS),
                 (runtime, args) -> {

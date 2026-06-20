@@ -3993,6 +3993,39 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void setEntityLocationUpdatesLocationAndInventory() throws Exception {
+        Files.writeString(tempDir.resolve("thing.c"), """
+                int id(string str) {
+                    return str == "thing";
+                }
+                """);
+        Files.writeString(tempDir.resolve("room.c"), """
+                object thing;
+
+                void setup() {
+                    thing = jvmud_load_lpc_object("thing");
+                    jvmud_set_entity_location(thing, jvmud_current_lpc_object());
+                }
+
+                object where() {
+                    return jvmud_entity_location(thing);
+                }
+
+                object find_thing() {
+                    return jvmud_find_entity("thing", jvmud_current_lpc_object());
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle room = runtime.load(tempDir.resolve("room.c"));
+        room.invoke("setup");
+
+        assertEquals(room.instance(), room.invoke("where"));
+        assertNotNull(room.invoke("find_thing"));
+    }
+
+    @Test
     void stringConcatCoercesMixedArrayElementsWithoutCasting() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
