@@ -4380,6 +4380,37 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void compilerCallsTransitiveSecondaryInheritedMethodThroughPrimaryParentChain() throws Exception {
+        Files.writeString(tempDir.resolve("primary.c"), """
+                int primary_value() {
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("secondary.c"), """
+                protected int secondary_helper(int amount) {
+                    return 40 + amount;
+                }
+                """);
+        Files.writeString(tempDir.resolve("parent.c"), """
+                inherit "primary.c";
+                inherit "secondary.c";
+                """);
+        Path childPath = tempDir.resolve("child.c");
+        Files.writeString(childPath, """
+                inherit "parent.c";
+
+                int value() {
+                    return secondary_helper(2);
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle child = runtime.load(childPath);
+
+        assertEquals(42, child.invoke("value"));
+    }
+
+    @Test
     void compilerKeepsPrimaryAncestorMethodBehindPrimaryParentOverride() throws Exception {
         Files.writeString(tempDir.resolve("ancestor.c"), """
                 string kind() {

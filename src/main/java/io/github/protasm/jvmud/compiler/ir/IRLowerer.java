@@ -497,8 +497,7 @@ public final class IRLowerer {
         if (!lineage.add(name))
             return;
 
-        for (CompilationUnit parentUnit : unit.directParentUnits())
-            collectLineageNames(parentUnit, lineage);
+        collectLineageNames(primaryParentUnit(unit), lineage);
     }
 
     private void collectVisibleParentUnits(CompilationUnit unit, Set<CompilationUnit> units) {
@@ -605,7 +604,14 @@ public final class IRLowerer {
         for (ASTMethod method : astObject.methods()) {
             if (!method.isDefined())
                 continue;
-            methods.add(lowerMethod(method, fieldsBySymbol, flattenedInheritedMethodOwners, problems, objectInternalName));
+            methods.add(
+                    lowerMethod(
+                            method,
+                            fieldsBySymbol,
+                            flattenedInheritedMethodOwners,
+                            primaryParentLineage,
+                            problems,
+                            objectInternalName));
         }
 
         return methods;
@@ -666,8 +672,16 @@ public final class IRLowerer {
                     primaryParentLineage);
         }
 
-        for (ASTMethod method : methodsToFlatten)
-            methods.add(lowerMethod(method, fieldsBySymbol, flattenedInheritedMethodOwners, problems, objectInternalName));
+        for (ASTMethod method : methodsToFlatten) {
+            methods.add(
+                    lowerMethod(
+                            method,
+                            fieldsBySymbol,
+                            flattenedInheritedMethodOwners,
+                            primaryParentLineage,
+                            problems,
+                            objectInternalName));
+        }
     }
 
     private void collectSecondaryInheritedMethods(
@@ -706,6 +720,7 @@ public final class IRLowerer {
             ASTMethod method,
             Map<Symbol, IRField> fieldsBySymbol,
             Set<String> flattenedInheritedMethodOwners,
+            Set<String> primaryParentLineage,
             List<CompilationProblem> problems,
             String objectInternalName) {
         MethodContext context =
@@ -713,7 +728,8 @@ public final class IRLowerer {
                         runtimeType(method.symbol().lpcType()),
                         fieldsBySymbol,
                         objectInternalName,
-                        flattenedInheritedMethodOwners);
+                        flattenedInheritedMethodOwners,
+                        primaryParentLineage);
 
         lowerParameters(method, context);
         lowerLocals(method, context);
@@ -1491,7 +1507,7 @@ public final class IRLowerer {
             String ownerInternalName = callMethod.method().ownerName();
             if (ownerInternalName == null && !callMethod.isParentDispatch())
                 ownerInternalName = defaultParentInternalName;
-            if (!callMethod.isParentDispatch() && context.isFlattenedOwner(ownerInternalName))
+            if (!callMethod.isParentDispatch() && context.shouldCallThroughCurrent(ownerInternalName))
                 ownerInternalName = context.currentInternalName;
             List<RuntimeType> parameterTypes = parameterTypes(callMethod.method());
             return new IRInstanceCall(
@@ -1930,6 +1946,7 @@ public final class IRLowerer {
         private final Map<Symbol, IRField> fieldsBySymbol;
         private final String currentInternalName;
         private final Set<String> flattenedInheritedMethodOwners;
+        private final Set<String> primaryParentLineage;
         private final Map<Symbol, IRLocal> localsBySymbol = new HashMap<>();
         private final Map<Integer, IRLocal> localsBySlot = new HashMap<>();
         private final List<IRParameter> parameters = new ArrayList<>();
@@ -1943,23 +1960,38 @@ public final class IRLowerer {
         private int syntheticLocalCounter = 0;
 
         private MethodContext(RuntimeType returnType, Map<Symbol, IRField> fieldsBySymbol, String currentInternalName) {
-            this(returnType, fieldsBySymbol, currentInternalName, Set.of());
+            this(returnType, fieldsBySymbol, currentInternalName, Set.of(), Set.of());
         }
 
         private MethodContext(
                 RuntimeType returnType,
                 Map<Symbol, IRField> fieldsBySymbol,
                 String currentInternalName,
-                Set<String> flattenedInheritedMethodOwners) {
+                Set<String> flattenedInheritedMethodOwners,
+                Set<String> primaryParentLineage) {
             this.returnType = returnType != null ? returnType : RuntimeTypes.MIXED;
             this.fieldsBySymbol = fieldsBySymbol;
             this.currentInternalName = currentInternalName;
             this.flattenedInheritedMethodOwners =
                     flattenedInheritedMethodOwners != null ? flattenedInheritedMethodOwners : Set.of();
+            this.primaryParentLineage = primaryParentLineage != null ? primaryParentLineage : Set.of();
         }
 
         public boolean isFlattenedOwner(String ownerInternalName) {
             return ownerInternalName != null && flattenedInheritedMethodOwners.contains(ownerInternalName);
+        }
+
+        /**
+         * Returns true when an implicit {@code this} call should be emitted against the generated
+         * current class instead of the LPC-resolved owner. Secondary LPC inherits are flattened into
+         * classes on the primary JVM superclass chain, so their source owner names are not necessarily
+         * assignable Java receivers.
+         */
+        public boolean shouldCallThroughCurrent(String ownerInternalName) {
+            if (ownerInternalName == null || Objects.equals(ownerInternalName, currentInternalName))
+                return false;
+
+            return isFlattenedOwner(ownerInternalName) || !primaryParentLineage.contains(ownerInternalName);
         }
 
         public BlockBuilder newBlock(String prefix) {
