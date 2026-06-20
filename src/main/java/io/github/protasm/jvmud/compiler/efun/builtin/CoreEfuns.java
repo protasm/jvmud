@@ -227,6 +227,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       iteration order.</li>
  *   <li>{@code jvmud_mapping_values(mapping value) : array} returns the mapping's values in
  *       runtime iteration order.</li>
+ *   <li>{@code jvmud_mapping_from_keys(array keys) : mapping} builds a mapping whose keys come from
+ *       the supplied array and whose values are LPC true.</li>
  *   <li>{@code jvmud_is_string(mixed value) : status} reports whether a value is Java-backed LPC
  *       string data.</li>
  *   <li>{@code jvmud_is_int(mixed value) : status} reports whether a value is Java-backed LPC
@@ -456,6 +458,8 @@ public final class CoreEfuns {
                 (runtime, args) -> mappingKeys(args[0])));
         efuns.add(efun("jvmud_mapping_values", LPCType.LPCARRAY, List.of(LPCType.LPCMAPPING),
                 (runtime, args) -> mappingValues(args[0])));
+        efuns.add(efun("jvmud_mapping_from_keys", LPCType.LPCMAPPING, List.of(LPCType.LPCARRAY),
+                (runtime, args) -> mappingFromKeys(args[0])));
         efuns.add(efun("jvmud_capture_session_input", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> {
                     runtime.captureSessionInput(
@@ -639,6 +643,17 @@ public final class CoreEfuns {
             return new ArrayList<>(map.values());
         }
         throw new IllegalArgumentException("jvmud_mapping_values expects a mapping value");
+    }
+
+    private static Map<Object, Object> mappingFromKeys(Object value) {
+        if (value instanceof List<?> keys) {
+            Map<Object, Object> mapping = new LinkedHashMap<>();
+            for (Object key : keys) {
+                mapping.put(key, 1);
+            }
+            return mapping;
+        }
+        throw new IllegalArgumentException("jvmud_mapping_from_keys expects an array value");
     }
 
     private static String capitalizeText(String value) {

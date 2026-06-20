@@ -3123,6 +3123,14 @@ final class CompilerSmokeTest {
                     return jvmud_mapping_values(([ "dawn": 1, "night": 2 ]));
                 }
 
+                mapping mapping_from_keys() {
+                    return jvmud_mapping_from_keys(({ "north", "south", "north" }));
+                }
+
+                string *unique_directions() {
+                    return jvmud_mapping_keys(jvmud_mapping_from_keys(({ "north", "south", "north" })));
+                }
+
                 int random_zero() {
                     return jvmud_random(0);
                 }
@@ -3163,6 +3171,8 @@ final class CompilerSmokeTest {
         assertEquals(0, reader.invoke("regex_no_match_is_false"));
         assertEquals(Set.of("dawn", "night"), Set.copyOf((List<?>) reader.invoke("mapping_keys")));
         assertEquals(Set.of(1, 2), Set.copyOf((List<?>) reader.invoke("mapping_values")));
+        assertEquals(Map.of("north", 1, "south", 1), reader.invoke("mapping_from_keys"));
+        assertEquals(List.of("north", "south"), reader.invoke("unique_directions"));
         assertEquals(0, reader.invoke("random_zero"));
         assertEquals(0, reader.invoke("random_one"));
         assertEquals(1, reader.invoke("random_range"));
