@@ -1,8 +1,8 @@
 # JVMud
 
 JVMud is an experimental LPC/LPMud text-world engine for the JVM. The project
-is organized around a cruciform model: compiler, engine, instance, transport,
-persistence, and mudlib. JVMud-owned Java code lives under the conventional
+is organized around compiler, engine, instance, transport, persistence, and
+mudlib responsibilities. JVMud-owned Java code lives under the conventional
 Maven `src/` tree, while third-party and authored mudlibs live under
 `mudlibs/`.
 

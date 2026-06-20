@@ -21,6 +21,8 @@ include::getting-oriented/index.adoc[]
 
 include::getting-oriented/overview.adoc[]
 
+include::getting-oriented/architecture.adoc[]
+
 include::getting-oriented/philosophy-of-mud.adoc[]
 
 include::getting-oriented/repository-tour.adoc[]
