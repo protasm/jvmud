@@ -245,6 +245,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       runtime iteration order.</li>
  *   <li>{@code jvmud_mapping_from_keys(array keys) : mapping} builds a mapping whose keys come from
  *       the supplied array and whose values are LPC true.</li>
+ *   <li>{@code jvmud_mapping_delete(mapping value, mixed key) : mapping} removes a key from a
+ *       mutable mapping and returns the same mapping.</li>
  *   <li>{@code jvmud_is_string(mixed value) : status} reports whether a value is Java-backed LPC
  *       string data.</li>
  *   <li>{@code jvmud_is_int(mixed value) : status} reports whether a value is Java-backed LPC
@@ -488,6 +490,8 @@ public final class CoreEfuns {
                 (runtime, args) -> mappingValues(args[0])));
         efuns.add(efun("jvmud_mapping_from_keys", LPCType.LPCMAPPING, List.of(LPCType.LPCARRAY),
                 (runtime, args) -> mappingFromKeys(args[0])));
+        efuns.add(efun("jvmud_mapping_delete", LPCType.LPCMAPPING, List.of(LPCType.LPCMAPPING, LPCType.LPCMIXED),
+                (runtime, args) -> mappingDelete(args[0], args[1])));
         efuns.add(efun("jvmud_capture_session_input", LPCType.LPCVOID, List.of(LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> {
                     runtime.captureSessionInput(
@@ -688,6 +692,16 @@ public final class CoreEfuns {
             return mapping;
         }
         throw new IllegalArgumentException("jvmud_mapping_from_keys expects an array value");
+    }
+
+    private static Map<?, ?> mappingDelete(Object value, Object key) {
+        if (value instanceof Map<?, ?> map) {
+            @SuppressWarnings("unchecked")
+            Map<Object, Object> mutable = (Map<Object, Object>) map;
+            mutable.remove(key);
+            return map;
+        }
+        throw new IllegalArgumentException("jvmud_mapping_delete expects a mapping value");
     }
 
     private static boolean methodExists(Object target, String methodName) {

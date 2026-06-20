@@ -153,6 +153,7 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jvmud_mapping_keys", boundary.directEfunAlias("m_indices").orElseThrow());
         assertEquals("jvmud_mapping_values", boundary.directEfunAlias("m_values").orElseThrow());
         assertEquals("jvmud_mapping_from_keys", boundary.directEfunAlias("mkmapping").orElseThrow());
+        assertEquals("jvmud_mapping_delete", boundary.directEfunAlias("m_delete").orElseThrow());
         assertEquals("jvmud_inherited_programs", boundary.directEfunAlias("inherit_list").orElseThrow());
         assertEquals("jvmud_random", boundary.directEfunAlias("random").orElseThrow());
         assertEquals("jvmud_is_mapping", boundary.directEfunAlias("mappingp").orElseThrow());

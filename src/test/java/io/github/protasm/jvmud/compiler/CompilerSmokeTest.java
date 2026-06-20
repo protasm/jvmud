@@ -3178,6 +3178,17 @@ final class CompilerSmokeTest {
                     return jvmud_mapping_from_keys(({ "north", "south", "north" }));
                 }
 
+                mapping mapping_delete_result() {
+                    mapping values = ([ "keep": 1, "drop": 2 ]);
+                    return jvmud_mapping_delete(values, "drop");
+                }
+
+                int mapping_delete_mutates() {
+                    mapping values = ([ "keep": 1, "drop": 2 ]);
+                    jvmud_mapping_delete(values, "drop");
+                    return jvmud_member(values, "drop");
+                }
+
                 string *unique_directions() {
                     return jvmud_mapping_keys(jvmud_mapping_from_keys(({ "north", "south", "north" })));
                 }
@@ -3246,6 +3257,8 @@ final class CompilerSmokeTest {
         assertEquals(Set.of("dawn", "night"), Set.copyOf((List<?>) reader.invoke("mapping_keys")));
         assertEquals(Set.of(1, 2), Set.copyOf((List<?>) reader.invoke("mapping_values")));
         assertEquals(Map.of("north", 1, "south", 1), reader.invoke("mapping_from_keys"));
+        assertEquals(Map.of("keep", 1), reader.invoke("mapping_delete_result"));
+        assertEquals(0, reader.invoke("mapping_delete_mutates"));
         assertEquals(List.of("north", "south"), reader.invoke("unique_directions"));
         assertEquals(0, reader.invoke("random_zero"));
         assertEquals(0, reader.invoke("random_one"));

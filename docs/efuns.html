@@ -278,6 +278,22 @@
               <td>Returns the size of a string, collection, mapping, or array.</td>
             </tr>
             <tr>
+              <td><code>array jvmud_mapping_keys(mapping value)</code></td>
+              <td>Returns a mapping's keys in runtime iteration order.</td>
+            </tr>
+            <tr>
+              <td><code>array jvmud_mapping_values(mapping value)</code></td>
+              <td>Returns a mapping's values in runtime iteration order.</td>
+            </tr>
+            <tr>
+              <td><code>mapping jvmud_mapping_from_keys(array keys)</code></td>
+              <td>Builds a mapping whose keys come from an array and whose values are LPC true.</td>
+            </tr>
+            <tr>
+              <td><code>mapping jvmud_mapping_delete(mapping value, mixed key)</code></td>
+              <td>Removes a key from a mutable mapping and returns the same mapping.</td>
+            </tr>
+            <tr>
               <td><code>mixed jvmud_read_mudlib_text(string path)</code></td>
               <td>Reads a mudlib-relative text file, returning LPC false when unavailable.</td>
             </tr>
