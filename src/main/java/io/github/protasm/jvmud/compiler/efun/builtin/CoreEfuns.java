@@ -198,6 +198,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       array.</li>
  *   <li>{@code jvmud_lowercase_text(mixed value) : string} lowercases text.</li>
  *   <li>{@code jvmud_uppercase_text(mixed value) : string} uppercases text.</li>
+ *   <li>{@code jvmud_split_text(string text, string delimiter) : array} splits text on a literal
+ *       delimiter while preserving empty trailing fields.</li>
  *   <li>{@code jvmud_regex_replace(string input, string pattern, string replacement, int flags) :
  *       string} performs a Java-regex replacement for legacy mudlib text helpers.</li>
  *   <li>{@code jvmud_capitalize_text(mixed value) : string} capitalizes the first character of
@@ -391,6 +393,9 @@ public final class CoreEfuns {
                 (runtime, args) -> String.valueOf(args[0]).toLowerCase()));
         efuns.add(efun("jvmud_uppercase_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> String.valueOf(args[0]).toUpperCase()));
+        efuns.add(efun("jvmud_split_text", LPCType.LPCARRAY,
+                List.of(LPCType.LPCSTRING, LPCType.LPCSTRING),
+                (runtime, args) -> splitText(String.valueOf(args[0]), String.valueOf(args[1]))));
         efuns.add(efun("jvmud_regex_replace", LPCType.LPCSTRING,
                 List.of(LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> regexReplace(
@@ -592,6 +597,17 @@ public final class CoreEfuns {
             return value;
         }
         return value.substring(0, 1).toUpperCase() + value.substring(1);
+    }
+
+    private static List<String> splitText(String text, String delimiter) {
+        if (delimiter.isEmpty()) {
+            List<String> characters = new ArrayList<>();
+            for (int i = 0; i < text.length(); i++) {
+                characters.add(String.valueOf(text.charAt(i)));
+            }
+            return characters;
+        }
+        return List.of(text.split(java.util.regex.Pattern.quote(delimiter), -1));
     }
 
     private static String hashPassword(String password) {

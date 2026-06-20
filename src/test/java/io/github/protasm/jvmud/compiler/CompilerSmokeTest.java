@@ -3086,6 +3086,10 @@ final class CompilerSmokeTest {
                     return jvmud_capitalize_text("alice");
                 }
 
+                string *split() {
+                    return jvmud_split_text("alpha##beta##", "##");
+                }
+
                 string epoch() {
                     return jvmud_format_time(86400);
                 }
@@ -3095,6 +3099,7 @@ final class CompilerSmokeTest {
         assertEquals(0, reader.invoke("escaped"));
         assertEquals("mixed", reader.invoke("lower"));
         assertEquals("Alice", reader.invoke("capitalized"));
+        assertEquals(List.of("alpha", "beta", ""), reader.invoke("split"));
         assertTrue(((String) reader.invoke("epoch")).contains("1970"));
     }
 
