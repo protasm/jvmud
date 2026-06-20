@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.server;
+package io.github.protasm.jvmud.instance;
 
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -9,36 +9,36 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/** Telnet host that can route one listener across multiple booted mudlib instances. */
-final class MultiMudTelnetHost implements TelnetHost {
-    private final Map<String, TelnetMud> mudsByGameId = new LinkedHashMap<>();
-    private final Map<String, TelnetPersona> suspendedDefaultPersonasBySession = new HashMap<>();
-    private final TelnetMud defaultMud;
+/** Routes one hosted entrypoint across mounted mudlib worlds. */
+public final class MudlibRouter implements InstanceHost {
+    private final Map<String, MudInstance> mudsByGameId = new LinkedHashMap<>();
+    private final Map<String, InstancePersona> suspendedDefaultPersonasBySession = new HashMap<>();
+    private final MudInstance defaultMud;
     private int nextSessionId = 1;
 
-    private MultiMudTelnetHost(TelnetMud defaultMud) {
+    private MudlibRouter(MudInstance defaultMud) {
         this.defaultMud = Objects.requireNonNull(defaultMud, "defaultMud");
         register(defaultMud);
     }
 
-    static MultiMudTelnetHost boot(Path defaultMudlibRoot, String defaultConfigPath) {
-        TelnetMud defaultMud = TelnetMud.boot(defaultMudlibRoot, defaultConfigPath);
-        MultiMudTelnetHost host = new MultiMudTelnetHost(defaultMud);
+    public static MudlibRouter boot(Path defaultMudlibRoot, String defaultConfigPath) {
+        MudInstance defaultMud = MudInstance.boot(defaultMudlibRoot, defaultConfigPath);
+        MudlibRouter host = new MudlibRouter(defaultMud);
         if ("lpmuseum".equals(defaultMud.gameId())) {
             Path siblingLp245 = defaultMud.mudlibRoot().getParent().resolve("lp245");
             if (Files.isDirectory(siblingLp245)) {
-                host.register(TelnetMud.boot(siblingLp245, MudlibBoot.LP245_CONFIG_PATH));
+                host.register(MudInstance.boot(siblingLp245, MudlibBoot.LP245_CONFIG_PATH));
             }
         }
         return host;
     }
 
-    private void register(TelnetMud mud) {
+    private void register(MudInstance mud) {
         mud.setTransferHandler(this::requestTransfer);
         mudsByGameId.put(mud.gameId(), mud);
     }
 
-    private int requestTransfer(TelnetMud sourceMud, Object actor, String gameId) {
+    private int requestTransfer(MudInstance sourceMud, Object actor, String gameId) {
         if (!mudsByGameId.containsKey(gameId)) {
             return 0;
         }
@@ -63,33 +63,33 @@ final class MultiMudTelnetHost implements TelnetHost {
 
     @Override
     public synchronized void advanceWorldTick() {
-        for (TelnetMud mud : mudsByGameId.values()) {
+        for (MudInstance mud : mudsByGameId.values()) {
             mud.advanceWorldTick();
         }
     }
 
     @Override
     public synchronized void shutdown(Object reason) {
-        for (TelnetMud mud : mudsByGameId.values()) {
+        for (MudInstance mud : mudsByGameId.values()) {
             mud.shutdown(reason);
         }
     }
 
     @Override
-    public synchronized TelnetPersona attachPersona(PrintWriter out, String remoteAddress) {
+    public synchronized InstancePersona attachPersona(PrintWriter out, String remoteAddress) {
         return defaultMud.attachPersona("telnet/" + nextSessionId++, out, remoteAddress, true);
     }
 
     @Override
-    public synchronized void detachPersona(TelnetPersona persona) {
+    public synchronized void detachPersona(InstancePersona persona) {
         if (persona != null) {
             persona.mud().detachPersona(persona);
         }
     }
 
     @Override
-    public synchronized Object dispatch(TelnetPersona persona, PrintWriter out, String commandLine) {
-        TelnetMud sourceMud = persona.mud();
+    public synchronized Object dispatch(InstancePersona persona, PrintWriter out, String commandLine) {
+        MudInstance sourceMud = persona.mud();
         Object result = sourceMud.dispatch(persona, out, commandLine);
         String destinationGameId = sourceMud.consumeRequestedTransfer(persona);
         if (destinationGameId != null) {
@@ -98,16 +98,16 @@ final class MultiMudTelnetHost implements TelnetHost {
         return result;
     }
 
-    private void transfer(TelnetPersona persona, PrintWriter out, String destinationGameId) {
-        TelnetMud destinationMud = mudsByGameId.get(destinationGameId);
+    private void transfer(InstancePersona persona, PrintWriter out, String destinationGameId) {
+        MudInstance destinationMud = mudsByGameId.get(destinationGameId);
         if (destinationMud == null) {
             out.println("The exhibit portal flickers, but no destination answers.");
             return;
         }
 
-        TelnetMud sourceMud = persona.mud();
+        MudInstance sourceMud = persona.mud();
         if (destinationMud == defaultMud && sourceMud != defaultMud) {
-            TelnetPersona suspended = suspendedDefaultPersonasBySession.remove(persona.sessionId());
+            InstancePersona suspended = suspendedDefaultPersonasBySession.remove(persona.sessionId());
             if (suspended == null) {
                 out.println("The return portal flickers, but your museum Persona does not answer.");
                 return;
@@ -125,7 +125,7 @@ final class MultiMudTelnetHost implements TelnetHost {
             sourceMud.detachPersona(persona, false);
         }
         out.println("The exhibit portal opens.");
-        TelnetPersona replacement = destinationMud.attachVisitingPersona(
+        InstancePersona replacement = destinationMud.attachVisitingPersona(
                 persona.sessionId(),
                 out,
                 persona.remoteAddress(),
@@ -134,8 +134,8 @@ final class MultiMudTelnetHost implements TelnetHost {
         persona.replaceWith(replacement);
     }
 
-    private TelnetPersona snapshot(TelnetPersona persona) {
-        return new TelnetPersona(
+    private InstancePersona snapshot(InstancePersona persona) {
+        return new InstancePersona(
                 persona.mud(),
                 persona.sessionId(),
                 persona.objectId(),
@@ -147,24 +147,24 @@ final class MultiMudTelnetHost implements TelnetHost {
     }
 
     @Override
-    public synchronized void printPromptIfReady(TelnetPersona persona, PrintWriter out) {
+    public synchronized void printPromptIfReady(InstancePersona persona, PrintWriter out) {
         if (persona != null) {
             persona.mud().printPromptIfReady(persona, out);
         }
     }
 
     @Override
-    public synchronized boolean isCapturingInput(TelnetPersona persona) {
+    public synchronized boolean isCapturingInput(InstancePersona persona) {
         return persona != null && persona.mud().isCapturingInput(persona);
     }
 
     @Override
-    public synchronized boolean isCapturingNoEchoInput(TelnetPersona persona) {
+    public synchronized boolean isCapturingNoEchoInput(InstancePersona persona) {
         return persona != null && persona.mud().isCapturingNoEchoInput(persona);
     }
 
     @Override
-    public synchronized boolean isAttached(TelnetPersona persona) {
+    public synchronized boolean isAttached(InstancePersona persona) {
         return persona != null && persona.mud().isAttached(persona);
     }
 }

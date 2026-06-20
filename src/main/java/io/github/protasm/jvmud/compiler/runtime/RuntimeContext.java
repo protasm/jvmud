@@ -19,6 +19,7 @@ import io.github.protasm.jvmud.engine.time.ScheduledTask;
 import io.github.protasm.jvmud.engine.identity.SessionId;
 import io.github.protasm.jvmud.engine.identity.SessionRecord;
 import io.github.protasm.jvmud.engine.time.WorldScheduler;
+import io.github.protasm.jvmud.persistence.jdbc.RuntimeDatabaseService;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Instant;

@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.server;
+package io.github.protasm.jvmud.transport.telnet;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,6 +17,12 @@ import io.github.protasm.jvmud.engine.mudlib.MudlibProjectionRole;
 import io.github.protasm.jvmud.engine.world.Place;
 import io.github.protasm.jvmud.engine.world.World;
 import io.github.protasm.jvmud.engine.world.WorldRuntime;
+import io.github.protasm.jvmud.instance.LegacyPlayerObjectAdapter;
+import io.github.protasm.jvmud.instance.LocalSessionActor;
+import io.github.protasm.jvmud.instance.MudInstance;
+import io.github.protasm.jvmud.instance.MudlibBoot;
+import io.github.protasm.jvmud.instance.MudlibBootResult;
+import io.github.protasm.jvmud.instance.InstancePersona;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -708,11 +714,11 @@ final class TelnetServerTest {
     @Test
     void lpmuseumSuppressesAmbientMessagesUntilAccountLoginCompletes() throws Exception {
         Path museum = lpmuseumTestRoot();
-        TelnetMud mud = TelnetMud.boot(museum, MudlibBoot.DEFAULT_CONFIG_PATH);
+        MudInstance mud = MudInstance.boot(museum, MudlibBoot.DEFAULT_CONFIG_PATH);
         StringWriter output = new StringWriter();
         PrintWriter out = new PrintWriter(output, true);
 
-        TelnetPersona persona = mud.attachPersona(out, "127.0.0.1");
+        InstancePersona persona = mud.attachPersona(out, "127.0.0.1");
 
         String initial = output.toString();
         assertTrue(initial.contains("Please enter your user ID: "), initial);

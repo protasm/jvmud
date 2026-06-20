@@ -1,9 +1,10 @@
 # JVMud
 
 JVMud is an experimental LPC/LPMud text-world engine for the JVM. The project
-is organized around the compiler-engine-mudlib triangle: JVMud-owned Java code
-lives under the conventional Maven `src/` tree, while third-party and authored
-mudlibs live under `mudlibs/`.
+is organized around a cruciform model: compiler, engine, instance, transport,
+persistence, and mudlib. JVMud-owned Java code lives under the conventional
+Maven `src/` tree, while third-party and authored mudlibs live under
+`mudlibs/`.
 
 `docs/PRINCIPLES.md` is the controlling design document for the engine, and
 `docs/GLOSSARY.md` defines JVMud vocabulary. The engine is being built around
@@ -25,7 +26,9 @@ call_outs, or master objects as engine ontology.
 | --- | --- |
 | `src/main/java/io/github/protasm/jvmud/engine/` | JVMud engine source. It contains subpackages for world ontology, player/session/persona identity, time, mudlib boundaries, output formatting, and small shared support helpers. |
 | `src/main/java/io/github/protasm/jvmud/compiler/` | JVMud compiler Java source. It contains the LPC preprocessor, scanner, parser, semantic analysis, IR, bytecode compiler, efun contracts/catalogs, generated-code runtime helpers, and host-facing LPC loader classes. |
-| `src/main/java/io/github/protasm/jvmud/server/` | JVMud game-server source. It boots a mudlib, manages shared runtime/world state, and accepts Telnet player sessions. |
+| `src/main/java/io/github/protasm/jvmud/instance/` | JVMud hosted-instance source. It boots a mudlib, assembles compiler output with engine runtime state, attaches Personas, and manages a running world. |
+| `src/main/java/io/github/protasm/jvmud/transport/` | JVMud player-transport source. It owns Telnet sockets, sessions, protocol echo behavior, line I/O, and connection lifecycle mechanics. |
+| `src/main/java/io/github/protasm/jvmud/persistence/` | JVMud persistence adapters for durable filesystem and JDBC-backed state. |
 | `src/main/java/io/github/protasm/jvmud/cli/` | JVMud local admin CLI source. It is a single-user command-line tool for filesystem navigation, object loading, inspection, invocation, and mutation. |
 | `src/test/java/io/github/protasm/jvmud/` | JVMud Java test source, following the same package layout. |
 | `mudlibs/lpmuseum/` | Native JVMud mudlib content. This is the free-standing Telnet landing experience and museum concourse for exhibit mudlibs. |
@@ -130,7 +133,7 @@ When a conflict appears, prefer:
   translated by compatibility shims;
 - small bridge APIs only where they keep current LPC content usable.
 
-## Admin CLI And Game Server
+## Admin CLI And Telnet Transport
 
 The `cli` module provides a local, single-user admin shell backed by the real
 object runtime. After building, run it with:
@@ -158,8 +161,9 @@ output. `watch` prints compiler stage progress for commands such as `load` and
 `clone`, which is useful when inspecting parser, analyzer, lowering, or bytecode
 failures.
 
-The `server` module provides the player-facing game server path. Start a mudlib
-as a persistent Telnet target with:
+The `instance` package provides the player-facing hosted world, while
+`transport.telnet` provides the Telnet path into that world. Start a mudlib as
+a persistent Telnet target with:
 
 ```text
 scripts/jvmud-start [mudlib-config-file]
@@ -178,7 +182,7 @@ registrations on nearby or carried objects. Telnet slash commands are limited
 to session controls such as `/help` and `/quit`; admin inspection and object
 mutation stay in the admin CLI. This is still an early development listener:
 session-to-session messaging, output isolation between participants, and
-production networking policy belong to later server slices.
+production networking policy belong to later instance and transport slices.
 
 To run the startup smoke test that launches `jvmud-start`, connects over TCP,
 verifies that the configured `obj/player` mudlib player object attaches, drives

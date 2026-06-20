@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.server;
+package io.github.protasm.jvmud.instance;
 
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
 import java.util.Objects;
@@ -11,14 +11,14 @@ import java.util.Objects;
  * JVMud keeps Session, Player, and Persona engine-owned; this adapter records the legacy object as a
  * combined mudlib projection attached to that relationship.</p>
  */
-final class LegacyPlayerObjectAdapter {
+public final class LegacyPlayerObjectAdapter {
     private final String playerObjectPath;
 
-    LegacyPlayerObjectAdapter(String playerObjectPath) {
+    public LegacyPlayerObjectAdapter(String playerObjectPath) {
         this.playerObjectPath = Objects.requireNonNull(playerObjectPath, "playerObjectPath");
     }
 
-    MudlibProjection combinedProjection(Object playerObject) {
+    public MudlibProjection combinedProjection(Object playerObject) {
         return MudlibProjection.combinedPlayerPersona(playerObjectPath, playerObject);
     }
 }

@@ -25,7 +25,7 @@ cleanup() {
     rm -f "$LOG_FILE"
     rm -f "${SMOKE_PLAYER_FILES[@]}"
   else
-    echo "server log: $LOG_FILE" >&2
+    echo "listener log: $LOG_FILE" >&2
   fi
 }
 trap 'status=$?; cleanup "$status"; exit "$status"' EXIT
@@ -54,7 +54,7 @@ def connect_with_retry(deadline_seconds=30):
         except OSError as exc:
             last_error = exc
             time.sleep(0.25)
-    raise RuntimeError(f"server did not accept a connection: {last_error}")
+    raise RuntimeError(f"listener did not accept a connection: {last_error}")
 
 
 def read_until(sock, marker):

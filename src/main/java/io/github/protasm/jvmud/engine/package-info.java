@@ -43,7 +43,7 @@
  * <p>Compiler and LPC compatibility layers adapt into these engine concepts instead of replacing
  * them with legacy driver vocabulary. Generated-code support lives under {@code
  * io.github.protasm.jvmud.compiler.runtime}; Telnet hosting lives under {@code
- * io.github.protasm.jvmud.server}; authored mudlib content lives in the repository's mudlib
+ * io.github.protasm.jvmud.instance} and {@code io.github.protasm.jvmud.transport}; authored mudlib content lives in the repository's mudlib
  * source trees.</p>
  */
 package io.github.protasm.jvmud.engine;

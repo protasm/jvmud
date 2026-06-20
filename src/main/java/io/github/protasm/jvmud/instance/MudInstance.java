@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.server;
+package io.github.protasm.jvmud.instance;
 
 import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
@@ -12,13 +12,9 @@ import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
 import io.github.protasm.jvmud.engine.output.OutgoingTextFormatter;
 import io.github.protasm.jvmud.engine.world.Place;
 import io.github.protasm.jvmud.engine.world.WorldRuntime;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.protasm.jvmud.persistence.filesystem.LpmuseumAccountFileStore;
+import io.github.protasm.jvmud.persistence.filesystem.LpmuseumAccountFileStore.Account;
 import java.io.PrintWriter;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -33,10 +29,8 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
 /** Shared runtime state for a persistent Telnet mud process. */
-final class TelnetMud implements TelnetHost {
+public final class MudInstance implements InstanceHost {
     private static final String CONNECTED_BANNER = "JVMud telnet. Type /help for commands or /quit to disconnect.\n";
-    private static final ObjectMapper JSON = new ObjectMapper()
-            .enable(SerializationFeature.INDENT_OUTPUT);
     private static final int PASSWORD_ITERATIONS = 210_000;
     private static final int PASSWORD_SALT_BYTES = 16;
     private static final int PASSWORD_HASH_BITS = 256;
@@ -56,11 +50,12 @@ final class TelnetMud implements TelnetHost {
     private final String playerSessionDisconnectedMethod;
     private final String runtimeErrorMethod;
     private final MudlibBootResult bootResult;
+    private final LpmuseumAccountFileStore accountStore = new LpmuseumAccountFileStore();
     private final Map<Object, String> requestedTransfers = new IdentityHashMap<>();
     private TransferHandler transferHandler = (mud, actor, gameId) -> 0;
     private int nextPersonaId = 1;
 
-    private TelnetMud(
+    private MudInstance(
             LPCRuntime runtime,
             WorldRuntime worldRuntime,
             String gameId,
@@ -91,7 +86,7 @@ final class TelnetMud implements TelnetHost {
         this.bootResult = Objects.requireNonNull(bootResult, "bootResult");
     }
 
-    static TelnetMud boot(Path mudlibRoot, String configObjectPath) {
+    public static MudInstance boot(Path mudlibRoot, String configObjectPath) {
         Path normalizedRoot = mudlibRoot.toAbsolutePath().normalize();
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(normalizedRoot)
@@ -108,7 +103,7 @@ final class TelnetMud implements TelnetHost {
         MudlibBoundary boundary = result.mudlibBoundary();
         String gameId = boundary.gameId().orElse(normalizedRoot.getFileName().toString());
         runtime.clearOutputTranscript();
-        TelnetMud mud = new TelnetMud(
+        MudInstance mud = new MudInstance(
                 runtime,
                 result.worldRuntime(),
                 gameId,
@@ -140,7 +135,7 @@ final class TelnetMud implements TelnetHost {
         requestedTransfers.put(actor, gameId);
     }
 
-    String consumeRequestedTransfer(TelnetPersona persona) {
+    String consumeRequestedTransfer(InstancePersona persona) {
         return persona != null ? requestedTransfers.remove(persona.actor()) : null;
     }
 
@@ -189,11 +184,11 @@ final class TelnetMud implements TelnetHost {
     }
 
     @Override
-    public synchronized TelnetPersona attachPersona(PrintWriter out, String remoteAddress) {
+    public synchronized InstancePersona attachPersona(PrintWriter out, String remoteAddress) {
         return attachPersona("telnet/" + nextPersonaId++, out, remoteAddress, true);
     }
 
-    synchronized TelnetPersona attachPersona(
+    synchronized InstancePersona attachPersona(
             String sessionId,
             PrintWriter out,
             String remoteAddress,
@@ -203,34 +198,34 @@ final class TelnetMud implements TelnetHost {
         }
 
         int id = nextPersonaId++;
-        TelnetPersona persona = attachMudlibPlayer(id, sessionId, out, remoteAddress, announceConnection, null, "");
+        InstancePersona persona = attachMudlibPlayer(id, sessionId, out, remoteAddress, announceConnection, null, "");
         if (persona != null) {
             return persona;
         }
         return attachHostPersona(id, sessionId, out, remoteAddress, announceConnection);
     }
 
-    synchronized TelnetPersona attachVisitingPersona(
+    synchronized InstancePersona attachVisitingPersona(
             String sessionId,
             PrintWriter out,
             String remoteAddress,
             String userId,
             String gender) {
         int id = nextPersonaId++;
-        TelnetPersona persona = attachMudlibPlayer(id, sessionId, out, remoteAddress, false, userId, gender);
+        InstancePersona persona = attachMudlibPlayer(id, sessionId, out, remoteAddress, false, userId, gender);
         if (persona != null) {
             return persona;
         }
         return attachHostPersona(id, sessionId, out, remoteAddress, userId, false);
     }
 
-    synchronized void suspendPersonaForTransfer(TelnetPersona persona) {
+    synchronized void suspendPersonaForTransfer(InstancePersona persona) {
         if (persona != null && isAttached(persona)) {
             runtime.unbindSession(persona.sessionId());
         }
     }
 
-    synchronized TelnetPersona resumePersona(TelnetPersona suspended, PrintWriter out, String remoteAddress) {
+    synchronized InstancePersona resumePersona(InstancePersona suspended, PrintWriter out, String remoteAddress) {
         MudlibProjection projection = new LegacyPlayerObjectAdapter(playerObjectPath)
                 .combinedProjection(suspended.actor());
         runtime.bindSession(suspended.sessionId(), suspended.actor(), remoteAddress, text -> {
@@ -240,7 +235,7 @@ final class TelnetMud implements TelnetHost {
         runtime.clearOutputTranscript();
         runtime.invokeOptionalObject(suspended.actor(), "return_from_exhibit");
         runtime.clearOutputTranscript();
-        return new TelnetPersona(
+        return new InstancePersona(
                 this,
                 suspended.sessionId(),
                 suspended.objectId(),
@@ -255,7 +250,7 @@ final class TelnetMud implements TelnetHost {
         return "lpmuseum".equals(gameId) && "persona/visitor".equals(playerObjectPath);
     }
 
-    private TelnetPersona attachLpmuseumLoginSession(
+    private InstancePersona attachLpmuseumLoginSession(
             String sessionId,
             PrintWriter out,
             String remoteAddress,
@@ -269,7 +264,7 @@ final class TelnetMud implements TelnetHost {
             messagePlayerForSession(sessionId, CONNECTED_BANNER);
         }
         LpmuseumLoginSession login = new LpmuseumLoginSession(this, sessionId, remoteAddress);
-        TelnetPersona persona = new TelnetPersona(
+        InstancePersona persona = new InstancePersona(
                 this,
                 sessionId,
                 "player/" + sessionId,
@@ -280,11 +275,11 @@ final class TelnetMud implements TelnetHost {
         return persona;
     }
 
-    private TelnetPersona attachAuthenticatedLpmuseumPersona(
+    private InstancePersona attachAuthenticatedLpmuseumPersona(
             String sessionId,
             PrintWriter out,
             String remoteAddress,
-            LpmuseumAccount account) {
+            Account account) {
         int id = nextPersonaId++;
         Object actor = runtime.cloneObject(playerObjectPath);
         String objectId = Objects.requireNonNullElse(runtime.objectId(actor), playerObjectPath + "#" + id);
@@ -315,11 +310,11 @@ final class TelnetMud implements TelnetHost {
         runtime.invokeObject(actor, "enter_museum");
         forceLookCommand(actor);
         runtime.clearOutputTranscript();
-        return new TelnetPersona(this, sessionId, objectId, account.personaName(), account.accountId(), account.gender(), actor,
+        return new InstancePersona(this, sessionId, objectId, account.personaName(), account.accountId(), account.gender(), actor,
                 remoteAddress);
     }
 
-    private TelnetPersona attachMudlibPlayer(
+    private InstancePersona attachMudlibPlayer(
             int id,
             String sessionId,
             PrintWriter out,
@@ -363,7 +358,7 @@ final class TelnetMud implements TelnetHost {
             } else {
                 invokePlayerSessionConnected(actor);
             }
-            return new TelnetPersona(this, sessionId, objectId, name, visitingUserId != null ? visitingUserId : name,
+            return new InstancePersona(this, sessionId, objectId, name, visitingUserId != null ? visitingUserId : name,
                     visitingGender, actor, remoteAddress);
         } catch (RuntimeException | LinkageError e) {
             System.err.println("Could not attach mudlib player object " + playerObjectPath
@@ -373,7 +368,7 @@ final class TelnetMud implements TelnetHost {
         }
     }
 
-    private TelnetPersona attachHostPersona(
+    private InstancePersona attachHostPersona(
             int id,
             String sessionId,
             PrintWriter out,
@@ -382,7 +377,7 @@ final class TelnetMud implements TelnetHost {
         return attachHostPersona(id, sessionId, out, remoteAddress, "player " + id, announceConnection);
     }
 
-    private TelnetPersona attachHostPersona(
+    private InstancePersona attachHostPersona(
             int id,
             String sessionId,
             PrintWriter out,
@@ -409,7 +404,7 @@ final class TelnetMud implements TelnetHost {
             messagePlayerForSession(sessionId, CONNECTED_BANNER);
             messagePlayerForSession(sessionId, "Attached " + name + " in " + startingPlacePath + ".\n");
         }
-        return new TelnetPersona(this, sessionId, objectId, name, actor, remoteAddress);
+        return new InstancePersona(this, sessionId, objectId, name, actor, remoteAddress);
     }
 
     private void messagePlayerForSession(String sessionId, String text) {
@@ -432,11 +427,11 @@ final class TelnetMud implements TelnetHost {
     }
 
     @Override
-    public synchronized void detachPersona(TelnetPersona persona) {
+    public synchronized void detachPersona(InstancePersona persona) {
         detachPersona(persona, true);
     }
 
-    synchronized void detachPersona(TelnetPersona persona, boolean invokeDisconnectLifecycle) {
+    synchronized void detachPersona(InstancePersona persona, boolean invokeDisconnectLifecycle) {
         if (persona != null) {
             if (persona.actor() instanceof LpmuseumLoginSession) {
                 runtime.unbindSession(persona.sessionId());
@@ -466,7 +461,7 @@ final class TelnetMud implements TelnetHost {
     }
 
     @Override
-    public synchronized Object dispatch(TelnetPersona persona, PrintWriter out, String commandLine) {
+    public synchronized Object dispatch(InstancePersona persona, PrintWriter out, String commandLine) {
         try {
             return dispatchUnchecked(persona, out, commandLine);
         } catch (RuntimeException | LinkageError e) {
@@ -474,7 +469,7 @@ final class TelnetMud implements TelnetHost {
         }
     }
 
-    private Object dispatchUnchecked(TelnetPersona persona, PrintWriter out, String commandLine) {
+    private Object dispatchUnchecked(InstancePersona persona, PrintWriter out, String commandLine) {
         if (persona.actor() instanceof LpmuseumLoginSession login) {
             LpmuseumLoginSession.Result result = login.handle(commandLine, out);
             if (result.replacement().isPresent()) {
@@ -517,7 +512,7 @@ final class TelnetMud implements TelnetHost {
     }
 
     private Object handleRuntimeError(
-            TelnetPersona persona,
+            InstancePersona persona,
             PrintWriter out,
             String context,
             String operation,
@@ -533,7 +528,7 @@ final class TelnetMud implements TelnetHost {
     }
 
     private boolean invokeRuntimeErrorHandler(
-            TelnetPersona persona,
+            InstancePersona persona,
             String context,
             String operation,
             Throwable error) {
@@ -558,7 +553,7 @@ final class TelnetMud implements TelnetHost {
         }
     }
 
-    private Object errorHandlerObject(TelnetPersona persona) {
+    private Object errorHandlerObject(InstancePersona persona) {
         String boundaryObjectPath = bootResult.mudlibBoundary().boundaryObjectPath().orElse(null);
         if (boundaryObjectPath != null) {
             return runtime.loadOrGetObject(boundaryObjectPath);
@@ -567,7 +562,7 @@ final class TelnetMud implements TelnetHost {
     }
 
     @Override
-    public synchronized void printPromptIfReady(TelnetPersona persona, PrintWriter out) {
+    public synchronized void printPromptIfReady(InstancePersona persona, PrintWriter out) {
         if (persona.actor() instanceof LpmuseumLoginSession) {
             return;
         }
@@ -582,7 +577,7 @@ final class TelnetMud implements TelnetHost {
     }
 
     @Override
-    public synchronized boolean isCapturingInput(TelnetPersona persona) {
+    public synchronized boolean isCapturingInput(InstancePersona persona) {
         if (persona != null && persona.actor() instanceof LpmuseumLoginSession) {
             return true;
         }
@@ -590,7 +585,7 @@ final class TelnetMud implements TelnetHost {
     }
 
     @Override
-    public synchronized boolean isCapturingNoEchoInput(TelnetPersona persona) {
+    public synchronized boolean isCapturingNoEchoInput(InstancePersona persona) {
         if (persona != null && persona.actor() instanceof LpmuseumLoginSession login) {
             return login.noEcho();
         }
@@ -598,11 +593,11 @@ final class TelnetMud implements TelnetHost {
     }
 
     @Override
-    public synchronized boolean isAttached(TelnetPersona persona) {
+    public synchronized boolean isAttached(InstancePersona persona) {
         return persona != null && runtime.sessionRecord(persona.sessionId()).isPresent();
     }
 
-    private void removeWorldEntity(TelnetPersona persona) {
+    private void removeWorldEntity(InstancePersona persona) {
         if (persona != null) {
             worldRuntime.removeEntity(persona.objectId());
         }
@@ -657,12 +652,12 @@ final class TelnetMud implements TelnetHost {
         messagePlayerForSession(sessionId, text);
     }
 
-    private Optional<LpmuseumAccount> loadLpmuseumAccount(String accountId) {
-        return LpmuseumAccountStore.load(mudlibRoot, accountId);
+    private Optional<Account> loadLpmuseumAccount(String accountId) {
+        return accountStore.load(mudlibRoot, accountId);
     }
 
-    private void saveLpmuseumAccount(LpmuseumAccount account) {
-        LpmuseumAccountStore.save(mudlibRoot, account);
+    private void saveLpmuseumAccount(Account account) {
+        accountStore.save(mudlibRoot, account);
     }
 
     private String hashPassword(String password) {
@@ -702,11 +697,11 @@ final class TelnetMud implements TelnetHost {
 
     @FunctionalInterface
     interface TransferHandler {
-        int requestTransfer(TelnetMud sourceMud, Object actor, String gameId);
+        int requestTransfer(MudInstance sourceMud, Object actor, String gameId);
     }
 
     private static final class LpmuseumLoginSession {
-        private final TelnetMud mud;
+        private final MudInstance mud;
         private final String sessionId;
         private final String remoteAddress;
         private State state = State.ACCOUNT_ID;
@@ -717,7 +712,7 @@ final class TelnetMud implements TelnetHost {
         private String passwordHash = "";
         private int passwordAttempts;
 
-        private LpmuseumLoginSession(TelnetMud mud, String sessionId, String remoteAddress) {
+        private LpmuseumLoginSession(MudInstance mud, String sessionId, String remoteAddress) {
             this.mud = mud;
             this.sessionId = sessionId;
             this.remoteAddress = remoteAddress;
@@ -755,7 +750,7 @@ final class TelnetMud implements TelnetHost {
             }
 
             accountId = normalized;
-            Optional<LpmuseumAccount> account = mud.loadLpmuseumAccount(accountId);
+            Optional<Account> account = mud.loadLpmuseumAccount(accountId);
             if (account.isPresent() && !account.orElseThrow().passwordHash().isEmpty()) {
                 passwordAttempts = 0;
                 passwordHash = account.orElseThrow().passwordHash();
@@ -787,7 +782,7 @@ final class TelnetMud implements TelnetHost {
         }
 
         private Result handleLoginPassword(String line, PrintWriter out) {
-            Optional<LpmuseumAccount> account = mud.loadLpmuseumAccount(accountId);
+            Optional<Account> account = mud.loadLpmuseumAccount(accountId);
             if (account.isPresent() && mud.verifyPassword(line, account.orElseThrow().passwordHash())) {
                 return enter(out, account.orElseThrow());
             }
@@ -870,13 +865,13 @@ final class TelnetMud implements TelnetHost {
                 return Result.continueLogin();
             }
 
-            LpmuseumAccount account = new LpmuseumAccount(accountId, personaName, normalized, email, passwordHash);
+            Account account = new Account(accountId, personaName, normalized, email, passwordHash);
             mud.saveLpmuseumAccount(account);
             return enter(out, account);
         }
 
-        private Result enter(PrintWriter out, LpmuseumAccount account) {
-            TelnetPersona replacement = mud.attachAuthenticatedLpmuseumPersona(
+        private Result enter(PrintWriter out, Account account) {
+            InstancePersona replacement = mud.attachAuthenticatedLpmuseumPersona(
                     sessionId,
                     out,
                     remoteAddress,
@@ -994,7 +989,7 @@ final class TelnetMud implements TelnetHost {
             GENDER
         }
 
-        private record Result(boolean shouldDisconnect, Optional<TelnetPersona> replacement) {
+        private record Result(boolean shouldDisconnect, Optional<InstancePersona> replacement) {
             private static Result continueLogin() {
                 return new Result(false, Optional.empty());
             }
@@ -1003,98 +998,10 @@ final class TelnetMud implements TelnetHost {
                 return new Result(true, Optional.empty());
             }
 
-            private static Result replaceWith(TelnetPersona persona) {
+            private static Result replaceWith(InstancePersona persona) {
                 return new Result(false, Optional.of(persona));
             }
         }
     }
 
-    private record LpmuseumAccount(
-            String accountId,
-            String personaName,
-            String gender,
-            String email,
-            String passwordHash) {}
-
-    private static final class LpmuseumAccountStore {
-        private LpmuseumAccountStore() {}
-
-        private static Optional<LpmuseumAccount> load(Path mudlibRoot, String accountId) {
-            Path path = accountPath(mudlibRoot, accountId);
-            if (!Files.isRegularFile(path)) {
-                return Optional.empty();
-            }
-            try {
-                JsonNode fields = JSON.readTree(path.toFile()).path("fields");
-                String personaName = field(fields, "persona_name", "visitor");
-                return Optional.of(new LpmuseumAccount(
-                        field(fields, "account_id", accountId),
-                        personaName.isBlank() ? "visitor" : personaName,
-                        field(fields, "gender", "none"),
-                        field(fields, "email", ""),
-                        field(fields, "password_hash", "")));
-            } catch (IOException e) {
-                return Optional.empty();
-            }
-        }
-
-        private static void save(Path mudlibRoot, LpmuseumAccount account) {
-            Path path = accountPath(mudlibRoot, account.accountId());
-            ObjectNode root = JSON.createObjectNode();
-            ObjectNode fields = JSON.createObjectNode();
-            root.put("format", "jvmud.lpc-object-state");
-            root.put("version", 1);
-            root.set("fields", fields);
-            putString(fields, "lpmuseum.account.account_id", account.accountId());
-            putString(fields, "lpmuseum.account.password_hash", account.passwordHash());
-            putString(fields, "lpmuseum.account.email", account.email());
-            putString(fields, "lpmuseum.account.gender", account.gender());
-            putString(fields, "lpmuseum.account.persona_name", account.personaName().toLowerCase());
-            putInt(fields, "lpmuseum.account.account_created", 1);
-            try {
-                Files.createDirectories(path.getParent());
-                JSON.writeValue(path.toFile(), root);
-            } catch (IOException e) {
-                throw new IllegalStateException("Could not save LPMuseum account " + account.accountId(), e);
-            }
-        }
-
-        private static Path accountPath(Path mudlibRoot, String accountId) {
-            return mudlibRoot.resolve("accounts").resolve(accountId + ".o").normalize();
-        }
-
-        private static String field(JsonNode fields, String suffix, String fallback) {
-            if (!fields.isObject()) {
-                return fallback;
-            }
-            var names = fields.fieldNames();
-            while (names.hasNext()) {
-                String name = names.next();
-                if (name.endsWith("." + suffix)) {
-                    JsonNode value = fields.path(name).path("value");
-                    if (value.isTextual()) {
-                        return value.asText();
-                    }
-                    if (value.isInt()) {
-                        return Integer.toString(value.asInt());
-                    }
-                }
-            }
-            return fallback;
-        }
-
-        private static void putString(ObjectNode fields, String name, String value) {
-            ObjectNode field = JSON.createObjectNode();
-            field.put("type", "string");
-            field.put("value", value != null ? value : "");
-            fields.set(name, field);
-        }
-
-        private static void putInt(ObjectNode fields, String name, int value) {
-            ObjectNode field = JSON.createObjectNode();
-            field.put("type", "int");
-            field.put("value", value);
-            fields.set(name, field);
-        }
-    }
 }

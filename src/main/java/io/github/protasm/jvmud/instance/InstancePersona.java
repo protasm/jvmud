@@ -1,10 +1,10 @@
-package io.github.protasm.jvmud.server;
+package io.github.protasm.jvmud.instance;
 
 import java.util.Objects;
 
 /** Active server-side binding for one telnet player's current mudlib Persona. */
-final class TelnetPersona {
-    private TelnetMud mud;
+public final class InstancePersona {
+    private MudInstance mud;
     private String objectId;
     private String name;
     private String userId;
@@ -13,12 +13,12 @@ final class TelnetPersona {
     private final String sessionId;
     private final String remoteAddress;
 
-    TelnetPersona(TelnetMud mud, String sessionId, String objectId, String name, Object actor, String remoteAddress) {
+    InstancePersona(MudInstance mud, String sessionId, String objectId, String name, Object actor, String remoteAddress) {
         this(mud, sessionId, objectId, name, name, "", actor, remoteAddress);
     }
 
-    TelnetPersona(
-            TelnetMud mud,
+    InstancePersona(
+            MudInstance mud,
             String sessionId,
             String objectId,
             String name,
@@ -36,7 +36,7 @@ final class TelnetPersona {
         this.remoteAddress = remoteAddress;
     }
 
-    TelnetMud mud() {
+    MudInstance mud() {
         return mud;
     }
 
@@ -68,7 +68,7 @@ final class TelnetPersona {
         return remoteAddress;
     }
 
-    void replaceWith(TelnetPersona replacement) {
+    void replaceWith(InstancePersona replacement) {
         Objects.requireNonNull(replacement, "replacement");
         this.mud = replacement.mud;
         this.objectId = replacement.objectId;

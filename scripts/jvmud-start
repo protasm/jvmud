@@ -6,7 +6,7 @@ ROOT_DIR=$(dirname -- "$SCRIPT_DIR")
 cd "$ROOT_DIR"
 
 mvn -q compile dependency:build-classpath \
-  -Dmdep.outputFile=target/jvmud-server-classpath.txt >/dev/null
+  -Dmdep.outputFile=target/jvmud-transport-classpath.txt >/dev/null
 
-CP="target/classes:$(cat target/jvmud-server-classpath.txt)"
-exec java -cp "$CP" io.github.protasm.jvmud.server.TelnetServer "$@"
+CP="target/classes:$(cat target/jvmud-transport-classpath.txt)"
+exec java -cp "$CP" io.github.protasm.jvmud.transport.telnet.TelnetServer "$@"

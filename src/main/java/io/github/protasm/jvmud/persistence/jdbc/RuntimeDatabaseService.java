@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.compiler.runtime;
+package io.github.protasm.jvmud.persistence.jdbc;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

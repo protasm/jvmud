@@ -1,7 +1,8 @@
 # JVMud Agent Notes
 
 This repository is the JVMud project. It currently contains the JVMud compiler,
-engine, server, CLI, bundled mudlibs, and static docs.
+engine, hosted instance, transport, persistence, CLI, bundled mudlibs, and
+static docs.
 
 ## Top-Level Areas
 
@@ -11,7 +12,14 @@ engine, server, CLI, bundled mudlibs, and static docs.
 - `src/main/java/io/github/protasm/jvmud/engine/`: JVMud engine code. Do not assume this package is
   the same thing as `src/main/java/io/github/protasm/jvmud/compiler/runtime/`,
   which contains compiler helper classes used by generated code.
-- `src/main/java/io/github/protasm/jvmud/server/`: JVMud Telnet server code.
+- `src/main/java/io/github/protasm/jvmud/instance/`: JVMud hosted-instance code.
+  Work here for mudlib boot, shared runtime/world assembly, lifecycle hooks,
+  player/persona attachment, and multi-mud transfer.
+- `src/main/java/io/github/protasm/jvmud/transport/`: JVMud player transport
+  code. Work here for Telnet sockets, sessions, protocol mechanics, line I/O,
+  and connection lifecycle.
+- `src/main/java/io/github/protasm/jvmud/persistence/`: JVMud durable storage
+  adapters for filesystem, JDBC, and future persistence backends.
 - `src/main/java/io/github/protasm/jvmud/cli/`: JVMud local admin CLI code.
 - `mudlibs/lp245/`: LPC mudlib source. `obj/` contains reusable object definitions and
   `room/` contains world/room content, headers, and startup-oriented files.
@@ -36,14 +44,16 @@ command.
 
 - Inspect the relevant tree before changing it; this repo is still being shaped
   after migration.
-- Keep compiler changes under `src/main/java/io/github/protasm/jvmud/compiler/` unless the task is explicitly about
-  engine, mudlibs/lp245, or docs.
+- Keep compiler changes under `src/main/java/io/github/protasm/jvmud/compiler/`
+  unless the task is explicitly about engine, instance, transport,
+  persistence, mudlibs/lp245, or docs.
 - Treat `mudlibs/lp245/` as LPC source/content, not Java module source. Preserve
   upstream mudlib files by default; compatibility belongs in dedicated shim
   objects and focused compiler/runtime support.
 - Do not change the compiler to accept untyped LPC method declarations or
   untyped method parameters. When vanilla mudlib files need to compile, add
   explicit LPC return and parameter types to those mudlib sources instead.
-- Keep engine/server concepts separate from compiler execution helpers.
+- Keep engine, instance, transport, and persistence concepts separate from
+  compiler execution helpers.
 - Prefer small documentation updates that reflect the current repo state over
   speculative roadmaps.

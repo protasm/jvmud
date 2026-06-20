@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.server;
+package io.github.protasm.jvmud.instance;
 
 import io.github.protasm.jvmud.compiler.exec.LPCLoadResult;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;

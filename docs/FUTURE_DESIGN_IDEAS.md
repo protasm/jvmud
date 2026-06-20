@@ -41,10 +41,10 @@ Design pressure:
 JVMud may eventually need engine-side support for player input throttling, with
 room for mudlib-specific policy.
 
-The engine/server should own basic session protection because raw input arrives
-at the transport boundary before it becomes world behavior. A client should not
-be able to flood command dispatch, fill queues, starve other sessions, or hammer
-mudlib code without limits.
+Transport should own basic session protection because raw input arrives there
+before it becomes instance or world behavior. A client should not be able to
+flood command dispatch, fill queues, starve other sessions, or hammer mudlib
+code without limits.
 
 Possible shape:
 

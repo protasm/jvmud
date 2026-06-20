@@ -1,5 +1,9 @@
-package io.github.protasm.jvmud.server;
+package io.github.protasm.jvmud.transport.telnet;
 
+import io.github.protasm.jvmud.instance.InstanceHost;
+import io.github.protasm.jvmud.instance.MudlibBoot;
+import io.github.protasm.jvmud.instance.MudlibBootResult;
+import io.github.protasm.jvmud.instance.MudlibRouter;
 import io.github.protasm.jvmud.engine.time.WorldClock;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -25,7 +29,7 @@ public final class TelnetServer implements AutoCloseable {
     private final Path mudlibRoot;
     private final String configObjectPath;
     private final ExecutorService sessions;
-    private TelnetHost mud;
+    private InstanceHost mud;
     private WorldClock worldClock;
     private ServerSocket serverSocket;
     private Thread acceptThread;
@@ -137,7 +141,7 @@ public final class TelnetServer implements AutoCloseable {
         if (running) {
             return;
         }
-        mud = MultiMudTelnetHost.boot(mudlibRoot, configObjectPath);
+        mud = MudlibRouter.boot(mudlibRoot, configObjectPath);
         startWorldClock();
         serverSocket = new ServerSocket(requestedPort, 50, InetAddress.getByName(bindAddress));
         running = true;

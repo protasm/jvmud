@@ -1,5 +1,7 @@
-package io.github.protasm.jvmud.server;
+package io.github.protasm.jvmud.transport.telnet;
 
+import io.github.protasm.jvmud.instance.InstanceHost;
+import io.github.protasm.jvmud.instance.InstancePersona;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -19,9 +21,9 @@ final class TelnetSession implements Runnable {
     private static final int ECHO = 1;
 
     private final Socket socket;
-    private final TelnetHost mud;
+    private final InstanceHost mud;
 
-    TelnetSession(Socket socket, TelnetHost mud) {
+    TelnetSession(Socket socket, InstanceHost mud) {
         this.socket = socket;
         this.mud = Objects.requireNonNull(mud, "mud");
     }
@@ -195,16 +197,16 @@ final class TelnetSession implements Runnable {
     }
 
     private static final class SessionState {
-        private final TelnetPersona persona;
+        private final InstancePersona persona;
         private boolean running = true;
         private boolean detached;
         private boolean noEchoNegotiated;
 
-        private SessionState(TelnetPersona persona) {
+        private SessionState(InstancePersona persona) {
             this.persona = persona;
         }
 
-        private void detach(TelnetHost mud) {
+        private void detach(InstanceHost mud) {
             if (detached) {
                 return;
             }

@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.server;
+package io.github.protasm.jvmud.instance;
 
 import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;

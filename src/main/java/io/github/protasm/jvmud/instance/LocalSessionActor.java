@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.server;
+package io.github.protasm.jvmud.instance;
 
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.engine.world.Entity;
@@ -14,7 +14,7 @@ public final class LocalSessionActor {
     private final Entity entity;
     private final String name;
 
-    LocalSessionActor(LPCRuntime runtime, WorldRuntime worldRuntime, Entity entity, String name) {
+    public LocalSessionActor(LPCRuntime runtime, WorldRuntime worldRuntime, Entity entity, String name) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
         this.entity = Objects.requireNonNull(entity, "entity");

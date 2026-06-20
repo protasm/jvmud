@@ -77,7 +77,7 @@ include::developer-reference/index.adoc[]
 
 include::developer-reference/compiler-pipeline.adoc[]
 
-include::developer-reference/runtime-server-internals.adoc[]
+include::developer-reference/instance-transport-internals.adoc[]
 
 include::developer-reference/testing-verification.adoc[]
 
