@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+Usage: scripts/install-realms-database.sh [--delete] [--mysql PATH]
+
+Runs RealmsMUD's own installDatabase.pl script and synchronizes the generated
+realmslib password into mudlibs/realmsmud/jvmud/realmsmud.config.
+
+Options:
+  --delete      Tell the Realms installer to delete/recreate an existing RealmsLib database.
+  --mysql PATH  Path to the real mysql client. Defaults to the first mysql on PATH.
+
+The script prompts for the MySQL root password. Press Enter for a blank Homebrew
+root password.
+USAGE
+}
+
+delete_existing=false
+mysql_bin=""
+while (($#)); do
+    case "$1" in
+        --delete)
+            delete_existing=true
+            shift
+            ;;
+        --mysql)
+            if (($# < 2)); then
+                echo "ERROR: --mysql requires a path." >&2
+                exit 2
+            fi
+            mysql_bin="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "ERROR: Unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+done
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+installer="$repo_root/mudlibs/realmsmud/source/secure/simulated-efuns/database/installDatabase.pl"
+config="$repo_root/mudlibs/realmsmud/jvmud/realmsmud.config"
+
+if [[ ! -f "$installer" ]]; then
+    echo "ERROR: Realms installer not found at $installer" >&2
+    exit 1
+fi
+
+if [[ -z "$mysql_bin" ]]; then
+    mysql_bin="$(command -v mysql || true)"
+fi
+if [[ -z "$mysql_bin" || ! -x "$mysql_bin" ]]; then
+    echo "ERROR: mysql executable not found. Pass --mysql PATH." >&2
+    exit 1
+fi
+
+read -r -s -p "MySQL root password (press Enter if blank): " mysql_root_password
+printf '\n'
+
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/jvmud-realms-db.XXXXXX")"
+trap 'rm -rf "$tmp_dir"' EXIT
+
+cat > "$tmp_dir/python" <<'PYSHIM'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "-c" && "${2:-}" == *"uuid.uuid4().hex"* ]]; then
+    uuidgen | tr '[:upper:]' '[:lower:]' | tr -d '-' | tr -d '\n'
+    exit 0
+fi
+echo "ERROR: JVMud's Realms installer shim only supports Realms' uuid command." >&2
+exit 1
+PYSHIM
+chmod +x "$tmp_dir/python"
+
+mysql_wrapper="$tmp_dir/mysql"
+cat > "$mysql_wrapper" <<'WRAPPER'
+#!/usr/bin/env bash
+set -euo pipefail
+real_mysql="${JVMUD_REAL_MYSQL:?}"
+args=()
+for arg in "$@"; do
+    # Realms' installer builds "mysql -u root -p$password". With a blank
+    # Homebrew root password that becomes a bare "-p", which forces repeated
+    # interactive prompts. Strip only that exact legacy blank-password form.
+    if [[ "$arg" == "-p" ]]; then
+        continue
+    fi
+    args+=("$arg")
+done
+exec "$real_mysql" "${args[@]}"
+WRAPPER
+chmod +x "$mysql_wrapper"
+
+responses="$mysql_wrapper"$'\n'"$mysql_root_password"$'\n'
+if [[ "$delete_existing" == true ]]; then
+    responses+="delete"$'\n'
+else
+    responses+=$'\n'
+fi
+
+output_file="$tmp_dir/install.out"
+if ! JVMUD_REAL_MYSQL="$mysql_bin" PATH="$tmp_dir:$PATH" perl "$installer" <<< "$responses" | tee "$output_file"; then
+    echo "ERROR: Realms installer failed." >&2
+    exit 1
+fi
+
+generated_password="$(
+    sed -n "s/^The password for the user 'realmslib' is '\\([^']*\\)'.*/\\1/p" "$output_file" | tail -n 1
+)"
+
+if [[ -n "$generated_password" ]]; then
+    python3 - "$config" "$generated_password" <<'PY'
+from pathlib import Path
+import sys
+
+config = Path(sys.argv[1])
+password = sys.argv[2]
+text = config.read_text()
+lines = text.splitlines()
+updated = False
+for index, line in enumerate(lines):
+    if line.startswith("database.password"):
+        lines[index] = f"database.password = {password}"
+        updated = True
+        break
+if not updated:
+    lines.append(f"database.password = {password}")
+config.write_text("\n".join(lines) + "\n")
+PY
+    echo "Updated JVMud Realms database password in $config"
+else
+    echo "Realms installer did not create a new password; leaving $config unchanged."
+    generated_password="$(sed -n 's/^database.password[[:space:]]*=[[:space:]]*//p' "$config" | tail -n 1)"
+fi
+
+if [[ -z "$generated_password" ]]; then
+    echo "ERROR: No realmslib password available for verification." >&2
+    exit 1
+fi
+
+"$mysql_bin" -h 127.0.0.1 -P 3306 -u realmslib "-p$generated_password" RealmsLib \
+    -e "SELECT DATABASE(); SHOW TABLES LIKE 'versionInfo';" >/dev/null
+
+echo "Verified realmslib can connect to RealmsLib using the JVMud config password."
