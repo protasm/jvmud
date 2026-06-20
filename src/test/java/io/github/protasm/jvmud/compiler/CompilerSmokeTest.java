@@ -561,6 +561,41 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeCoercesMixedValuesInStringContexts() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_string_context.c", """
+                mapping data = ([ "text": "kept", "number": 7, "false": 0 ]);
+
+                mixed query(string key) {
+                    return data[key];
+                }
+
+                string echo(string value) {
+                    return value;
+                }
+
+                string local(string key) {
+                    string value = query(key);
+                    return value;
+                }
+
+                string returned(string key) {
+                    return query(key);
+                }
+
+                string argument(string key) {
+                    return echo(query(key));
+                }
+                """);
+
+        assertEquals("kept", object.invoke("local", "text"));
+        assertEquals("7", object.invoke("local", "number"));
+        assertNull(object.invoke("local", "false"));
+        assertEquals("7", object.invoke("returned", "number"));
+        assertEquals("7", object.invoke("argument", "number"));
+    }
+
+    @Test
     void runtimeSupportsFalseSentinelInCollectionContexts() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/collection_false_sentinel.c", """

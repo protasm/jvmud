@@ -2185,6 +2185,16 @@ public final class BytecodeCompiler {
             mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
             mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
             return;
+        case STRING:
+            if (source != null && !source.isReferenceLike())
+                boxIfNeeded(mv, source);
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Type.getInternalName(RuntimeCoercions.class),
+                    "toStringValue",
+                    "(Ljava/lang/Object;)Ljava/lang/String;",
+                    false);
+            return;
         default:
             if (source != null && !source.isReferenceLike())
                 boxIfNeeded(mv, source);
