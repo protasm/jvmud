@@ -3324,6 +3324,40 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void circularSharedObjectLoadReturnsRegisteredInProgressSingleton() throws Exception {
+        Files.writeString(tempDir.resolve("alpha.c"), """
+                object beta = jvmud_load_lpc_object("beta");
+
+                object beta_ref() {
+                    return beta;
+                }
+
+                int beta_has_alpha() {
+                    return jvmud_invoke_lpc_object(beta, "has_alpha", 0);
+                }
+                """);
+        Files.writeString(tempDir.resolve("beta.c"), """
+                object alpha = jvmud_load_lpc_object("alpha");
+
+                int has_alpha() {
+                    return alpha ? 1 : 0;
+                }
+
+                object alpha_ref() {
+                    return alpha;
+                }
+                """);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+
+        Object alpha = runtime.loadOrGetObject("alpha");
+        Object beta = runtime.invokeObject(alpha, "beta_ref");
+
+        assertSame(alpha, runtime.invokeObject(beta, "alpha_ref"));
+        assertEquals(1, runtime.invokeObject(alpha, "beta_has_alpha"));
+    }
+
+    @Test
     void objectDestructionCanNotifyMudlibBeforeCleanup() throws Exception {
         LPCRuntime runtime = destructionRuntime("""
                 mixed prepare_destruct(mixed ob) {

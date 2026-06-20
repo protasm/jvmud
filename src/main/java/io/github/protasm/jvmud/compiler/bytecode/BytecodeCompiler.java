@@ -119,10 +119,6 @@ public final class BytecodeCompiler {
         mv.visitCode();
         mv.visitVarInsn(ALOAD, 0);
         mv.visitMethodInsn(INVOKESPECIAL, parentName, "<init>", "()V", false);
-
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitMethodInsn(INVOKESPECIAL, internalName, INIT_METHOD_NAME, INIT_METHOD_DESCRIPTOR, false);
-
         mv.visitInsn(RETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
