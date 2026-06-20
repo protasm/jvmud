@@ -72,7 +72,7 @@ final class AdminCliTest {
         assertTrue(output.contains("Loaded room"));
         assertTrue(output.contains("Cloned thing as thing"));
         assertTrue(output.contains("thing is in room"));
-        assertTrue(output.contains("runtime id: thing#clone"));
+        assertTrue(output.contains("runtime id: thing#clone1"));
         assertTrue(output.contains("environment: room"));
         assertTrue(output.contains("string name = \"a small thing\""));
         assertTrue(output.contains("[thing]"));

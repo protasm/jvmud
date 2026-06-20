@@ -317,7 +317,8 @@ public final class LPCRuntime {
     /**
      * Creates a new clone of a compiled LPC object.
      *
-     * <p>The source class is compiled if needed. Each clone receives a unique runtime object id.</p>
+     * <p>The source class is compiled if needed. Each clone receives a unique runtime object id
+     * using the canonical source id plus an always-numbered {@code #cloneN} suffix.</p>
      */
     public Object cloneObject(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
@@ -943,11 +944,11 @@ public final class LPCRuntime {
     }
 
     private String nextCloneId(String internalName) {
-        String objectId = internalName + "#clone";
         int suffix = 1;
+        String objectId = internalName + "#clone" + suffix;
         while (runtimeContext.getObject(objectId) != null) {
-            objectId = internalName + "#clone" + suffix;
             suffix++;
+            objectId = internalName + "#clone" + suffix;
         }
         return objectId;
     }

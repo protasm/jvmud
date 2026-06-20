@@ -105,7 +105,7 @@ with connect_with_retry() as sock:
     transcript = read_until(sock, "What is your name: ") + read_tail(sock)
     if "JVMud telnet." not in transcript:
         raise AssertionError(f"missing telnet greeting:\n{transcript}")
-    if "Attached player 1 as obj/player#clone" not in transcript:
+    if "Attached player 1 as obj/player#clone1" not in transcript:
         raise AssertionError(f"did not attach configured mudlib player object:\n{transcript}")
     if "What is your name: " not in transcript:
         raise AssertionError(f"vanilla player logon did not capture initial input:\n{transcript}")

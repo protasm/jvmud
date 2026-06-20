@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -171,7 +172,7 @@ final class TelnetServerTest {
                 String who = readUntilQuietAfterContains(socket, "Connected Personas in LPMuseum: 2");
                 assertTrue(who.contains("Protasm"), who);
                 assertTrue(who.contains("Solfeggio"), who);
-                assertTrue(who.contains("persona/visitor#clone"), who);
+                assertTrue(who.contains("persona/visitor#clone1"), who);
                 assertTrue(who.contains("from 127.0.0.1"), who);
 
                 socket.getOutputStream().write("smile\n".getBytes(StandardCharsets.UTF_8));
@@ -1071,8 +1072,8 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                assertTrue(readUntilContains(socket, "Attached player 1 as obj/test_player#clone")
-                        .contains("Attached player 1 as obj/test_player#clone"));
+                assertTrue(readUntilContains(socket, "Attached player 1 as obj/test_player#clone1")
+                        .contains("Attached player 1 as obj/test_player#clone1"));
 
                 socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -1182,7 +1183,7 @@ final class TelnetServerTest {
                 }
 
                 int loadbroken(mixed arg) {
-                    jvmud_spawn_lpc_object("obj/broken");
+                    jvmud_clone_lpc_object("obj/broken");
                     return 1;
                 }
                 """);
@@ -1631,7 +1632,7 @@ final class TelnetServerTest {
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
                 String reattached = readUntilContains(socket, "Name: ");
-                assertTrue(reattached.contains("Attached player 4 as obj/test_player#clone"), reattached);
+                assertTrue(reattached.contains("Attached player 4 as obj/test_player#clone3"), reattached);
                 assertTrue(reattached.contains("Name: "), reattached);
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
@@ -1933,6 +1934,47 @@ final class TelnetServerTest {
         assertTrue(result.preloadedObjects().contains("obj/preload"));
         assertEquals("place/start", result.startingRoom());
         assertEquals("local/player", result.actorHandle());
+    }
+
+    @Test
+    void bootPreservesConfigCompatibilityDataWhenBoundaryObjectIsMerged() throws Exception {
+        Files.createDirectories(tempDir.resolve("config"));
+        Files.writeString(tempDir.resolve("config/startup"), """
+                mudlib_object = config/mudlib
+                database.url = jdbc:test://localhost/mud
+                database.user = muduser
+                database.password = mudpass
+                direct_efun.sizeof = jvmud_size
+                ldmud_compat_predefine.__VERSION_MAJOR__ = 3
+                ldmud_compat_predefine.__VERSION_MINOR__ = 6
+                ldmud_compat_function_predefine.__EFUN_DEFINED__.text_width = 0
+                """);
+        Files.writeString(tempDir.resolve("config/mudlib.c"), """
+                string player_prompt() {
+                    return "% ";
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
+                .baseIncludePath(tempDir)
+                .build());
+        CoreEfuns.registerCore(runtime);
+
+        MudlibBootResult result = new MudlibBoot(runtime, tempDir, "config/startup", false).boot();
+        MudlibBoundary boundary = result.worldRuntime().mudlibBoundary();
+
+        assertEquals("config/mudlib", boundary.boundaryObjectPath().orElseThrow());
+        assertEquals("% ", boundary.playerPrompt().orElseThrow());
+        assertEquals("jdbc:test://localhost/mud", boundary.databaseJdbcUrl().orElseThrow());
+        assertEquals("muduser", boundary.databaseUser().orElseThrow());
+        assertEquals("mudpass", boundary.databasePassword().orElseThrow());
+        assertEquals("jvmud_size", boundary.directEfunAliases().get("sizeof"));
+        assertEquals("3", boundary.compatibilityPredefines().get("__VERSION_MAJOR__"));
+        assertEquals("6", boundary.compatibilityPredefines().get("__VERSION_MINOR__"));
+        assertEquals(
+                Map.of("text_width", "0"),
+                boundary.compatibilityFunctionPredefines().get("__EFUN_DEFINED__"));
+        assertEquals(boundary, runtime.mudlibBoundary());
     }
 
     private String uniqueAccountId(String prefix) {

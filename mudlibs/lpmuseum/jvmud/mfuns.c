@@ -35,7 +35,7 @@ mixed command(string command_line) {
 }
 
 object clone_object(string path) {
-  return jvmud_spawn_lpc_object(path);
+  return jvmud_clone_lpc_object(path);
 }
 
 string ctime(int timestamp) {

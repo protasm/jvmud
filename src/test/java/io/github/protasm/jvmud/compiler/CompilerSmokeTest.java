@@ -3272,7 +3272,7 @@ final class CompilerSmokeTest {
                     if (filename != "room/generated")
                         return 0;
 
-                    ob = jvmud_spawn_lpc_object("obj/template");
+                    ob = jvmud_clone_lpc_object("obj/template");
                     jvmud_invoke_lpc_object(ob, "set_label", filename);
 
                     return ob;
@@ -5581,6 +5581,31 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void cloneLpcObjectEfunCreatesNumberedCloneInstances() throws Exception {
+        Files.writeString(tempDir.resolve("thing.c"), """
+                string short() {
+                    return "clone target";
+                }
+                """);
+        Files.writeString(tempDir.resolve("factory.c"), """
+                string make() {
+                    object ob;
+
+                    ob = jvmud_clone_lpc_object("thing");
+                    return jvmud_lpc_object_id(ob);
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+
+        LPCObjectHandle factory = runtime.load(tempDir.resolve("factory.c"));
+
+        assertEquals("thing#clone1", factory.invoke("make"));
+        assertEquals("thing#clone2", factory.invoke("make"));
+    }
+
+    @Test
     void fieldCanShareNameWithMethod() throws Exception {
         Files.writeString(tempDir.resolve("corpse_shape.c"), """
                 int decay;
@@ -5775,7 +5800,7 @@ final class CompilerSmokeTest {
         LPCObjectHandle controller = runtime.loadSource("controller.c", """
                 void setup() {
                     object thing;
-                    thing = jvmud_spawn_lpc_object("thing");
+                    thing = jvmud_clone_lpc_object("thing");
                     jvmud_move_entity(thing, jvmud_current_lpc_object());
                     jvmud_write(jvmud_invoke_lpc_object(jvmud_first_entity_at(jvmud_current_lpc_object()), "short", 0));
                 }

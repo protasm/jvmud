@@ -187,6 +187,14 @@ public final class MudlibBoot {
         return mergeBoundaryDeclarations(configBoundary, objectBoundary);
     }
 
+    /**
+     * Combines the file-backed boundary profile with declarations discovered from the mudlib object.
+     *
+     * <p>The config profile is the authoritative compatibility surface because it can be selected per
+     * mudlib without asking mudlib source to know JVMud-native names. Object declarations still provide
+     * mudlib-owned hooks and defaults. For additive maps, object declarations are applied first and
+     * config declarations second so explicit profile settings win conflicts.</p>
+     */
     private MudlibBoundary mergeBoundaryDeclarations(MudlibBoundary configBoundary, MudlibBoundary objectBoundary) {
         MudlibBoundary.Builder builder = MudlibBoundary.builder();
 
@@ -208,6 +216,9 @@ public final class MudlibBoot {
         configBoundary.initialPlacePath().ifPresent(builder::initialPlacePath);
         configBoundary.preloadFilePath().ifPresent(builder::preloadFilePath);
         configBoundary.preloadObjectPaths().forEach(builder::preloadObjectPath);
+        configBoundary.databaseJdbcUrl().ifPresent(builder::databaseJdbcUrl);
+        configBoundary.databaseUser().ifPresent(builder::databaseUser);
+        configBoundary.databasePassword().ifPresent(builder::databasePassword);
         configBoundary.temporalTickMethod().ifPresent(builder::temporalTickMethod);
         if (!configBoundary.temporalTickInterval().isZero()) {
             builder.temporalTickInterval(configBoundary.temporalTickInterval());
@@ -218,6 +229,14 @@ public final class MudlibBoot {
         configBoundary.lifecycleMethods().forEach(builder::lifecycleMethod);
         objectBoundary.directEfunAliases().forEach(builder::directEfunAlias);
         configBoundary.directEfunAliases().forEach(builder::directEfunAlias);
+        objectBoundary.compatibilityPredefines().forEach(builder::compatibilityPredefine);
+        configBoundary.compatibilityPredefines().forEach(builder::compatibilityPredefine);
+        objectBoundary.compatibilityFunctionPredefines().forEach((macroName, replacements) ->
+                replacements.forEach((argumentName, replacementText) ->
+                        builder.compatibilityFunctionPredefine(macroName, argumentName, replacementText)));
+        configBoundary.compatibilityFunctionPredefines().forEach((macroName, replacements) ->
+                replacements.forEach((argumentName, replacementText) ->
+                        builder.compatibilityFunctionPredefine(macroName, argumentName, replacementText)));
 
         return builder.build();
     }

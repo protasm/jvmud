@@ -114,7 +114,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       paths inherited by a generated object.</li>
  *   <li>{@code jvmud_load_lpc_object(string path) : object} loads or returns the shared LPC
  *       runtime object for a mudlib path.</li>
- *   <li>{@code jvmud_spawn_lpc_object(string path) : object} clones an LPC object.</li>
+ *   <li>{@code jvmud_clone_lpc_object(string path) : object} clones an LPC object and returns the
+ *       new runtime instance.</li>
  *   <li>{@code jvmud_set_entity_location(mixed entity, mixed location) : void} sets a
  *       world-present entity's runtime location/containment without using a mudlib movement wrapper.</li>
  *   <li>{@code jvmud_move_entity(mixed entity, mixed destination) : void} moves an entity or
@@ -505,7 +506,7 @@ public final class CoreEfuns {
         }
         efuns.add(efun("jvmud_load_lpc_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.loadOrGetObject(String.valueOf(args[0]))));
-        efuns.add(efun("jvmud_spawn_lpc_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
+        efuns.add(efun("jvmud_clone_lpc_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.cloneObject(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_move_entity", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> {

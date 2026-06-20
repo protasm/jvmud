@@ -70,7 +70,7 @@ int cat(string path, int line, int count) {
 }
 
 object clone_object(string path) {
-  return jvmud_spawn_lpc_object(path);
+  return jvmud_clone_lpc_object(path);
 }
 
 string capitalize(mixed value) {
