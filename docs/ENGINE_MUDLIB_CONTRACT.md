@@ -3,9 +3,9 @@
 JVMud's engine-mudlib boundary is a native JVMud contract. It is not a promise
 to preserve legacy LP engine vocabulary on the engine side.
 
-`../GLOSSARY.md` defines the vocabulary used by this contract.
+`GLOSSARY.md` defines the vocabulary used by this contract.
 
-The engine owns the concepts described in `../PRINCIPLES.md`: Game, Text,
+The engine owns the concepts described in `PRINCIPLES.md`: Game, Text,
 Multiplayer, Interactive, World (Linked Places, Entities, Movement),
 Persistence, Temporality, Presence, places, links, locations, containment, and
 situated perception. Mudlibs provide world fiction, object behavior, commands,

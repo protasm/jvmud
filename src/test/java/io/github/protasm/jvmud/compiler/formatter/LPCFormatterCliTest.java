@@ -48,7 +48,7 @@ final class LPCFormatterCliTest {
         CommandResult result = run();
 
         assertEquals(2, result.exitCode());
-        assertEquals("Usage: ./jvmud-format <file> [file...]\n", result.err());
+        assertEquals("Usage: scripts/jvmud-format <file> [file...]\n", result.err());
     }
 
     @Test

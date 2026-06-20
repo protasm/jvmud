@@ -59,6 +59,6 @@ public final class LPCFormatterCli {
     }
 
     private void usage(PrintWriter writer) {
-        writer.println("Usage: ./jvmud-format <file> [file...]");
+        writer.println("Usage: scripts/jvmud-format <file> [file...]");
     }
 }

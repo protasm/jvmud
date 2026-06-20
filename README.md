@@ -5,8 +5,8 @@ is organized around the compiler-engine-mudlib triangle: JVMud-owned Java code
 lives under the conventional Maven `src/` tree, while third-party and authored
 mudlibs live under `mudlibs/`.
 
-`PRINCIPLES.md` is the controlling design document for the engine, and
-`GLOSSARY.md` defines JVMud vocabulary. The engine is being built around
+`docs/PRINCIPLES.md` is the controlling design document for the engine, and
+`docs/GLOSSARY.md` defines JVMud vocabulary. The engine is being built around
 JVMud's core concepts: Game, Text, Multiplayer, Interactive, World (Linked
 Places, Entities, Movement), Persistence, Temporality, and Presence. JVMud has
 a sole LPC/LPMud target: compatibility choices should deepen that target, not
@@ -101,14 +101,14 @@ target/jvmud-mudlib-compatibility.md
 That report is deliberately non-failing: it records current parser, semantic,
 function, and runtime gaps while keeping the green build useful.
 
-See `GLOSSARY.md` for JVMud terminology.
-See `ROADMAP.md` for the full-stack project waypoints.
+See `docs/GLOSSARY.md` for JVMud terminology.
+See `docs/ROADMAP.md` for the full-stack project waypoints.
 See `docs/ENGINE_MUDLIB_CONTRACT.md` for the native JVMud boundary between the
 engine and mudlib compatibility layer.
 
 ## Engine-First Development
 
-Development should start from `PRINCIPLES.md`, then make compiler, runtime, CLI,
+Development should start from `docs/PRINCIPLES.md`, then make compiler, runtime, CLI,
 and compatibility choices fit that model. The mudlib is content for JVMud, not a
 constraint that forces the engine to recreate every legacy legacy LPC engine behavior.
 At the same time, the vanilla mudlib source is upstream material and should not
@@ -136,7 +136,7 @@ The `cli` module provides a local, single-user admin shell backed by the real
 object runtime. After building, run it with:
 
 ```text
-./jvmud-admin
+scripts/jvmud-admin
 ```
 
 The launcher compiles the project, then starts the shell with the local build
@@ -162,7 +162,7 @@ The `server` module provides the player-facing game server path. Start a mudlib
 as a persistent Telnet target with:
 
 ```text
-./jvmud-start [mudlib-config-file]
+scripts/jvmud-start [mudlib-config-file]
 ```
 
 The config argument is optional. By default it serves native JVMud LPMuseum from
@@ -193,7 +193,7 @@ scripts/smoke-jvmud-start.sh
 
 - Keep changes scoped to the relevant package under `src/main/java/io/github/protasm/jvmud/`,
   `mudlibs/lp245/`, or `docs/`.
-- Use `PRINCIPLES.md` as the source of truth for engine concepts. Do not edit
+- Use `docs/PRINCIPLES.md` as the source of truth for engine concepts. Do not edit
   vanilla mudlib files unless explicitly asked for style or formatting changes;
   prefer dedicated compatibility shim objects and engine/compiler support.
 - Treat `io.github.protasm.jvmud.engine` and `mudlibs/lp245/` as intentionally separate from compiler internals:

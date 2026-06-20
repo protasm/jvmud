@@ -32,7 +32,7 @@ trap 'status=$?; cleanup "$status"; exit "$status"' EXIT
 
 rm -f "${SMOKE_PLAYER_FILES[@]}"
 
-./jvmud-start mudlibs/lp245/jvmud/lp245.config >"$LOG_FILE" 2>&1 &
+scripts/jvmud-start mudlibs/lp245/jvmud/lp245.config >"$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 
 python3 - "$PORT" <<'PY'

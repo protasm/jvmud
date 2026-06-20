@@ -13,7 +13,7 @@ path back to a playable vertical slice.
 ## Development Posture
 
 `PRINCIPLES.md` remains the controlling design document for the engine, and
-`docs/ENGINE_MUDLIB_CONTRACT.md` describes the engine-mudlib boundary.
+`ENGINE_MUDLIB_CONTRACT.md` describes the engine-mudlib boundary.
 
 JVMud has one mudlib and language target: LPC for LPMud-style worlds. That means
 compatibility work should deepen this target rather than broaden JVMud into a
@@ -48,7 +48,7 @@ As of this reset, `mvn test` is green for the root project:
 - `cli`: admin shell and boot/config behavior tests.
 
 The real process smoke also passes through `scripts/smoke-jvmud-start.sh`. That
-script launches `./jvmud-start`, connects over TCP, verifies the player-facing
+script launches `scripts/jvmud-start`, connects over TCP, verifies the player-facing
 session, runs `look`, runs `north`, and quits cleanly. Treat this as the
 entrypoint smoke for Telnet and startup changes.
 
@@ -81,8 +81,8 @@ session input, output sinks, and early temporal scheduling hooks.
 
 JVMud currently has two development entrypoints:
 
-- `./jvmud-admin` for local admin inspection and mutation.
-- `./jvmud-start` for the persistent game server and Telnet listener.
+- `scripts/jvmud-admin` for local admin inspection and mutation.
+- `scripts/jvmud-start` for the persistent game server and Telnet listener.
 
 The CLI is a single-user, server-side command-line tool for navigating the
 mudlib filesystem and loading, inspecting, invoking, mutating, and reloading
@@ -122,7 +122,7 @@ Recent work produced useful guardrails:
 - `player_object` should stay config-driven. Do not hardcode `obj/player` in
   Java entrypoints.
 - The configured vanilla player object now attaches through the real
-  `./jvmud-start` smoke. Keep that smoke strict enough to fail if the listener
+  `scripts/jvmud-start` smoke. Keep that smoke strict enough to fail if the listener
   falls back to a host-owned Persona unexpectedly.
 - The compatibility scan is evidence. It should guide parser, semantic,
   bytecode, engine-function, runtime, and shim work, but it should not dictate
@@ -261,7 +261,7 @@ Near-term focus:
 
 ### 8. Telnet Server
 
-Keep `./jvmud-start` as the real player-facing development entrypoint. It should
+Keep `scripts/jvmud-start` as the real player-facing development entrypoint. It should
 boot one shared world and attach each session to a Persona.
 
 Near-term focus:

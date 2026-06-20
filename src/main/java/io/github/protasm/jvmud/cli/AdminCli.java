@@ -55,7 +55,7 @@ public final class AdminCli {
 
     public static void main(String[] args) throws IOException {
         if (args.length > 1) {
-            throw new IllegalArgumentException("Usage: ./jvmud-admin [mudlib-config-file]");
+            throw new IllegalArgumentException("Usage: scripts/jvmud-admin [mudlib-config-file]");
         }
         PrintWriter out = new PrintWriter(System.out, true);
         AdminCli cli = new AdminCli(out);

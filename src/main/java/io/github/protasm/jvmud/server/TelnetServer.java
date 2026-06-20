@@ -128,8 +128,8 @@ public final class TelnetServer implements AutoCloseable {
     }
 
     private static String usage() {
-        return "Usage: ./jvmud-start [mudlib-config-file]\n"
-                + "Default: ./jvmud-start mudlibs/lpmuseum/jvmud/lpmuseum.config\n"
+        return "Usage: scripts/jvmud-start [mudlib-config-file]\n"
+                + "Default: scripts/jvmud-start mudlibs/lpmuseum/jvmud/lpmuseum.config\n"
                 + "Listens on localhost:4000.";
     }
 
