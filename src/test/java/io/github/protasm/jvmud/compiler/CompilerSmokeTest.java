@@ -3175,6 +3175,10 @@ final class CompilerSmokeTest {
                     return jvmud_to_int(jvmud_regex_replace("0010_constructed_research.sql", "([0-9]+)_.*", "\\\\1", 1));
                 }
 
+                string number_text() {
+                    return jvmud_to_string(12);
+                }
+
                 string *regex_matches() {
                     return jvmud_regex_match(({ "alpha.c", "beta.txt", "gamma.c" }), "[.]c$");
                 }
@@ -3281,6 +3285,7 @@ final class CompilerSmokeTest {
         assertEquals("Alice", reader.invoke("capitalized"));
         assertEquals(List.of("alpha", "beta", ""), reader.invoke("split"));
         assertEquals(10, reader.invoke("number"));
+        assertEquals("12", reader.invoke("number_text"));
         assertEquals(List.of("alpha.c", "gamma.c"), reader.invoke("regex_matches"));
         assertEquals(0, reader.invoke("regex_no_match_is_false"));
         assertEquals(1, reader.invoke("local_method_probe"));
@@ -3980,6 +3985,46 @@ final class CompilerSmokeTest {
         runtime.clearOutputTranscript();
         assertEquals(1, runtime.dispatchCommand(player.instance(), "wave"));
         assertEquals("waved\n", runtime.outputTranscript());
+    }
+
+    @Test
+    void commandDispatchKeepsSelfRegisteredCatchAllActionFromCreate() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void add_action(string method, string verb, int flag) {
+                    jvmud_add_action(method, verb, flag);
+                }
+
+                void write(mixed value) {
+                    jvmud_write(value);
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                void create() {
+                    add_action("executeCommand", "", 2);
+                }
+
+                int executeCommand(string command) {
+                    write("handled " + command + "\\n");
+                    return 1;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "create")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+
+        runtime.refreshCommandActions(player.instance());
+        runtime.clearOutputTranscript();
+
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "look"));
+        assertEquals("handled look\n", runtime.outputTranscript());
     }
 
     @Test

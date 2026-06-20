@@ -1389,6 +1389,15 @@ public final class RuntimeContext {
         registerVerb(verb, false);
     }
 
+    /**
+     * Registers a pending LPC command action for the active command actor.
+     *
+     * <p>Agent-owned actions may be declared while an LPC object is initializing, before any
+     * command is being dispatched. In that persistent case, the action is bound to the current LPC
+     * object itself so it remains available after initialization. Scoped interaction registrations,
+     * such as location-specific {@code init()} actions, still require the command actor supplied by
+     * the refresh pass.</p>
+     */
     public void registerVerb(String verb, boolean prefixMatch) {
         Objects.requireNonNull(verb, "verb");
         Deque<PendingAction> pendingActions = pendingActionStack.get();
@@ -1396,17 +1405,21 @@ public final class RuntimeContext {
             return;
         }
 
+        PendingAction pendingAction = pendingActions.pop();
         Object actor = currentCommandActor();
         Object handler = currentObject();
+        if (actor == null && pendingAction.persistent()) {
+            actor = handler;
+        }
         if (actor == null || handler == null) {
             return;
         }
 
-        PendingAction pendingAction = pendingActions.pop();
         commandActions
                 .computeIfAbsent(actor, ignored -> new LinkedHashMap<>())
                 .computeIfAbsent(verb, ignored -> new ArrayList<>())
-                .add(new CommandAction(handler, pendingAction.methodName(), prefixMatch, pendingAction.persistent()));
+                .add(new CommandAction(verb, handler, pendingAction.methodName(), prefixMatch,
+                        pendingAction.persistent()));
     }
 
     public void clearCommandActions(Object actor) {
@@ -1462,7 +1475,7 @@ public final class RuntimeContext {
         try {
             for (CommandAction action : actions) {
                 Object environmentBefore = environment(actor);
-                Object result = invokeCommandAction(action, argument);
+                Object result = invokeCommandAction(action, trimmed, argument);
                 if (Truth.isTruthy(result)) {
                     return result;
                 }
@@ -1554,14 +1567,15 @@ public final class RuntimeContext {
         return false;
     }
 
-    private Object invokeCommandAction(CommandAction action, String argument) {
+    private Object invokeCommandAction(CommandAction action, String commandLine, String argument) {
+        String actionArgument = action.verb().isEmpty() ? commandLine : argument;
         boolean hasOneArgument = hasMethod(action.handler().getClass(), action.methodName(), 1);
         boolean hasNoArguments = hasMethod(action.handler().getClass(), action.methodName(), 0);
-        if (argument != null && hasOneArgument) {
-            return invokeObject(action.handler(), action.methodName(), argument);
+        if (actionArgument != null && hasOneArgument) {
+            return invokeObject(action.handler(), action.methodName(), actionArgument);
         }
-        if (argument == null && hasOneArgument && !hasNoArguments) {
-            return invokeObject(action.handler(), action.methodName(), argument);
+        if (actionArgument == null && hasOneArgument && !hasNoArguments) {
+            return invokeObject(action.handler(), action.methodName(), actionArgument);
         }
         if (hasNoArguments) {
             return invokeObject(action.handler(), action.methodName());
@@ -1936,7 +1950,8 @@ public final class RuntimeContext {
 
     private record PendingAction(String methodName, boolean persistent) {}
 
-    private record CommandAction(Object handler, String methodName, boolean prefixMatch, boolean persistent) {}
+    private record CommandAction(String verb, Object handler, String methodName, boolean prefixMatch,
+            boolean persistent) {}
 
     private record PendingSessionInput(Object handler, String methodName, boolean noEcho, Object[] extraArgs) {
         private PendingSessionInput {

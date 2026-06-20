@@ -150,6 +150,7 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jvmud_entity_location", boundary.directEfunAlias("environment").orElseThrow());
         assertEquals("jvmud_regex_match", boundary.directEfunAlias("regexp").orElseThrow());
         assertEquals("jvmud_to_int", boundary.directEfunAlias("to_int").orElseThrow());
+        assertEquals("jvmud_to_string", boundary.directEfunAlias("to_string").orElseThrow());
         assertEquals("jvmud_member", boundary.directEfunAlias("member").orElseThrow());
         assertEquals("jvmud_mapping_keys", boundary.directEfunAlias("m_indices").orElseThrow());
         assertEquals("jvmud_mapping_values", boundary.directEfunAlias("m_values").orElseThrow());
@@ -157,6 +158,7 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jvmud_mapping_delete", boundary.directEfunAlias("m_delete").orElseThrow());
         assertEquals("jvmud_inherited_programs", boundary.directEfunAlias("inherit_list").orElseThrow());
         assertEquals("jvmud_random", boundary.directEfunAlias("random").orElseThrow());
+        assertEquals("jvmud_capitalize_text", boundary.directEfunAlias("capitalize").orElseThrow());
         assertEquals("jvmud_is_mapping", boundary.directEfunAlias("mappingp").orElseThrow());
         assertEquals("jvmud_is_object", boundary.directEfunAlias("objectp").orElseThrow());
         assertEquals("jvmud_is_array", boundary.directEfunAlias("pointerp").orElseThrow());

@@ -223,6 +223,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       string} performs a Java-regex replacement for legacy mudlib text helpers.</li>
  *   <li>{@code jvmud_to_int(mixed value) : int} converts numeric values and base-10 text to an
  *       integer, returning LPC false-style zero for non-numeric input.</li>
+ *   <li>{@code jvmud_to_string(mixed value) : string} converts a mixed LPC value to its JVMud text
+ *       form for compatibility helpers that need explicit stringification.</li>
  *   <li>{@code jvmud_capitalize_text(mixed value) : string} capitalizes the first character of
  *       text.</li>
  *   <li>{@code jvmud_wrap_text(mixed text[, int width]) : string} wraps description text at a
@@ -459,6 +461,8 @@ public final class CoreEfuns {
                         ((Number) args[3]).intValue())));
         efuns.add(efun("jvmud_to_int", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> toInt(args[0])));
+        efuns.add(efun("jvmud_to_string", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> String.valueOf(args[0])));
         efuns.add(efun("jvmud_capitalize_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> capitalizeText(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_wrap_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
