@@ -863,7 +863,7 @@ public final class CoreEfuns {
             }
             return characters;
         }
-        return List.of(text.split(java.util.regex.Pattern.quote(delimiter), -1));
+        return new ArrayList<>(List.of(text.split(java.util.regex.Pattern.quote(delimiter), -1)));
     }
 
     private static String hashPassword(String password) {

@@ -3861,6 +3861,12 @@ final class CompilerSmokeTest {
                 string epoch() {
                     return jvmud_format_time(86400);
                 }
+
+                string mutates_split_text_result() {
+                    string *words = jvmud_split_text("red blue", " ");
+                    words[0] = "green";
+                    return words[0] + " " + words[1];
+                }
                 """);
 
         assertEquals("Welcome to JVMud.\n", reader.invoke("welcome"));
@@ -3882,6 +3888,7 @@ final class CompilerSmokeTest {
         assertEquals("mixed", reader.invoke("lower"));
         assertEquals("Alice", reader.invoke("capitalized"));
         assertEquals(List.of("alpha", "beta", ""), reader.invoke("split"));
+        assertEquals("green blue", reader.invoke("mutates_split_text_result"));
         assertEquals(10, reader.invoke("number"));
         assertEquals(12, reader.invoke("square_root"));
         assertEquals("12", reader.invoke("number_text"));
