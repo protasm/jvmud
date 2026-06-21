@@ -290,6 +290,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       string data.</li>
  *   <li>{@code jvmud_is_int(mixed value) : status} reports whether a value is Java-backed LPC
  *       integer data.</li>
+ *   <li>{@code jvmud_is_float(mixed value) : status} reports whether a value is Java-backed LPC
+ *       floating point data.</li>
  *   <li>{@code jvmud_is_object(mixed value) : status} reports whether a value is a live runtime
  *       object.</li>
  *   <li>{@code jvmud_is_array(mixed value) : status} reports whether a value is Java-backed LPC
@@ -594,6 +596,8 @@ public final class CoreEfuns {
                 (runtime, args) -> args[0] instanceof Number number
                         && !(number instanceof Float)
                         && !(number instanceof Double) ? 1 : 0));
+        efuns.add(efun("jvmud_is_float", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> args[0] instanceof Float || args[0] instanceof Double ? 1 : 0));
         efuns.add(efun("jvmud_is_object", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.objectId(args[0]) != null ? 1 : 0));
         efuns.add(efun("jvmud_is_array", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
@@ -804,6 +808,9 @@ public final class CoreEfuns {
     }
 
     private static Map<Object, Object> mappingFromKeys(Object value) {
+        if (value == null || (value instanceof Number number && number.doubleValue() == 0.0d)) {
+            return new LinkedHashMap<>();
+        }
         if (value instanceof List<?> keys) {
             Map<Object, Object> mapping = new LinkedHashMap<>();
             for (Object key : keys) {

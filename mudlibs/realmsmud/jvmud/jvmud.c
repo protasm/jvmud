@@ -317,7 +317,7 @@ int intp(mixed value) {
 }
 
 int floatp(mixed value) {
-    return !intp(value) && (to_string(value) == to_string(to_float(value)));
+    return jvmud_is_float(value);
 }
 
 float log(float value) {

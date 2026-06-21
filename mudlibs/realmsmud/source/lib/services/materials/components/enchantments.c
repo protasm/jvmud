@@ -103,33 +103,18 @@ private nomask string *bonusList(object item)
         "bonus heal spell points rate", "bonus heal stamina",
         "bonus heal stamina rate", "bonus damage", "bonus weapon attack" });
 
-    object bonusesService = getService("bonuses");
-    string itemSkill = getBlueprintDetails(item, "skill to use");
-    string typedBonus = itemSkill ? ("bonus " + itemSkill) : 0;
-    if (typedBonus && bonusesService->isValidBonus(typedBonus))
+    if (item->query("weapon type"))
     {
-        bonuses += ({ typedBonus });
+        bonuses += ({ item->query("weapon type") });
     }
-
-    typedBonus = item->query("weapon type") ?
-        ("bonus " + item->query("weapon type")) : 0;
-    if (typedBonus && bonusesService->isValidBonus(typedBonus) &&
-        (member(bonuses, typedBonus) < 0))
+    else if (item->query("armor type"))
     {
-        bonuses += ({ typedBonus });
+        bonuses += ({ item->query("armor type") });
     }
-
-    typedBonus = item->query("armor type") ?
-        ("bonus " + item->query("armor type")) : 0;
-    if (typedBonus && bonusesService->isValidBonus(typedBonus) &&
-        (member(bonuses, typedBonus) < 0))
+    else
     {
-        bonuses += ({ typedBonus });
-    }
-
-    if (!item->query("weapon type") && !item->query("armor type"))
-    {
-        bonuses += getService("skills")->validBonusSkills();
+        bonuses +=
+            getService("skills")->validBonusSkills();
     }
     return bonuses;
 }

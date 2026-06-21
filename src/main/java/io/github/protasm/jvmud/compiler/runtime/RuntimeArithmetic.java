@@ -1,6 +1,7 @@
 package io.github.protasm.jvmud.compiler.runtime;
 
 import java.util.List;
+import java.util.Map;
 
 /** Runtime arithmetic helpers for dynamically typed LPC expressions. */
 public final class RuntimeArithmetic {
@@ -14,6 +15,12 @@ public final class RuntimeArithmetic {
      * numerically, while either text operand produces string concatenation.</p>
      */
     public static Object add(Object left, Object right) {
+        if (left instanceof List<?> || right instanceof List<?>) {
+            return RuntimeArray.concat(left, right);
+        }
+        if (left instanceof Map<?, ?> || right instanceof Map<?, ?>) {
+            return RuntimeMapping.merge(left, right);
+        }
         if (left instanceof CharSequence || right instanceof CharSequence) {
             return String.valueOf(left) + right;
         }

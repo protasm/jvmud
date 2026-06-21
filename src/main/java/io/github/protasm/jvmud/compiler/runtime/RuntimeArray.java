@@ -7,6 +7,22 @@ import java.util.List;
 public final class RuntimeArray {
     private RuntimeArray() {}
 
+    /**
+     * Concatenates LPC array operands while treating the false sentinel as an empty array.
+     *
+     * <p>LPC code commonly writes expressions such as {@code values + 0} when an optional array is
+     * absent. The sentinel remains falsey at rest, but array arithmetic treats it as empty.</p>
+     */
+    public static List<Object> concat(Object left, Object right) {
+        List<Object> result = new ArrayList<>();
+        result.addAll(asList(left));
+        result.addAll(asList(right));
+        return result;
+    }
+
+    /**
+     * Computes the LPC array difference while treating the false sentinel as an empty array.
+     */
     public static List<Object> difference(Object left, Object right) {
         List<?> leftValues = asList(left);
         List<?> rightValues = asList(right);

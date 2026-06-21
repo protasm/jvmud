@@ -647,6 +647,8 @@ public final class SemanticAnalyzer {
             MethodKey key = entry.getKey();
             if (entry.getValue().size() < 2 || declaresMethod(astObject, key.name(), key.arity()))
                 continue;
+            if (hasCompatibleInheritedMethodConflict(entry.getValue()))
+                continue;
 
             problems.add(
                     new CompilationProblem(
@@ -655,6 +657,22 @@ public final class SemanticAnalyzer {
                                     + " from multiple direct parents.",
                             inheritedConflictLine(entry.getValue())));
         }
+    }
+
+    private boolean hasCompatibleInheritedMethodConflict(List<ScopedSymbol> symbols) {
+        ASTMethod first = null;
+        for (ScopedSymbol symbol : symbols) {
+            ASTMethod method = symbol.method();
+            if (method == null)
+                continue;
+            if (first == null) {
+                first = method;
+                continue;
+            }
+            if (!isSignatureCompatible(method, first))
+                return false;
+        }
+        return first != null;
     }
 
     private boolean declaresField(ASTObject astObject, String name) {
@@ -1379,7 +1397,7 @@ public final class SemanticAnalyzer {
                     return new ASTExprCallMethod(
                             unresolvedCall.line(),
                             directParentUnit == parentUnit
-                                    ? parentMethod
+                                    ? primaryParentDispatchMethod(directParentUnit, parentMethod)
                                     : qualifiedInheritedMethod(parentMethod),
                             resolvedArgs,
                             directParentUnit == parentUnit);
@@ -1394,6 +1412,19 @@ public final class SemanticAnalyzer {
             }
 
             return null;
+        }
+
+        private ASTMethod primaryParentDispatchMethod(CompilationUnit directParentUnit, ASTMethod parentMethod) {
+            ASTObject parentObject = directParentUnit.semanticModel().astObject();
+            if (parentObject == null || Objects.equals(parentObject.name(), parentMethod.ownerName()))
+                return parentMethod;
+
+            ASTMethod method = new ASTMethod(
+                    parentMethod.line(),
+                    parentObject.name(),
+                    new Symbol(parentMethod.symbol().lpcType(), parentMethod.symbol().name()));
+            method.setParameters(parentMethod.parameters());
+            return method;
         }
 
         private ASTMethod qualifiedInheritedMethod(ASTMethod parentMethod) {

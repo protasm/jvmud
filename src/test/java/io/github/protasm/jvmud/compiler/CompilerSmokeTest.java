@@ -612,6 +612,27 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeAddsMixedCollectionsDynamically() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_collection_addition.c", """
+                mixed array_concat() {
+                    mixed left = ({ "north" });
+                    mixed right = ({ "south" });
+                    return left + right;
+                }
+
+                mixed mapping_merge() {
+                    mixed left = ([ "north": 1 ]);
+                    mixed right = ([ "south": 1 ]);
+                    return left + right;
+                }
+                """);
+
+        assertEquals(List.of("north", "south"), object.invoke("array_concat"));
+        assertEquals(Map.of("north", 1, "south", 1), object.invoke("mapping_merge"));
+    }
+
+    @Test
     void runtimeWidensIntegerAssignmentsToFloat() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/integer_to_float_assignment.c", """
@@ -665,7 +686,7 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        assertEquals("", object.invoke("local_zero"));
+        assertNull(object.invoke("local_zero"));
         assertEquals("fallback", object.invoke("fallback", 0));
         assertEquals("present", object.invoke("fallback", 1));
         assertEquals("kept", object.invoke("short_circuit"));
@@ -831,6 +852,106 @@ final class CompilerSmokeTest {
         assertEquals(List.of("left", "right"), object.invoke("mixed_array_concat"));
         assertEquals(List.of("left"), object.invoke("mixed_array_difference"));
         assertEquals(List.of("left"), object.invoke("filter_mixed_array_difference"));
+    }
+
+    @Test
+    void runtimeKeepsTypedCollectionZeroFalsey() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/typed_collection_zero.c", """
+                string *fieldValues = 0;
+                mapping fieldData = 0;
+                string fieldText = 0;
+
+                int field_array_is_false() {
+                    return !fieldValues;
+                }
+
+                int field_mapping_is_false() {
+                    return !fieldData;
+                }
+
+                int field_string_is_false() {
+                    return !fieldText;
+                }
+
+                mixed query_field_values() {
+                    return fieldValues;
+                }
+
+                mixed query_field_data() {
+                    return fieldData;
+                }
+
+                mixed query_field_text() {
+                    return fieldText;
+                }
+
+                string *local_array_zero() {
+                    string *values = 0;
+                    return values;
+                }
+
+                mapping local_mapping_zero() {
+                    mapping data = 0;
+                    return data;
+                }
+
+                string local_string_zero() {
+                    string text = 0;
+                    return text;
+                }
+
+                string *array_plus_false() {
+                    return ({ "a" }) + local_array_zero();
+                }
+
+                mapping mapping_plus_false() {
+                    return ([ "a": 1 ]) + local_mapping_zero();
+                }
+                """);
+
+        assertEquals(1, object.invoke("field_array_is_false"));
+        assertEquals(1, object.invoke("field_mapping_is_false"));
+        assertEquals(1, object.invoke("field_string_is_false"));
+        assertNull(object.invoke("query_field_values"));
+        assertNull(object.invoke("query_field_data"));
+        assertNull(object.invoke("query_field_text"));
+        assertNull(object.invoke("local_array_zero"));
+        assertNull(object.invoke("local_mapping_zero"));
+        assertNull(object.invoke("local_string_zero"));
+        assertEquals(List.of("a"), object.invoke("array_plus_false"));
+        assertEquals(Map.of("a", 1), object.invoke("mapping_plus_false"));
+    }
+
+    @Test
+    void runtimeSupportsMappingIndexedMutation() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mapping_indexed_mutation.c", """
+                mapping counts = ([]);
+
+                mixed increment_missing() {
+                    return counts["a"]++;
+                }
+
+                mixed increment_existing() {
+                    return counts["a"]++;
+                }
+
+                mixed prefix_increment() {
+                    return ++counts["b"];
+                }
+
+                mixed value(string key) {
+                    return counts[key];
+                }
+                """);
+
+        assertEquals(0, object.invoke("increment_missing"));
+        assertEquals(1, object.invoke("value", "a"));
+        assertEquals(1, object.invoke("increment_existing"));
+        assertEquals(2, object.invoke("value", "a"));
+        assertEquals(1, object.invoke("prefix_increment"));
+        assertEquals(1, object.invoke("value", "b"));
     }
 
     @Test
@@ -2729,6 +2850,65 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void compatibleDuplicateInheritedMethodsResolveToLaterParent() throws Exception {
+        Files.writeString(tempDir.resolve("placeholder.c"), """
+                protected int execute(string value, int actor, string name) {
+                    return 0;
+                }
+                """);
+        Files.writeString(tempDir.resolve("implementation.c"), """
+                protected nomask int execute(string value, int actor, string name) {
+                    return 7;
+                }
+                """);
+        Files.writeString(tempDir.resolve("combined.c"), """
+                inherit "placeholder";
+                inherit "implementation";
+
+                int run() {
+                    return execute("value", 1, "name");
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        Object combined = runtime.loadOrGetObject("combined");
+
+        assertEquals(7, runtime.invokeObject(combined, "run"));
+    }
+
+    @Test
+    void qualifiedPrimaryParentCallUsesDirectParentOwnerWhenMethodIsInherited() throws Exception {
+        Files.createDirectories(tempDir.resolve("lib"));
+        Files.writeString(tempDir.resolve("lib/module.c"), """
+                private int initialized = 0;
+
+                public void init() {
+                    initialized = 1;
+                }
+
+                public int module_initialized() {
+                    return initialized;
+                }
+                """);
+        Files.writeString(tempDir.resolve("lib/parent.c"), """
+                virtual inherit "/lib/module.c";
+                """);
+        Files.writeString(tempDir.resolve("child.c"), """
+                inherit "/lib/parent.c";
+
+                public int run() {
+                    parent::init();
+                    return module_initialized();
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        Object child = runtime.loadOrGetObject("child");
+
+        assertEquals(1, runtime.invokeObject(child, "run"));
+    }
+
+    @Test
     void parserAcceptsRepeatedArrayFieldDeclarators() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/array_field_declarators.c", """
@@ -3914,6 +4094,10 @@ final class CompilerSmokeTest {
                     return jvmud_mapping_from_keys(({ "north", "south", "north" }));
                 }
 
+                mapping mapping_from_false_keys() {
+                    return jvmud_mapping_from_keys(0);
+                }
+
                 mapping mapping_delete_result() {
                     mapping values = ([ "keep": 1, "drop": 2 ]);
                     return jvmud_mapping_delete(values, "drop");
@@ -4022,6 +4206,7 @@ final class CompilerSmokeTest {
         assertEquals(Set.of("dawn", "night"), Set.copyOf((List<?>) reader.invoke("mapping_keys")));
         assertEquals(Set.of(1, 2), Set.copyOf((List<?>) reader.invoke("mapping_values")));
         assertEquals(Map.of("north", 1, "south", 1), reader.invoke("mapping_from_keys"));
+        assertEquals(Map.of(), reader.invoke("mapping_from_false_keys"));
         assertEquals(Map.of("keep", 1), reader.invoke("mapping_delete_result"));
         assertEquals(0, reader.invoke("mapping_delete_mutates"));
         assertEquals(List.of("north", "south"), reader.invoke("unique_directions"));
@@ -5577,8 +5762,8 @@ final class CompilerSmokeTest {
                 }
                 """);
         Files.writeString(tempDir.resolve("right.c"), """
-                int shared() {
-                    return 2;
+                string shared() {
+                    return "right";
                 }
                 """);
         Path childPath = tempDir.resolve("child.c");
@@ -5689,6 +5874,10 @@ final class CompilerSmokeTest {
                     return jvmud_is_int(value);
                 }
 
+                int float_status(mixed value) {
+                    return jvmud_is_float(value);
+                }
+
                 int object_status(mixed value) {
                     return jvmud_is_object(value);
                 }
@@ -5701,6 +5890,9 @@ final class CompilerSmokeTest {
         assertEquals(1, object.invoke("int_status", 7));
         assertEquals(0, object.invoke("int_status", "7"));
         assertEquals(0, object.invoke("int_status", object.invoke("array_value")));
+        assertEquals(1, object.invoke("float_status", 1.25));
+        assertEquals(0, object.invoke("float_status", 1));
+        assertEquals(0, object.invoke("float_status", "1.25"));
         assertEquals(1, object.invoke("object_status", object.instance()));
         assertEquals(0, object.invoke("object_status", "smoke/type_predicates"));
         runtime.destructObject(object.instance());

@@ -53,9 +53,16 @@ public final class RuntimeIndex {
         throw new IllegalArgumentException("Cannot assign indexed value: " + target);
     }
 
-    /** Mutates a numeric indexed value and returns the previous value for postfix operators. */
+    /** Mutates a numeric indexed array or mapping value and returns the previous value for postfix operators. */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object mutateNumber(Object target, Object index, int delta) {
+        if (target instanceof Map map) {
+            Object oldValue = map.get(index);
+            int oldNumber = oldValue instanceof Number number ? number.intValue() : 0;
+            Object previousValue = oldValue != null ? oldValue : Integer.valueOf(0);
+            map.put(index, Integer.valueOf(oldNumber + delta));
+            return previousValue;
+        }
         if (target instanceof List list) {
             int numericIndex = resolveIndex(index, list.size());
             Object oldValue = list.get(numericIndex);
@@ -66,9 +73,16 @@ public final class RuntimeIndex {
         throw new IllegalArgumentException("Cannot mutate indexed value: " + target);
     }
 
-    /** Mutates a numeric indexed value and returns the updated value for prefix operators. */
+    /** Mutates a numeric indexed array or mapping value and returns the updated value for prefix operators. */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object mutateNumberPrefix(Object target, Object index, int delta) {
+        if (target instanceof Map map) {
+            Object oldValue = map.get(index);
+            int oldNumber = oldValue instanceof Number number ? number.intValue() : 0;
+            Integer newValue = Integer.valueOf(oldNumber + delta);
+            map.put(index, newValue);
+            return newValue;
+        }
         if (target instanceof List list) {
             int numericIndex = resolveIndex(index, list.size());
             Object oldValue = list.get(numericIndex);

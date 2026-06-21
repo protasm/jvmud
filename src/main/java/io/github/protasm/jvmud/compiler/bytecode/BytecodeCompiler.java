@@ -16,6 +16,7 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeForeach;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeFunctionLiteral;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeIndex;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeMapping;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeTypes;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeValueKind;
@@ -1777,21 +1778,16 @@ public final class BytecodeCompiler {
     }
 
     private void emitArrayConcat(MethodVisitor mv, String internalName, IRMethod method, IRArrayConcat concat) {
-        mv.visitTypeInsn(NEW, "java/util/ArrayList");
-        mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/util/ArrayList", "<init>", "()V", false);
-
-        mv.visitInsn(DUP);
         emitExpression(mv, internalName, method, concat.left());
-        mv.visitTypeInsn(CHECKCAST, "java/util/Collection");
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/util/ArrayList", "addAll", "(Ljava/util/Collection;)Z", false);
-        mv.visitInsn(POP);
-
-        mv.visitInsn(DUP);
+        boxIfNeeded(mv, concat.left().type());
         emitExpression(mv, internalName, method, concat.right());
-        mv.visitTypeInsn(CHECKCAST, "java/util/Collection");
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/util/ArrayList", "addAll", "(Ljava/util/Collection;)Z", false);
-        mv.visitInsn(POP);
+        boxIfNeeded(mv, concat.right().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeArray.class),
+                "concat",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;",
+                false);
     }
 
     private void emitArrayDifference(MethodVisitor mv, String internalName, IRMethod method, IRArrayDifference difference) {
@@ -2162,19 +2158,16 @@ public final class BytecodeCompiler {
     }
 
     private void emitMappingMerge(MethodVisitor mv, String internalName, IRMethod method, IRMappingMerge merge) {
-        mv.visitTypeInsn(NEW, "java/util/HashMap");
-        mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V", false);
-
-        mv.visitInsn(DUP);
         emitExpression(mv, internalName, method, merge.left());
-        mv.visitTypeInsn(CHECKCAST, "java/util/Map");
-        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "putAll", "(Ljava/util/Map;)V", true);
-
-        mv.visitInsn(DUP);
+        boxIfNeeded(mv, merge.left().type());
         emitExpression(mv, internalName, method, merge.right());
-        mv.visitTypeInsn(CHECKCAST, "java/util/Map");
-        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "putAll", "(Ljava/util/Map;)V", true);
+        boxIfNeeded(mv, merge.right().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeMapping.class),
+                "merge",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;",
+                false);
     }
 
     private void emitMappingGet(MethodVisitor mv, String internalName, IRMethod method, IRMappingGet mappingGet) {

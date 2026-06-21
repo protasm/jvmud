@@ -55,7 +55,7 @@ private nomask string *vehicleBonuses()
 /////////////////////////////////////////////////////////////////////////////
 private nomask string *bonusList()
 {
-    if(!bonuses || !sizeof(bonuses))
+    if(!bonuses)
     {
         bonuses = livingBonuses() + vehicleBonuses();
     

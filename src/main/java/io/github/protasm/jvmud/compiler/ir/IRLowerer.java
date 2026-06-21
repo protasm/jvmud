@@ -598,11 +598,13 @@ public final class IRLowerer {
             Set<String> primaryParentLineage) {
         List<IRMethod> methods = new ArrayList<>();
         Set<MethodKey> declaredMethodKeys = declaredMethodKeys(astObject);
+        Set<MethodKey> primaryInheritedMethodKeys = inheritedMethodKeys(objectScope != null ? objectScope.parent() : null);
         importSecondaryInheritedMethods(
                 objectScope,
                 fieldsBySymbol,
                 flattenedInheritedMethodOwners,
                 declaredMethodKeys,
+                primaryInheritedMethodKeys,
                 methods,
                 problems,
                 objectInternalName,
@@ -625,6 +627,23 @@ public final class IRLowerer {
         return methods;
     }
 
+    private Set<MethodKey> inheritedMethodKeys(SemanticScope scope) {
+        Set<MethodKey> keys = new HashSet<>();
+        if (scope == null)
+            return keys;
+
+        for (SemanticScope current = scope; current != null; current = current.parent()) {
+            for (List<SemanticScope.ScopedSymbol> symbols : current.symbols().values()) {
+                for (SemanticScope.ScopedSymbol symbol : symbols) {
+                    ASTMethod method = symbol.method();
+                    if (method != null && method.isDefined())
+                        keys.add(new MethodKey(method.symbol().name(), parameterCount(method)));
+                }
+            }
+        }
+        return keys;
+    }
+
     private Set<MethodKey> declaredMethodKeys(ASTObject astObject) {
         Set<MethodKey> keys = new HashSet<>();
         if (astObject == null)
@@ -645,6 +664,7 @@ public final class IRLowerer {
             Map<Symbol, IRField> fieldsBySymbol,
             Set<String> flattenedInheritedMethodOwners,
             Set<MethodKey> declaredMethodKeys,
+            Set<MethodKey> primaryInheritedMethodKeys,
             List<IRMethod> methods,
             List<CompilationProblem> problems,
             String objectInternalName,
@@ -662,6 +682,7 @@ public final class IRLowerer {
                 fieldsBySymbol,
                 flattenedInheritedMethodOwners,
                 declaredMethodKeys,
+                primaryInheritedMethodKeys,
                 imported,
                 qualifiedImported,
                 methodsToFlatten,
@@ -677,6 +698,7 @@ public final class IRLowerer {
                     fieldsBySymbol,
                     flattenedInheritedMethodOwners,
                     declaredMethodKeys,
+                    primaryInheritedMethodKeys,
                     imported,
                     qualifiedImported,
                     methodsToFlatten,
@@ -714,6 +736,7 @@ public final class IRLowerer {
             Map<Symbol, IRField> fieldsBySymbol,
             Set<String> flattenedInheritedMethodOwners,
             Set<MethodKey> declaredMethodKeys,
+            Set<MethodKey> primaryInheritedMethodKeys,
             Set<MethodKey> imported,
             Set<QualifiedMethodKey> qualifiedImported,
             List<ASTMethod> methodsToFlatten,
@@ -742,7 +765,8 @@ public final class IRLowerer {
                             method,
                             qualifiedInheritedMethodName(ownerInternalName, method.symbol().name())));
                 }
-                if (!declaredMethodKeys.contains(key) && imported.add(key))
+                boolean shadowsPrimary = primaryInheritedMethodKeys.contains(key) && !method.modifiers().isNomask();
+                if (!declaredMethodKeys.contains(key) && !shadowsPrimary && imported.add(key))
                     methodsToFlatten.add(method);
             }
         }
@@ -1500,7 +1524,11 @@ public final class IRLowerer {
 
         if (expression instanceof ASTExprArrayMutation mutation) {
             IRExpression target = lowerExpression(mutation.target(), context, problems);
-            IRExpression index = indexExpression(lowerExpression(mutation.index(), context, problems));
+            RuntimeType targetType = runtimeType(mutation.target().lpcType());
+            IRExpression rawIndex = lowerExpression(mutation.index(), context, problems);
+            IRExpression index = targetType != null && targetType.kind() == RuntimeValueKind.MAPPING
+                    ? rawIndex
+                    : indexExpression(rawIndex);
             return new IRArrayMutation(
                     mutation.line(), target, index, mutation.delta(), mutation.isPrefix(), RuntimeTypes.MIXED);
         }
@@ -1996,11 +2024,10 @@ public final class IRLowerer {
                 && constant.type() == RuntimeTypes.INT
                 && Integer.valueOf(0).equals(constant.value())) {
             return switch (targetType.kind()) {
-            case STRING -> new IRConstant(value.line(), "", RuntimeTypes.STRING);
+            case STRING -> new IRConstant(value.line(), null, RuntimeTypes.STRING);
             case STATUS -> new IRConstant(value.line(), 0, RuntimeTypes.STATUS);
             case OBJECT -> new IRConstant(value.line(), null, RuntimeTypes.OBJECT);
-            case ARRAY -> new IRArrayLiteral(value.line(), List.of(), targetType);
-            case MAPPING -> new IRMappingLiteral(value.line(), List.of(), targetType);
+            case ARRAY, MAPPING -> new IRConstant(value.line(), null, targetType);
             default -> new IRCoerce(value.line(), value, targetType);
             };
         }

@@ -910,6 +910,10 @@ public final class SemanticTypeChecker {
             return LPCType.LPCMIXED;
         }
 
+        if (targetType == LPCType.LPCMAPPING) {
+            return LPCType.LPCMIXED;
+        }
+
         if (targetType == LPCType.LPCMIXED || targetType == null)
             return LPCType.LPCMIXED;
 
