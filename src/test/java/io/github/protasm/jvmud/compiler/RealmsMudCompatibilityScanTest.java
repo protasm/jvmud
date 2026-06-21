@@ -108,6 +108,14 @@ final class RealmsMudCompatibilityScanTest {
                 "notifySynchronous should not rely on lexical event lookup inside the filter closure.");
     }
 
+    @Test
+    void realmsSettingsRestoreConvertsPersistedSafetyTeleportToInt() throws IOException {
+        String settingsSource = Files.readString(MUDLIB_SOURCE_ROOT.resolve("lib/modules/secure/settings.h"));
+        assertTrue(
+                settingsSource.contains("lastSafetyTeleport = to_int(persistence->extractSaveData("),
+                "RealmsMUD stores settings values as text, so safety teleport restore needs numeric conversion.");
+    }
+
     private static List<String> compatibilitySet(Path sourceRoot) throws IOException {
         Set<String> sourceNames = new LinkedHashSet<>(BOOT_AND_CORE_COMPATIBILITY_SET);
         for (String sweepRoot : COMPATIBILITY_SWEEP_ROOTS) {

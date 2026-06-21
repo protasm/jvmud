@@ -31,8 +31,8 @@ static nomask void loadSettings(mapping data, object persistence)
         characterSet = persistence->extractSaveData("character set", data);
         combatVerbosity = persistence->extractSaveData("combat verbosity", data);
         PrimaryGuild = persistence->extractSaveData("primary guild", data);
-        lastSafetyTeleport = persistence->extractSaveData("safety teleport", 
-            data);
+        lastSafetyTeleport = to_int(persistence->extractSaveData(
+            "safety teleport", data));
         DisplayMiniMap = to_int(persistence->extractSaveData("display mini map",
             data));
         DisplayLevelComparison = to_int(persistence->extractSaveData(
