@@ -127,6 +127,26 @@ final class RealmsMudCompatibilityScanTest {
                 "Help detail rendering should pass the numeric unicode flag through display helpers.");
     }
 
+    @Test
+    void realmsGeneratedEquipmentBonusesUseItemBonusKeys() throws IOException {
+        String enchantmentsSource = Files.readString(
+                MUDLIB_SOURCE_ROOT.resolve("lib/services/materials/components/enchantments.c"));
+        assertTrue(
+                enchantmentsSource.contains("string itemSkill = getBlueprintDetails(item, \"skill to use\")"),
+                "Generated equipment enchantments should prefer blueprint skill metadata for item bonus keys.");
+        assertTrue(
+                enchantmentsSource.contains("bonusesService->isValidBonus(typedBonus)"),
+                "Generated equipment enchantments should only add item-specific bonus keys Realms accepts.");
+    }
+
+    @Test
+    void realmsBonusesServiceInitializesEmptyRuntimeArrays() throws IOException {
+        String bonusesSource = Files.readString(MUDLIB_SOURCE_ROOT.resolve("lib/services/bonusesService.c"));
+        assertTrue(
+                bonusesSource.contains("if(!bonuses || !sizeof(bonuses))"),
+                "Bonus list lazy initialization should tolerate runtimes that materialize zero arrays as empty.");
+    }
+
     private static List<String> compatibilitySet(Path sourceRoot) throws IOException {
         Set<String> sourceNames = new LinkedHashSet<>(BOOT_AND_CORE_COMPATIBILITY_SET);
         for (String sweepRoot : COMPATIBILITY_SWEEP_ROOTS) {

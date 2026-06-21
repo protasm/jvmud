@@ -343,6 +343,29 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeMemberFindsArrayElementsByValue() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/member_array.c", """
+                int contains_first() {
+                    return jvmud_member(({ "strength", "dexterity" }), "strength") > -1;
+                }
+
+                int contains_second() {
+                    return jvmud_member(({ "strength", "dexterity" }), "dexterity") > -1;
+                }
+
+                int misses_value() {
+                    return jvmud_member(({ "strength", "dexterity" }), "wisdom") == -1;
+                }
+                """);
+
+        assertEquals(1, object.invoke("contains_first"));
+        assertEquals(1, object.invoke("contains_second"));
+        assertEquals(1, object.invoke("misses_value"));
+    }
+
+    @Test
     void runtimeParsesFunctionReferencesAsCallableValues() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/function_reference.c", """
