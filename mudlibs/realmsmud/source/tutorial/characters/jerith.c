@@ -13,11 +13,17 @@ protected void Setup()
     SetUpPersonaOfLevel("swordsman", 1);
 
     object equipment = clone_object("/lib/instances/items/weapons/swords/long-sword.c");
-    equipment.set("craftsmanship", 25);
-    equipment.set("material", "iron");
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: equipment.set("craftsmanship", 25);
+    equipment->set("craftsmanship", 25);
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: equipment.set("material", "iron");
+    equipment->set("material", "iron");
     move_object(equipment, this_object());
     this_object()->equip(equipment);
 
     object generator = load_object("/tutorial/characters/aegis-equipment.c");
-    generator.CreateAegisEquipment(this_object());
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: generator.CreateAegisEquipment(this_object());
+    generator->CreateAegisEquipment(this_object());
 }

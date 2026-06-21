@@ -41,13 +41,19 @@ protected void Setup()
     addTrait("/lib/instances/traits/background/human/eledhelean/noble/arthellyn.c");
 
     object equipment = clone_object("/lib/instances/items/weapons/swords/long-sword.c");
-    equipment.set("craftsmanship", 70);
-    equipment.set("material", "meteoric iron");
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: equipment.set("craftsmanship", 70);
+    equipment->set("craftsmanship", 70);
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: equipment.set("material", "meteoric iron");
+    equipment->set("material", "meteoric iron");
     move_object(equipment, this_object());
     this_object()->equip(equipment);
 
     object generator = load_object("/tutorial/characters/aegis-equipment.c");
-    generator.CreateAegisEquipment(this_object());
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: generator.CreateAegisEquipment(this_object());
+    generator->CreateAegisEquipment(this_object());
 
     addConversation("/areas/tol-dhurath/characters/halgaladh/startingConversation.c");
 }

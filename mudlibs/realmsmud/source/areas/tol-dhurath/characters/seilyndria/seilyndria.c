@@ -86,7 +86,9 @@ public void playerGaveName()
 /////////////////////////////////////////////////////////////////////////////
 public string speakPlayerName(object actor)
 {
-    return playerGaveName ? capitalize(actor.RealName()) : "unnamed ser";
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: return playerGaveName ? capitalize(actor.RealName()) : "unnamed ser";
+    return playerGaveName ? capitalize(actor->RealName()) : "unnamed ser";
 }
 
 /////////////////////////////////////////////////////////////////////////////

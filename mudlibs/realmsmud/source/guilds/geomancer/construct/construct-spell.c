@@ -25,12 +25,20 @@ protected nomask int executeOnSelf(string unparsedCommand, object owner,
     object selectorObj = clone_object(
         "/lib/modules/guilds/selectors/constructedResearchSelector.c");
 
-    selectorObj.setType("Geomancer Spell");
-    selectorObj.setConstructedGrouping("/guilds/geomancer/construct/root.c");
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: selectorObj.setType("Geomancer Spell");
+    selectorObj->setType("Geomancer Spell");
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: selectorObj.setConstructedGrouping("/guilds/geomancer/construct/root.c");
+    selectorObj->setConstructedGrouping("/guilds/geomancer/construct/root.c");
 
     move_object(selectorObj, owner);
-    selectorObj.registerEvent(this_object());
-    selectorObj.initiateSelector(owner);
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: selectorObj.registerEvent(this_object());
+    selectorObj->registerEvent(this_object());
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: selectorObj.initiateSelector(owner);
+    selectorObj->initiateSelector(owner);
 
     return 1;
 }

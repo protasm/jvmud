@@ -36,13 +36,19 @@ protected void Setup()
     addTrait("/lib/instances/traits/educational/hunter.c");
     customCombatAssessment("Companion");
     object equipment = clone_object("/lib/instances/items/weapons/bows/bow.c");
-    equipment.set("craftsmanship", 75);
-    equipment.set("material", "kingwood");
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: equipment.set("craftsmanship", 75);
+    equipment->set("craftsmanship", 75);
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: equipment.set("material", "kingwood");
+    equipment->set("material", "kingwood");
     move_object(equipment, this_object());
     this_object()->equip(equipment);
 
     object generator = load_object("/tutorial/characters/aegis-equipment.c");
-    generator.CreateAegisEquipment(this_object());
+    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+    // Original bad LPC: generator.CreateAegisEquipment(this_object());
+    generator->CreateAegisEquipment(this_object());
 
     addConversation("/areas/tol-dhurath/characters/galadhel/startingConversation.c");
 }

@@ -45,7 +45,9 @@ public nomask mixed query(string element)
                 object owner = present(query("unit leader"), environment());
                 if (owner)
                 {
-                    ret = owner.getHenchman(query("commander name"));
+                    // JVMud cleanup: Realms had non-LPC dot-call syntax here; use LPC arrow notation.
+                    // Original bad LPC: ret = owner.getHenchman(query("commander name"));
+                    ret = owner->getHenchman(query("commander name"));
                 }
             }
             break;
