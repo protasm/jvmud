@@ -224,6 +224,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       matches.</li>
  *   <li>{@code jvmud_regex_replace(string input, string pattern, string replacement, int flags) :
  *       string} performs a Java-regex replacement for legacy mudlib text helpers.</li>
+ *   <li>{@code jvmud_regex_explode(string input, string pattern) : array} splits text around
+ *       regular-expression matches while preserving matched delimiters.</li>
  *   <li>{@code jvmud_to_int(mixed value) : int} converts numeric values and base-10 text to an
  *       integer, returning LPC false-style zero for non-numeric input.</li>
  *   <li>{@code jvmud_to_string(mixed value) : string} converts a mixed LPC value to its JVMud text
@@ -465,6 +467,9 @@ public final class CoreEfuns {
                         String.valueOf(args[1]),
                         String.valueOf(args[2]),
                         ((Number) args[3]).intValue())));
+        efuns.add(efun("jvmud_regex_explode", LPCType.LPCARRAY,
+                List.of(LPCType.LPCSTRING, LPCType.LPCSTRING),
+                (runtime, args) -> regexExplode(String.valueOf(args[0]), String.valueOf(args[1]))));
         efuns.add(efun("jvmud_to_int", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> toInt(args[0])));
         efuns.add(efun("jvmud_to_string", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
@@ -959,6 +964,19 @@ public final class CoreEfuns {
             }
         }
         return matches.isEmpty() ? 0 : matches;
+    }
+
+    private static List<String> regexExplode(String input, String pattern) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(pattern).matcher(input);
+        List<String> parts = new ArrayList<>();
+        int lastEnd = 0;
+        while (matcher.find()) {
+            parts.add(input.substring(lastEnd, matcher.start()));
+            parts.add(matcher.group());
+            lastEnd = matcher.end();
+        }
+        parts.add(input.substring(lastEnd));
+        return parts;
     }
 
     private static int toInt(Object value) {

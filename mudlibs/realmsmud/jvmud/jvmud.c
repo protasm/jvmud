@@ -33,6 +33,22 @@ object *all_inventory(mixed container) {
     return ret;
 }
 
+void add_action(string method) {
+    jvmud_add_action(method);
+}
+
+void add_action(string method, string verb) {
+    jvmud_add_action(method, verb);
+}
+
+void add_action(string method, string verb, int prefix) {
+    jvmud_add_action(method, verb, prefix);
+}
+
+void addUser(object user) {
+    load_object("/secure/simul_efun.c")->addUser(user);
+}
+
 mixed call_direct(mixed target, string method) {
     return jvmud_invoke_lpc_object(target, method);
 }
@@ -83,8 +99,26 @@ mixed command(string command_line, mixed actor) {
     return jvmud_dispatch_entity_command(actor, command_line);
 }
 
+mixed *caller_stack() {
+    return ({ });
+}
+
+string capitalizeAllWords(string stringToCapitalize) {
+    string *words = explode(stringToCapitalize || "", " ");
+    int size = sizeof(words);
+    int i;
+
+    for (i = 0; i < size; i++) {
+        words[i] = capitalize(words[i]);
+    }
+    return implode(words, " ");
+}
+
 string ctime(int epochSeconds) {
     return jvmud_format_time(epochSeconds);
+}
+
+void configureCharset(object player, string charset) {
 }
 
 int db_close(int handle) {
@@ -124,6 +158,39 @@ int file_size(string path) {
     return jvmud_is_string(text) ? jvmud_size(text) : -1;
 }
 
+object *filter_objects(object *objects, string method) {
+    object *ret = ({ });
+
+    foreach(object ob in objects) {
+        if (jvmud_invoke_lpc_object(ob, method)) {
+            ret += ({ ob });
+        }
+    }
+    return ret;
+}
+
+object *filter_objects(object *objects, string method, mixed arg1) {
+    object *ret = ({ });
+
+    foreach(object ob in objects) {
+        if (jvmud_invoke_lpc_object(ob, method, arg1)) {
+            ret += ({ ob });
+        }
+    }
+    return ret;
+}
+
+object *filter_objects(object *objects, string method, mixed arg1, mixed arg2) {
+    object *ret = ({ });
+
+    foreach(object ob in objects) {
+        if (jvmud_invoke_lpc_object(ob, method, arg1, arg2)) {
+            ret += ({ ob });
+        }
+    }
+    return ret;
+}
+
 string format(mixed text) {
     return jvmud_wrap_text(text);
 }
@@ -144,6 +211,15 @@ object getService(string service) {
     return load_object("/secure/simul_efun.c")->getService(service);
 }
 
+string getuid() {
+    return getuid(this_object());
+}
+
+string getuid(mixed ob) {
+    string ret = object_name(ob);
+    return ret || "jvmud";
+}
+
 string implode(mixed *values, string delimiter) {
     string ret = "";
     int i;
@@ -158,6 +234,21 @@ string implode(mixed *values, string delimiter) {
         }
     }
     return ret;
+}
+
+int living(mixed ob) {
+    mixed *programs;
+
+    if (!objectp(ob)) {
+        return 0;
+    }
+
+    programs = inherit_list(ob);
+    return (member(programs, "/lib/realizations/living.c") > -1) ||
+        (member(programs, "/lib/realizations/player.c") > -1) ||
+        (member(programs, "/lib/realizations/wizard.c") > -1) ||
+        (member(programs, "/lib/realizations/monster.c") > -1) ||
+        (member(programs, "/lib/realizations/henchman.c") > -1);
 }
 
 void input_to(string method) {
@@ -263,6 +354,16 @@ string regreplace(string input, string pattern, string replacement, int flags) {
     return jvmud_regex_replace(input, pattern, replacement, flags);
 }
 
+string *regexplode(string input, string pattern) {
+    return jvmud_regex_explode(input, pattern);
+}
+
+void remove_action(int flags) {
+}
+
+void remove_action(int flags, mixed actor) {
+}
+
 int sizeof(mixed value) {
     return jvmud_size(value);
 }
@@ -279,8 +380,41 @@ string version() {
     return "JVMud RealmsMUD LDMud compatibility";
 }
 
+mixed *sort_array(mixed *values, string method) {
+    mixed *ret = values + ({ });
+    int size = sizeof(ret);
+    int i;
+    int j;
+
+    for (i = 0; i < size; i++) {
+        for (j = i + 1; j < size; j++) {
+            if (call_other(this_object(), method, ret[i], ret[j])) {
+                mixed swap = ret[i];
+                ret[i] = ret[j];
+                ret[j] = swap;
+            }
+        }
+    }
+    return ret;
+}
+
+void set_driver_hook(int hook, mixed callback) {
+}
+
+function unbound_lambda(mixed *parameters, mixed body) {
+    return (: 0 :);
+}
+
 void write(mixed message) {
     jvmud_write(message);
+}
+
+int write_file(string path, mixed text) {
+    return jvmud_append_mudlib_text(path, text);
+}
+
+int write_file(string path, mixed text, int flags) {
+    return jvmud_append_mudlib_text(path, text);
 }
 
 string sprintf(string format) {
