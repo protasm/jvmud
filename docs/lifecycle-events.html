@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lifecycle Events - JVMud</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="side-nav" aria-label="Project sections">
+    <a class="brand" href="index.html">JVMud</a>
+    <a href="principles.html">Principles</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="efuns.html">Efuns</a>
+    <a href="lifecycle-events.html" aria-current="page">Lifecycle Events</a>
+    <a href="lpc.html">LPC</a>
+    <a href="manual/index.html">Manual</a>
+    <a href="api/index.html" target="_blank" rel="noopener">API Docs</a>
+    <a href="https://github.com/protasm/jvmud">GitHub</a>
+  </nav>
+
+  <main class="content-page">
+    <header>
+      <p class="eyebrow">Mudlib boundary hooks</p>
+      <h1>Lifecycle Events</h1>
+      <p>
+        Lifecycle events are JVMud-owned names for moments when the engine can
+        call into mudlib policy. They are the engine's hook surface, but the
+        public contract is expressed as events so mudlibs can map them to their
+        own method names without redefining the engine in legacy driver terms.
+      </p>
+    </header>
+
+    <section>
+      <h2>How Mudlibs Register Events</h2>
+      <p>
+        A mudlib registers interest through its <code>MudlibBoundary</code>.
+        Configuration keys such as <code>lifecycle.object_loaded = reset</code>
+        map an engine event to a mudlib method. A mudlib can also declare
+        <code>handled_lifecycle_events</code> as metadata before a concrete
+        method mapping exists.
+      </p>
+      <p>
+        No lifecycle event is globally required. If no method is configured,
+        JVMud continues the engine-owned operation. If a method is configured
+        but the target object does not define it, JVMud skips the call unless a
+        future event contract marks that call required.
+      </p>
+    </section>
+
+    <section>
+      <h2>Configuration Names</h2>
+      <p>
+        Event names are case-insensitive in mudlib config, and hyphens or
+        spaces normalize to underscores. Older aliases such as
+        <code>player_connected</code>, <code>player_bound</code>, and
+        <code>interaction_scope_entered</code> are accepted for existing
+        manifests, but the current contract names below are preferred.
+      </p>
+    </section>
+
+    <section>
+      <h2>Current Lifecycle Events</h2>
+      <div class="efun-group">
+        <table class="efun-table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Delivery and mudlib contract</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>OBJECT_LOADED</code></td><td>Implemented. Invoked on a loaded or cloned object with one argument, <code>mixed first_load</code>; current compatibility passes <code>0</code>. Common LP245 mapping: <code>reset</code>.</td></tr>
+            <tr><td><code>OBJECT_ACTIVATED</code></td><td>Reserved. Names a reactivation moment for reload, reset, or world maintenance, but JVMud does not currently invoke it.</td></tr>
+            <tr><td><code>OBJECT_SOURCE_MISSING</code></td><td>Implemented. Invoked on the configured boundary object when a shared object path is requested but no source exists. The method receives the normalized requested path and may return an object to bind to that path. Common LP245 mapping: <code>compile_object</code>.</td></tr>
+            <tr><td><code>OBJECT_DESTRUCTION_REQUESTED</code></td><td>Implemented. Invoked on the configured boundary object before destruction, passing the target object. The return value is advisory. Common LP245 mapping: <code>prepare_destruct</code>.</td></tr>
+            <tr><td><code>OBJECT_DESTROYED</code></td><td>Reserved. Names a post-destruction cleanup point for future policies that need an after-the-fact notification.</td></tr>
+            <tr><td><code>ENTITY_ARRIVED_AT_PLACE</code></td><td>Reserved. Names the moment after an entity completes movement into a Place.</td></tr>
+            <tr><td><code>ENTITY_DEPARTED_FROM_PLACE</code></td><td>Reserved. Names the moment when an entity leaves a Place, paired with <code>ENTITY_ARRIVED_AT_PLACE</code>.</td></tr>
+            <tr><td><code>ENTITY_ADDED_TO_ENTITY</code></td><td>Reserved. Names the moment when an entity enters another entity's containment.</td></tr>
+            <tr><td><code>ENTITY_REMOVED_FROM_ENTITY</code></td><td>Reserved. Names the moment when an entity leaves another entity's containment.</td></tr>
+            <tr><td><code>PLAYER_SESSION_CONNECTED</code></td><td>Implemented by the hosted server path. The configured player object method is invoked without arguments and may start login or character selection. Common LP245 mapping: <code>logon</code>.</td></tr>
+            <tr><td><code>PLAYER_PERSONA_RESOLVED</code></td><td>Reserved. Names the Player/Session/Persona step where mudlib policy or JVMud fallback has selected the Persona a Player will use.</td></tr>
+            <tr><td><code>PLAYER_OBJECT_BOUND</code></td><td>Reserved. Names the moment when JVMud has associated a live mudlib projection with a Player, Session, and Persona.</td></tr>
+            <tr><td><code>PLAYER_ENTERED_WORLD</code></td><td>Reserved. Names a post-entry notification after a Player's Persona has entered the world.</td></tr>
+            <tr><td><code>PLAYER_SESSION_DISCONNECTED</code></td><td>Implemented by the hosted server path. The configured player object method is invoked without arguments so the mudlib can save or clean up session-owned state. Common LP245 mapping: <code>quit</code>.</td></tr>
+            <tr><td><code>INTERACTION_SCOPE_STARTED</code></td><td>Implemented. Invoked without arguments on the active Persona, its location, objects in that location, and carried objects. Compatibility mudlibs usually register local text commands here. Common LP245 mapping: <code>init</code>.</td></tr>
+            <tr><td><code>COMMAND_DISPATCH_STARTED</code></td><td>Reserved. Names the moment before JVMud dispatches a Player command line to mudlib behavior.</td></tr>
+            <tr><td><code>COMMAND_DISPATCH_FINISHED</code></td><td>Reserved. Names the moment after JVMud finishes dispatching a Player command line.</td></tr>
+            <tr><td><code>LOG_ERROR</code></td><td>Implemented. Invoked on the configured boundary object with the object path and diagnostic message for compilation or load-time diagnostics. Common LP245 mapping: <code>log_error</code>.</td></tr>
+            <tr><td><code>RUNTIME_ERROR</code></td><td>Implemented for timed runtime errors and server-layer error handling. Invoked on the configured boundary or error handler object with details about target, context, operation, and message. Common LP245 mapping: <code>runtime_error</code>.</td></tr>
+            <tr><td><code>SCHEDULED_TICK_ERROR</code></td><td>Implemented. When a scheduled tick throws, JVMud can invoke this specialized error event in addition to <code>RUNTIME_ERROR</code>. Common LP245 mapping: <code>heart_beat_error</code>.</td></tr>
+            <tr><td><code>SERVER_SHUTDOWN</code></td><td>Implemented by the hosted server path. Invoked on the configured boundary or error handler object with the shutdown reason. Common LP245 mapping: <code>notify_shutdown</code>.</td></tr>
+            <tr><td><code>SCHEDULED_TICK</code></td><td>Implemented through temporal tick configuration rather than a per-event method mapping. The boundary chooses the recurring tick method and default interval; compatibility shims may expose names such as <code>set_heart_beat</code>.</td></tr>
+            <tr><td><code>DEFERRED_CALLBACK</code></td><td>Reserved as a named event. Concrete one-shot callbacks are currently scheduled with explicit callback method names through runtime efuns.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -349,6 +349,21 @@ code {
   white-space: nowrap;
 }
 
+.efun-signature {
+  display: inline-grid;
+  gap: 2px;
+  line-height: 1.35;
+}
+
+.efun-signature span {
+  display: block;
+}
+
+.efun-signature span:nth-child(2) {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
 @media (max-width: 880px) {
   .side-nav {
     position: sticky;

@@ -13,6 +13,7 @@
     <a href="architecture.html">Architecture</a>
     <a href="glossary.html">Glossary</a>
     <a href="efuns.html" aria-current="page">Efuns</a>
+    <a href="lifecycle-events.html">Lifecycle Events</a>
     <a href="lpc.html">LPC</a>
     <a href="manual/index.html">Manual</a>
     <a href="api/index.html" target="_blank" rel="noopener">API Docs</a>
@@ -24,323 +25,251 @@
       <p class="eyebrow">Engine functions</p>
       <h1>Efuns</h1>
       <p>
-        Efuns are the LPC-facing entry points that let compiled mudlib objects
-        talk to JVMud runtime behavior.
+        Efuns are the LPC-facing functions that compiled mudlib objects use to
+        ask JVMud's runtime to do engine work: output, command dispatch,
+        object loading, world containment, scheduling, persistence, and
+        compatibility-oriented data handling.
       </p>
     </header>
 
     <section>
-      <h2>Compatibility Layer</h2>
+      <h2>Boundary Role</h2>
       <p>
-        JVMud can expose legacy LPC names while translating them toward
-        engine-native operations: output delivery, current execution context,
-        object calls, movement, inventory traversal, perception, and scheduling.
+        JVMud's core efuns use JVMud-native names. Legacy driver names belong
+        in mudlib compatibility profiles through direct-efun aliases such as
+        <code>direct_efun.sizeof = jvmud_size</code>. That keeps familiar LPC
+        source usable without making old driver vocabulary the engine model.
       </p>
-    </section>
-
-    <section>
-      <h2>Design Bias</h2>
       <p>
-        Efuns should keep current LPC content usable without making old driver
-        concepts the engine's ontology. Compatibility belongs at the boundary.
-      </p>
-    </section>
-
-    <section>
-      <h2>Qualified Calls</h2>
-      <p>
-        <code>efun::name(...)</code> asks JVMud to bypass mudlib shim methods
-        while still honoring configured direct-efun aliases for imported
-        mudlibs. <code>jvmud::name(...)</code> is stricter: it resolves only
-        JVMud-native efuns, using either the full name
-        <code>jvmud_size(...)</code> or the shortened namespace form
-        <code>jvmud::size(...)</code>.
+        Mudlib code can also qualify calls. <code>efun::name(...)</code>
+        bypasses mudlib shim methods while still honoring configured direct
+        aliases. <code>jvmud::name(...)</code> resolves only JVMud-native efuns,
+        accepting either <code>jvmud_size(...)</code> or the shortened
+        <code>jvmud::size(...)</code> form.
       </p>
     </section>
 
     <section>
       <h2>Current Core Efuns</h2>
       <p>
-        This is the core set currently registered by JVMud's engine efun
-        registry. Overloaded efuns are listed once per supported signature.
+        This page mirrors the built-in catalog registered by
+        <code>CoreEfuns</code>. Overloaded families are shown with arity ranges
+        when each overload has the same behavior.
       </p>
 
       <div class="efun-group">
-        <h3>Text And Output</h3>
+        <h3>Output And Perception</h3>
         <table class="efun-table">
-          <thead>
-            <tr>
-              <th>Signature</th>
-              <th>Current behavior</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
           <tbody>
-            <tr>
-              <td><code>void jvmud_write(mixed message)</code></td>
-              <td>Writes text to the active output sink.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_write_to_lpc_object(object target, mixed message)</code></td>
-              <td>Writes text to a target LPC object's bound session, when it has one.</td>
-            </tr>
-            <tr>
-              <td><code>status jvmud_rebind_session_lpc_object(object newObject, object oldObject)</code></td>
-              <td>Moves an existing host session binding from one LPC object to another.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_emit_perceivable(mixed emitter, mixed message)</code></td>
-              <td>Emits a perceivable message from an entity to suitably perceptive entities at its location.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_emit_perceivable_except(mixed emitter, mixed message, mixed excluded)</code></td>
-              <td>Emits a perceivable message from an entity while excluding the emitter and one explicit entity.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_emit_perceivable_at(mixed location, mixed message)</code></td>
-              <td>Emits a perceivable message at an explicit location for compatibility shims.</td>
-            </tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_write</span><span>(mixed message)</span></code></td><td>Writes text to the active output sink.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_write_to_lpc_object</span><span>(object target, mixed message)</span></code></td><td>Writes text to a target object's bound session, when it has one.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_rebind_session_lpc_object</span><span>(object newObject, object oldObject)</span></code></td><td>Moves an interactive session binding from one LPC object to another.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_emit_perceivable</span><span>(mixed emitter, mixed message)</span></code></td><td>Emits a perceivable message from an entity or path-resolved object.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_emit_perceivable_except</span><span>(mixed emitter, mixed message, mixed excluded)</span></code></td><td>Emits near an entity while suppressing one explicit recipient.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_emit_perceivable_at</span><span>(mixed location, mixed message)</span></code></td><td>Emits a perceivable message at an explicit location or path-resolved object.</td></tr>
           </tbody>
         </table>
       </div>
 
       <div class="efun-group">
-        <h3>Execution Context And Sessions</h3>
+        <h3>Current Context</h3>
         <table class="efun-table">
-          <thead>
-            <tr>
-              <th>Signature</th>
-              <th>Current behavior</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
           <tbody>
-            <tr>
-              <td><code>object jvmud_current_lpc_object()</code></td>
-              <td>Returns the current LPC object in the active runtime context.</td>
-            </tr>
-            <tr>
-              <td><code>object jvmud_current_actor()</code></td>
-              <td>Returns the current command actor, falling back to the current object.</td>
-            </tr>
-            <tr>
-              <td><code>object jvmud_current_agent()</code></td>
-              <td>Returns the active world-present Agent for the current action scope, or LPC false when none is active.</td>
-            </tr>
-            <tr>
-              <td><code>string jvmud_current_verb()</code></td>
-              <td>Returns the verb being dispatched for the active command.</td>
-            </tr>
-            <tr>
-              <td><code>array jvmud_users()</code></td>
-              <td>Returns the runtime's currently bound session personas.</td>
-            </tr>
-            <tr>
-              <td><code>int jvmud_query_idle(mixed user)</code></td>
-              <td>Reports idle time for a runtime session/user target.</td>
-            </tr>
-            <tr>
-              <td><code>mixed jvmud_query_ip_number(mixed user)</code></td>
-              <td>Reports the remote address associated with a session/user target when known.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_capture_session_input(string method, int noecho)</code></td>
-              <td>Captures the next line of session input for a mudlib method.</td>
-            </tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_current_lpc_object</span><span>()</span></code></td><td>Returns the currently executing LPC object.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_previous_lpc_object</span><span>()</span></code></td><td>Returns the previous LPC object in the active call chain, when available.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_current_actor</span><span>()</span></code></td><td>Returns the active command actor, falling back to the current object.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_current_agent</span><span>()</span></code></td><td>Returns the active world-present Agent for the action scope, or LPC false when none is active.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_current_verb</span><span>()</span></code></td><td>Returns the verb being dispatched for the current command.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_previous_object</span><span>()</span></code></td><td>Compatibility spelling for the previous LPC object on the runtime call stack.</td></tr>
           </tbody>
         </table>
       </div>
 
       <div class="efun-group">
-        <h3>Entities, Locations, And Containment</h3>
+        <h3>Command Dispatch</h3>
         <table class="efun-table">
-          <thead>
-            <tr>
-              <th>Signature</th>
-              <th>Current behavior</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
           <tbody>
-            <tr>
-              <td><code>string jvmud_lpc_object_id(mixed object)</code></td>
-              <td>Returns the registered runtime LPC object id.</td>
-            </tr>
-            <tr>
-              <td><code>mixed jvmud_invoke_lpc_object(mixed target, string method)</code></td>
-              <td>Invokes a method on an LPC object or path-resolved shared object.</td>
-            </tr>
-            <tr>
-              <td><code>mixed jvmud_invoke_lpc_object(mixed target, string method, mixed arg)</code></td>
-              <td>Invokes a method with one argument on an LPC object or path-resolved shared object.</td>
-            </tr>
-            <tr>
-              <td><code>object jvmud_clone_lpc_object(string path)</code></td>
-              <td>Compiles if needed and creates a new runtime clone.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_move_entity(mixed entity, mixed destination)</code></td>
-              <td>Moves an entity into a location, container entity, or path-resolved destination.</td>
-            </tr>
-            <tr>
-              <td><code>object jvmud_find_entity(string id)</code></td>
-              <td>Finds an entity by identifier using the current context.</td>
-            </tr>
-            <tr>
-              <td><code>object jvmud_find_entity(mixed id, mixed location)</code></td>
-              <td>Finds an entity by identifier in a supplied location or container.</td>
-            </tr>
-            <tr>
-              <td><code>object jvmud_first_entity_at(mixed location)</code></td>
-              <td>Starts entity traversal for a location or container.</td>
-            </tr>
-            <tr>
-              <td><code>object jvmud_next_entity_at(mixed entity)</code></td>
-              <td>Continues traversal from a previous entity at the same location.</td>
-            </tr>
-            <tr>
-              <td><code>object jvmud_entity_location()</code></td>
-              <td>Returns the current entity's immediate location.</td>
-            </tr>
-            <tr>
-              <td><code>object jvmud_entity_location(mixed entity)</code></td>
-              <td>Returns the supplied entity's immediate location.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_destroy_lpc_object(object object)</code></td>
-              <td>Destroys an LPC object and removes it from runtime indexes.</td>
-            </tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_dispatch_entity_command</span><span>(mixed actor, string commandLine)</span></code></td><td>Dispatches a text command as an entity or path-resolved object.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_enable_commands</span><span>()</span></code></td><td>Marks the current object as command-capable.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_add_action</span><span>(string methodName)</span></code></td><td>Remembers a method as a command action without registering a verb yet.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_add_action</span><span>(string methodName, string verb)</span></code></td><td>Remembers an action method and registers a verb for it.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_add_action</span><span>(string methodName, string verb, status prefix)</span></code></td><td>Registers a verb for an action method, optionally as a prefix verb.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_add_verb</span><span>(string verb)</span></code></td><td>Registers a verb for the most recently remembered action method in the current interaction scope.</td></tr>
           </tbody>
         </table>
       </div>
 
       <div class="efun-group">
-        <h3>Commands And Interaction Scope</h3>
+        <h3>Time And Scheduling</h3>
         <table class="efun-table">
-          <thead>
-            <tr>
-              <th>Signature</th>
-              <th>Current behavior</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
           <tbody>
-            <tr>
-              <td><code>void jvmud_enable_commands()</code></td>
-              <td>Compatibility entry point for command-capable objects.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_add_action(string method)</code></td>
-              <td>Remembers a mudlib action method for later verb registration.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_add_action(string method, string verb)</code></td>
-              <td>Registers a verb to dispatch to a mudlib action method.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_add_verb(string verb)</code></td>
-              <td>Registers a verb for the most recently remembered action method.</td>
-            </tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_time</span><span>()</span></code></td><td>Returns Unix epoch seconds from the host clock.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_format_time</span><span>(int epochSeconds)</span></code></td><td>Formats epoch seconds using the host default time zone.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_random</span><span>(int max)</span></code></td><td>Returns a value in <code>[0, max)</code>, or <code>0</code> when <code>max &lt;= 0</code>.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_schedule_recurring_tick</span><span>(int enabled, int intervalSeconds)</span></code></td><td>Schedules or disables recurring temporal ticks for the current object.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_schedule_deferred_callback</span><span>(string methodName, int delaySeconds)</span></code></td><td>Schedules a one-shot callback on the current object.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_schedule_deferred_callback</span><span>(string methodName, int delaySeconds, mixed arg...)</span></code></td><td>Schedules a one-shot callback with one to four mudlib-supplied arguments.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_cancel_deferred_callback</span><span>(string methodName)</span></code></td><td>Cancels matching deferred callbacks and returns the runtime cancellation result.</td></tr>
           </tbody>
         </table>
       </div>
 
       <div class="efun-group">
-        <h3>Time, Light, And Compatibility Hooks</h3>
+        <h3>Objects, Entities, And Containment</h3>
         <table class="efun-table">
-          <thead>
-            <tr>
-              <th>Signature</th>
-              <th>Current behavior</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
           <tbody>
-            <tr>
-              <td><code>int jvmud_time()</code></td>
-              <td>Returns current Unix-style wall-clock seconds.</td>
-            </tr>
-            <tr>
-              <td><code>int jvmud_set_light(int amount)</code></td>
-              <td>Updates runtime light state and returns the current light value.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_schedule_recurring_tick(int enabled, int interval_seconds)</code></td>
-              <td>Schedules or cancels recurring temporal work for the current mudlib object.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_schedule_deferred_callback(string method, int delay)</code></td>
-              <td>Schedules one deferred callback on the current Entity.</td>
-            </tr>
-            <tr>
-              <td><code>void jvmud_schedule_deferred_callback(string method, int delay, mixed arg)</code></td>
-              <td>Schedules one deferred callback with one argument on the current Entity.</td>
-            </tr>
-            <tr>
-              <td><code>int jvmud_cancel_deferred_callback(string method)</code></td>
-              <td>Cancels a pending deferred callback on the current Entity.</td>
-            </tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_lpc_object_id</span><span>(mixed object)</span></code></td><td>Returns the registered runtime object id for a loaded LPC object.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_method_exists</span><span>(string name)</span></code></td><td>Reports whether the current object exposes a public mudlib method.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_method_exists</span><span>(string name, mixed object)</span></code></td><td>Reports whether another loaded object exposes a public mudlib method.</td></tr>
+            <tr><td><code class="efun-signature"><span>array</span><span>jvmud_inherited_programs</span><span>(mixed object)</span></code></td><td>Returns the transitive LPC program paths inherited by a generated object.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_find_lpc_object</span><span>(string path)</span></code></td><td>Returns an already loaded LPC object, or LPC false when it is not loaded.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_find_object</span><span>(string path)</span></code></td><td>Returns an already loaded shared object, or LPC false when it is not loaded.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_load_lpc_object</span><span>(string path)</span></code></td><td>Loads or returns the shared LPC runtime object for a mudlib path.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_clone_lpc_object</span><span>(string path)</span></code></td><td>Clones an LPC object and returns the new runtime instance.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_invoke_lpc_object</span><span>(mixed target, string methodName, mixed arg...)</span></code></td><td>Invokes an optional method on an object or path-resolved shared object; registered for arities 2 through 6.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_destroy_lpc_object</span><span>(object object)</span></code></td><td>Destroys an LPC object and removes it from runtime indexes.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_set_entity_location</span><span>(mixed entity, mixed location)</span></code></td><td>Sets an entity's location or containment directly.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_move_entity</span><span>(mixed entity, mixed destination)</span></code></td><td>Moves an entity or path-resolved object through runtime containment.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_find_entity</span><span>(string id)</span></code></td><td>Finds an entity by id in the default scope.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_find_entity</span><span>(mixed id, mixed location)</span></code></td><td>Finds an entity by id inside a supplied location or container.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_entity_location</span><span>()</span></code></td><td>Returns the current object's immediate location.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_entity_location</span><span>(mixed entity)</span></code></td><td>Returns another entity's immediate location.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_first_entity_at</span><span>(mixed location)</span></code></td><td>Starts traversal of entities in a location or container.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_next_entity_at</span><span>(mixed entity)</span></code></td><td>Continues traversal from a previous entity in the same inventory walk.</td></tr>
           </tbody>
         </table>
       </div>
 
       <div class="efun-group">
-        <h3>Text, Type, And Collection Utilities</h3>
+        <h3>Aliases, Capabilities, And Light</h3>
         <table class="efun-table">
-          <thead>
-            <tr>
-              <th>Signature</th>
-              <th>Current behavior</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
           <tbody>
-            <tr>
-              <td><code>int jvmud_size(mixed value)</code></td>
-              <td>Returns the size of a string, collection, mapping, or array.</td>
-            </tr>
-            <tr>
-              <td><code>array jvmud_mapping_keys(mapping value)</code></td>
-              <td>Returns a mapping's keys in runtime iteration order.</td>
-            </tr>
-            <tr>
-              <td><code>array jvmud_mapping_values(mapping value)</code></td>
-              <td>Returns a mapping's values in runtime iteration order.</td>
-            </tr>
-            <tr>
-              <td><code>mapping jvmud_mapping_from_keys(array keys)</code></td>
-              <td>Builds a mapping whose keys come from an array and whose values are LPC true.</td>
-            </tr>
-            <tr>
-              <td><code>mapping jvmud_mapping_delete(mapping value, mixed key)</code></td>
-              <td>Removes a key from a mutable mapping and returns the same mapping.</td>
-            </tr>
-            <tr>
-              <td><code>mixed jvmud_read_mudlib_text(string path)</code></td>
-              <td>Reads a mudlib-relative text file, returning LPC false when unavailable.</td>
-            </tr>
-            <tr>
-              <td><code>string jvmud_lowercase_text(mixed value)</code></td>
-              <td>Converts text to lowercase.</td>
-            </tr>
-            <tr>
-              <td><code>string jvmud_capitalize_text(mixed value)</code></td>
-              <td>Capitalizes the first character of text.</td>
-            </tr>
-            <tr>
-              <td><code>string jvmud_serialize_lpc_value(mixed value)</code></td>
-              <td>Serializes LPC data values using JVMud's tagged JSON value format.</td>
-            </tr>
-            <tr>
-              <td><code>mixed jvmud_deserialize_lpc_value(string data)</code></td>
-              <td>Restores LPC data values produced by <code>jvmud_serialize_lpc_value</code>.</td>
-            </tr>
-            <tr>
-              <td><code>status jvmud_is_string(mixed value)</code></td>
-              <td>Returns LPC true when the value is a string.</td>
-            </tr>
-            <tr>
-              <td><code>status jvmud_is_array(mixed value)</code></td>
-              <td>Returns LPC true when the value is represented as an array/list.</td>
-            </tr>
-            <tr>
-              <td><code>array allocate(int size)</code></td>
-              <td>Creates an array initialized with zero values.</td>
-            </tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_bind_entity_alias</span><span>(object entity, string alias, mixed location)</span></code></td><td>Binds a lookup alias for an entity in a location scope.</td></tr>
+            <tr><td><code class="efun-signature"><span>object</span><span>jvmud_find_entity_alias</span><span>(string alias, mixed location)</span></code></td><td>Resolves an alias in a location scope.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_entity_has_alias</span><span>(mixed entity, string alias)</span></code></td><td>Reports whether an entity has a registered alias.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_entity_commands_enabled</span><span>(mixed entity)</span></code></td><td>Reports whether command handling is enabled for an entity.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_set_entity_translucent</span><span>(mixed entity, status translucent)</span></code></td><td>Controls whether ambient perception such as light passes through an entity container.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_entity_translucent</span><span>(mixed entity)</span></code></td><td>Reports whether an entity is currently translucent.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_set_light</span><span>(int delta)</span></code></td><td>Adjusts current runtime light and returns the resulting light value.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="efun-group">
+        <h3>Sessions, Users, And Host Requests</h3>
+        <table class="efun-table">
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
+          <tbody>
+            <tr><td><code class="efun-signature"><span>array</span><span>jvmud_users</span><span>()</span></code></td><td>Returns the active user/player objects known to the runtime.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_interactive</span><span>(mixed user)</span></code></td><td>Reports whether an object is bound to an active session.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_interactive_info</span><span>(mixed user, int key)</span></code></td><td>Returns LPC false for driver-specific interactive metadata JVMud does not expose.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_lpc_object_info</span><span>(mixed object, int key)</span></code></td><td>Returns LPC false for driver-specific LPC object metadata JVMud does not expose.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_object_info</span><span>(mixed object, int key)</span></code></td><td>Returns LPC false for driver-specific object metadata JVMud does not expose.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_configure_lpc_object</span><span>(mixed object, int key, mixed value)</span></code></td><td>Accepts driver-specific LPC object configuration requests conservatively.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_configure_object</span><span>(mixed object, int key, mixed value)</span></code></td><td>Accepts driver-specific object configuration requests conservatively.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_shutdown</span><span>()</span></code></td><td>Accepts legacy shutdown requests without exposing driver control to mudlib code.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_set_this_player</span><span>(mixed player)</span></code></td><td>Accepts legacy current-player mutation requests while JVMud keeps session ownership engine-side.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_raise_error</span><span>(mixed message)</span></code></td><td>Raises a runtime exception with the supplied LPC message.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_query_idle</span><span>(mixed user)</span></code></td><td>Returns idle time for a runtime session/user target.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_query_ip_number</span><span>(mixed user)</span></code></td><td>Returns the user's remote address, or LPC false when unavailable.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_driver_info</span><span>(int key)</span></code></td><td>Returns LPC false for unsupported driver-info metadata queries.</td></tr>
+            <tr><td><code class="efun-signature"><span>void</span><span>jvmud_capture_session_input</span><span>(string methodName, int noEcho, mixed arg...)</span></code></td><td>Routes the next session input line to a method on the current object; registered for arities 2 through 8.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_transfer_player_to_game</span><span>(string gameId)</span></code></td><td>Asks the host to transfer the current player to another registered game.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="efun-group">
+        <h3>Files, Persistence, And Databases</h3>
+        <table class="efun-table">
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
+          <tbody>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_read_mudlib_text</span><span>(string path)</span></code></td><td>Reads a mudlib-relative text file, returning LPC false when unavailable.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_read_mudlib_text</span><span>(string path, int startLine, int lineCount)</span></code></td><td>Reads a line slice from a mudlib-relative text file for legacy file helpers.</td></tr>
+            <tr><td><code class="efun-signature"><span>array</span><span>jvmud_list_mudlib_paths</span><span>(string path)</span></code></td><td>Lists mudlib-relative paths with default listing flags.</td></tr>
+            <tr><td><code class="efun-signature"><span>array</span><span>jvmud_list_mudlib_paths</span><span>(string path, int flags)</span></code></td><td>Lists mudlib-relative paths, including simple glob support for compatibility discovery.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_append_mudlib_text</span><span>(string path, mixed text)</span></code></td><td>Appends text to a mudlib-relative file.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_remove_mudlib_text</span><span>(string path)</span></code></td><td>Removes a mudlib-relative file.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_copy_mudlib_text</span><span>(string source, string destination)</span></code></td><td>Copies a mudlib-relative file, returning LDMud-style zero for success.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_rename_mudlib_text</span><span>(string source, string destination)</span></code></td><td>Renames a mudlib-relative path, returning LDMud-style zero for success.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_create_mudlib_directory</span><span>(string path)</span></code></td><td>Creates a mudlib-relative directory.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_remove_mudlib_directory</span><span>(string path)</span></code></td><td>Removes an empty mudlib-relative directory.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_save_lpc_object_state</span><span>(string path)</span></code></td><td>Persists the current object's LPC fields.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_restore_lpc_object_state</span><span>(string path)</span></code></td><td>Restores the current object's LPC fields.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_db_connect</span><span>(string database)</span></code></td><td>Opens a configured JDBC database handle.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_db_connect</span><span>(string database, string user, string password)</span></code></td><td>Opens a JDBC database handle with mudlib-supplied credentials.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_db_exec</span><span>(int handle, string sql)</span></code></td><td>Executes SQL and retains any result cursor for later fetches.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_db_fetch</span><span>(int handle)</span></code></td><td>Returns the next result row as an LPC array, or LPC false when no row remains.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_db_error</span><span>(int handle)</span></code></td><td>Returns the last SQL error for a handle.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_db_close</span><span>(int handle)</span></code></td><td>Closes a database handle.</td></tr>
+            <tr><td><code class="efun-signature"><span>array</span><span>jvmud_db_handles</span><span>()</span></code></td><td>Returns currently open database handles.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_db_escape</span><span>(mixed value)</span></code></td><td>Escapes text for mudlib-generated SQL.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="efun-group">
+        <h3>Security Helpers</h3>
+        <table class="efun-table">
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
+          <tbody>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_hash_password</span><span>(string password)</span></code></td><td>Returns a PBKDF2-SHA256 password hash string.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_verify_password</span><span>(string password, string encodedHash)</span></code></td><td>Verifies a password against a hash created by <code>jvmud_hash_password</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="efun-group">
+        <h3>Text And Regex</h3>
+        <table class="efun-table">
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
+          <tbody>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_lowercase_text</span><span>(mixed value)</span></code></td><td>Converts text to lowercase.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_uppercase_text</span><span>(mixed value)</span></code></td><td>Converts text to uppercase.</td></tr>
+            <tr><td><code class="efun-signature"><span>array</span><span>jvmud_split_text</span><span>(string text, string delimiter)</span></code></td><td>Splits text on a literal delimiter while preserving empty trailing fields.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_regex_match</span><span>(array values, string pattern)</span></code></td><td>Returns values whose string forms match a Java regular expression, or LPC false when none match.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_regex_match</span><span>(array values, string pattern, int flags)</span></code></td><td>Regex match with flags.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_regex_replace</span><span>(string input, string pattern, string replacement, int flags)</span></code></td><td>Performs Java-regex replacement for compatibility text helpers.</td></tr>
+            <tr><td><code class="efun-signature"><span>array</span><span>jvmud_regex_explode</span><span>(string input, string pattern)</span></code></td><td>Splits text around regular-expression matches while preserving matched delimiters.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_to_int</span><span>(mixed value)</span></code></td><td>Converts numeric values and base-10 text to an integer, returning false-style zero for non-numeric input.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_to_string</span><span>(mixed value)</span></code></td><td>Converts a mixed LPC value to JVMud text form.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_capitalize_text</span><span>(mixed value)</span></code></td><td>Capitalizes the first character of text.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_wrap_text</span><span>(mixed text)</span></code></td><td>Wraps description text at the default 78-column width.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_wrap_text</span><span>(mixed text, int width)</span></code></td><td>Wraps description text at a requested line width.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_format_text</span><span>(string format, mixed arg...)</span></code></td><td>Formats text using the host formatter; registered for arities 1 through 24.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_extract_text</span><span>(mixed value, int from)</span></code></td><td>Extracts text from an inclusive start index through the end.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_extract_text</span><span>(mixed value, int from, int to)</span></code></td><td>Extracts text using inclusive start and end indexes.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="efun-group">
+        <h3>Collections, Types, And Values</h3>
+        <table class="efun-table">
+          <thead><tr><th>Signature</th><th>Current behavior</th></tr></thead>
+          <tbody>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_size</span><span>(mixed value)</span></code></td><td>Returns the size of a string, collection, mapping, or array.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_member</span><span>(mixed value, mixed needle)</span></code></td><td>Checks mapping key membership or returns the index of a value in an array or string.</td></tr>
+            <tr><td><code class="efun-signature"><span>array</span><span>jvmud_mapping_keys</span><span>(mapping value)</span></code></td><td>Returns a mapping's keys in runtime iteration order.</td></tr>
+            <tr><td><code class="efun-signature"><span>array</span><span>jvmud_mapping_values</span><span>(mapping value)</span></code></td><td>Returns a mapping's values in runtime iteration order.</td></tr>
+            <tr><td><code class="efun-signature"><span>mapping</span><span>jvmud_mapping_from_keys</span><span>(array keys)</span></code></td><td>Builds a mapping whose keys come from an array and whose values are LPC true.</td></tr>
+            <tr><td><code class="efun-signature"><span>mapping</span><span>jvmud_mapping_delete</span><span>(mapping value, mixed key)</span></code></td><td>Removes a key from a mutable mapping and returns the same mapping.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_serialize_lpc_value</span><span>(mixed value)</span></code></td><td>Serializes LPC data values to JVMud's tagged JSON payload.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_deserialize_lpc_value</span><span>(string data)</span></code></td><td>Restores LPC data values produced by <code>jvmud_serialize_lpc_value</code>.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_is_string</span><span>(mixed value)</span></code></td><td>Reports whether the value is Java-backed LPC string data.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_is_int</span><span>(mixed value)</span></code></td><td>Reports whether the value is Java-backed LPC integer data.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_is_object</span><span>(mixed value)</span></code></td><td>Reports whether the value is a live runtime object.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_is_array</span><span>(mixed value)</span></code></td><td>Reports whether the value is Java-backed LPC array data.</td></tr>
+            <tr><td><code class="efun-signature"><span>status</span><span>jvmud_is_mapping</span><span>(mixed value)</span></code></td><td>Reports whether the value is Java-backed LPC mapping data.</td></tr>
+            <tr><td><code class="efun-signature"><span>mapping</span><span>jvmud_filter_indices</span><span>(mapping values, function callback, mixed arg...)</span></code></td><td>Returns entries whose keys satisfy a callable predicate; registered for arities 2 through 8.</td></tr>
+            <tr><td><code class="efun-signature"><span>array</span><span>jvmud_allocate</span><span>(int size)</span></code></td><td>Returns a zero-filled LPC array of non-negative size.</td></tr>
+            <tr><td><code class="efun-signature"><span>int</span><span>jvmud_sscanf</span><span>(mixed input, mixed format, mixed capture...)</span></code></td><td>Scans text into supplied capture targets; registered for arities 3 through 8.</td></tr>
           </tbody>
         </table>
       </div>
