@@ -943,6 +943,13 @@ public final class SemanticAnalyzer {
 
             if (expression instanceof ASTExprInlineCallable inlineCallable) {
                 context.enterInlineCallable();
+                if (inlineCallable.hasBlockBody()) {
+                    ASTStmtBlock resolvedBlock = resolveBlock(inlineCallable.blockBody(), context);
+                    context.exitInlineCallable();
+                    if (resolvedBlock == inlineCallable.blockBody())
+                        return inlineCallable;
+                    return new ASTExprInlineCallable(inlineCallable.line(), resolvedBlock);
+                }
                 ASTExpression resolvedBody = resolveExpression(inlineCallable.body(), context);
                 context.exitInlineCallable();
                 if (resolvedBody == inlineCallable.body())
@@ -1220,6 +1227,13 @@ public final class SemanticAnalyzer {
         private ASTExpression resolveCallableExpression(ASTExpression expression, LocalResolutionContext context) {
             if (expression instanceof ASTExprInlineCallable inlineCallable) {
                 context.enterInlineCallable();
+                if (inlineCallable.hasBlockBody()) {
+                    ASTStmtBlock resolvedBlock = resolveBlock(inlineCallable.blockBody(), context);
+                    context.exitInlineCallable();
+                    if (resolvedBlock == inlineCallable.blockBody())
+                        return inlineCallable;
+                    return new ASTExprInlineCallable(inlineCallable.line(), resolvedBlock);
+                }
                 ASTExpression resolvedBody = resolveExpression(inlineCallable.body(), context);
                 context.exitInlineCallable();
                 if (resolvedBody == inlineCallable.body())

@@ -2191,6 +2191,36 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsInlineCallableBlockBody() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("member", "jvmud_member")
+                .directEfunAlias("pointerp", "jvmud_is_array")
+                .directEfunAlias("sizeof", "jvmud_size")
+                .build());
+        LPCObjectHandle object = runtime.loadSource("smoke/inline_filter_block_body.c", """
+                mixed value() {
+                    mapping values = ([ "keep": ({ ([ "enabled": 1 ]) }), "drop": ({ }) ]);
+                    mapping filtered = filter(values, (: {
+                        int isOk = pointerp($2);
+                        if (sizeof($2)) {
+                            foreach (mapping entry in $2) {
+                                isOk &&= member(entry, "enabled");
+                            }
+                        } else {
+                            isOk = 0;
+                        }
+                        return isOk;
+                    } :));
+                    return sizeof(filtered);
+                }
+                """);
+
+        assertEquals(1, object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsInlineCallableMapArguments() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_map.c", """

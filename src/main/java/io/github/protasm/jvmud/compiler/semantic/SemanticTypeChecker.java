@@ -239,7 +239,8 @@ public final class SemanticTypeChecker {
         if (expression instanceof ASTExprClosureArgument)
             return LPCType.LPCMIXED;
         if (expression instanceof ASTExprInlineCallable inlineCallable) {
-            inferExpressionType(inlineCallable.body(), context);
+            if (!inlineCallable.hasBlockBody())
+                inferExpressionType(inlineCallable.body(), context);
             return LPCType.LPCFUNCTION;
         }
         if (expression instanceof ASTExprTypedFunctionLiteral typedFunction) {

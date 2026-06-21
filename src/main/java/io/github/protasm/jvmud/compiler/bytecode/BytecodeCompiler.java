@@ -253,25 +253,29 @@ public final class BytecodeCompiler {
                 continue;
             }
 
-            switch (local.type().kind()) {
-            case INT, STATUS -> {
-                pushInt(mv, 0);
-                mv.visitVarInsn(ISTORE, local.slot());
-            }
-            case FLOAT -> {
-                mv.visitInsn(FCONST_0);
-                mv.visitVarInsn(FSTORE, local.slot());
-            }
-            case MIXED -> {
-                emitMixedZero(mv);
-                mv.visitVarInsn(ASTORE, local.slot());
-            }
-            case VOID -> {}
-            default -> {
-                mv.visitInsn(ACONST_NULL);
-                mv.visitVarInsn(ASTORE, local.slot());
-            }
-            }
+            emitDefaultLocalInitializer(mv, local);
+        }
+    }
+
+    private void emitDefaultLocalInitializer(MethodVisitor mv, IRLocal local) {
+        switch (local.type().kind()) {
+        case INT, STATUS -> {
+            pushInt(mv, 0);
+            mv.visitVarInsn(ISTORE, local.slot());
+        }
+        case FLOAT -> {
+            mv.visitInsn(FCONST_0);
+            mv.visitVarInsn(FSTORE, local.slot());
+        }
+        case MIXED -> {
+            emitMixedZero(mv);
+            mv.visitVarInsn(ASTORE, local.slot());
+        }
+        case VOID -> {}
+        default -> {
+            mv.visitInsn(ACONST_NULL);
+            mv.visitVarInsn(ASTORE, local.slot());
+        }
         }
     }
 
@@ -672,6 +676,7 @@ public final class BytecodeCompiler {
 
         List<IRLocal> helperLocals = new java.util.ArrayList<>(literal.captureLocals());
         helperLocals.addAll(literal.argumentLocals());
+        helperLocals.addAll(literal.helperLocals());
         IRMethod callableMethod = new IRMethod(
                 literal.line(),
                 helperName,
@@ -682,14 +687,36 @@ public final class BytecodeCompiler {
                 helperName,
                 false,
                 null);
-        emitExpression(mv, activeInternalName, callableMethod, literal.body());
-        if (literal.body().type().kind() == RuntimeValueKind.VOID)
-            mv.visitInsn(ACONST_NULL);
-        else
-            boxIfNeeded(mv, literal.body().type());
-        mv.visitInsn(ARETURN);
+        for (IRLocal local : literal.helperLocals()) {
+            emitDefaultLocalInitializer(mv, local);
+        }
+
+        if (literal.hasBlockBody()) {
+            emitCallableBlocks(mv, callableMethod, literal.blocks());
+        } else {
+            emitExpression(mv, activeInternalName, callableMethod, literal.body());
+            if (literal.body().type().kind() == RuntimeValueKind.VOID)
+                mv.visitInsn(ACONST_NULL);
+            else
+                boxIfNeeded(mv, literal.body().type());
+            mv.visitInsn(ARETURN);
+        }
         mv.visitMaxs(0, 0);
         mv.visitEnd();
+    }
+
+    private void emitCallableBlocks(MethodVisitor mv, IRMethod callableMethod, List<IRBlock> blocks) {
+        Map<String, Label> labels = new HashMap<>();
+        for (IRBlock block : blocks)
+            labels.put(block.label(), new Label());
+
+        for (IRBlock block : blocks) {
+            mv.visitLabel(labels.get(block.label()));
+            for (IRStatement statement : block.statements())
+                emitStatement(mv, activeInternalName, callableMethod, statement);
+
+            emitTerminator(mv, activeInternalName, callableMethod, block.terminator(), labels);
+        }
     }
 
     private void emitLocalLoad(MethodVisitor mv, IRLocal local) {

@@ -1696,10 +1696,15 @@ public final class IRLowerer {
 
     private IRExpression lowerInlineCallableLiteral(
             ASTExprInlineCallable inlineCallable, MethodContext context, List<CompilationProblem> problems) {
-        int argumentCount = maxClosureArgumentIndex(inlineCallable.body());
+        int argumentCount = inlineCallable.hasBlockBody()
+                ? maxClosureArgumentIndex(inlineCallable.blockBody())
+                : maxClosureArgumentIndex(inlineCallable.body());
         List<IRLocal> argumentLocals = new ArrayList<>();
         for (int i = 1; i <= argumentCount; i++)
             argumentLocals.add(new IRLocal(inlineCallable.line(), "callable_arg" + i, RuntimeTypes.MIXED, 100 + i, false));
+
+        if (inlineCallable.hasBlockBody())
+            return lowerBlockInlineCallableLiteral(inlineCallable, context, argumentCount, argumentLocals, problems);
 
         context.pushClosureArguments(argumentLocals);
         IRExpression body = lowerExpression(inlineCallable.body(), context, problems);
@@ -1713,11 +1718,139 @@ public final class IRLowerer {
                 RuntimeTypes.CALLABLE);
     }
 
+    private IRExpression lowerBlockInlineCallableLiteral(
+            ASTExprInlineCallable inlineCallable,
+            MethodContext enclosingContext,
+            int argumentCount,
+            List<IRLocal> argumentLocals,
+            List<CompilationProblem> problems) {
+        MethodContext helperContext = new MethodContext(
+                RuntimeTypes.MIXED,
+                enclosingContext.fieldsBySymbol,
+                enclosingContext.currentInternalName,
+                enclosingContext.flattenedInheritedMethodOwners,
+                enclosingContext.primaryParentLineage);
+        for (Map.Entry<Symbol, IRLocal> entry : enclosingContext.localsBySymbol.entrySet()) {
+            helperContext.registerLocal(entry.getKey(), entry.getValue());
+        }
+
+        Set<Symbol> blockLocalSymbols = new HashSet<>();
+        collectBlockLocalSymbols(inlineCallable.blockBody(), blockLocalSymbols);
+        for (Symbol symbol : blockLocalSymbols) {
+            IRLocal local = enclosingContext.localsBySymbol.get(symbol);
+            if (local != null) {
+                helperContext.locals.add(local);
+            }
+        }
+
+        helperContext.pushClosureArguments(argumentLocals);
+        BlockBuilder entryBlock = helperContext.newBlock("entry");
+        BlockBuilder tail = lowerStatement(inlineCallable.blockBody(), entryBlock, helperContext, problems);
+        helperContext.popClosureArguments();
+
+        if (tail != null && !tail.isTerminated()) {
+            tail.terminate(new IRReturn(inlineCallable.line(), new IRConstant(inlineCallable.line(), 0, RuntimeTypes.MIXED)));
+        }
+        List<IRBlock> blocks = helperContext.buildBlocks(
+                new IRReturn(inlineCallable.line(), new IRConstant(inlineCallable.line(), 0, RuntimeTypes.MIXED)));
+        List<IRLocal> captureLocals = captureLocals(blocks, argumentLocals, helperContext.locals);
+        return new IRInlineCallableLiteral(
+                inlineCallable.line(),
+                null,
+                blocks,
+                argumentCount,
+                argumentLocals,
+                captureLocals,
+                helperContext.locals,
+                RuntimeTypes.CALLABLE);
+    }
+
+    private void collectBlockLocalSymbols(ASTStatement statement, Set<Symbol> symbols) {
+        if (statement == null)
+            return;
+        if (statement instanceof ASTStmtBlock block) {
+            for (ASTStmtBlock.BlockLocalDeclaration declaration : block.localDeclarations()) {
+                for (ASTLocal local : declaration.locals()) {
+                    symbols.add(local.symbol());
+                }
+            }
+            for (ASTStatement nested : block) {
+                collectBlockLocalSymbols(nested, symbols);
+            }
+            return;
+        }
+        if (statement instanceof ASTStmtFor forStmt) {
+            for (ASTLocal local : forStmt.initializerLocals()) {
+                symbols.add(local.symbol());
+            }
+            collectBlockLocalSymbols(forStmt.body(), symbols);
+            return;
+        }
+        if (statement instanceof ASTStmtForeach foreachStmt) {
+            if (foreachStmt.keyLocal() != null)
+                symbols.add(foreachStmt.keyLocal().symbol());
+            if (foreachStmt.valueLocal() != null)
+                symbols.add(foreachStmt.valueLocal().symbol());
+            collectBlockLocalSymbols(foreachStmt.body(), symbols);
+            return;
+        }
+        if (statement instanceof ASTStmtIfThenElse ifStmt) {
+            collectBlockLocalSymbols(ifStmt.thenBranch(), symbols);
+            collectBlockLocalSymbols(ifStmt.elseBranch(), symbols);
+            return;
+        }
+        if (statement instanceof ASTStmtWhile whileStmt) {
+            collectBlockLocalSymbols(whileStmt.body(), symbols);
+            return;
+        }
+        if (statement instanceof ASTStmtDoWhile doWhileStmt) {
+            collectBlockLocalSymbols(doWhileStmt.body(), symbols);
+            return;
+        }
+        if (statement instanceof ASTStmtSwitch switchStmt) {
+            for (ASTStmtSwitch.SwitchCase switchCase : switchStmt.cases()) {
+                for (ASTStatement nested : switchCase.statements()) {
+                    collectBlockLocalSymbols(nested, symbols);
+                }
+            }
+        }
+    }
+
     private List<IRLocal> captureLocals(IRExpression expression, List<IRLocal> argumentLocals) {
         Set<IRLocal> arguments = new HashSet<>(argumentLocals);
         Map<Integer, IRLocal> capturesBySlot = new LinkedHashMap<>();
         collectCaptureLocals(expression, arguments, capturesBySlot);
         return List.copyOf(capturesBySlot.values());
+    }
+
+    private List<IRLocal> captureLocals(
+            List<IRBlock> blocks, List<IRLocal> argumentLocals, List<IRLocal> helperLocals) {
+        Set<IRLocal> ignoredLocals = new HashSet<>(argumentLocals);
+        ignoredLocals.addAll(helperLocals);
+        Map<Integer, IRLocal> capturesBySlot = new LinkedHashMap<>();
+        for (IRBlock block : blocks) {
+            for (IRStatement statement : block.statements()) {
+                collectCaptureLocals(statement, ignoredLocals, capturesBySlot);
+            }
+            collectCaptureLocals(block.terminator(), ignoredLocals, capturesBySlot);
+        }
+        return List.copyOf(capturesBySlot.values());
+    }
+
+    private void collectCaptureLocals(
+            IRStatement statement, Set<IRLocal> ignoredLocals, Map<Integer, IRLocal> capturesBySlot) {
+        if (statement instanceof IRExpressionStatement expressionStatement) {
+            collectCaptureLocals(expressionStatement.expression(), ignoredLocals, capturesBySlot);
+        }
+    }
+
+    private void collectCaptureLocals(
+            IRTerminator terminator, Set<IRLocal> ignoredLocals, Map<Integer, IRLocal> capturesBySlot) {
+        if (terminator instanceof IRReturn irReturn) {
+            collectCaptureLocals(irReturn.returnValue(), ignoredLocals, capturesBySlot);
+        } else if (terminator instanceof IRConditionalJump conditionalJump) {
+            collectCaptureLocals(conditionalJump.condition(), ignoredLocals, capturesBySlot);
+        }
     }
 
     private void collectCaptureLocals(
@@ -1925,6 +2058,46 @@ public final class IRLowerer {
             }
             return max;
         }
+        return 0;
+    }
+
+    private int maxClosureArgumentIndex(ASTStatement statement) {
+        if (statement == null)
+            return 0;
+        if (statement instanceof ASTStmtBlock block) {
+            int max = 0;
+            for (ASTStatement nested : block)
+                max = Math.max(max, maxClosureArgumentIndex(nested));
+            return max;
+        }
+        if (statement instanceof ASTStmtExpression expression)
+            return maxClosureArgumentIndex(expression.expression());
+        if (statement instanceof ASTStmtIfThenElse ifThenElse)
+            return Math.max(
+                    Math.max(maxClosureArgumentIndex(ifThenElse.condition()), maxClosureArgumentIndex(ifThenElse.thenBranch())),
+                    maxClosureArgumentIndex(ifThenElse.elseBranch()));
+        if (statement instanceof ASTStmtFor forStmt)
+            return Math.max(
+                    Math.max(maxClosureArgumentIndex(forStmt.initializer()), maxClosureArgumentIndex(forStmt.condition())),
+                    Math.max(maxClosureArgumentIndex(forStmt.update()), maxClosureArgumentIndex(forStmt.body())));
+        if (statement instanceof ASTStmtForeach foreachStmt)
+            return Math.max(maxClosureArgumentIndex(foreachStmt.iterable()), maxClosureArgumentIndex(foreachStmt.body()));
+        if (statement instanceof ASTStmtWhile whileStmt)
+            return Math.max(maxClosureArgumentIndex(whileStmt.condition()), maxClosureArgumentIndex(whileStmt.body()));
+        if (statement instanceof ASTStmtDoWhile doWhileStmt)
+            return Math.max(maxClosureArgumentIndex(doWhileStmt.body()), maxClosureArgumentIndex(doWhileStmt.condition()));
+        if (statement instanceof ASTStmtSwitch switchStmt) {
+            int max = maxClosureArgumentIndex(switchStmt.expression());
+            for (ASTStmtSwitch.SwitchCase switchCase : switchStmt.cases()) {
+                max = Math.max(max, maxClosureArgumentIndex(switchCase.expression()));
+                max = Math.max(max, maxClosureArgumentIndex(switchCase.rangeEndExpression()));
+                for (ASTStatement nested : switchCase.statements())
+                    max = Math.max(max, maxClosureArgumentIndex(nested));
+            }
+            return max;
+        }
+        if (statement instanceof ASTStmtReturn stmtReturn)
+            return maxClosureArgumentIndex(stmtReturn.returnValue());
         return 0;
     }
 

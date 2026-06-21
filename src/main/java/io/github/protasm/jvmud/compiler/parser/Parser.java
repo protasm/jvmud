@@ -537,7 +537,7 @@ public class Parser {
         return new ASTExprProtectedEval(line, body, suppressLogging);
     }
 
-        private ASTStmtBlock block(boolean isMethodBody) {
+        public ASTStmtBlock block(boolean isMethodBody) {
                 locals.beginScope();
 
                 List<ASTStatement> statements = new ArrayList<>();
