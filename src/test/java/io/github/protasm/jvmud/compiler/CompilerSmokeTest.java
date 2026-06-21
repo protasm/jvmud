@@ -3609,6 +3609,33 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void globalObjectVarargsMethodsCanBeCalledWithOmittedArguments() throws Exception {
+        Files.createDirectories(tempDir.resolve("secure/simulated-efuns"));
+        Files.writeString(tempDir.resolve("secure/simulated-efuns/strings.c"), """
+                public nomask varargs int add_optional(int value, int extra) {
+                    return value + extra;
+                }
+                """);
+        Files.writeString(tempDir.resolve("secure/simul_efun.c"), """
+                inherit "/secure/simulated-efuns/strings.c";
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                int value() {
+                    return add_optional(42);
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mudlibGlobalObjectPath("secure/simul_efun")
+                .build());
+
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+
+        assertEquals(42, caller.invoke("value"));
+    }
+
+    @Test
     void mfunCanSliceArraysForMudlibCompatibilityHelpers() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/functions.c"), """

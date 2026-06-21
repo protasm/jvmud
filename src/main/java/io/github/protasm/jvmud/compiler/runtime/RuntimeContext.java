@@ -38,6 +38,7 @@ import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -481,15 +482,12 @@ public final class RuntimeContext {
         return new Efun() {
             @Override
             public EfunSignature signature() {
-                return globalMethodSignature(method);
+                return globalMethodSignature(method, arity);
             }
 
             @Override
             public Object call(RuntimeContext context, Object[] args) {
                 Object globalObject = loadGlobalObject(objectPath);
-                if (!hasMethod(globalObject, name, args.length))
-                    throw new IllegalArgumentException(
-                            "Global function '" + name + "' is not available from " + objectPath);
                 return invokeObjectPreservingCurrentObject(globalObject, name, args);
             }
         };
@@ -522,8 +520,8 @@ public final class RuntimeContext {
         }
         ASTObject object = declaration.orElseThrow();
         ASTMethod directMethod = object.methods().getAll(name).stream()
-                .filter(method -> parameterCount(method) == arity)
-                .findFirst()
+                .filter(method -> acceptsArity(method, arity))
+                .min(Comparator.comparingInt(this::parameterCount))
                 .orElse(null);
         if (directMethod != null) {
             return directMethod;
@@ -535,6 +533,11 @@ public final class RuntimeContext {
             }
         }
         return null;
+    }
+
+    private boolean acceptsArity(ASTMethod method, int arity) {
+        int parameterCount = parameterCount(method);
+        return parameterCount >= arity || (method.modifiers().isVarargs() && arity >= parameterCount);
     }
 
     private Optional<ASTObject> parseGlobalObjectDeclaration(String objectPath) {
@@ -576,10 +579,11 @@ public final class RuntimeContext {
         return new GlobalObjectSource(resolution.source(), resolution.resolvedPath(), resolution.displayPath());
     }
 
-    private EfunSignature globalMethodSignature(ASTMethod method) {
+    private EfunSignature globalMethodSignature(ASTMethod method, int arity) {
         List<LPCType> parameterTypes = new ArrayList<>();
-        if (method.parameters() != null) {
-            for (ASTParameter parameter : method.parameters()) {
+        if (method.parameters() != null && method.parameters().size() > 0) {
+            for (int i = 0; i < arity; i++) {
+                ASTParameter parameter = method.parameters().get(Math.min(i, method.parameters().size() - 1));
                 parameterTypes.add(lpcTypeOrMixed(parameter.symbol()));
             }
         }
@@ -1163,7 +1167,7 @@ public final class RuntimeContext {
 
         Object[] actualArgs = args == null ? new Object[0] : args;
         try {
-            InvocationPlan invocation = findInvocation(target.getClass(), methodName, actualArgs);
+            InvocationPlan invocation = findOptionalInvocation(target.getClass(), methodName, actualArgs);
             try {
                 return invocation.method().invoke(target, invocation.arguments());
             } catch (IllegalArgumentException e) {
