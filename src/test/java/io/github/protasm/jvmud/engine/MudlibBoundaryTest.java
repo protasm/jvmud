@@ -120,6 +120,7 @@ final class MudlibBoundaryTest {
                 lifecycle.object_destruction_requested = prepare_destruct
                 lifecycle.interaction_scope_started = init
                 lifecycle.player_connected = player_connected
+                lifecycle.player_session_post_rebind = player_rebound
                 lifecycle.player-bound = player_bound
                 lifecycle.log_error = log_error
                 lifecycle.runtime_error = runtime_error
@@ -161,6 +162,7 @@ final class MudlibBoundaryTest {
                 boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_DESTRUCTION_REQUESTED).orElseThrow());
         assertEquals("init", boundary.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElseThrow());
         assertEquals("player_connected", boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElseThrow());
+        assertEquals("player_rebound", boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_POST_REBIND).orElseThrow());
         assertEquals("player_bound", boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_OBJECT_BOUND).orElseThrow());
         assertEquals("log_error", boundary.lifecycleMethod(MudlibLifecycleEvent.LOG_ERROR).orElseThrow());
         assertEquals("runtime_error", boundary.lifecycleMethod(MudlibLifecycleEvent.RUNTIME_ERROR).orElseThrow());

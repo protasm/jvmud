@@ -47,6 +47,7 @@ public final class MudInstance implements InstanceHost {
     private final int maxLineLength;
     private final boolean showRuler;
     private final String playerSessionConnectedMethod;
+    private final String playerSessionPostRebindMethod;
     private final String playerSessionDisconnectedMethod;
     private final String runtimeErrorMethod;
     private final MudlibBootResult bootResult;
@@ -67,6 +68,7 @@ public final class MudInstance implements InstanceHost {
             int maxLineLength,
             boolean showRuler,
             String playerSessionConnectedMethod,
+            String playerSessionPostRebindMethod,
             String playerSessionDisconnectedMethod,
             String runtimeErrorMethod,
             MudlibBootResult bootResult) {
@@ -81,6 +83,7 @@ public final class MudInstance implements InstanceHost {
         this.maxLineLength = maxLineLength;
         this.showRuler = showRuler;
         this.playerSessionConnectedMethod = playerSessionConnectedMethod;
+        this.playerSessionPostRebindMethod = playerSessionPostRebindMethod;
         this.playerSessionDisconnectedMethod = playerSessionDisconnectedMethod;
         this.runtimeErrorMethod = runtimeErrorMethod;
         this.bootResult = Objects.requireNonNull(bootResult, "bootResult");
@@ -115,6 +118,7 @@ public final class MudInstance implements InstanceHost {
                 boundary.maxLineLength(),
                 boundary.showRuler(),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null),
+                boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_POST_REBIND).orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_DISCONNECTED).orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.RUNTIME_ERROR).orElse(null),
                 result);
@@ -508,10 +512,16 @@ public final class MudInstance implements InstanceHost {
             if (boundActor != persona.actor()) {
                 String objectId = Objects.requireNonNullElse(runtime.objectId(boundActor), persona.objectId());
                 persona.replaceActor(objectId, boundActor);
-                runtime.invokeOptionalObject(boundActor, "addCommands");
-                runtime.clearOutputTranscript();
+                invokePlayerSessionPostRebind(boundActor);
             }
         });
+    }
+
+    private void invokePlayerSessionPostRebind(Object actor) {
+        if (playerSessionPostRebindMethod != null) {
+            runtime.invokeOptionalObject(actor, playerSessionPostRebindMethod);
+            runtime.clearOutputTranscript();
+        }
     }
 
     private Object handleRuntimeError(

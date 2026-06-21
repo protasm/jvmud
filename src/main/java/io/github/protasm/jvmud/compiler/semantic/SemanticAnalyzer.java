@@ -78,8 +78,10 @@ import io.github.protasm.jvmud.compiler.token.TokenType;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -680,15 +682,20 @@ public final class SemanticAnalyzer {
     }
 
     private void mergeParentSymbols(SemanticScope objectScope, List<CompilationUnit> parentUnits) {
+        Set<ScopedSymbol> imported = Collections.newSetFromMap(new IdentityHashMap<>());
         for (CompilationUnit parentUnit : parentUnits) {
             if (parentUnit == null || parentUnit.semanticModel() == null)
                 continue;
 
-            ASTObject parent = parentUnit.semanticModel().astObject();
-            for (ASTField field : parent.fields())
-                objectScope.importSymbol(new ScopedSymbol(field.symbol(), parentUnit, field, null));
-            for (ASTMethod method : parent.methods())
-                objectScope.importSymbol(new ScopedSymbol(method.symbol(), parentUnit, null, method));
+            for (SemanticScope scope = parentUnit.semanticModel().objectScope(); scope != null; scope = scope.parent()) {
+                for (List<ScopedSymbol> symbols : scope.symbols().values()) {
+                    for (ScopedSymbol symbol : symbols) {
+                        if (!imported.add(symbol))
+                            continue;
+                        objectScope.importSymbol(symbol);
+                    }
+                }
+            }
         }
     }
 

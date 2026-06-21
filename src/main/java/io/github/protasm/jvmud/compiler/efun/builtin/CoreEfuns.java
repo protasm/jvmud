@@ -116,6 +116,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       exposes a public mudlib method with that name.</li>
  *   <li>{@code jvmud_method_exists(string name, mixed object) : status} checks another loaded LPC
  *       object for a public mudlib method.</li>
+ *   <li>{@code jvmud_lpc_object_methods(mixed object) : array} returns the public mudlib method
+ *       names exposed by a loaded LPC object.</li>
  *   <li>{@code jvmud_inherited_programs(mixed object) : array} returns the transitive LPC program
  *       paths inherited by a generated object.</li>
  *   <li>{@code jvmud_load_lpc_object(string path) : object} loads or returns the shared LPC
@@ -238,9 +240,10 @@ import javax.crypto.spec.PBEKeySpec;
  *       delimiter while preserving empty trailing fields.</li>
  *   <li>{@code jvmud_regex_match(array values, string pattern[, int flags]) : mixed} returns the
  *       values whose string forms match a regular expression, or LPC false when no value
- *       matches. JVMud accepts the LDMud character-class idiom for matching literal {@code [}.</li>
+ *       matches. JVMud accepts common LDMud regexp idioms before running the pattern on Java's
+ *       regex engine.</li>
  *   <li>{@code jvmud_regex_replace(string input, string pattern, string replacement, int flags) :
- *       string} performs a regex replacement for legacy mudlib text helpers.</li>
+ *       string} performs a compatibility regex replacement for legacy mudlib text helpers.</li>
  *   <li>{@code jvmud_regex_explode(string input, string pattern) : array} splits text around
  *       regular-expression matches while preserving matched delimiters.</li>
  *   <li>{@code jvmud_to_int(mixed value) : int} converts numeric values and base-10 text to an
@@ -388,6 +391,8 @@ public final class CoreEfuns {
                 (runtime, args) -> methodExists(runtime.currentObject(), String.valueOf(args[0])) ? 1 : 0));
         efuns.add(efun("jvmud_method_exists", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING, LPCType.LPCMIXED),
                 (runtime, args) -> methodExists(args[1], String.valueOf(args[0])) ? 1 : 0));
+        efuns.add(efun("jvmud_lpc_object_methods", LPCType.LPCARRAY, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> lpcObjectMethods(args[0])));
         efuns.add(efun("jvmud_inherited_programs", LPCType.LPCARRAY, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.inheritedPrograms(args[0])));
         efuns.add(efun("jvmud_size", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
@@ -797,10 +802,7 @@ public final class CoreEfuns {
             return false;
         }
         for (Method method : target.getClass().getMethods()) {
-            if (method.isSynthetic() || method.isBridge() || method.getDeclaringClass() == Object.class) {
-                continue;
-            }
-            if (!Modifier.isPublic(method.getModifiers()) || method.getName().startsWith("$")) {
+            if (!isPublicMudlibMethod(method)) {
                 continue;
             }
             if (method.getName().equals(methodName)) {
@@ -808,6 +810,29 @@ public final class CoreEfuns {
             }
         }
         return false;
+    }
+
+    private static List<String> lpcObjectMethods(Object target) {
+        if (target == null || (target instanceof Number number && number.intValue() == 0)) {
+            return List.of();
+        }
+        List<String> names = new ArrayList<>();
+        for (Method method : target.getClass().getMethods()) {
+            if (!isPublicMudlibMethod(method) || names.contains(method.getName())) {
+                continue;
+            }
+            names.add(method.getName());
+        }
+        Collections.sort(names);
+        return names;
+    }
+
+    private static boolean isPublicMudlibMethod(Method method) {
+        return !method.isSynthetic()
+                && !method.isBridge()
+                && method.getDeclaringClass() != Object.class
+                && Modifier.isPublic(method.getModifiers())
+                && !method.getName().startsWith("$");
     }
 
     private static String capitalizeText(String value) {
@@ -1035,9 +1060,40 @@ public final class CoreEfuns {
 
     private static String javaRegexPattern(String pattern) {
         String literalLeftBracket = "\\" + "u005B";
-        return pattern
+        return escapeAnchorQuestionMark(pattern
                 .replace("[^[", "[^" + literalLeftBracket)
-                .replace("[[", "[" + literalLeftBracket);
+                .replace("[[", "[" + literalLeftBracket));
+    }
+
+    /**
+     * Keeps LDMud command aliases such as {@code ? [-v]} literal when the mudlib turns them into
+     * an anchored pattern like {@code ^?( -v)*$}. Java treats {@code ?} after {@code ^} as a
+     * quantifier; LDMud mudlibs commonly intend it as command text in that position.
+     */
+    private static String escapeAnchorQuestionMark(String pattern) {
+        StringBuilder translated = new StringBuilder(pattern.length());
+        boolean inCharacterClass = false;
+        boolean escaped = false;
+        char previous = 0;
+        for (int index = 0; index < pattern.length(); index++) {
+            char current = pattern.charAt(index);
+            if (current == '?' && previous == '^' && !inCharacterClass && !escaped) {
+                translated.append('\\');
+            }
+            translated.append(current);
+
+            if (escaped) {
+                escaped = false;
+            } else if (current == '\\') {
+                escaped = true;
+            } else if (current == '[') {
+                inCharacterClass = true;
+            } else if (current == ']') {
+                inCharacterClass = false;
+            }
+            previous = current;
+        }
+        return translated.toString();
     }
 
     private static Object readMudlibText(RuntimeContext runtime, String path, int startLine, int lineCount) {

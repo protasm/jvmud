@@ -3396,6 +3396,10 @@ final class CompilerSmokeTest {
                     return jvmud_regex_replace("look [##Target##]", "^([^[#]+) +[[#].*", "\\\\1", 1);
                 }
 
+                string *realms_question_command_alias_matches_literal() {
+                    return jvmud_regex_match(({ "?", "look" }), "(^?( -v)*$)");
+                }
+
                 int regex_no_match_is_false() {
                     return jvmud_regex_match(({ "bonus" }), "^-") ? 1 : 0;
                 }
@@ -3442,6 +3446,10 @@ final class CompilerSmokeTest {
 
                 int java_object_method_probe() {
                     return jvmud_method_exists("toString");
+                }
+
+                int method_names_probe() {
+                    return jvmud_member(jvmud_lpc_object_methods(jvmud_current_lpc_object()), "local_method_probe") > -1;
                 }
 
                 string *mapping_keys() {
@@ -3539,6 +3547,7 @@ final class CompilerSmokeTest {
         assertEquals("12", reader.invoke("number_text"));
         assertEquals(List.of("alpha.c", "gamma.c"), reader.invoke("regex_matches"));
         assertEquals("look", reader.invoke("realms_command_text"));
+        assertEquals(List.of("?"), reader.invoke("realms_question_command_alias_matches_literal"));
         assertEquals(0, reader.invoke("regex_no_match_is_false"));
         assertEquals(0, reader.invoke("driver_info_is_false"));
         assertEquals(1, reader.invoke("preferred_lpc_object_lookup"));
@@ -3549,6 +3558,7 @@ final class CompilerSmokeTest {
         assertEquals(1, reader.invoke("explicit_method_probe"));
         assertEquals(0, reader.invoke("missing_method_probe"));
         assertEquals(0, reader.invoke("java_object_method_probe"));
+        assertEquals(1, reader.invoke("method_names_probe"));
         assertEquals(Set.of("dawn", "night"), Set.copyOf((List<?>) reader.invoke("mapping_keys")));
         assertEquals(Set.of(1, 2), Set.copyOf((List<?>) reader.invoke("mapping_values")));
         assertEquals(Map.of("north", 1, "south", 1), reader.invoke("mapping_from_keys"));
@@ -5000,6 +5010,73 @@ final class CompilerSmokeTest {
         LPCObjectHandle child = runtime.load(childPath);
 
         assertEquals(42, child.invoke("value"));
+    }
+
+    @Test
+    void compilerCallsTransitiveMethodBehindSecondaryParentChain() throws Exception {
+        Files.writeString(tempDir.resolve("primary.c"), """
+                int primary_value() {
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("layout.c"), """
+                protected int layout_helper(int amount) {
+                    return 40 + amount;
+                }
+                """);
+        Files.writeString(tempDir.resolve("decorators.c"), """
+                inherit "layout.c";
+                """);
+        Files.writeString(tempDir.resolve("files.c"), """
+                inherit "decorators.c";
+                """);
+        Path childPath = tempDir.resolve("child.c");
+        Files.writeString(childPath, """
+                inherit "primary.c";
+                inherit "files.c";
+
+                int value() {
+                    return layout_helper(2);
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle child = runtime.load(childPath);
+
+        assertEquals(42, child.invoke("value"));
+    }
+
+    @Test
+    void compilerFlattensVirtualDiamondInheritedFieldsOnce() throws Exception {
+        Files.writeString(tempDir.resolve("primary.c"), """
+                int primary_value() {
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("state.c"), """
+                protected object StateMachineService = 0;
+                """);
+        Files.writeString(tempDir.resolve("lighting.c"), """
+                virtual inherit "state.c";
+                """);
+        Files.writeString(tempDir.resolve("description.c"), """
+                virtual inherit "state.c";
+                """);
+        Path childPath = tempDir.resolve("child.c");
+        Files.writeString(childPath, """
+                inherit "primary.c";
+                inherit "lighting.c";
+                inherit "description.c";
+
+                int value() {
+                    return primary_value();
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle child = runtime.load(childPath);
+
+        assertEquals(1, child.invoke("value"));
     }
 
     @Test

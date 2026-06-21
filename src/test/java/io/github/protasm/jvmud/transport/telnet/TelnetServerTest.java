@@ -1424,6 +1424,69 @@ final class TelnetServerTest {
     }
 
     @Test
+    void telnetSessionInvokesConfiguredPlayerPostRebindLifecycleHook() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                mfun_object = jvmud/mfuns
+                player_object = obj/login
+                initial_place = room/start
+                lifecycle.player_session_connected = logon
+                lifecycle.player_session_post_rebind = wire_commands
+                """);
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                string short() {
+                    return "start";
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/login.c"), """
+                void logon() {
+                    write("Name: ");
+                    input_to("finish_login");
+                }
+
+                void finish_login(string name) {
+                    object player = jvmud_clone_lpc_object("/obj/player.c");
+                    jvmud_rebind_session_lpc_object(player, this_object());
+                    write("Welcome " + name + "\\n");
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/player.c"), """
+                void wire_commands() {
+                    jvmud_add_action("executeCommand", "", 2);
+                }
+
+                int executeCommand(string command) {
+                    write("rebound handled " + command + "\\n");
+                    return 1;
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "Name: ").contains("Name: "));
+
+                socket.getOutputStream().write("Alice\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+
+                socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String handled = readUntilQuietAfterContains(socket, "rebound handled look");
+                assertTrue(handled.contains("rebound handled look"), handled);
+                assertFalse(handled.contains("You can't do that."), handled);
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
     void telnetInputCaptureDeliversExtraCompatibilityArguments() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """

@@ -27,7 +27,7 @@ private nomask void displayBanner()
 
     printf("\nRealmsmud is running on LDMud %s\n\nType 'guest' as your login "
         "name if you just want to look around.\n"
-        "Type 'who' is you would like to view the list of logged-in "
+        "Type 'who' if you would like to view the list of logged-in "
         "users.\n\n", version());
 }
 

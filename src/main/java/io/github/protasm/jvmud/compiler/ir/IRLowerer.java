@@ -129,6 +129,7 @@ public final class IRLowerer {
                 problems);
         List<IRField> fields = lowerFields(astObject.fields(), fieldsBySymbol, problems, objectInternalName);
         fields.addAll(0, flattenedInheritedFields);
+        fields = distinctFields(fields);
         List<IRMethod> methods = lowerMethods(
                 astObject,
                 objectScope,
@@ -194,6 +195,13 @@ public final class IRLowerer {
             path += ".c";
         }
         return "/" + path;
+    }
+
+    private List<IRField> distinctFields(List<IRField> fields) {
+        Map<String, IRField> unique = new LinkedHashMap<>();
+        for (IRField field : fields)
+            unique.putIfAbsent(field.ownerInternalName() + "\u0000" + field.name(), field);
+        return new ArrayList<>(unique.values());
     }
 
     private List<IRField> lowerFields(

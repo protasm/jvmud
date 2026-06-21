@@ -81,6 +81,7 @@
             <tr><td><code>ENTITY_ADDED_TO_ENTITY</code></td><td>Reserved. Names the moment when an entity enters another entity's containment.</td></tr>
             <tr><td><code>ENTITY_REMOVED_FROM_ENTITY</code></td><td>Reserved. Names the moment when an entity leaves another entity's containment.</td></tr>
             <tr><td><code>PLAYER_SESSION_CONNECTED</code></td><td>Implemented by the hosted server path. The configured player object method is invoked without arguments and may start login or character selection. Common LP245 mapping: <code>logon</code>.</td></tr>
+            <tr><td><code>PLAYER_SESSION_POST_REBIND</code></td><td>Implemented by the hosted server path after a compatibility session handoff changes which LPC object receives player input. The configured method is invoked without arguments on the newly bound object.</td></tr>
             <tr><td><code>PLAYER_PERSONA_RESOLVED</code></td><td>Reserved. Names the Player/Session/Persona step where mudlib policy or JVMud fallback has selected the Persona a Player will use.</td></tr>
             <tr><td><code>PLAYER_OBJECT_BOUND</code></td><td>Reserved. Names the moment when JVMud has associated a live mudlib projection with a Player, Session, and Persona.</td></tr>
             <tr><td><code>PLAYER_ENTERED_WORLD</code></td><td>Reserved. Names a post-entry notification after a Player's Persona has entered the world.</td></tr>

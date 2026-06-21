@@ -120,6 +120,15 @@ public enum MudlibLifecycleEvent {
     PLAYER_SESSION_CONNECTED,
 
     /**
+     * A Session has finished rebinding from one live mudlib projection to another.
+     *
+     * <p>Current delivery: implemented by the hosted server path after compatibility session
+     * handoff operations such as LPC {@code exec} change the object receiving player input. JVMud
+     * invokes the configured method without LPC arguments on the newly bound object.</p>
+     */
+    PLAYER_SESSION_POST_REBIND,
+
+    /**
      * Mudlib policy or JVMud fallback has resolved the Persona a Player will use.
      *
      * <p>Current delivery: reserved. This is a Player/Session/Persona lifecycle step, not a legacy
