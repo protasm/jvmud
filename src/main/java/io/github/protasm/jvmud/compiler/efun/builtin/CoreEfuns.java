@@ -102,8 +102,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       or disables recurring ticks for the current object.</li>
  *   <li>{@code jvmud_schedule_deferred_callback(string methodName, int delaySeconds) : void}
  *       schedules a one-shot callback on the current object.</li>
- *   <li>{@code jvmud_schedule_deferred_callback(string methodName, int delaySeconds, mixed arg) :
- *       void} schedules a one-shot callback with one argument.</li>
+ *   <li>{@code jvmud_schedule_deferred_callback(string methodName, int delaySeconds,
+ *       mixed... args) : void} schedules a one-shot callback with mudlib-supplied arguments.</li>
  *   <li>{@code jvmud_cancel_deferred_callback(string methodName) : int} cancels matching deferred
  *       callbacks and returns the runtime's cancellation count/status.</li>
  * </ul>
@@ -593,6 +593,29 @@ public final class CoreEfuns {
                 List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED),
                 (runtime, args) -> {
                     runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue(), args[2]);
+                    return null;
+                }));
+        efuns.add(efun("jvmud_schedule_deferred_callback", LPCType.LPCVOID,
+                List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED, LPCType.LPCMIXED),
+                (runtime, args) -> {
+                    runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue(),
+                            args[2], args[3]);
+                    return null;
+                }));
+        efuns.add(efun("jvmud_schedule_deferred_callback", LPCType.LPCVOID,
+                List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED, LPCType.LPCMIXED,
+                        LPCType.LPCMIXED),
+                (runtime, args) -> {
+                    runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue(),
+                            args[2], args[3], args[4]);
+                    return null;
+                }));
+        efuns.add(efun("jvmud_schedule_deferred_callback", LPCType.LPCVOID,
+                List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED, LPCType.LPCMIXED,
+                        LPCType.LPCMIXED, LPCType.LPCMIXED),
+                (runtime, args) -> {
+                    runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue(),
+                            args[2], args[3], args[4], args[5]);
                     return null;
                 }));
         efuns.add(efun("jvmud_cancel_deferred_callback", LPCType.LPCINT, List.of(LPCType.LPCSTRING),

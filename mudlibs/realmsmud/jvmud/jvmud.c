@@ -6,6 +6,87 @@ void call_out(string method, int delay, mixed arg) {
     jvmud_schedule_deferred_callback(method, delay, arg);
 }
 
+void call_out(string method, int delay, mixed arg1, mixed arg2) {
+    jvmud_schedule_deferred_callback(method, delay, arg1, arg2);
+}
+
+void call_out(string method, int delay, mixed arg1, mixed arg2, mixed arg3) {
+    jvmud_schedule_deferred_callback(method, delay, arg1, arg2, arg3);
+}
+
+void call_out(string method, int delay, mixed arg1, mixed arg2, mixed arg3, mixed arg4) {
+    jvmud_schedule_deferred_callback(method, delay, arg1, arg2, arg3, arg4);
+}
+
+object *all_inventory() {
+    return all_inventory(this_object());
+}
+
+object *all_inventory(mixed container) {
+    object *ret = ({ });
+    object item = jvmud_first_entity_at(container);
+
+    while (item) {
+        ret += ({ item });
+        item = jvmud_next_entity_at(item);
+    }
+    return ret;
+}
+
+mixed call_direct(mixed target, string method) {
+    return jvmud_invoke_lpc_object(target, method);
+}
+
+mixed call_direct(mixed target, string method, mixed arg1) {
+    return jvmud_invoke_lpc_object(target, method, arg1);
+}
+
+mixed call_direct(mixed target, string method, mixed arg1, mixed arg2) {
+    return jvmud_invoke_lpc_object(target, method, arg1, arg2);
+}
+
+mixed call_direct(mixed target, string method, mixed arg1, mixed arg2, mixed arg3) {
+    return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3);
+}
+
+mixed call_direct(mixed target, string method, mixed arg1, mixed arg2, mixed arg3,
+    mixed arg4) {
+    return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3, arg4);
+}
+
+mixed call_other(mixed target, string method) {
+    return jvmud_invoke_lpc_object(target, method);
+}
+
+mixed call_other(mixed target, string method, mixed arg1) {
+    return jvmud_invoke_lpc_object(target, method, arg1);
+}
+
+mixed call_other(mixed target, string method, mixed arg1, mixed arg2) {
+    return jvmud_invoke_lpc_object(target, method, arg1, arg2);
+}
+
+mixed call_other(mixed target, string method, mixed arg1, mixed arg2, mixed arg3) {
+    return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3);
+}
+
+mixed call_other(mixed target, string method, mixed arg1, mixed arg2, mixed arg3,
+    mixed arg4) {
+    return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3, arg4);
+}
+
+mixed command(string command_line) {
+    return jvmud_dispatch_entity_command(jvmud_current_agent(), command_line);
+}
+
+mixed command(string command_line, mixed actor) {
+    return jvmud_dispatch_entity_command(actor, command_line);
+}
+
+string ctime(int epochSeconds) {
+    return jvmud_format_time(epochSeconds);
+}
+
 int db_close(int handle) {
     return load_object("/secure/simul_efun.c")->db_close(handle);
 }
@@ -51,8 +132,32 @@ string format(mixed text, int width) {
     return jvmud_wrap_text(text, width);
 }
 
+mixed *functionlist(mixed ob) {
+    return ({ });
+}
+
+mixed *functionlist(mixed ob, int flags) {
+    return ({ });
+}
+
 object getService(string service) {
     return load_object("/secure/simul_efun.c")->getService(service);
+}
+
+string implode(mixed *values, string delimiter) {
+    string ret = "";
+    int i;
+
+    delimiter = delimiter || "";
+    if (values) {
+        for (i = 0; i < sizeof(values); i++) {
+            if (i) {
+                ret += delimiter;
+            }
+            ret += "" + values[i];
+        }
+    }
+    return ret;
 }
 
 void input_to(string method) {
@@ -126,8 +231,36 @@ int remove_call_out(string method) {
     return jvmud_cancel_deferred_callback(method);
 }
 
+void move_object(mixed ob, mixed destination) {
+    jvmud_move_entity(ob, destination);
+}
+
+int notify_fail(mixed message) {
+    return 0;
+}
+
+string object_name(mixed ob) {
+    return jvmud_lpc_object_id(ob);
+}
+
 object *wizards() {
     return load_object("/secure/simul_efun.c")->wizards();
+}
+
+object present(mixed id) {
+    return jvmud_find_entity(id);
+}
+
+object present(mixed id, mixed container) {
+    return jvmud_find_entity(id, container);
+}
+
+string regreplace(string input, string pattern, string replacement) {
+    return jvmud_regex_replace(input, pattern, replacement, 0);
+}
+
+string regreplace(string input, string pattern, string replacement, int flags) {
+    return jvmud_regex_replace(input, pattern, replacement, flags);
 }
 
 int sizeof(mixed value) {
@@ -136,6 +269,10 @@ int sizeof(mixed value) {
 
 object this_object() {
     return jvmud_current_lpc_object();
+}
+
+int time() {
+    return jvmud_time();
 }
 
 string version() {
