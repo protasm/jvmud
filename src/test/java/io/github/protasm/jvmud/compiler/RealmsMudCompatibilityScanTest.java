@@ -97,6 +97,17 @@ final class RealmsMudCompatibilityScanTest {
         assertTrue(Files.exists(REPORT_PATH), "RealmsMUD compatibility report should be written.");
     }
 
+    @Test
+    void synchronousRealmsEventsUsePassedEventNameForDirectHandlers() throws IOException {
+        String eventsSource = Files.readString(MUDLIB_SOURCE_ROOT.resolve("lib/core/events.c"));
+        assertTrue(
+                eventsSource.contains("function_exists($2, $1)"),
+                "notifySynchronous should test direct event handlers with the closure event argument.");
+        assertFalse(
+                eventsSource.contains("function_exists(event, $1)"),
+                "notifySynchronous should not rely on lexical event lookup inside the filter closure.");
+    }
+
     private static List<String> compatibilitySet(Path sourceRoot) throws IOException {
         Set<String> sourceNames = new LinkedHashSet<>(BOOT_AND_CORE_COMPATIBILITY_SET);
         for (String sweepRoot : COMPATIBILITY_SWEEP_ROOTS) {

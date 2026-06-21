@@ -219,7 +219,7 @@ public varargs nomask int notifySynchronous(string event, mixed message)
         call_direct(filteredEvents, "receiveEvent", this_object(), event, message);
 
         filteredEvents = filter(m_indices(eventList),
-            (: (objectp($1) && function_exists(event, $1) &&
+            (: (objectp($1) && function_exists($2, $1) &&
             (member(eventList[$1], $2) > -1) &&
                 function_exists($2, $1)) :), event);
 
