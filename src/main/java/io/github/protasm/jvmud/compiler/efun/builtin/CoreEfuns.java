@@ -7,6 +7,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeMapping;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeValueCodec;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
@@ -282,6 +283,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       iteration order.</li>
  *   <li>{@code jvmud_mapping_values(mapping value) : array} returns the mapping's values in
  *       runtime iteration order.</li>
+ *   <li>{@code jvmud_mapping_values(mapping value, int index) : array} returns one value slot from
+ *       each entry in an LDMud multi-value mapping.</li>
  *   <li>{@code jvmud_mapping_from_keys(array keys) : mapping} builds a mapping whose keys come from
  *       the supplied array and whose values are LPC true.</li>
  *   <li>{@code jvmud_mapping_delete(mapping value, mixed key) : mapping} removes a key from a
@@ -583,6 +586,8 @@ public final class CoreEfuns {
                 (runtime, args) -> mappingKeys(args[0])));
         efuns.add(efun("jvmud_mapping_values", LPCType.LPCARRAY, List.of(LPCType.LPCMAPPING),
                 (runtime, args) -> mappingValues(args[0])));
+        efuns.add(efun("jvmud_mapping_values", LPCType.LPCARRAY, List.of(LPCType.LPCMAPPING, LPCType.LPCINT),
+                (runtime, args) -> mappingValues(args[0], args[1])));
         efuns.add(efun("jvmud_mapping_from_keys", LPCType.LPCMAPPING, List.of(LPCType.LPCARRAY),
                 (runtime, args) -> mappingFromKeys(args[0])));
         efuns.add(efun("jvmud_mapping_delete", LPCType.LPCMAPPING, List.of(LPCType.LPCMAPPING, LPCType.LPCMIXED),
@@ -802,7 +807,22 @@ public final class CoreEfuns {
 
     private static List<Object> mappingValues(Object value) {
         if (value instanceof Map<?, ?> map) {
-            return new ArrayList<>(map.values());
+            List<Object> values = new ArrayList<>();
+            for (Object entryValue : map.values()) {
+                values.add(RuntimeMapping.select(entryValue, 0));
+            }
+            return values;
+        }
+        throw new IllegalArgumentException("jvmud_mapping_values expects a mapping value");
+    }
+
+    private static List<Object> mappingValues(Object value, Object index) {
+        if (value instanceof Map<?, ?> map) {
+            List<Object> values = new ArrayList<>();
+            for (Object entryValue : map.values()) {
+                values.add(RuntimeMapping.select(entryValue, index));
+            }
+            return values;
         }
         throw new IllegalArgumentException("jvmud_mapping_values expects a mapping value");
     }

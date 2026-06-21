@@ -236,6 +236,38 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void mudlibGlobalFunctionsCanComeFromInheritedGlobalObjectDeclarations() throws IOException {
+        Path secure = tempDir.resolve("secure");
+        Path simulatedEfuns = secure.resolve("simulated-efuns");
+        Files.createDirectories(simulatedEfuns);
+        Files.writeString(secure.resolve("simul_efun.c"), """
+                virtual inherit "/secure/simulated-efuns/users.c";
+                """);
+        Files.writeString(simulatedEfuns.resolve("users.c"), """
+                public nomask void addLiving(object creature) {
+                }
+                """);
+
+        RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(tempDir, List.of()));
+        CoreEfuns.registerCore(context);
+        context.setMudlibBoundary(MudlibBoundary.builder()
+                .mudlibGlobalObjectPath("secure/simul_efun")
+                .directEfunAlias("this_object", "jvmud_current_lpc_object")
+                .build());
+
+        assertNotNull(context.resolveEfun("addLiving", 1));
+
+        CompilationResult result = new CompilationPipeline("java/lang/Object", context).run("""
+                void create() {
+                    addLiving(this_object());
+                }
+                """);
+
+        assertTrue(result.getProblems().isEmpty(), () -> problemMessages(result));
+        assertNotNull(result.getBytecode());
+    }
+
+    @Test
     void preprocessorDoesNotLetFunctionSymbolsConsumeLaterDirectives() {
         String processed = Preprocessor.preprocess("""
                 void shutdown() {
@@ -952,6 +984,46 @@ final class CompilerSmokeTest {
         assertEquals(2, object.invoke("value", "a"));
         assertEquals(1, object.invoke("prefix_increment"));
         assertEquals(1, object.invoke("value", "b"));
+    }
+
+    @Test
+    void runtimeSupportsLdmudMultiValueMappings() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("m_values", "jvmud_mapping_values")
+                .directEfunAlias("sizeof", "jvmud_size")
+                .build());
+        LPCObjectHandle object = runtime.loadSource("smoke/multi_value_mapping.c", """
+                mapping wall = ([
+                    "weakness": "<missing>"; 1,
+                    "senses": "Unseeing, unhearing"; 0,
+                    "resistance": "<missing> no longer"; 1
+                ]);
+
+                mixed default_value() {
+                    return wall["weakness"];
+                }
+
+                int secondary_value() {
+                    return wall["resistance", 1];
+                }
+
+                mixed missing_secondary() {
+                    return wall["senses", 2];
+                }
+
+                int active_count() {
+                    int *items = m_values(wall, 1);
+                    items -= ({ 0 });
+                    return sizeof(items);
+                }
+                """);
+
+        assertEquals("<missing>", object.invoke("default_value"));
+        assertEquals(1, object.invoke("secondary_value"));
+        assertEquals(0, object.invoke("missing_secondary"));
+        assertEquals(2, object.invoke("active_count"));
     }
 
     @Test

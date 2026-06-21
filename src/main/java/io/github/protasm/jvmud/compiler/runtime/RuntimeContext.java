@@ -5,6 +5,7 @@ import io.github.protasm.jvmud.compiler.efun.EfunRegistry;
 import io.github.protasm.jvmud.compiler.efun.EfunSignature;
 import io.github.protasm.jvmud.compiler.parser.Parser;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTInherit;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTMethod;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTParameter;
@@ -505,16 +506,35 @@ public final class RuntimeContext {
     }
 
     private ASTMethod declaredGlobalMethod(String objectPath, String name, int arity) {
+        return declaredGlobalMethod(objectPath, name, arity, new HashSet<>());
+    }
+
+    private ASTMethod declaredGlobalMethod(String objectPath, String name, int arity, Set<String> visitedPaths) {
+        String normalizedPath = normalizeMudlibPath(objectPath);
+        if (normalizedPath == null || !visitedPaths.add(normalizedPath)) {
+            return null;
+        }
         Optional<ASTObject> declaration = globalObjectDeclarations.computeIfAbsent(
-                objectPath,
+                normalizedPath,
                 this::parseGlobalObjectDeclaration);
         if (declaration.isEmpty()) {
             return null;
         }
-        return declaration.orElseThrow().methods().getAll(name).stream()
+        ASTObject object = declaration.orElseThrow();
+        ASTMethod directMethod = object.methods().getAll(name).stream()
                 .filter(method -> parameterCount(method) == arity)
                 .findFirst()
                 .orElse(null);
+        if (directMethod != null) {
+            return directMethod;
+        }
+        for (ASTInherit inherit : object.inherits()) {
+            ASTMethod inheritedMethod = declaredGlobalMethod(inherit.path(), name, arity, visitedPaths);
+            if (inheritedMethod != null) {
+                return inheritedMethod;
+            }
+        }
+        return null;
     }
 
     private Optional<ASTObject> parseGlobalObjectDeclaration(String objectPath) {
@@ -1025,6 +1045,9 @@ public final class RuntimeContext {
             return null;
         }
         String normalized = path.trim();
+        if (normalized.length() >= 2 && normalized.startsWith("\"") && normalized.endsWith("\"")) {
+            normalized = normalized.substring(1, normalized.length() - 1).trim();
+        }
         while (normalized.startsWith("/")) {
             normalized = normalized.substring(1);
         }

@@ -1014,6 +1014,9 @@ final class MudlibCompatibilityScanTest {
             if (expression instanceof ASTExprArrayAccess access) {
                 access.target().accept(this);
                 access.index().accept(this);
+                if (access.valueIndex() != null) {
+                    access.valueIndex().accept(this);
+                }
             } else if (expression instanceof ASTExprArrayLiteral literal) {
                 literal.elements().forEach(element -> element.accept(this));
             } else if (expression instanceof ASTExprArrayStore store) {
@@ -1023,7 +1026,7 @@ final class MudlibCompatibilityScanTest {
             } else if (expression instanceof ASTExprMappingLiteral literal) {
                 literal.entries().forEach(entry -> {
                     entry.key().accept(this);
-                    entry.value().accept(this);
+                    entry.values().forEach(value -> value.accept(this));
                 });
             } else if (expression instanceof ASTExprSequence sequence) {
                 sequence.expressions().forEach(expr -> expr.accept(this));

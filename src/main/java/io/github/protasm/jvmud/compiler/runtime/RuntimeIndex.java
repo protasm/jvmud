@@ -34,10 +34,27 @@ public final class RuntimeIndex {
     public static Object get(Object target, Object index) {
         if (target instanceof Map<?, ?> map) {
             Object value = map.get(index);
-            return value != null ? value : Integer.valueOf(0);
+            return value != null ? RuntimeMapping.select(value, 0) : Integer.valueOf(0);
         }
         int numericIndex = resolveIndex(index, sizeOf(target));
         return get(target, numericIndex);
+    }
+
+    /**
+     * Reads an indexed mapping value slot such as {@code mapping[key, 1]}.
+     *
+     * <p>For non-mapping targets, only slot zero delegates to ordinary dynamic indexing. Other
+     * slots evaluate as LPC false.
+     */
+    public static Object get(Object target, Object key, Object valueIndex) {
+        if (target instanceof Map<?, ?> map) {
+            Object value = map.get(key);
+            return value != null ? RuntimeMapping.select(value, valueIndex) : Integer.valueOf(0);
+        }
+        if (valueIndex instanceof Number number && number.intValue() == 0) {
+            return get(target, key);
+        }
+        return Integer.valueOf(0);
     }
 
     /** Stores a value through a dynamically typed LPC index target. */

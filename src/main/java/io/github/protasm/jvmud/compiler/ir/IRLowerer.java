@@ -1372,8 +1372,11 @@ public final class IRLowerer {
             List<IRMappingEntry> entries = new ArrayList<>();
             for (ASTExprMappingEntry entry : mappingLiteral.entries()) {
                 IRExpression key = lowerExpression(entry.key(), context, problems);
-                IRExpression value = lowerExpression(entry.value(), context, problems);
-                entries.add(new IRMappingEntry(key, value));
+                List<IRExpression> values = new ArrayList<>();
+                for (ASTExpression value : entry.values()) {
+                    values.add(lowerExpression(value, context, problems));
+                }
+                entries.add(new IRMappingEntry(key, values));
             }
             return new IRMappingLiteral(mappingLiteral.line(), entries, RuntimeTypes.MAPPING);
         }
@@ -1438,7 +1441,10 @@ public final class IRLowerer {
             RuntimeType targetType = runtimeType(arrayAccess.target().lpcType());
             if (targetType != null && targetType.kind() == RuntimeValueKind.MAPPING) {
                 IRExpression key = lowerExpression(arrayAccess.index(), context, problems);
-                return new IRMappingGet(arrayAccess.line(), target, key, RuntimeTypes.MIXED);
+                IRExpression valueIndex = arrayAccess.valueIndex() == null
+                        ? null
+                        : coerceIfNeeded(lowerExpression(arrayAccess.valueIndex(), context, problems), RuntimeTypes.INT);
+                return new IRMappingGet(arrayAccess.line(), target, key, valueIndex, RuntimeTypes.MIXED);
             }
 
             IRExpression rawIndex = lowerExpression(arrayAccess.index(), context, problems);
@@ -1793,7 +1799,9 @@ public final class IRLowerer {
         if (expression instanceof IRMappingLiteral literal) {
             for (IRMappingEntry entry : literal.entries()) {
                 collectCaptureLocals(entry.key(), argumentLocals, capturesBySlot);
-                collectCaptureLocals(entry.value(), argumentLocals, capturesBySlot);
+                for (IRExpression value : entry.values()) {
+                    collectCaptureLocals(value, argumentLocals, capturesBySlot);
+                }
             }
             return;
         }
@@ -1805,6 +1813,7 @@ public final class IRLowerer {
         if (expression instanceof IRMappingGet get) {
             collectCaptureLocals(get.mapping(), argumentLocals, capturesBySlot);
             collectCaptureLocals(get.key(), argumentLocals, capturesBySlot);
+            collectCaptureLocals(get.valueIndex(), argumentLocals, capturesBySlot);
             return;
         }
         if (expression instanceof IRStringGet get) {
@@ -1851,7 +1860,9 @@ public final class IRLowerer {
         if (expression instanceof ASTExprClosureArgument closureArgument)
             return closureArgument.index();
         if (expression instanceof ASTExprArrayAccess access)
-            return Math.max(maxClosureArgumentIndex(access.target()), maxClosureArgumentIndex(access.index()));
+            return Math.max(
+                    Math.max(maxClosureArgumentIndex(access.target()), maxClosureArgumentIndex(access.index())),
+                    maxClosureArgumentIndex(access.valueIndex()));
         if (expression instanceof ASTExprArrayStore store)
             return Math.max(
                     Math.max(maxClosureArgumentIndex(store.target()), maxClosureArgumentIndex(store.index())),
@@ -1908,7 +1919,9 @@ public final class IRLowerer {
             int max = 0;
             for (ASTExprMappingEntry entry : mappingLiteral.entries()) {
                 max = Math.max(max, maxClosureArgumentIndex(entry.key()));
-                max = Math.max(max, maxClosureArgumentIndex(entry.value()));
+                for (ASTExpression value : entry.values()) {
+                    max = Math.max(max, maxClosureArgumentIndex(value));
+                }
             }
             return max;
         }

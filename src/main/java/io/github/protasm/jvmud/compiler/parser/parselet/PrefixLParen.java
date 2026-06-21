@@ -55,8 +55,12 @@ public class PrefixLParen implements PrefixParselet {
             while (true) {
                 ASTExpression key = parser.expression();
                 parser.tokens().consume(T_COLON, "Expect ':' after mapping key.");
-                ASTExpression value = parser.expression();
-                entries.add(new ASTExprMappingEntry(key, value));
+                List<ASTExpression> values = new ArrayList<>();
+                values.add(parser.expression());
+                while (parser.tokens().match(T_SEMICOLON)) {
+                    values.add(parser.expression());
+                }
+                entries.add(new ASTExprMappingEntry(key, values));
 
                 if (!parser.tokens().match(T_COMMA)) {
                     break;

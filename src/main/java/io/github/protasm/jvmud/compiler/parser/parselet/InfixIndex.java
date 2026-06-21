@@ -2,6 +2,7 @@ package io.github.protasm.jvmud.compiler.parser.parselet;
 
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_AMP_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_CARET_EQUAL;
+import static io.github.protasm.jvmud.compiler.token.TokenType.T_COMMA;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_AMP_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DBL_PIPE_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_DOT_DOT;
@@ -36,6 +37,7 @@ public class InfixIndex implements InfixParselet {
     public ASTExpression parse(Parser parser, ASTExpression left, boolean canAssign) {
         int line = parser.currLine();
         ASTExpression index = parser.tokens().check(T_DOT_DOT) ? zero(line) : indexBound(parser);
+        ASTExpression valueIndex = null;
 
         if (parser.tokens().match(T_DOT_DOT)) {
             ASTExpression end = parser.tokens().check(T_RIGHT_BRACKET) ? null : indexBound(parser);
@@ -43,6 +45,10 @@ public class InfixIndex implements InfixParselet {
             if (canAssign && parser.tokens().match(T_EQUAL))
                 return new ASTExprSliceStore(line, left, index, end, parser.expression());
             return new ASTExprSliceAccess(line, left, index, end);
+        }
+
+        if (parser.tokens().match(T_COMMA)) {
+            valueIndex = indexBound(parser);
         }
 
         parser.tokens().consume(T_RIGHT_BRACKET, "Expect ']' after array element index.");
@@ -57,7 +63,7 @@ public class InfixIndex implements InfixParselet {
         if (canAssign && parser.tokens().match(T_MINUS_MINUS))
             return new ASTExprArrayMutation(line, left, index, -1);
 
-        return new ASTExprArrayAccess(line, left, index);
+        return new ASTExprArrayAccess(line, left, index, valueIndex);
     }
 
     /** Parses either a normal index expression or an LPC from-end bound such as {@code <1}. */

@@ -200,7 +200,11 @@ public final class IRPrettyPrinter {
     }
 
     private String mappingEntry(IRMappingEntry entry) {
-        return expression(entry.key()) + ": " + expression(entry.value());
+        StringJoiner values = new StringJoiner("; ");
+        for (IRExpression value : entry.values()) {
+            values.add(expression(value));
+        }
+        return expression(entry.key()) + ": " + values;
     }
 
     private String parameter(IRParameter parameter) {

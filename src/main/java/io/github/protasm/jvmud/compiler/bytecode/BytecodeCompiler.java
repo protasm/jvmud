@@ -1994,8 +1994,7 @@ public final class BytecodeCompiler {
             mv.visitInsn(DUP);
             emitExpression(mv, internalName, method, entry.key());
             boxIfNeeded(mv, entry.key().type());
-            emitExpression(mv, internalName, method, entry.value());
-            boxIfNeeded(mv, entry.value().type());
+            emitMappingEntryValue(mv, internalName, method, entry);
             mv.visitMethodInsn(
                     INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
             mv.visitInsn(POP);
@@ -2089,8 +2088,7 @@ public final class BytecodeCompiler {
             mv.visitVarInsn(ALOAD, 0);
             emitExpression(mv, activeInternalName, null, entry.key());
             boxIfNeeded(mv, entry.key().type());
-            emitExpression(mv, activeInternalName, null, entry.value());
-            boxIfNeeded(mv, entry.value().type());
+            emitMappingEntryValue(mv, activeInternalName, null, entry);
             mv.visitMethodInsn(
                     INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
             mv.visitInsn(POP);
@@ -2099,6 +2097,31 @@ public final class BytecodeCompiler {
         mv.visitInsn(RETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
+    }
+
+    private void emitMappingEntryValue(
+            MethodVisitor mv, String internalName, IRMethod method, IRMappingEntry entry) {
+        if (entry.values().size() == 1) {
+            emitExpression(mv, internalName, method, entry.value());
+            boxIfNeeded(mv, entry.value().type());
+            return;
+        }
+        pushInt(mv, entry.values().size());
+        mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
+        for (int i = 0; i < entry.values().size(); i++) {
+            IRExpression value = entry.values().get(i);
+            mv.visitInsn(DUP);
+            pushInt(mv, i);
+            emitExpression(mv, internalName, method, value);
+            boxIfNeeded(mv, value.type());
+            mv.visitInsn(AASTORE);
+        }
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeMapping.class),
+                "multiValue",
+                "([Ljava/lang/Object;)Ljava/lang/Object;",
+                false);
     }
 
     private String nextLiteralHelperName() {
@@ -2146,7 +2169,8 @@ public final class BytecodeCompiler {
 
         if (expression instanceof IRMappingLiteral mappingLiteral)
             return mappingLiteral.entries().stream()
-                    .allMatch(entry -> isOutOfLineLiteral(entry.key()) && isOutOfLineLiteral(entry.value()));
+                    .allMatch(entry -> isOutOfLineLiteral(entry.key())
+                            && entry.values().stream().allMatch(this::isOutOfLineLiteral));
 
         if (expression instanceof IRMappingMerge mappingMerge)
             return isOutOfLineLiteral(mappingMerge.left()) && isOutOfLineLiteral(mappingMerge.right());
@@ -2175,12 +2199,23 @@ public final class BytecodeCompiler {
         boxIfNeeded(mv, mappingGet.mapping().type());
         emitExpression(mv, internalName, method, mappingGet.key());
         boxIfNeeded(mv, mappingGet.key().type());
-        mv.visitMethodInsn(
-                INVOKESTATIC,
-                Type.getInternalName(RuntimeIndex.class),
-                "get",
-                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
-                false);
+        if (mappingGet.valueIndex() == null) {
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Type.getInternalName(RuntimeIndex.class),
+                    "get",
+                    "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                    false);
+        } else {
+            emitExpression(mv, internalName, method, mappingGet.valueIndex());
+            boxIfNeeded(mv, mappingGet.valueIndex().type());
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Type.getInternalName(RuntimeIndex.class),
+                    "get",
+                    "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                    false);
+        }
     }
 
     private void emitMappingSet(MethodVisitor mv, String internalName, IRMethod method, IRMappingSet mappingSet) {

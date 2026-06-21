@@ -355,6 +355,14 @@ int living(mixed ob) {
         (member(programs, "/lib/realizations/henchman.c") > -1);
 }
 
+string save_object(int flags) {
+    return "";
+}
+
+int restore_object(string data) {
+    return stringp(data);
+}
+
 void input_to(string method) {
     jvmud_capture_session_input(method, 0);
 }

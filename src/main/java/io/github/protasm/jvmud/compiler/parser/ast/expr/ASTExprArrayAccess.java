@@ -7,11 +7,17 @@ import java.util.Objects;
 public final class ASTExprArrayAccess extends ASTExpression {
     private final ASTExpression target;
     private final ASTExpression index;
+    private final ASTExpression valueIndex;
 
     public ASTExprArrayAccess(int line, ASTExpression target, ASTExpression index) {
+        this(line, target, index, null);
+    }
+
+    public ASTExprArrayAccess(int line, ASTExpression target, ASTExpression index, ASTExpression valueIndex) {
         super(line);
         this.target = Objects.requireNonNull(target, "target");
         this.index = Objects.requireNonNull(index, "index");
+        this.valueIndex = valueIndex;
     }
 
     public ASTExpression target() {
@@ -20,6 +26,10 @@ public final class ASTExprArrayAccess extends ASTExpression {
 
     public ASTExpression index() {
         return index;
+    }
+
+    public ASTExpression valueIndex() {
+        return valueIndex;
     }
 
     @Override

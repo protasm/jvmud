@@ -781,18 +781,30 @@ public final class SemanticTypeChecker {
     private LPCType inferIndexAccessType(ASTExprArrayAccess access, MethodContext context) {
         LPCType targetType = inferExpressionType(access.target(), context);
         LPCType indexType = inferExpressionType(access.index(), context);
+        LPCType valueIndexType = access.valueIndex() == null ? null : inferExpressionType(access.valueIndex(), context);
 
         if (targetType == LPCType.LPCARRAY) {
+            if (access.valueIndex() != null) {
+                problems.add(new CompilationProblem(
+                        CompilationStage.ANALYZE, "Array index expects a single bound", access.line()));
+            }
             ensureAssignable(LPCType.LPCINT, indexType, access.line(), "Array index expects integer");
             return LPCType.LPCMIXED;
         }
 
         if (targetType == LPCType.LPCMAPPING) {
             ensureMappingKey(indexType, access.line());
+            if (access.valueIndex() != null) {
+                ensureAssignable(LPCType.LPCINT, valueIndexType, access.line(), "Mapping value index expects integer");
+            }
             return LPCType.LPCMIXED;
         }
 
         if (targetType == LPCType.LPCSTRING) {
+            if (access.valueIndex() != null) {
+                problems.add(new CompilationProblem(
+                        CompilationStage.ANALYZE, "String index expects a single bound", access.line()));
+            }
             ensureAssignable(LPCType.LPCINT, indexType, access.line(), "String index expects integer");
             return LPCType.LPCINT;
         }

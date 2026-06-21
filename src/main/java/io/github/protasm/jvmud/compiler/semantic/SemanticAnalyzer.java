@@ -443,7 +443,9 @@ public final class SemanticAnalyzer {
             return referencesLocal(mutation.target(), local) || referencesLocal(mutation.index(), local);
 
         if (expression instanceof ASTExprArrayAccess access)
-            return referencesLocal(access.target(), local) || referencesLocal(access.index(), local);
+            return referencesLocal(access.target(), local)
+                    || referencesLocal(access.index(), local)
+                    || referencesLocal(access.valueIndex(), local);
 
         if (expression instanceof ASTExprSliceAccess access)
             return referencesLocal(access.target(), local)
@@ -461,7 +463,8 @@ public final class SemanticAnalyzer {
 
         if (expression instanceof ASTExprMappingLiteral mappingLiteral)
             return mappingLiteral.entries().stream()
-                    .anyMatch(entry -> referencesLocal(entry.key(), local) || referencesLocal(entry.value(), local));
+                    .anyMatch(entry -> referencesLocal(entry.key(), local)
+                            || entry.values().stream().anyMatch(value -> referencesLocal(value, local)));
 
         if (expression instanceof ASTExprOpUnary unary)
             return referencesLocal(unary.right(), local);
@@ -1061,9 +1064,14 @@ public final class SemanticAnalyzer {
             if (expression instanceof ASTExprArrayAccess access) {
                 ASTExpression resolvedTarget = resolveExpression(access.target(), context);
                 ASTExpression resolvedIndex = resolveExpression(access.index(), context);
-                if (resolvedTarget == access.target() && resolvedIndex == access.index())
+                ASTExpression resolvedValueIndex = access.valueIndex() == null
+                        ? null
+                        : resolveExpression(access.valueIndex(), context);
+                if (resolvedTarget == access.target()
+                        && resolvedIndex == access.index()
+                        && resolvedValueIndex == access.valueIndex())
                     return access;
-                return new ASTExprArrayAccess(access.line(), resolvedTarget, resolvedIndex);
+                return new ASTExprArrayAccess(access.line(), resolvedTarget, resolvedIndex, resolvedValueIndex);
             }
 
             if (expression instanceof ASTExprSliceAccess access) {
@@ -1192,9 +1200,14 @@ public final class SemanticAnalyzer {
                 boolean changed = false;
                 for (ASTExprMappingEntry entry : mappingLiteral.entries()) {
                     ASTExpression resolvedKey = resolveExpression(entry.key(), context);
-                    ASTExpression resolvedValue = resolveExpression(entry.value(), context);
-                    changed |= resolvedKey != entry.key() || resolvedValue != entry.value();
-                    resolvedEntries.add(new ASTExprMappingEntry(resolvedKey, resolvedValue));
+                    List<ASTExpression> resolvedValues = new ArrayList<>();
+                    changed |= resolvedKey != entry.key();
+                    for (ASTExpression value : entry.values()) {
+                        ASTExpression resolvedValue = resolveExpression(value, context);
+                        changed |= resolvedValue != value;
+                        resolvedValues.add(resolvedValue);
+                    }
+                    resolvedEntries.add(new ASTExprMappingEntry(resolvedKey, resolvedValues));
                 }
                 if (!changed)
                     return mappingLiteral;
