@@ -633,6 +633,7 @@ mixed *sort_array(mixed *values, string method) {
 }
 
 void set_driver_hook(int hook, mixed callback) {
+    jvmud_set_driver_hook(hook, callback);
 }
 
 function unbound_lambda(mixed *parameters, mixed body) {

@@ -74,6 +74,7 @@ public final class RuntimeContext {
     private final Set<Object> commandEnabledEntities =
             Collections.newSetFromMap(new IdentityHashMap<>());
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
+    private final Map<String, String> commandAliases = new LinkedHashMap<>();
     private final Map<Object, ScheduledTask> recurringTickTasks = new IdentityHashMap<>();
     private final Map<Object, Map<String, ScheduledTask>> deferredCallbackTasks = new IdentityHashMap<>();
     private final Map<PlayerId, PlayerRecord> players = new LinkedHashMap<>();
@@ -1564,6 +1565,28 @@ public final class RuntimeContext {
     }
 
     /**
+     * Installs driver-level command aliases used before LPC action lookup.
+     *
+     * <p>LDMud mudlibs commonly configure {@code H_MODIFY_COMMAND} with mappings such as
+     * {@code ([ "n": "north" ])}. JVMud keeps that compatibility at the runtime command boundary:
+     * the first word is rewritten before registered {@code add_action} verbs are selected, and
+     * {@code query_verb()} sees the expanded verb.</p>
+     */
+    public void configureCommandAliases(Object aliases) {
+        commandAliases.clear();
+        if (!(aliases instanceof Map<?, ?> map)) {
+            return;
+        }
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            String alias = String.valueOf(entry.getKey()).trim();
+            String command = String.valueOf(entry.getValue()).trim();
+            if (!alias.isEmpty() && !command.isEmpty()) {
+                commandAliases.put(alias, command);
+            }
+        }
+    }
+
+    /**
      * Records the command failure text to display when no command action accepts the line.
      *
      * <p>Legacy mudlibs use {@code notify_fail()} inside an action that returns false. JVMud stores
@@ -1730,6 +1753,8 @@ public final class RuntimeContext {
             return 0;
         }
 
+        trimmed = applyCommandAlias(trimmed);
+
         String verb = trimmed;
         String argument = null;
         int space = trimmed.indexOf(' ');
@@ -1755,6 +1780,9 @@ public final class RuntimeContext {
                     return 1;
                 }
             }
+            if (tryEnvironmentMovementAction(actor, verb, argument)) {
+                return 1;
+            }
             String failureMessage = commandFailureStack.get().peek();
             if (failureMessage != null && !failureMessage.isEmpty()) {
                 writeToLpcObject(actor, failureMessage);
@@ -1764,6 +1792,30 @@ public final class RuntimeContext {
             commandVerbStack.get().pop();
         }
         return 0;
+    }
+
+    private boolean tryEnvironmentMovementAction(Object actor, String verb, String argument) {
+        Object environment = environment(actor);
+        if (environment == null || !hasMethod(environment.getClass(), "move", 1)) {
+            return false;
+        }
+        Object exits = invokeOptionalObject(environment, "exits");
+        if (!(exits instanceof List<?> exitList) || !exitList.contains(verb)) {
+            return false;
+        }
+        Object environmentBefore = environment(actor);
+        Object result = invokeObject(environment, "move", argument);
+        return Truth.isTruthy(result) || environment(actor) != environmentBefore;
+    }
+
+    private String applyCommandAlias(String commandLine) {
+        int space = commandLine.indexOf(' ');
+        String verb = space == -1 ? commandLine : commandLine.substring(0, space);
+        String replacement = commandAliases.get(verb);
+        if (replacement == null) {
+            return commandLine;
+        }
+        return space == -1 ? replacement : replacement + commandLine.substring(space);
     }
 
     private List<CommandAction> commandActionsFor(Object actor, String verb) {

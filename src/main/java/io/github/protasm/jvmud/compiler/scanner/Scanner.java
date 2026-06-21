@@ -380,6 +380,16 @@ public class Scanner {
                 i += 3;
                 continue;
             }
+            if (value.charAt(i + 1) == 'u' && i + 5 < value.length()
+                    && isHexDigit(value.charAt(i + 2)) && isHexDigit(value.charAt(i + 3))
+                    && isHexDigit(value.charAt(i + 4)) && isHexDigit(value.charAt(i + 5))) {
+                unescaped.append((char) ((hexValue(value.charAt(i + 2)) << 12)
+                        + (hexValue(value.charAt(i + 3)) << 8)
+                        + (hexValue(value.charAt(i + 4)) << 4)
+                        + hexValue(value.charAt(i + 5))));
+                i += 5;
+                continue;
+            }
             unescaped.append((char) escapedCharacterValue(value.charAt(++i)));
         }
         return unescaped.toString();

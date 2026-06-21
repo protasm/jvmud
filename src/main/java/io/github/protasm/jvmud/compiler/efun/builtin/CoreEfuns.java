@@ -76,6 +76,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       for the current action scope, or LPC false when no agent is active.</li>
  *   <li>{@code jvmud_current_verb() : string} returns the verb being dispatched for the current
  *       command.</li>
+ *   <li>{@code jvmud_set_driver_hook(int hook, mixed callback) : void} stores supported
+ *       compatibility driver hooks such as command alias rewrites.</li>
  *   <li>{@code jvmud_notify_fail(mixed message) : int} records failure text for an unhandled
  *       command.</li>
  * </ul>
@@ -387,6 +389,14 @@ public final class CoreEfuns {
                 (runtime, args) -> currentAgent(runtime)));
         efuns.add(efun("jvmud_current_verb", LPCType.LPCSTRING, List.of(),
                 (runtime, args) -> runtime.currentCommandVerb()));
+        efuns.add(efun("jvmud_set_driver_hook", LPCType.LPCVOID, List.of(LPCType.LPCINT, LPCType.LPCMIXED),
+                (runtime, args) -> {
+                    int hook = ((Number) args[0]).intValue();
+                    if (hook == 9) {
+                        runtime.configureCommandAliases(args[1]);
+                    }
+                    return null;
+                }));
         efuns.add(efun("jvmud_notify_fail", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.notifyCommandFailure(args[0])));
         efuns.add(efun("jvmud_dispatch_entity_command", LPCType.LPCMIXED,

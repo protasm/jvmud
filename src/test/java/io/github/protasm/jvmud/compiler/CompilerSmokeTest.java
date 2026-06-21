@@ -283,6 +283,66 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeDecodesUnicodeEscapesInStringLiterals() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/unicode_escape.c", """
+                string box_corner() {
+                    return "\\u2554";
+                }
+                """);
+
+        assertEquals("╔", object.invoke("box_corner"));
+    }
+
+    @Test
+    void runtimeAppliesDriverCommandAliasesBeforeActionLookup() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/command_alias.c", """
+                void create() {
+                    jvmud_set_driver_hook(9, ([ "n": "north" ]));
+                    jvmud_enable_commands();
+                    jvmud_add_action("move", "north");
+                }
+
+                int move() {
+                    jvmud_write(jvmud_current_verb());
+                    return 1;
+                }
+                """);
+        runtime.withCommandActor(object.instance(), () -> object.invoke("create"));
+        runtime.clearOutputTranscript();
+
+        assertEquals(1, runtime.dispatchCommand(object.instance(), "n"));
+        assertEquals("north", runtime.outputTranscript());
+    }
+
+    @Test
+    void runtimeFallsBackToEnvironmentMovementForExitVerbs() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle actor = runtime.loadSource("smoke/moving_actor.c", """
+                void create() {
+                    jvmud_enable_commands();
+                }
+                """);
+        LPCObjectHandle room = runtime.loadSource("smoke/exit_room.c", """
+                string *exits() {
+                    return ({ "north" });
+                }
+
+                int move(string ignored) {
+                    jvmud_write(jvmud_current_verb());
+                    return 1;
+                }
+                """);
+        runtime.moveObject(actor.instance(), room.instance());
+
+        assertEquals(1, runtime.dispatchCommand(actor.instance(), "north"));
+        assertEquals("north", runtime.outputTranscript());
+    }
+
+    @Test
     void runtimeParsesFunctionReferencesAsCallableValues() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/function_reference.c", """

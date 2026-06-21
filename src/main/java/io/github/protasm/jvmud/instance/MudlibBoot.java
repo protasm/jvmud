@@ -67,6 +67,7 @@ public final class MudlibBoot {
 
         MudlibBoundary boundary = discoverMudlibBoundary(worldRuntime, preloadedObjects, skippedPreloads);
         preloadConfiguredObjects(boundary, preloadedObjects, skippedPreloads);
+        inaugurateMasterIfPresent(boundary);
         preloadManifest(boundary, preloadedObjects, skippedPreloads, preloadManifestPreloadedObjects, preloadManifestSkippedPreloads);
 
         Object actor = null;
@@ -289,6 +290,20 @@ public final class MudlibBoot {
             MudlibBoundary boundary, List<String> preloadedObjects, List<String> skippedPreloads) {
         for (String sourcePath : boundary.preloadObjectPaths()) {
             preloadObject(sourcePath, preloadedObjects, skippedPreloads);
+        }
+    }
+
+    private void inaugurateMasterIfPresent(MudlibBoundary boundary) {
+        String masterPath = "secure/master";
+        if (!mudlibFileExists(boundary, masterPath)) {
+            return;
+        }
+
+        try {
+            Object master = runtime.loadOrGetObject(masterPath);
+            runtime.invokeOptionalObject(master, "inaugurate_master", 0);
+        } catch (RuntimeException e) {
+            // Keep boot permissive for non-LDMud mudlibs or partial master compatibility.
         }
     }
 
