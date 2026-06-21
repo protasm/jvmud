@@ -240,7 +240,7 @@ import javax.crypto.spec.PBEKeySpec;
  *       by {@code jvmud_serialize_lpc_value}.</li>
  *   <li>{@code jvmud_format_text(string format, mixed ...args) : string} formats text using the
  *       host formatter with LPC {@code %O} object placeholders treated as string placeholders; this
- *       overload is registered for arities 1 through 8.</li>
+ *       overload is registered for arities 1 through 24.</li>
  *   <li>{@code jvmud_extract_text(mixed value, int from) : string} extracts text from an inclusive
  *       start index through the end.</li>
  *   <li>{@code jvmud_extract_text(mixed value, int from, int to) : string} extracts text using
@@ -484,7 +484,7 @@ public final class CoreEfuns {
                 (runtime, args) -> RuntimeValueCodec.serialize(args[0])));
         efuns.add(efun("jvmud_deserialize_lpc_value", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> RuntimeValueCodec.deserialize(String.valueOf(args[0]))));
-        for (int arity = 1; arity <= 8; arity++) {
+        for (int arity = 1; arity <= 24; arity++) {
             efuns.add(formatTextEfun(arity));
         }
         efuns.add(efun("jvmud_extract_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED, LPCType.LPCINT),

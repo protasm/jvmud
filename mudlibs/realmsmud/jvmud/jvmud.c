@@ -33,6 +33,16 @@ object *all_inventory(mixed container) {
     return ret;
 }
 
+object *deep_inventory(mixed container) {
+    object *ret = ({ });
+    object *items = all_inventory(container);
+
+    foreach(object item in items) {
+        ret += ({ item }) + deep_inventory(item);
+    }
+    return ret;
+}
+
 void add_action(string method) {
     jvmud_add_action(method);
 }
@@ -118,7 +128,23 @@ string ctime(int epochSeconds) {
     return jvmud_format_time(epochSeconds);
 }
 
+string ctime() {
+    return ctime(time());
+}
+
+int clonep(mixed ob) {
+    return objectp(ob) && (strstr(object_name(ob), "#") > -1);
+}
+
 void configureCharset(object player, string charset) {
+}
+
+int configure_interactive(object player, int key, mixed value) {
+    return 1;
+}
+
+int canAccessDatabase(mixed ob) {
+    return 1;
 }
 
 int db_close(int handle) {
@@ -143,6 +169,12 @@ mixed db_error(int handle) {
 
 int db_exec(int handle, string sql) {
     return load_object("/secure/simul_efun.c")->db_exec(handle, sql);
+}
+
+void debug_message(mixed message) {
+}
+
+void debug_message(mixed message, int flags) {
 }
 
 mixed db_fetch(int handle) {
@@ -211,6 +243,10 @@ object getService(string service) {
     return load_object("/secure/simul_efun.c")->getService(service);
 }
 
+object getModule(string service) {
+    return getService(service);
+}
+
 string getuid() {
     return getuid(this_object());
 }
@@ -218,6 +254,26 @@ string getuid() {
 string getuid(mixed ob) {
     string ret = object_name(ob);
     return ret || "jvmud";
+}
+
+string *inherit_list() {
+    return inherit_list(this_object());
+}
+
+string *inherit_list(mixed ob) {
+    return jvmud_inherited_programs(ob);
+}
+
+int intp(mixed value) {
+    return jvmud_is_int(value);
+}
+
+int floatp(mixed value) {
+    return !intp(value) && (to_string(value) == to_string(to_float(value)));
+}
+
+float log(float value) {
+    return 0.0;
 }
 
 string implode(mixed *values, string delimiter) {
@@ -326,6 +382,10 @@ void move_object(mixed ob, mixed destination) {
     jvmud_move_entity(ob, destination);
 }
 
+int mkdir(string path) {
+    return 1;
+}
+
 int notify_fail(mixed message) {
     return 0;
 }
@@ -344,6 +404,39 @@ object present(mixed id) {
 
 object present(mixed id, mixed container) {
     return jvmud_find_entity(id, container);
+}
+
+string query_verb() {
+    return jvmud_current_verb();
+}
+
+string query_command() {
+    return query_verb();
+}
+
+int query_idle(mixed user) {
+    return jvmud_query_idle(user);
+}
+
+object present_clone(string blueprint) {
+    return present_clone(blueprint, this_object());
+}
+
+object present_clone(string blueprint, mixed container) {
+    string normalized = regreplace(blueprint || "", "^/", "", 1);
+    normalized = regreplace(normalized, "\\.c$", "", 1);
+
+    foreach(object item in all_inventory(container)) {
+        string name = object_name(item);
+        name = regreplace(name || "", "^/", "", 1);
+        name = regreplace(name, "#[0-9]+$", "", 1);
+        name = regreplace(name, "\\.c$", "", 1);
+
+        if (name == normalized) {
+            return item;
+        }
+    }
+    return 0;
 }
 
 string regreplace(string input, string pattern, string replacement) {
@@ -368,12 +461,79 @@ int sizeof(mixed value) {
     return jvmud_size(value);
 }
 
+int *rusage() {
+    return ({ 0, 0 });
+}
+
+void say(mixed message) {
+    jvmud_emit_perceivable_except(this_object(), message, this_object());
+}
+
+int set_heart_beat(int enabled) {
+    jvmud_schedule_recurring_tick(enabled, 1);
+    return enabled ? 1 : 0;
+}
+
+string StartLocation() {
+    return "/areas/eledhel/southern-city/12x2.c";
+}
+
 object this_object() {
     return jvmud_current_lpc_object();
 }
 
 int time() {
     return jvmud_time();
+}
+
+int abs(int value) {
+    return value < 0 ? -value : value;
+}
+
+int textWidth(mixed text) {
+    return sizeof(regreplace(to_string(text), "(\x1b[^m]+m)", "", 1));
+}
+
+float to_float(mixed value) {
+    return jvmud_to_int(value) * 1.0;
+}
+
+int unicodeIsSingleCharacter() {
+    return 1;
+}
+
+void unshadow() {
+}
+
+string convertToTextOfLength(string text, int length) {
+    text = text || "";
+    return sizeof(text) > length ? text[0..(length - 1)] : text;
+}
+
+int isValidPersistenceObject(mixed persistence) {
+    return objectp(persistence);
+}
+
+string getGuestName(object player) {
+    return "guest";
+}
+
+string addRoleToPlayer(object character, string newRole) {
+    return newRole || "";
+}
+
+int removeRoleFromPlayer(object character, string role) {
+    return 1;
+}
+
+int strstr(string haystack, string needle) {
+    return member(haystack || "", needle || "");
+}
+
+int strstr(string haystack, string needle, int start) {
+    string value = haystack || "";
+    int found = member(value[start..], needle || "");
+    return found < 0 ? -1 : found + start;
 }
 
 string version() {
@@ -445,6 +605,64 @@ string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
 string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
     mixed arg5, mixed arg6) {
     return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5, mixed arg6, mixed arg7) {
+    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5, mixed arg6, mixed arg7, mixed arg8) {
+    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+        arg8);
+}
+
+string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9) {
+    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+        arg8, arg9);
+}
+
+string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10) {
+    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+        arg8, arg9, arg10);
+}
+
+string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10,
+    mixed arg11) {
+    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+        arg8, arg9, arg10, arg11);
+}
+
+string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10,
+    mixed arg11, mixed arg12) {
+    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+        arg8, arg9, arg10, arg11, arg12);
+}
+
+string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10,
+    mixed arg11, mixed arg12, mixed arg13) {
+    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+        arg8, arg9, arg10, arg11, arg12, arg13);
+}
+
+string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10,
+    mixed arg11, mixed arg12, mixed arg13, mixed arg14) {
+    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+        arg8, arg9, arg10, arg11, arg12, arg13, arg14);
+}
+
+string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
+    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10,
+    mixed arg11, mixed arg12, mixed arg13, mixed arg14, mixed arg15) {
+    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+        arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15);
 }
 
 mapping filter_indices(mapping values, function callback) {

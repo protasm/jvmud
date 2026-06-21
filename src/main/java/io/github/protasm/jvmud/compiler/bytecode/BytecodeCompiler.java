@@ -639,9 +639,11 @@ public final class BytecodeCompiler {
                 null);
         mv.visitCode();
 
-        for (int i = 0; i < literal.captureLocals().size(); i++) {
-            IRLocal local = literal.captureLocals().get(i);
-            mv.visitVarInsn(ALOAD, 3);
+        // Copy callable arguments before captures: captured source locals may reuse low slots
+        // occupied by this helper's Object[] parameters.
+        for (int i = 0; i < literal.argumentLocals().size(); i++) {
+            IRLocal local = literal.argumentLocals().get(i);
+            mv.visitVarInsn(ALOAD, 2);
             pushInt(mv, i);
             mv.visitInsn(AALOAD);
             coerceValue(mv, RuntimeTypes.MIXED, local.type());
@@ -652,9 +654,9 @@ public final class BytecodeCompiler {
             }
         }
 
-        for (int i = 0; i < literal.argumentLocals().size(); i++) {
-            IRLocal local = literal.argumentLocals().get(i);
-            mv.visitVarInsn(ALOAD, 2);
+        for (int i = 0; i < literal.captureLocals().size(); i++) {
+            IRLocal local = literal.captureLocals().get(i);
+            mv.visitVarInsn(ALOAD, 3);
             pushInt(mv, i);
             mv.visitInsn(AALOAD);
             coerceValue(mv, RuntimeTypes.MIXED, local.type());
