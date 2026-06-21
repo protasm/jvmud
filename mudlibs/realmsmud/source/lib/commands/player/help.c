@@ -162,13 +162,14 @@ private nomask string displayHelpDetails(string commandFile, string command,
     }
     else if (commandObj)
     {
+        int useUnicode = charset == "unicode";
         ret += commandsService->buildBanner(colorConfiguration, charset, "top", "Help for", command) +
-            commandObj->displaySynopsis(command, colorConfiguration, charset);
+            commandObj->displaySynopsis(command, colorConfiguration, useUnicode);
 
-        ret += commandObj->displayUsageDetails(command, colorConfiguration, charset) +
-            commandObj->displayDescription(command, colorConfiguration, charset) +
-            commandObj->displayOptions(command, colorConfiguration, charset) +
-            commandObj->displayNotes(command, colorConfiguration, charset);
+        ret += commandObj->displayUsageDetails(command, colorConfiguration, useUnicode) +
+            commandObj->displayDescription(command, colorConfiguration, useUnicode) +
+            commandObj->displayOptions(command, colorConfiguration, useUnicode) +
+            commandObj->displayNotes(command, colorConfiguration, useUnicode);
     }
     return ret;
 }

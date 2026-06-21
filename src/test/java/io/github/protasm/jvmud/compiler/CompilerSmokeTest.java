@@ -1586,6 +1586,24 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsStringIndexAssignment() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/string_index_assignment.c", """
+                string value() {
+                    string ret;
+                    string source;
+
+                    ret = "abc";
+                    source = "XYZ";
+                    ret[1] = source[2];
+                    return ret;
+                }
+                """);
+
+        assertEquals("aZc", object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsIndexedCompoundArrayAppend() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
@@ -3701,6 +3719,10 @@ final class CompilerSmokeTest {
                     return jvmud_regex_replace("look [##Target##]", "^([^[#]+) +[[#].*", "\\\\1", 1);
                 }
 
+                string realms_option_prefix_text() {
+                    return jvmud_regex_replace("score [-v]", "^([^-[]+ +)(.*)", "\\\\1", 1);
+                }
+
                 string *realms_question_command_alias_matches_literal() {
                     return jvmud_regex_match(({ "?", "look" }), "(^?( -v)*$)");
                 }
@@ -3865,6 +3887,7 @@ final class CompilerSmokeTest {
         assertEquals("12", reader.invoke("number_text"));
         assertEquals(List.of("alpha.c", "gamma.c"), reader.invoke("regex_matches"));
         assertEquals("look", reader.invoke("realms_command_text"));
+        assertEquals("score ", reader.invoke("realms_option_prefix_text"));
         assertEquals(List.of("?"), reader.invoke("realms_question_command_alias_matches_literal"));
         assertEquals("you ponder", reader.invoke("callback_regex_replacement"));
         assertEquals("You ponder.", reader.invoke("callback_efun_regex_replacement"));

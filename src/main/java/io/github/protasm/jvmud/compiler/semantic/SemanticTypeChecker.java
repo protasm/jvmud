@@ -844,8 +844,13 @@ public final class SemanticTypeChecker {
             return valueType;
         }
 
-        if (targetType == LPCType.LPCSTRING && promoteIndexedStringTarget(store.target())) {
+        if (targetType == LPCType.LPCSTRING && valueType == LPCType.LPCARRAY && promoteIndexedStringTarget(store.target())) {
             ensureAssignable(LPCType.LPCINT, indexType, store.line(), "Array index expects integer");
+            return valueType;
+        }
+
+        if (targetType == LPCType.LPCSTRING) {
+            ensureAssignable(LPCType.LPCINT, indexType, store.line(), "String index expects integer");
             return valueType;
         }
 

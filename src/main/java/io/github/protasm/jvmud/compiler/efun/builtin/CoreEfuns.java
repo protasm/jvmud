@@ -487,8 +487,8 @@ public final class CoreEfuns {
                 List.of(LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCSTRING),
                 (runtime, args) -> runtime.dbConnect(
                         String.valueOf(args[0]),
-                        String.valueOf(args[1]),
-                        String.valueOf(args[2]))));
+                        nullableText(args[1]),
+                        nullableText(args[2]))));
         efuns.add(efun("jvmud_db_exec", LPCType.LPCINT, List.of(LPCType.LPCINT, LPCType.LPCSTRING),
                 (runtime, args) -> runtime.dbExec(((Number) args[0]).intValue(), String.valueOf(args[1]))));
         efuns.add(efun("jvmud_db_fetch", LPCType.LPCMIXED, List.of(LPCType.LPCINT),
@@ -1083,10 +1083,42 @@ public final class CoreEfuns {
     }
 
     private static String javaRegexPattern(String pattern) {
+        return escapeAnchorQuestionMark(escapeLiteralLeftBracketsInCharacterClasses(pattern));
+    }
+
+    /** Escapes LDMud-style literal {@code [} characters embedded inside regex character classes. */
+    private static String escapeLiteralLeftBracketsInCharacterClasses(String pattern) {
         String literalLeftBracket = "\\" + "u005B";
-        return escapeAnchorQuestionMark(pattern
-                .replace("[^[", "[^" + literalLeftBracket)
-                .replace("[[", "[" + literalLeftBracket));
+        StringBuilder translated = new StringBuilder(pattern.length());
+        boolean inCharacterClass = false;
+        boolean escaped = false;
+        for (int index = 0; index < pattern.length(); index++) {
+            char current = pattern.charAt(index);
+            if (escaped) {
+                translated.append(current);
+                escaped = false;
+                continue;
+            }
+            if (current == '\\') {
+                translated.append(current);
+                escaped = true;
+                continue;
+            }
+            if (current == '[') {
+                if (inCharacterClass) {
+                    translated.append(literalLeftBracket);
+                } else {
+                    translated.append(current);
+                    inCharacterClass = true;
+                }
+                continue;
+            }
+            if (current == ']') {
+                inCharacterClass = false;
+            }
+            translated.append(current);
+        }
+        return translated.toString();
     }
 
     /**
@@ -1370,6 +1402,11 @@ public final class CoreEfuns {
             return path.substring(0, path.length() - 2);
         }
         return path;
+    }
+
+    /** Converts an LPC value to text while preserving Java {@code null} for omitted varargs. */
+    private static String nullableText(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     private static Efun efun(String name, LPCType returnType, List<LPCType> parameters, EfunBody body) {

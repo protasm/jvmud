@@ -116,6 +116,17 @@ final class RealmsMudCompatibilityScanTest {
                 "RealmsMUD stores settings values as text, so safety teleport restore needs numeric conversion.");
     }
 
+    @Test
+    void realmsHelpPassesUnicodeFlagToBaseCommandDisplayMethods() throws IOException {
+        String helpSource = Files.readString(MUDLIB_SOURCE_ROOT.resolve("lib/commands/player/help.c"));
+        assertTrue(
+                helpSource.contains("int useUnicode = charset == \"unicode\";"),
+                "RealmsMUD base command display helpers expect a numeric unicode flag, not a charset string.");
+        assertTrue(
+                helpSource.contains("displaySynopsis(command, colorConfiguration, useUnicode)"),
+                "Help detail rendering should pass the numeric unicode flag through display helpers.");
+    }
+
     private static List<String> compatibilitySet(Path sourceRoot) throws IOException {
         Set<String> sourceNames = new LinkedHashSet<>(BOOT_AND_CORE_COMPATIBILITY_SET);
         for (String sweepRoot : COMPATIBILITY_SWEEP_ROOTS) {
@@ -156,6 +167,7 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("init/init_file", boundary.preloadFilePath().orElseThrow());
         assertTrue(boundary.preloadObjectPaths().contains("secure/master"));
         assertTrue(boundary.preloadObjectPaths().contains("secure/simul_efun"));
+        assertTrue(boundary.preloadObjectPaths().contains("lib/services/environmentService"));
         assertEquals("jdbc:mysql://localhost:3306/RealmsLib", boundary.databaseJdbcUrl().orElseThrow());
         assertEquals("realmslib", boundary.databaseUser().orElseThrow());
         assertFalse(boundary.databasePassword().orElseThrow().isBlank());

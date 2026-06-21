@@ -127,7 +127,8 @@ public final class RuntimeIndex {
             return replacement;
         }
         if (target instanceof CharSequence text) {
-            if (!(replacement instanceof CharSequence replacementText))
+            Object normalizedReplacement = normalizeStringReplacement(replacement);
+            if (!(normalizedReplacement instanceof CharSequence replacementText))
                 throw new IllegalArgumentException("Slice assignment expects string replacement: " + replacement);
 
             String original = text.toString();
@@ -137,6 +138,14 @@ public final class RuntimeIndex {
             return original.substring(0, start) + replacementText + original.substring(end + 1);
         }
         throw new IllegalArgumentException("Cannot assign slice on value: " + target);
+    }
+
+    /** Normalizes LPC string replacement values, including integer character codes. */
+    private static Object normalizeStringReplacement(Object replacement) {
+        if (replacement instanceof Number number) {
+            return String.valueOf((char) number.intValue());
+        }
+        return replacement;
     }
 
     private static void validateSliceReplacementBounds(int start, int end, int size) {

@@ -1459,6 +1459,17 @@ public final class IRLowerer {
 
             IRExpression rawIndex = lowerExpression(arrayStore.index(), context, problems);
             IRExpression value = lowerExpression(arrayStore.value(), context, problems);
+            if (targetType != null && targetType.kind() == RuntimeValueKind.STRING) {
+                IRExpression index = indexExpression(rawIndex);
+                IRSliceSet stringSet = new IRSliceSet(
+                        arrayStore.line(),
+                        target,
+                        index,
+                        index,
+                        coerceIfNeeded(value, RuntimeTypes.MIXED),
+                        RuntimeTypes.STRING);
+                return storeStringAssignmentResult(arrayStore.line(), arrayStore.target(), context, problems, stringSet);
+            }
             if (targetType != null && targetType.kind() == RuntimeValueKind.MIXED)
                 return new IRArraySet(
                         arrayStore.line(),
@@ -1483,7 +1494,7 @@ public final class IRLowerer {
             RuntimeType resultType = sliceSetResultType(targetType);
             IRExpression sliceSet = new IRSliceSet(sliceStore.line(), target, start, end, value, resultType);
             if (targetType != null && targetType.kind() == RuntimeValueKind.STRING)
-                return storeStringSliceResult(sliceStore, context, problems, sliceSet);
+                return storeStringAssignmentResult(sliceStore.line(), sliceStore.target(), context, problems, sliceSet);
             return sliceSet;
         }
 
@@ -1952,21 +1963,25 @@ public final class IRLowerer {
         return RuntimeTypes.MIXED;
     }
 
-    private IRExpression storeStringSliceResult(
-            ASTExprSliceStore sliceStore, MethodContext context, List<CompilationProblem> problems, IRExpression value) {
-        if (sliceStore.target() instanceof ASTExprLocalAccess access) {
+    private IRExpression storeStringAssignmentResult(
+            int line,
+            ASTExpression target,
+            MethodContext context,
+            List<CompilationProblem> problems,
+            IRExpression value) {
+        if (target instanceof ASTExprLocalAccess access) {
             IRLocal local = context.requireLocal(access.local(), problems);
-            return new IRLocalStore(sliceStore.line(), local, coerceIfNeeded(value, local.type()));
+            return new IRLocalStore(line, local, coerceIfNeeded(value, local.type()));
         }
-        if (sliceStore.target() instanceof ASTExprFieldAccess access) {
+        if (target instanceof ASTExprFieldAccess access) {
             IRField field = context.requireField(access.field(), problems);
-            return new IRFieldStore(sliceStore.line(), field, coerceIfNeeded(value, field.type()));
+            return new IRFieldStore(line, field, coerceIfNeeded(value, field.type()));
         }
 
         problems.add(new CompilationProblem(
                 CompilationStage.LOWER,
-                "String slice assignment requires a local or field target",
-                sliceStore.line()));
+                "String assignment requires a local or field target",
+                line));
         return value;
     }
 
