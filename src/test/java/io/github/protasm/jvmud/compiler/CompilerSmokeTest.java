@@ -3352,6 +3352,33 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeDisplaysNotifyFailWhenCommandActionsDeclineLine() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle player = runtime.loadSource("smoke/player.c", """
+                void create() {
+                    jvmud_add_action("party_action", "party");
+                }
+
+                int notify_fail(mixed message) {
+                    return jvmud_notify_fail(message);
+                }
+
+                int party_action(string command) {
+                    notify_fail("You are not currently in a party.\\n");
+                    return 0;
+                }
+                """);
+        StringBuilder output = new StringBuilder();
+
+        player.invoke("create");
+        runtime.bindSession("s1", player.instance(), "127.0.0.1", output::append);
+
+        assertEquals(0, runtime.dispatchCommand(player.instance(), "party"));
+        assertEquals("You are not currently in a party.\n", output.toString());
+    }
+
+    @Test
     void runtimeRoutesPersonaSessionOutputAndPresenceQueries() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);

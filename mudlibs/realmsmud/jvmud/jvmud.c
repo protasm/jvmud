@@ -435,7 +435,7 @@ int mkdir(string path) {
 }
 
 int notify_fail(mixed message) {
-    return 0;
+    return jvmud_notify_fail(message);
 }
 
 string object_name(mixed ob) {
@@ -641,6 +641,10 @@ function unbound_lambda(mixed *parameters, mixed body) {
 
 void write(mixed message) {
     jvmud_write(message);
+}
+
+void tell_room(mixed location, mixed message) {
+    jvmud_emit_perceivable_at(location, message);
 }
 
 int write_file(string path, mixed text) {

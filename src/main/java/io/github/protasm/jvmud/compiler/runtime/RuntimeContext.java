@@ -91,6 +91,8 @@ public final class RuntimeContext {
             ThreadLocal.withInitial(ArrayDeque::new);
     private final ThreadLocal<Deque<String>> commandVerbStack =
             ThreadLocal.withInitial(ArrayDeque::new);
+    private final ThreadLocal<Deque<String>> commandFailureStack =
+            ThreadLocal.withInitial(ArrayDeque::new);
     private final ThreadLocal<Deque<PendingAction>> pendingActionStack =
             ThreadLocal.withInitial(ArrayDeque::new);
     private final ThreadLocal<Integer> scopedCommandRegistrationDepth =
@@ -1561,6 +1563,23 @@ public final class RuntimeContext {
         return commandVerbStack.get().peek();
     }
 
+    /**
+     * Records the command failure text to display when no command action accepts the line.
+     *
+     * <p>Legacy mudlibs use {@code notify_fail()} inside an action that returns false. JVMud stores
+     * the latest message for the active dispatch and writes it only after all candidate actions have
+     * declined the command.</p>
+     */
+    public int notifyCommandFailure(Object message) {
+        Deque<String> failures = commandFailureStack.get();
+        if (failures.isEmpty()) {
+            return 0;
+        }
+        failures.pop();
+        failures.push(String.valueOf(message));
+        return 0;
+    }
+
     public void pushCurrentObject(Object object) {
         Objects.requireNonNull(object, "object");
         currentObjectStack.get().push(object);
@@ -1724,6 +1743,7 @@ public final class RuntimeContext {
 
         List<CommandAction> actions = commandActionsFor(actor, verb);
         commandVerbStack.get().push(verb);
+        commandFailureStack.get().push("");
         try {
             for (CommandAction action : actions) {
                 Object environmentBefore = environment(actor);
@@ -1735,7 +1755,12 @@ public final class RuntimeContext {
                     return 1;
                 }
             }
+            String failureMessage = commandFailureStack.get().peek();
+            if (failureMessage != null && !failureMessage.isEmpty()) {
+                writeToLpcObject(actor, failureMessage);
+            }
         } finally {
+            commandFailureStack.get().pop();
             commandVerbStack.get().pop();
         }
         return 0;
