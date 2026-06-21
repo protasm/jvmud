@@ -640,6 +640,16 @@ public final class LPCRuntime {
         runtimeContext.bindSession(sessionId, persona, remoteAddress, sessionOutputSink, mudlibProjection);
     }
 
+    /**
+     * Rebinds an existing host session from one LPC object to another.
+     *
+     * <p>The host session and engine Player record remain stable; only the mudlib-facing object
+     * that receives commands and output changes.</p>
+     */
+    public boolean rebindSessionLpcObject(Object newObject, Object oldObject) {
+        return runtimeContext.rebindSessionLpcObject(newObject, oldObject);
+    }
+
     /** Removes a host session binding. */
     public void unbindSession(String sessionId) {
         runtimeContext.unbindSession(sessionId);
@@ -648,6 +658,16 @@ public final class LPCRuntime {
     /** Returns the engine-owned Session record for a bound host session. */
     public Optional<SessionRecord> sessionRecord(String sessionId) {
         return runtimeContext.sessionRecord(sessionId);
+    }
+
+    /** Returns the LPC object currently bound to a host session, when one exists. */
+    public Optional<Object> lpcObjectForSession(String sessionId) {
+        return runtimeContext.lpcObjectForSession(sessionId);
+    }
+
+    /** Returns true when the supplied LPC object is currently attached to a host session. */
+    public boolean isInteractive(Object user) {
+        return runtimeContext.isInteractive(user);
     }
 
     /** Returns the engine-owned Player record associated with a bound host session. */

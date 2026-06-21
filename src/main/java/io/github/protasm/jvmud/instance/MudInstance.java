@@ -491,24 +491,25 @@ public final class MudInstance implements InstanceHost {
                 removeWorldEntity(persona);
                 return 1;
             }
+            refreshBoundActor(persona);
             return result;
         }
 
         runtime.clearOutputTranscript();
         runtime.refreshCommandActions(persona.actor());
         Object result = runtime.dispatchCommand(persona.actor(), commandLine);
-        if (Integer.valueOf(0).equals(result) && isLookCommand(commandLine)) {
-            runtime.clearOutputTranscript();
-            Object environment = runtime.environment(persona.actor());
-            if (environment != null) {
-                lookAt(environment, out);
-                result = 1;
-            }
-            printRuntimeOutput(out);
-        } else {
-            runtime.clearOutputTranscript();
-        }
+        refreshBoundActor(persona);
+        runtime.clearOutputTranscript();
         return result;
+    }
+
+    private void refreshBoundActor(InstancePersona persona) {
+        runtime.lpcObjectForSession(persona.sessionId()).ifPresent(boundActor -> {
+            if (boundActor != persona.actor()) {
+                String objectId = Objects.requireNonNullElse(runtime.objectId(boundActor), persona.objectId());
+                persona.replaceActor(objectId, boundActor);
+            }
+        });
     }
 
     private Object handleRuntimeError(
@@ -603,24 +604,6 @@ public final class MudInstance implements InstanceHost {
         }
     }
 
-    private void lookAt(Object object, PrintWriter out) {
-        try {
-            printReturnedDescription(runtime.invokeObject(object, "long", new Object[] {null}), out);
-        } catch (RuntimeException e) {
-            try {
-                printReturnedDescription(runtime.invokeObject(object, "long"), out);
-            } catch (RuntimeException ignored) {
-                printReturnedDescription(runtime.invokeObject(object, "short"), out);
-            }
-        }
-    }
-
-    private void printReturnedDescription(Object description, PrintWriter out) {
-        if (description instanceof String text && !text.isEmpty()) {
-            out.println(OutgoingTextFormatter.wrap(text, maxLineLength));
-        }
-    }
-
     private void printRuntimeOutput(PrintWriter out) {
         String output = runtime.outputTranscript();
         runtime.clearOutputTranscript();
@@ -641,11 +624,6 @@ public final class MudInstance implements InstanceHost {
             throw new IllegalArgumentException("Starting location is not a place: " + path);
         }
         return worldRuntime.createPlace(path, path);
-    }
-
-    private boolean isLookCommand(String commandLine) {
-        String trimmed = commandLine.trim();
-        return "look".equals(trimmed) || "l".equals(trimmed) || trimmed.startsWith("look ");
     }
 
     private void messageLoginPlayer(String sessionId, String text) {

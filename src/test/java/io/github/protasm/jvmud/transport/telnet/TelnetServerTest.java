@@ -844,8 +844,18 @@ final class TelnetServerTest {
         installMfunShim();
         Files.createDirectories(tempDir.resolve("room/village"));
         Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
+                void init() {
+                    add_action("look");
+                    add_verb("look");
+                }
+
                 void long(mixed str) {
                     write("A test green.\\n");
+                }
+
+                int look(mixed str) {
+                    long(str);
+                    return 1;
                 }
                 """);
 
@@ -875,8 +885,18 @@ final class TelnetServerTest {
         installMfunShim(mudlibRoot);
         Files.createDirectories(mudlibRoot.resolve("room/village"));
         Files.writeString(mudlibRoot.resolve("room/village/vill_green.c"), """
+                void init() {
+                    add_action("look");
+                    add_verb("look");
+                }
+
                 void long(mixed str) {
                     write("A spaced-path green.\\n");
+                }
+
+                int look(mixed str) {
+                    long(str);
+                    return 1;
                 }
                 """);
 
@@ -948,35 +968,6 @@ final class TelnetServerTest {
 
                 assertTrue(tick.contains("JVMud telnet."));
                 assertTrue(tick.contains("world tick delivered"));
-            }
-        }
-    }
-
-    @Test
-    void telnetLookFallbackAcceptsNoArgumentRoomLong() throws Exception {
-        installMfunShim();
-        Files.createDirectories(tempDir.resolve("room/village"));
-        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
-                void long() {
-                    write("A no-argument long room.\\n");
-                }
-                """);
-
-        try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
-            server.start();
-
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
-                socket.setSoTimeout(5000);
-                readUntilContains(socket, "Attached player 1");
-
-                socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String look = readUntilContains(socket, "A no-argument long room.");
-                assertTrue(look.contains("A no-argument long room."), look);
-
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
             }
         }
     }

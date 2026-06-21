@@ -53,6 +53,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       recipient.</li>
  *   <li>{@code jvmud_write_to_lpc_object(object target, mixed message) : void} writes text to the
  *       target object's bound session, when it has one.</li>
+ *   <li>{@code jvmud_rebind_session_lpc_object(object newObject, object oldObject) : status}
+ *       moves an interactive session binding from one LPC object to another.</li>
  *   <li>{@code jvmud_emit_perceivable(mixed emitter, mixed message) : void} emits near an entity
  *       or path-resolved object.</li>
  *   <li>{@code jvmud_emit_perceivable_except(mixed emitter, mixed message, mixed excluded) : void}
@@ -330,6 +332,9 @@ public final class CoreEfuns {
                     runtime.writeToLpcObject(args[0], args[1]);
                     return null;
                 }));
+        efuns.add(efun("jvmud_rebind_session_lpc_object", LPCType.LPCSTATUS,
+                List.of(LPCType.LPCOBJECT, LPCType.LPCOBJECT),
+                (runtime, args) -> runtime.rebindSessionLpcObject(args[0], args[1]) ? 1 : 0));
         efuns.add(efun("jvmud_emit_perceivable", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> emitPerceivable(runtime, args[0], args[1])));
         efuns.add(efun("jvmud_emit_perceivable_except", LPCType.LPCVOID,

@@ -64,6 +64,11 @@ public final class InstancePersona {
         return actor;
     }
 
+    void replaceActor(String objectId, Object actor) {
+        this.objectId = Objects.requireNonNull(objectId, "objectId");
+        this.actor = Objects.requireNonNull(actor, "actor");
+    }
+
     String remoteAddress() {
         return remoteAddress;
     }

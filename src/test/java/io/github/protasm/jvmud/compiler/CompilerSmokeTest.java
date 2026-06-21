@@ -2882,6 +2882,42 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeRebindsSessionBetweenLpcObjects() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle login = runtime.loadSource("smoke/login.c", """
+                int handoff(object target) {
+                    return jvmud_rebind_session_lpc_object(target, jvmud_current_lpc_object());
+                }
+                """);
+        LPCObjectHandle player = runtime.loadSource("smoke/player.c", """
+                void create() {
+                    jvmud_add_action("look_action", "look");
+                }
+
+                int look_action(string command) {
+                    jvmud_write("player-look");
+                    return 1;
+                }
+                """);
+        player.invoke("create");
+        StringBuilder output = new StringBuilder();
+
+        runtime.bindSession("s1", login.instance(), "127.0.0.1", output::append);
+        assertSame(login.instance(), runtime.lpcObjectForSession("s1").orElseThrow());
+
+        assertEquals(1, login.invoke("handoff", player.instance()));
+        assertSame(player.instance(), runtime.lpcObjectForSession("s1").orElseThrow());
+        assertTrue(runtime.personaRecordForProjection(login.instance()).orElseThrow().controllingPlayerId().isEmpty());
+        assertTrue(runtime.isInteractive(player.instance()));
+        assertFalse(runtime.isInteractive(login.instance()));
+
+        runtime.refreshCommandActions(player.instance());
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "look"));
+        assertEquals("player-look", output.toString());
+    }
+
+    @Test
     void runtimeRoutesPersonaSessionOutputAndPresenceQueries() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);

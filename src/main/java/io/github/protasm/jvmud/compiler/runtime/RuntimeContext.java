@@ -658,6 +658,29 @@ public final class RuntimeContext {
         personaIdsByProjection.put(persona, personaId);
     }
 
+    /**
+     * Rebinds an existing host session from one LPC object projection to another.
+     *
+     * <p>This models legacy driver handoff operations such as RealmsMUD's use of {@code exec}:
+     * the network session, output sink, Player record, and connection metadata stay in place while
+     * the mudlib-facing interactive object changes from a login object to a player object.</p>
+     */
+    public boolean rebindSessionLpcObject(Object newObject, Object oldObject) {
+        if (newObject == null || oldObject == null) {
+            return false;
+        }
+        SessionBinding binding = sessionsByPersona.get(oldObject);
+        if (binding == null) {
+            return false;
+        }
+        bindSession(
+                binding.sessionRecord().id().value(),
+                newObject,
+                binding.sessionRecord().remoteAddress().orElse(null),
+                binding.outputSink());
+        return true;
+    }
+
     public void unbindSession(String sessionId) {
         if (sessionId == null) {
             return;
@@ -674,6 +697,15 @@ public final class RuntimeContext {
         }
         SessionBinding binding = sessions.get(new SessionId(sessionId));
         return binding != null ? Optional.of(binding.sessionRecord()) : Optional.empty();
+    }
+
+    /** Returns the LPC object projection currently attached to a host session, when one exists. */
+    public Optional<Object> lpcObjectForSession(String sessionId) {
+        if (sessionId == null) {
+            return Optional.empty();
+        }
+        SessionBinding binding = sessions.get(new SessionId(sessionId));
+        return binding != null ? Optional.ofNullable(binding.personaProjection()) : Optional.empty();
     }
 
     public Optional<PlayerRecord> playerRecordForSession(String sessionId) {
