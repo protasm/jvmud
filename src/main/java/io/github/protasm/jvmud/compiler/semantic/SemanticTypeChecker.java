@@ -840,13 +840,21 @@ public final class SemanticTypeChecker {
             ensureAssignable(LPCType.LPCINT, endType, store.line(), "Slice end expects integer");
         }
 
-        if (targetType == LPCType.LPCARRAY || targetType == LPCType.LPCMIXED || targetType == null) {
+        if (targetType == LPCType.LPCSTRING) {
+            ensureAssignable(LPCType.LPCSTRING, valueType, store.line(), "String slice assignment expects string value");
+            return LPCType.LPCSTRING;
+        }
+
+        if (targetType == LPCType.LPCARRAY) {
             ensureAssignable(LPCType.LPCARRAY, valueType, store.line(), "Array slice assignment expects array value");
             return LPCType.LPCARRAY;
         }
 
+        if (targetType == LPCType.LPCMIXED || targetType == null)
+            return LPCType.LPCMIXED;
+
         problems.add(new CompilationProblem(
-                CompilationStage.ANALYZE, "Slice assignment expects array target", store.line()));
+                CompilationStage.ANALYZE, "Slice assignment expects array or string target", store.line()));
         return valueType;
     }
 

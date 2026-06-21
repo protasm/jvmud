@@ -450,8 +450,8 @@ public final class BytecodeCompiler {
             return;
         }
 
-        if (expression instanceof IRArraySliceSet arraySliceSet) {
-            emitArraySliceSet(mv, internalName, method, arraySliceSet);
+        if (expression instanceof IRSliceSet sliceSet) {
+            emitSliceSet(mv, internalName, method, sliceSet);
             return;
         }
 
@@ -1821,22 +1821,22 @@ public final class BytecodeCompiler {
                 false);
     }
 
-    private void emitArraySliceSet(MethodVisitor mv, String internalName, IRMethod method, IRArraySliceSet arraySliceSet) {
-        emitExpression(mv, internalName, method, arraySliceSet.array());
-        boxIfNeeded(mv, arraySliceSet.array().type());
-        emitExpression(mv, internalName, method, arraySliceSet.start());
-        boxIfNeeded(mv, arraySliceSet.start().type());
-        emitExpression(mv, internalName, method, arraySliceSet.end());
-        boxIfNeeded(mv, arraySliceSet.end().type());
-        emitExpression(mv, internalName, method, arraySliceSet.value());
-        boxIfNeeded(mv, arraySliceSet.value().type());
+    private void emitSliceSet(MethodVisitor mv, String internalName, IRMethod method, IRSliceSet sliceSet) {
+        emitExpression(mv, internalName, method, sliceSet.target());
+        boxIfNeeded(mv, sliceSet.target().type());
+        emitExpression(mv, internalName, method, sliceSet.start());
+        boxIfNeeded(mv, sliceSet.start().type());
+        emitExpression(mv, internalName, method, sliceSet.end());
+        boxIfNeeded(mv, sliceSet.end().type());
+        emitExpression(mv, internalName, method, sliceSet.value());
+        boxIfNeeded(mv, sliceSet.value().type());
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Type.getInternalName(RuntimeIndex.class),
                 "replaceSlice",
                 "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
                 false);
-        coerceValue(mv, RuntimeTypes.MIXED, arraySliceSet.type());
+        coerceValue(mv, RuntimeTypes.MIXED, sliceSet.type());
     }
 
     private void emitArrayMutation(MethodVisitor mv, String internalName, IRMethod method, IRArrayMutation mutation) {

@@ -1418,9 +1418,14 @@ public final class IRLowerer {
             IRExpression end = sliceStore.end() == null
                     ? new IRConstant(sliceStore.line(), null, RuntimeTypes.INTERNAL_NULL)
                     : indexExpression(lowerExpression(sliceStore.end(), context, problems));
-            IRExpression value = coerceIfNeeded(lowerExpression(sliceStore.value(), context, problems), RuntimeTypes.MIXED);
-            return new IRArraySliceSet(
-                    sliceStore.line(), target, start, end, value, RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
+            RuntimeType targetType = runtimeType(sliceStore.target().lpcType());
+            RuntimeType valueType = sliceReplacementType(targetType);
+            IRExpression value = coerceIfNeeded(lowerExpression(sliceStore.value(), context, problems), valueType);
+            RuntimeType resultType = sliceSetResultType(targetType);
+            IRExpression sliceSet = new IRSliceSet(sliceStore.line(), target, start, end, value, resultType);
+            if (targetType != null && targetType.kind() == RuntimeValueKind.STRING)
+                return storeStringSliceResult(sliceStore, context, problems, sliceSet);
+            return sliceSet;
         }
 
         if (expression instanceof ASTExprArrayMutation mutation) {
@@ -1863,6 +1868,44 @@ public final class IRLowerer {
     }
 
     private record MethodKey(String name, int arity) {}
+
+    private RuntimeType sliceReplacementType(RuntimeType targetType) {
+        if (targetType == null || targetType.kind() == RuntimeValueKind.MIXED)
+            return RuntimeTypes.MIXED;
+        if (targetType.kind() == RuntimeValueKind.STRING)
+            return RuntimeTypes.STRING;
+        if (targetType.kind() == RuntimeValueKind.ARRAY)
+            return RuntimeTypes.arrayOf(RuntimeTypes.MIXED);
+        return RuntimeTypes.MIXED;
+    }
+
+    private RuntimeType sliceSetResultType(RuntimeType targetType) {
+        if (targetType == null || targetType.kind() == RuntimeValueKind.MIXED)
+            return RuntimeTypes.MIXED;
+        if (targetType.kind() == RuntimeValueKind.STRING)
+            return RuntimeTypes.STRING;
+        if (targetType.kind() == RuntimeValueKind.ARRAY)
+            return RuntimeTypes.arrayOf(RuntimeTypes.MIXED);
+        return RuntimeTypes.MIXED;
+    }
+
+    private IRExpression storeStringSliceResult(
+            ASTExprSliceStore sliceStore, MethodContext context, List<CompilationProblem> problems, IRExpression value) {
+        if (sliceStore.target() instanceof ASTExprLocalAccess access) {
+            IRLocal local = context.requireLocal(access.local(), problems);
+            return new IRLocalStore(sliceStore.line(), local, coerceIfNeeded(value, local.type()));
+        }
+        if (sliceStore.target() instanceof ASTExprFieldAccess access) {
+            IRField field = context.requireField(access.field(), problems);
+            return new IRFieldStore(sliceStore.line(), field, coerceIfNeeded(value, field.type()));
+        }
+
+        problems.add(new CompilationProblem(
+                CompilationStage.LOWER,
+                "String slice assignment requires a local or field target",
+                sliceStore.line()));
+        return value;
+    }
 
     private IRExpression coerceIfNeeded(IRExpression value, RuntimeType targetType) {
         if (value == null)

@@ -3,18 +3,18 @@ package io.github.protasm.jvmud.compiler.ir;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeType;
 import java.util.Objects;
 
-public final class IRArraySliceSet implements IRExpression {
+public final class IRSliceSet implements IRExpression {
     private final int line;
-    private final IRExpression array;
+    private final IRExpression target;
     private final IRExpression start;
     private final IRExpression end;
     private final IRExpression value;
     private final RuntimeType type;
 
-    public IRArraySliceSet(
-            int line, IRExpression array, IRExpression start, IRExpression end, IRExpression value, RuntimeType type) {
+    public IRSliceSet(
+            int line, IRExpression target, IRExpression start, IRExpression end, IRExpression value, RuntimeType type) {
         this.line = line;
-        this.array = Objects.requireNonNull(array, "array");
+        this.target = Objects.requireNonNull(target, "target");
         this.start = Objects.requireNonNull(start, "start");
         this.end = Objects.requireNonNull(end, "end");
         this.value = Objects.requireNonNull(value, "value");
@@ -26,8 +26,8 @@ public final class IRArraySliceSet implements IRExpression {
         return line;
     }
 
-    public IRExpression array() {
-        return array;
+    public IRExpression target() {
+        return target;
     }
 
     public IRExpression start() {

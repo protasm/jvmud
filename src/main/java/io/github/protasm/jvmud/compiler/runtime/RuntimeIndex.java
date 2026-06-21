@@ -106,25 +106,46 @@ public final class RuntimeIndex {
         throw new IllegalArgumentException("Cannot slice value: " + target);
     }
 
+    /**
+     * Replaces an LPC array or string slice.
+     *
+     * <p>Array targets are mutable and are updated in place. String targets produce a replacement
+     * string because Java strings are immutable; generated code stores that result back into the
+     * original local or field when compiling string slice assignment.</p>
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object replaceSlice(Object target, Object startValue, Object endValue, Object replacement) {
-        if (!(target instanceof List list))
-            throw new IllegalArgumentException("Cannot assign slice on value: " + target);
-        if (!(replacement instanceof List<?> replacementList))
-            throw new IllegalArgumentException("Slice assignment expects array replacement: " + replacement);
+        if (target instanceof List list) {
+            if (!(replacement instanceof List<?> replacementList))
+                throw new IllegalArgumentException("Slice assignment expects array replacement: " + replacement);
 
-        int start = resolveIndex(startValue, list.size());
-        int end = inclusiveEnd(endValue, list.size());
-        if (start < 0 || start > list.size())
+            int start = resolveIndex(startValue, list.size());
+            int end = inclusiveEnd(endValue, list.size());
+            validateSliceReplacementBounds(start, end, list.size());
+            list.subList(start, end + 1).clear();
+            list.addAll(start, replacementList);
+            return replacement;
+        }
+        if (target instanceof CharSequence text) {
+            if (!(replacement instanceof CharSequence replacementText))
+                throw new IllegalArgumentException("Slice assignment expects string replacement: " + replacement);
+
+            String original = text.toString();
+            int start = resolveIndex(startValue, original.length());
+            int end = inclusiveEnd(endValue, original.length());
+            validateSliceReplacementBounds(start, end, original.length());
+            return original.substring(0, start) + replacementText + original.substring(end + 1);
+        }
+        throw new IllegalArgumentException("Cannot assign slice on value: " + target);
+    }
+
+    private static void validateSliceReplacementBounds(int start, int end, int size) {
+        if (start < 0 || start > size)
             throw new IndexOutOfBoundsException("Slice start out of range: " + start);
         if (end < start - 1)
             throw new IndexOutOfBoundsException("Slice end before start: " + end);
-        if (end >= list.size())
+        if (end >= size)
             throw new IndexOutOfBoundsException("Slice end out of range: " + end);
-
-        list.subList(start, end + 1).clear();
-        list.addAll(start, replacementList);
-        return replacement;
     }
 
     private static int inclusiveEnd(Object endValue, int size) {

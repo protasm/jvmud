@@ -726,6 +726,38 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsComputedStringSliceDeletion() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/computed_string_slice_deletion.c", """
+                string value(int current, int needed) {
+                    string bar;
+
+                    bar = "==========";
+                    bar[(10 * current) / needed..] = "";
+                    return bar;
+                }
+                """);
+
+        assertEquals("====", object.invoke("value", 4, 10));
+    }
+
+    @Test
+    void runtimeSupportsFieldStringSliceReplacement() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/field_string_slice_replacement.c", """
+                private string label;
+
+                string value() {
+                    label = "abcdef";
+                    label[2..4] = "ZZ";
+                    return label;
+                }
+                """);
+
+        assertEquals("abZZf", object.invoke("value"));
+    }
+
+    @Test
     void runtimeSupportsFromEndStringSuffixSlice() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/from_end_string_suffix.c", """

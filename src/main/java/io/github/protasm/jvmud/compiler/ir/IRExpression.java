@@ -9,7 +9,7 @@ public sealed interface IRExpression extends IRNode
                 IRArrayLiteral,
                 IRArrayMutation,
                 IRArraySet,
-                IRArraySliceSet,
+                IRSliceSet,
                 IRBinaryOperation,
                 IRCoerce,
                 IRConditionalExpression,
