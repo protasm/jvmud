@@ -84,8 +84,17 @@ public nomask void savePlayerData(mapping playerData)
             saveResearch(dbHandle, playerId, playerData);
             saveResearchChoices(dbHandle, playerId, playerData);
             saveOpenResearchTrees(dbHandle, playerId, playerData);
-            saveCompositeResearch(dbHandle, playerId, playerData);
-            saveConstructedResearch(dbHandle, playerId, playerData);
+
+            // JVMud compatibility surgery, 2026-06-20:
+            // RealmsMUD passed playerId here, but the inherited research data
+            // service declares these helpers as taking string playerName.
+            // Preserve the original calls for upstream comparison.
+            // saveCompositeResearch(dbHandle, playerId, playerData);
+            // saveConstructedResearch(dbHandle, playerId, playerData);
+            string playerName = playerData["name"];
+            saveCompositeResearch(dbHandle, playerName, playerData);
+            saveConstructedResearch(dbHandle, playerName, playerData);
+
             saveSkills(dbHandle, playerId, playerData);
             saveTraits(dbHandle, playerId, playerData);
             saveFactions(dbHandle, playerId, playerData);
