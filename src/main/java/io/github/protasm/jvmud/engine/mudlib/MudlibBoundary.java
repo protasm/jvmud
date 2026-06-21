@@ -38,7 +38,9 @@ public final class MudlibBoundary {
     private final String gameName;
     private final Path mudlibRootPath;
     private final String boundaryObjectPath;
-    private final String mfunObjectPath;
+    private final String mudlibGlobalObjectPath;
+    private final String compatibilityGlobalObjectPath;
+    private final Path compatibilityGlobalObjectSourcePath;
     private final String playerObjectPath;
     private final String playerPrompt;
     private final int maxLineLength;
@@ -62,7 +64,9 @@ public final class MudlibBoundary {
         this.gameName = normalizeOptionalText(builder.gameName);
         this.mudlibRootPath = normalizeOptionalFilesystemPath(builder.mudlibRootPath);
         this.boundaryObjectPath = normalizeOptionalPath(builder.boundaryObjectPath);
-        this.mfunObjectPath = normalizeOptionalPath(builder.mfunObjectPath);
+        this.mudlibGlobalObjectPath = normalizeOptionalPath(builder.mudlibGlobalObjectPath);
+        this.compatibilityGlobalObjectPath = normalizeOptionalPath(builder.compatibilityGlobalObjectPath);
+        this.compatibilityGlobalObjectSourcePath = normalizeOptionalFilesystemPath(builder.compatibilityGlobalObjectSourcePath);
         this.playerObjectPath = normalizeOptionalPath(builder.playerObjectPath);
         this.playerPrompt = normalizeOptionalPrompt(builder.playerPrompt);
         this.maxLineLength = normalizeMaxLineLength(builder.maxLineLength);
@@ -112,9 +116,35 @@ public final class MudlibBoundary {
         return Optional.ofNullable(boundaryObjectPath);
     }
 
-    /** Returns the optional object path for legacy mudlib function adapters. */
+    /** Returns the optional mudlib-owned global function object path. */
+    public Optional<String> mudlibGlobalObjectPath() {
+        return Optional.ofNullable(mudlibGlobalObjectPath);
+    }
+
+    /** Returns the optional JVMud compatibility global function object path. */
+    public Optional<String> compatibilityGlobalObjectPath() {
+        return Optional.ofNullable(compatibilityGlobalObjectPath);
+    }
+
+    /**
+     * Returns the optional filesystem source for the JVMud compatibility global object.
+     *
+     * <p>This is usually discovered from a {@code jvmud.c} file that sits beside the mudlib
+     * manifest. It lets the compiler inspect that profile-side helper object's declarations even
+     * when the upstream mudlib source root lives in a different folder.</p>
+     */
+    public Optional<Path> compatibilityGlobalObjectSourcePath() {
+        return Optional.ofNullable(compatibilityGlobalObjectSourcePath);
+    }
+
+    /**
+     * Returns the optional object path for legacy mudlib function adapters.
+     *
+     * @deprecated use {@link #compatibilityGlobalObjectPath()}.
+     */
+    @Deprecated(forRemoval = false)
     public Optional<String> mfunObjectPath() {
-        return Optional.ofNullable(mfunObjectPath);
+        return compatibilityGlobalObjectPath();
     }
 
     /** Returns the optional LPC player object path used when binding interactive sessions. */
@@ -285,7 +315,9 @@ public final class MudlibBoundary {
                 || gameId != null
                 || gameName != null
                 || mudlibRootPath != null
-                || mfunObjectPath != null
+                || mudlibGlobalObjectPath != null
+                || compatibilityGlobalObjectPath != null
+                || compatibilityGlobalObjectSourcePath != null
                 || playerObjectPath != null
                 || playerPrompt != null
                 || maxLineLength != DEFAULT_MAX_LINE_LENGTH
@@ -418,7 +450,9 @@ public final class MudlibBoundary {
         private String gameName;
         private Path mudlibRootPath;
         private String boundaryObjectPath;
-        private String mfunObjectPath;
+        private String mudlibGlobalObjectPath;
+        private String compatibilityGlobalObjectPath;
+        private Path compatibilityGlobalObjectSourcePath;
         private String playerObjectPath;
         private String playerPrompt;
         private int maxLineLength = DEFAULT_MAX_LINE_LENGTH;
@@ -469,10 +503,32 @@ public final class MudlibBoundary {
             return this;
         }
 
-        /** Sets a mudlib object path for legacy mfun/efun adapter behavior. */
-        public Builder mfunObjectPath(String mfunObjectPath) {
-            this.mfunObjectPath = mfunObjectPath;
+        /** Sets the mudlib-owned global function object path. */
+        public Builder mudlibGlobalObjectPath(String mudlibGlobalObjectPath) {
+            this.mudlibGlobalObjectPath = mudlibGlobalObjectPath;
             return this;
+        }
+
+        /** Sets the JVMud compatibility global function object path. */
+        public Builder compatibilityGlobalObjectPath(String compatibilityGlobalObjectPath) {
+            this.compatibilityGlobalObjectPath = compatibilityGlobalObjectPath;
+            return this;
+        }
+
+        /** Sets the filesystem source for the JVMud compatibility global function object. */
+        public Builder compatibilityGlobalObjectSourcePath(Path compatibilityGlobalObjectSourcePath) {
+            this.compatibilityGlobalObjectSourcePath = compatibilityGlobalObjectSourcePath;
+            return this;
+        }
+
+        /**
+         * Sets a mudlib object path for legacy mfun/efun adapter behavior.
+         *
+         * @deprecated use {@link #compatibilityGlobalObjectPath(String)}.
+         */
+        @Deprecated(forRemoval = false)
+        public Builder mfunObjectPath(String mfunObjectPath) {
+            return compatibilityGlobalObjectPath(mfunObjectPath);
         }
 
         /** Sets the LPC player object path used when binding interactive sessions. */

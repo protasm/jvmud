@@ -204,9 +204,15 @@ public final class MudlibBoot {
         configBoundary.boundaryObjectPath()
                 .or(() -> objectBoundary.boundaryObjectPath())
                 .ifPresent(builder::boundaryObjectPath);
-        configBoundary.mfunObjectPath()
-                .or(() -> objectBoundary.mfunObjectPath())
-                .ifPresent(builder::mfunObjectPath);
+        configBoundary.mudlibGlobalObjectPath()
+                .or(() -> objectBoundary.mudlibGlobalObjectPath())
+                .ifPresent(builder::mudlibGlobalObjectPath);
+        configBoundary.compatibilityGlobalObjectPath()
+                .or(() -> objectBoundary.compatibilityGlobalObjectPath())
+                .ifPresent(builder::compatibilityGlobalObjectPath);
+        configBoundary.compatibilityGlobalObjectSourcePath()
+                .or(() -> objectBoundary.compatibilityGlobalObjectSourcePath())
+                .ifPresent(builder::compatibilityGlobalObjectSourcePath);
         configBoundary.playerObjectPath().ifPresent(builder::playerObjectPath);
         configBoundary.playerPrompt()
                 .or(() -> objectBoundary.playerPrompt())

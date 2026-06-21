@@ -104,7 +104,8 @@ The mudlib boundary is now manifest-driven by `mudlibs/lp245/jvmud/lp245.config`
 manifest declares:
 
 - game id and name;
-- `mfun_object = jvmud/mfuns`;
+- optional mudlib global helper object metadata;
+- optional JVMud compatibility helpers through a `jvmud.c` file beside the manifest;
 - `player_object = obj/player`;
 - `initial_place = room/village/vill_green`;
 - `preload_file = init_file`;

@@ -44,7 +44,7 @@ final class RealmsMudCompatibilityScanTest {
                     "secure/master.c",
                     "secure/simul_efun.c",
                     "secure/login.c",
-                    "jvmud/mfuns.c",
+                    "jvmud/jvmud.c",
                     "lib/core/baseSelector.c",
                     "lib/core/events.c",
                     "lib/core/messageParser.c",
@@ -77,7 +77,6 @@ final class RealmsMudCompatibilityScanTest {
         RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(sourceRoot, List.of()));
         CoreEfuns.registerCore(context);
         context.setMudlibBoundary(boundary);
-        context.setMfunObjectPath(boundary.mfunObjectPath().orElse(null));
         CompilationPipeline pipeline = new CompilationPipeline("java/lang/Object", context);
         Map<String, CompilationResult> results = new LinkedHashMap<>();
 
@@ -125,7 +124,11 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("realmsmud", boundary.gameId().orElseThrow());
         assertEquals("RealmsMUD", boundary.gameName().orElseThrow());
         assertEquals("jvmud/mudlib", boundary.boundaryObjectPath().orElseThrow());
-        assertEquals("jvmud/mfuns", boundary.mfunObjectPath().orElseThrow());
+        assertEquals("secure/simul_efun", boundary.mudlibGlobalObjectPath().orElseThrow());
+        assertEquals("jvmud/jvmud", boundary.compatibilityGlobalObjectPath().orElseThrow());
+        assertEquals(
+                MUDLIB_ROOT.resolve("jvmud/jvmud.c").toAbsolutePath().normalize(),
+                boundary.compatibilityGlobalObjectSourcePath().orElseThrow());
         assertEquals("secure/login", boundary.playerObjectPath().orElseThrow());
         assertEquals(">", boundary.playerPrompt().orElseThrow());
         assertEquals(78, boundary.maxLineLength());
@@ -199,8 +202,11 @@ final class RealmsMudCompatibilityScanTest {
         report.append("- Configured source root: `")
                 .append(escape(boundary.mudlibRootPath().map(Path::toString).orElse("")))
                 .append("`\n");
-        report.append("- Configured mfun object: `")
-                .append(escape(boundary.mfunObjectPath().orElse("")))
+        report.append("- Mudlib global object: `")
+                .append(escape(boundary.mudlibGlobalObjectPath().orElse("")))
+                .append("`\n");
+        report.append("- JVMud compatibility global object: `")
+                .append(escape(boundary.compatibilityGlobalObjectPath().orElse("")))
                 .append("`\n");
         report.append("- Scanned files: ").append(results.size()).append("\n");
         report.append("- Supported now: ").append(supported).append("\n");

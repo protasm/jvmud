@@ -3,10 +3,18 @@ package io.github.protasm.jvmud.compiler.runtime;
 import io.github.protasm.jvmud.compiler.efun.Efun;
 import io.github.protasm.jvmud.compiler.efun.EfunRegistry;
 import io.github.protasm.jvmud.compiler.efun.EfunSignature;
+import io.github.protasm.jvmud.compiler.parser.Parser;
+import io.github.protasm.jvmud.compiler.parser.ParserOptions;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTMethod;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTObject;
+import io.github.protasm.jvmud.compiler.parser.ast.ASTParameter;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
+import io.github.protasm.jvmud.compiler.preproc.IncludeResolution;
 import io.github.protasm.jvmud.compiler.preproc.IncludeResolver;
 import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
+import io.github.protasm.jvmud.compiler.scanner.Scanner;
+import io.github.protasm.jvmud.compiler.token.TokenList;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
@@ -22,6 +30,9 @@ import io.github.protasm.jvmud.engine.time.WorldScheduler;
 import io.github.protasm.jvmud.persistence.jdbc.RuntimeDatabaseService;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -96,7 +107,10 @@ public final class RuntimeContext {
     private Function<Object, Object> objectDestructionRequestedHandler = target -> 0;
     private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
     private WorldScheduler scheduler = new WorldScheduler();
-    private String mfunObjectPath;
+    private String mudlibGlobalObjectPath;
+    private String compatibilityGlobalObjectPath;
+    private final Map<String, Optional<ASTObject>> globalObjectDeclarations = new LinkedHashMap<>();
+    private final Map<String, GlobalObjectSource> inMemoryGlobalObjectSources = new LinkedHashMap<>();
 
     public RuntimeContext(IncludeResolver includeResolver) {
         this(includeResolver, new EfunRegistry());
@@ -177,12 +191,43 @@ public final class RuntimeContext {
                 : target -> 0;
     }
 
-    public void setMfunObjectPath(String mfunObjectPath) {
-        this.mfunObjectPath = normalizeMudlibPath(mfunObjectPath);
+    /**
+     * Registers source text for an in-memory LPC object that may later serve as a global helper.
+     *
+     * <p>Host APIs such as {@code LPCRuntime.loadSource(...)} can compile an LPC object without
+     * writing a corresponding {@code .c} file. Declaration-backed global lookup still needs source
+     * text to recover function signatures, so those hosts register the source here under the
+     * object's normalized mudlib path.</p>
+     */
+    public void registerInMemoryObjectSource(String objectPath, String source, String displayPath) {
+        String normalizedPath = normalizeMudlibPath(objectPath);
+        if (normalizedPath == null || source == null) {
+            return;
+        }
+        inMemoryGlobalObjectSources.put(
+                normalizedPath,
+                new GlobalObjectSource(source, null, displayPath != null ? displayPath : "/" + normalizedPath + ".c"));
+        globalObjectDeclarations.remove(normalizedPath);
     }
 
+    /**
+     * Sets the JVMud compatibility global object path used by older callers.
+     *
+     * @deprecated use {@link #setMudlibBoundary(MudlibBoundary)} with
+     *     {@link MudlibBoundary#compatibilityGlobalObjectPath()} metadata.
+     */
+    @Deprecated(forRemoval = false)
+    public void setMfunObjectPath(String mfunObjectPath) {
+        this.compatibilityGlobalObjectPath = normalizeMudlibPath(mfunObjectPath);
+        globalObjectDeclarations.clear();
+    }
+
+    /** Sets active mudlib boundary metadata for generated-code helpers and compatibility lookup. */
     public void setMudlibBoundary(MudlibBoundary mudlibBoundary) {
         this.mudlibBoundary = mudlibBoundary != null ? mudlibBoundary : MudlibBoundary.empty();
+        this.mudlibGlobalObjectPath = this.mudlibBoundary.mudlibGlobalObjectPath().orElse(null);
+        this.compatibilityGlobalObjectPath = this.mudlibBoundary.compatibilityGlobalObjectPath().orElse(null);
+        globalObjectDeclarations.clear();
         databaseService.configure(
                 this.mudlibBoundary.databaseJdbcUrl().orElse(null),
                 this.mudlibBoundary.databaseUser().orElse(null),
@@ -357,8 +402,8 @@ public final class RuntimeContext {
     }
 
     public Efun resolveEfun(String name, int arity) {
-        Efun mfun = resolveMfun(name, arity);
-        return mfun != null ? mfun : lookupEngineEfun(name, arity);
+        Efun global = resolveGlobalFunction(name, arity);
+        return global != null ? global : lookupEngineEfun(name, arity);
     }
 
     /**
@@ -372,7 +417,7 @@ public final class RuntimeContext {
     }
 
     public Object invokeEfun(String name, int arity, Object[] args) {
-        Efun efun = resolveMfun(name, arity);
+        Efun efun = resolveGlobalFunction(name, arity);
 
         if (efun == null)
             efun = lookupEngineEfun(name, arity);
@@ -383,27 +428,35 @@ public final class RuntimeContext {
         return efun.invoke(this, args);
     }
 
-    private Efun resolveMfun(String name, int arity) {
-        if (mfunObjectPath == null) {
+    private Efun resolveGlobalFunction(String name, int arity) {
+        Efun mudlibGlobal = resolveGlobalFunction(mudlibGlobalObjectPath, name, arity);
+        if (mudlibGlobal != null) {
+            return mudlibGlobal;
+        }
+        return resolveGlobalFunction(compatibilityGlobalObjectPath, name, arity);
+    }
+
+    private Efun resolveGlobalFunction(String objectPath, String name, int arity) {
+        if (objectPath == null) {
+            return null;
+        }
+        ASTMethod method = declaredGlobalMethod(objectPath, name, arity);
+        if (method == null) {
             return null;
         }
         return new Efun() {
             @Override
             public EfunSignature signature() {
-                return mfunSignature(name, arity);
+                return globalMethodSignature(method);
             }
 
             @Override
             public Object call(RuntimeContext context, Object[] args) {
-                Object mfunObject = loadMfunObject();
-                if (!hasMethod(mfunObject, name, args.length)) {
-                    Efun efun = lookupEngineEfun(name, arity);
-                    if (efun != null) {
-                        return efun.invoke(context, args);
-                    }
-                    throw new IllegalArgumentException("Unknown function '" + name + "' with arity " + arity);
-                }
-                return invokeObjectPreservingCurrentObject(mfunObject, name, args);
+                Object globalObject = loadGlobalObject(objectPath);
+                if (!hasMethod(globalObject, name, args.length))
+                    throw new IllegalArgumentException(
+                            "Global function '" + name + "' is not available from " + objectPath);
+                return invokeObjectPreservingCurrentObject(globalObject, name, args);
             }
         };
     }
@@ -418,44 +471,93 @@ public final class RuntimeContext {
         return name.equals(engineName) ? null : efunRegistry.lookup(engineName, arity);
     }
 
-    private EfunSignature mfunSignature(String name, int arity) {
-        if ("sizeof".equals(name) && arity == 1) {
-            return new EfunSignature(
-                    new Symbol(LPCType.LPCINT, name),
-                    List.of(LPCType.LPCMIXED));
+    private ASTMethod declaredGlobalMethod(String objectPath, String name, int arity) {
+        Optional<ASTObject> declaration = globalObjectDeclarations.computeIfAbsent(
+                objectPath,
+                this::parseGlobalObjectDeclaration);
+        if (declaration.isEmpty()) {
+            return null;
         }
-        if ("users".equals(name) && arity == 0) {
-            return new EfunSignature(
-                    new Symbol(LPCType.LPCARRAY, name),
-                    List.of());
-        }
-        if ("query_idle".equals(name) && arity == 1) {
-            return new EfunSignature(
-                    new Symbol(LPCType.LPCINT, name),
-                    List.of(LPCType.LPCMIXED));
-        }
-        if ("query_ip_number".equals(name) && arity == 1) {
-            return new EfunSignature(
-                    new Symbol(LPCType.LPCMIXED, name),
-                    List.of(LPCType.LPCMIXED));
-        }
-        return new EfunSignature(
-                new Symbol(LPCType.LPCMIXED, name),
-                Collections.nCopies(arity, LPCType.LPCMIXED));
+        return declaration.orElseThrow().methods().getAll(name).stream()
+                .filter(method -> parameterCount(method) == arity)
+                .findFirst()
+                .orElse(null);
     }
 
-    private Object loadMfunObject() {
-        Object existing = getObject(mfunObjectPath);
+    private Optional<ASTObject> parseGlobalObjectDeclaration(String objectPath) {
+        try {
+            GlobalObjectSource source = globalObjectSource(objectPath);
+            if (source == null) {
+                return Optional.empty();
+            }
+            Scanner scanner = new Scanner(newPreprocessor());
+            TokenList tokens = scanner.scan(source.sourcePath(), source.source(), source.displayPath());
+            Parser parser = new Parser(this, ParserOptions.defaults());
+            return Optional.of(parser.parse(objectPath, tokens));
+        } catch (IOException e) {
+            return Optional.empty();
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("Could not parse global function object: " + objectPath, e);
+        }
+    }
+
+    private GlobalObjectSource globalObjectSource(String objectPath) throws IOException {
+        GlobalObjectSource inMemory = inMemoryGlobalObjectSources.get(objectPath);
+        if (inMemory != null) {
+            return inMemory;
+        }
+
+        if (objectPath.equals(compatibilityGlobalObjectPath)
+                && mudlibBoundary.compatibilityGlobalObjectSourcePath().isPresent()) {
+            Path sourcePath = mudlibBoundary.compatibilityGlobalObjectSourcePath().orElseThrow();
+            if (Files.isRegularFile(sourcePath)) {
+                return new GlobalObjectSource(
+                        Files.readString(sourcePath),
+                        sourcePath,
+                        "/" + objectPath + ".c");
+            }
+        }
+
+        String includePath = "/" + objectPath + ".c";
+        IncludeResolution resolution = includeResolver.resolve(null, includePath, false);
+        return new GlobalObjectSource(resolution.source(), resolution.resolvedPath(), resolution.displayPath());
+    }
+
+    private EfunSignature globalMethodSignature(ASTMethod method) {
+        List<LPCType> parameterTypes = new ArrayList<>();
+        if (method.parameters() != null) {
+            for (ASTParameter parameter : method.parameters()) {
+                parameterTypes.add(lpcTypeOrMixed(parameter.symbol()));
+            }
+        }
+        Symbol returnSymbol = method.symbol();
+        return new EfunSignature(
+                new Symbol(lpcTypeOrMixed(returnSymbol), returnSymbol.name()),
+                parameterTypes);
+    }
+
+    private int parameterCount(ASTMethod method) {
+        return method.parameters() != null ? method.parameters().size() : 0;
+    }
+
+    private LPCType lpcTypeOrMixed(Symbol symbol) {
+        return symbol != null && symbol.lpcType() != null ? symbol.lpcType() : LPCType.LPCMIXED;
+    }
+
+    private Object loadGlobalObject(String objectPath) {
+        Object existing = getObject(objectPath);
         if (existing != null) {
             return existing;
         }
-        Object loaded = objectLoader.apply(mfunObjectPath);
+        Object loaded = objectLoader.apply(objectPath);
         if (loaded == null) {
             throw new IllegalArgumentException(
-                    "Mudlib function object is not available: " + mfunObjectPath);
+                    "Global function object is not available: " + objectPath);
         }
         return loaded;
     }
+
+    private record GlobalObjectSource(String source, Path sourcePath, String displayPath) {}
 
     private boolean hasMethod(Object target, String methodName, int arity) {
         for (Method method : target.getClass().getMethods()) {

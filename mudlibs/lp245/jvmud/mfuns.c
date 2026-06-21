@@ -80,6 +80,10 @@ string capitalize(mixed value) {
 void add_worth(mixed value) {
 }
 
+string clear_bit(string flags, int bit) {
+  return flags ? flags : "";
+}
+
 string convert_number(int n) {
   if (n == 0)
     return "no";
@@ -138,6 +142,18 @@ void destruct(object ob) {
   jvmud_destroy_lpc_object(ob);
 }
 
+int ed() {
+  return 0;
+}
+
+int ed(string path) {
+  return 0;
+}
+
+int ed(string path, string callback) {
+  return 0;
+}
+
 void enable_commands() {
   jvmud_enable_commands();
 }
@@ -174,12 +190,28 @@ string file_name(mixed ob) {
   return jvmud_lpc_object_id(ob);
 }
 
+int file_size(string path) {
+  return 1;
+}
+
+mixed *filter_objects(mixed *values, string method) {
+  return values;
+}
+
+mixed *filter_objects(mixed *values, string method, mixed arg) {
+  return values;
+}
+
 string object_name(mixed ob) {
   return jvmud_lpc_object_id(ob);
 }
 
 object first_inventory(mixed container) {
   return jvmud_first_entity_at(container);
+}
+
+mixed find_object(string path) {
+  return jvmud_find_object(path);
 }
 
 object find_player(mixed name) {
@@ -208,6 +240,28 @@ string lower_case(mixed value) {
 
 void log_file(mixed file, mixed text) {
   jvmud_append_mudlib_text("/log/" + file, text);
+}
+
+int localcmd() {
+  return 0;
+}
+
+object load_object(string path) {
+  return jvmud_load_lpc_object(path);
+}
+
+void ls(string path) {
+  mixed *entries;
+  int i;
+
+  entries = jvmud_list_mudlib_paths(path);
+
+  for (i = 0; i < sizeof(entries); i++)
+    write(entries[i] + "\n");
+}
+
+int mkdir(string path) {
+  return 0;
 }
 
 void move_object(mixed ob, mixed destination) {
@@ -246,6 +300,10 @@ int query_idle(mixed player) {
   return jvmud_query_idle(player);
 }
 
+mixed query_ip_name(mixed player) {
+  return jvmud_query_ip_number(player);
+}
+
 mixed query_ip_number(mixed player) {
   return jvmud_query_ip_number(player);
 }
@@ -254,12 +312,28 @@ mixed query_ip_number() {
   return jvmud_query_ip_number(jvmud_current_actor());
 }
 
+mixed query_snoop(mixed player) {
+  return 0;
+}
+
+string query_load_average() {
+  return "";
+}
+
 int random(int max) {
   return jvmud_random(max);
 }
 
 int remove_call_out(string method) {
   return jvmud_cancel_deferred_callback(method);
+}
+
+int rm(string path) {
+  return 0;
+}
+
+int rmdir(string path) {
+  return 0;
 }
 
 int restore_object(string path) {
@@ -284,6 +358,10 @@ void set_heart_beat(int enabled) {
 
 void set_heart_beat(int enabled, int interval_seconds) {
   jvmud_schedule_recurring_tick(enabled, interval_seconds);
+}
+
+string set_bit(string flags, int bit) {
+  return flags ? flags : "";
 }
 
 int set_light(int delta) {
@@ -330,6 +408,14 @@ int strlen(mixed value) {
   return jvmud_size(value);
 }
 
+void shout(mixed value) {
+  jvmud_write(value);
+}
+
+void shutdown() {
+  jvmud_shutdown();
+}
+
 mixed *slice_array(mixed *arr, int from, int to) {
   mixed *result;
 
@@ -347,6 +433,26 @@ status stringp(mixed value) {
   return jvmud_is_string(value);
 }
 
+mixed snoop() {
+  return 0;
+}
+
+mixed snoop(mixed target) {
+  return 0;
+}
+
+mixed snoop(mixed snooper, mixed target) {
+  return 0;
+}
+
+void tail(string path) {
+  cat(path);
+}
+
+int test_bit(string flags, int bit) {
+  return 0;
+}
+
 void tell_object(object target, mixed value) {
   jvmud_write_to_lpc_object(target, value);
 }
@@ -359,6 +465,12 @@ int transfer(mixed ob, mixed destination) {
   jvmud_move_entity(ob, destination);
 
   return 0;
+}
+
+void wizlist() {
+}
+
+void wizlist(string name) {
 }
 
 object this_object() {

@@ -279,6 +279,7 @@ public final class LPCRuntime {
         Objects.requireNonNull(source, "source");
         String objectId = normalizeInternalName(stripExtension(sourceName));
         String displayPath = "/" + objectId;
+        runtimeContext.registerInMemoryObjectSource(objectId, source, displayPath);
 
         CompilationResult result =
                 pipeline.run(null, source, jvmInternalName(objectId), displayPath, ParserOptions.defaults());
@@ -498,7 +499,6 @@ public final class LPCRuntime {
     public void registerMudlibBoundary(MudlibBoundary mudlibBoundary) {
         this.mudlibBoundary = Objects.requireNonNull(mudlibBoundary, "mudlibBoundary");
         runtimeContext.setMudlibBoundary(mudlibBoundary);
-        runtimeContext.setMfunObjectPath(mudlibBoundary.mfunObjectPath().orElse(null));
         if (useBoundaryMudlibRootForIncludes) {
             mudlibBoundary.mudlibRootPath().ifPresent(root ->
                     runtimeContext.setIncludeResolver(new SearchPathIncludeResolver(root, includeSearchPaths)));

@@ -178,6 +178,26 @@ final class MudlibBoundaryTest {
     }
 
     @Test
+    void configReaderDetectsSiblingJvmudCompatibilityGlobalObject() throws IOException {
+        Path config = tempDir.resolve("jvmud").resolve("realmsmud.config");
+        Files.createDirectories(config.getParent());
+        Path compatibilityObject = config.getParent().resolve("jvmud.c");
+        Files.writeString(compatibilityObject, "mixed helper() { return 1; }\n");
+        Files.writeString(config, """
+                mudlib_root = ../source
+                mudlib_global_object = secure/simul_efun
+                """);
+
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/realmsmud.config");
+
+        assertEquals("secure/simul_efun", boundary.mudlibGlobalObjectPath().orElseThrow());
+        assertEquals("jvmud/jvmud", boundary.compatibilityGlobalObjectPath().orElseThrow());
+        assertEquals(
+                compatibilityObject.toAbsolutePath().normalize(),
+                boundary.compatibilityGlobalObjectSourcePath().orElseThrow());
+    }
+
+    @Test
     void compatibilityPredefinesAreImmutable() {
         MudlibBoundary boundary = MudlibBoundary.builder()
                 .compatibilityPredefine("__VERSION_MAJOR__", "3")

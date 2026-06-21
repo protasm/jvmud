@@ -61,14 +61,19 @@ example:
 
 ```text
 mudlib_object = jvmud/mudlib
-mfun_object = jvmud/mfuns
+mudlib_global_object = secure/simul_efun
 lifecycle.object_loaded = reset
 lifecycle.interaction_scope_started = init
 ```
 
 `mudlib_object` identifies the mudlib-side boundary adapter object, such as
-LP245's `/jvmud/mudlib.c`. `mfun_object` identifies the separate legacy
-mudlib-function shim object.
+LP245's `/jvmud/mudlib.c`. `mudlib_global_object` identifies an optional
+mudlib-owned global helper object, such as a legacy simul-efun object.
+
+A JVMud compatibility profile may also include a `jvmud.c` file beside its
+manifest. When present, JVMud treats that conventional file as the profile's
+JVMud compatibility global helper object. The manifest does not name that file;
+its presence in the manifest folder is the declaration.
 
 The currently defined JVMud lifecycle events are:
 

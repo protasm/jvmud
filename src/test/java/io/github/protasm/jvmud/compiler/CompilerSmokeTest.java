@@ -2878,7 +2878,9 @@ final class CompilerSmokeTest {
     void sizeofRejectsScalarObjects() {
         RuntimeContext context = new RuntimeContext(null);
         CoreEfuns.registerCore(context);
-        context.setMfunObjectPath("jvmud/functions");
+        context.setMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("sizeof", "jvmud_size")
+                .build());
 
         CompilationResult result = new CompilationPipeline("java/lang/Object", context).run("""
                 object target;
@@ -2895,10 +2897,13 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void usersMfunIsTypedAsArrayForSizeofAndIndexing() {
+    void usersDirectEfunAliasIsTypedAsArrayForSizeofAndIndexing() {
         RuntimeContext context = new RuntimeContext(null);
         CoreEfuns.registerCore(context);
-        context.setMfunObjectPath("jvmud/functions");
+        context.setMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("sizeof", "jvmud_size")
+                .directEfunAlias("users", "jvmud_users")
+                .build());
 
         CompilationResult result = new CompilationPipeline("java/lang/Object", context).run("""
                 int value() {

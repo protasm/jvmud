@@ -92,7 +92,7 @@ final class MudlibCompatibilityScanTest {
         RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(MUDLIB_SOURCE_ROOT, List.of()));
         CoreEfuns.registerCore(context);
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
-        context.setMfunObjectPath(boundary.mfunObjectPath().orElse(null));
+        context.setMudlibBoundary(boundary);
         CompilationPipeline pipeline = new CompilationPipeline("java/lang/Object", context);
         Map<String, CompilationResult> results = new LinkedHashMap<>();
 
@@ -882,11 +882,19 @@ final class MudlibCompatibilityScanTest {
     }
 
     private static String sourceName(Path path) {
-        return MUDLIB_ROOT.relativize(path).toString();
+        Path normalized = path.toAbsolutePath().normalize();
+        if (normalized.startsWith(MUDLIB_SOURCE_ROOT)) {
+            return MUDLIB_SOURCE_ROOT.relativize(normalized).toString();
+        }
+        return MUDLIB_ROOT.relativize(normalized).toString();
     }
 
     private static String sourceLine(String sourceName, int lineNumber) throws IOException {
-        List<String> lines = Files.readAllLines(MUDLIB_ROOT.resolve(sourceName));
+        Path sourcePath = MUDLIB_SOURCE_ROOT.resolve(sourceName);
+        if (!Files.isRegularFile(sourcePath)) {
+            sourcePath = MUDLIB_ROOT.resolve(sourceName);
+        }
+        List<String> lines = Files.readAllLines(sourcePath);
         if (lineNumber < 1 || lineNumber > lines.size()) {
             return "";
         }
