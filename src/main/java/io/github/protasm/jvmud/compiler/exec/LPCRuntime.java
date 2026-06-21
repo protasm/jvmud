@@ -91,6 +91,11 @@ public final class LPCRuntime {
         this.runtimeContext.setMudlibTextReader(this::readMudlibText);
         this.runtimeContext.setMudlibPathLister(this::listMudlibPaths);
         this.runtimeContext.setMudlibTextAppender(this::appendMudlibText);
+        this.runtimeContext.setMudlibTextRemover(this::removeMudlibText);
+        this.runtimeContext.setMudlibTextCopier(this::copyMudlibText);
+        this.runtimeContext.setMudlibTextRenamer(this::renameMudlibText);
+        this.runtimeContext.setMudlibDirectoryCreator(this::createMudlibDirectory);
+        this.runtimeContext.setMudlibDirectoryRemover(this::removeMudlibDirectory);
         this.runtimeContext.setLPCObjectStateSaver(this::saveLPCObjectState);
         this.runtimeContext.setLPCObjectStateRestorer(this::restoreLPCObjectState);
         this.runtimeContext.setTimedRuntimeErrorHandler(this::notifyTimedRuntimeError);
@@ -462,6 +467,94 @@ public final class LPCRuntime {
                     java.nio.file.StandardOpenOption.CREATE,
                     java.nio.file.StandardOpenOption.APPEND);
             return 1;
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    /** Removes a mudlib-rooted text or storage file, returning LP-style success. */
+    public int removeMudlibText(String path) {
+        Objects.requireNonNull(path, "path");
+        Path resolved = resolveMudlibTextPath(path);
+        if (resolved == null || !Files.exists(resolved)) {
+            resolved = resolveMudlibStoragePath(path);
+        }
+        if (resolved == null || !Files.isRegularFile(resolved)) {
+            return 0;
+        }
+        try {
+            return Files.deleteIfExists(resolved) ? 1 : 0;
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    /** Copies a mudlib-rooted file, returning LDMud-style zero for success. */
+    public int copyMudlibText(String source, String destination) {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(destination, "destination");
+        Path sourcePath = existingMudlibFilePath(source);
+        Path destinationPath = writableMudlibPath(destination);
+        if (sourcePath == null || destinationPath == null) {
+            return -1;
+        }
+        try {
+            Path parent = destinationPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.copy(sourcePath, destinationPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            return 0;
+        } catch (IOException e) {
+            return -1;
+        }
+    }
+
+    /** Renames a mudlib-rooted file or directory, returning LDMud-style zero for success. */
+    public int renameMudlibText(String source, String destination) {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(destination, "destination");
+        Path sourcePath = existingMudlibPath(source);
+        Path destinationPath = writableMudlibPath(destination);
+        if (sourcePath == null || destinationPath == null) {
+            return -1;
+        }
+        try {
+            Path parent = destinationPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.move(sourcePath, destinationPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            return 0;
+        } catch (IOException e) {
+            return -1;
+        }
+    }
+
+    /** Creates a mudlib-rooted directory, returning LP-style success. */
+    public int createMudlibDirectory(String path) {
+        Objects.requireNonNull(path, "path");
+        Path resolved = writableMudlibPath(path);
+        if (resolved == null) {
+            return 0;
+        }
+        try {
+            Files.createDirectories(resolved);
+            return Files.isDirectory(resolved) ? 1 : 0;
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    /** Removes an empty mudlib-rooted directory, returning LP-style success. */
+    public int removeMudlibDirectory(String path) {
+        Objects.requireNonNull(path, "path");
+        Path resolved = existingMudlibPath(path);
+        if (resolved == null || !Files.isDirectory(resolved)) {
+            return 0;
+        }
+        try {
+            return Files.deleteIfExists(resolved) ? 1 : 0;
         } catch (IOException e) {
             return 0;
         }
@@ -1023,6 +1116,30 @@ public final class LPCRuntime {
             return null;
         }
         return resolveMudlibPathUnder(baseIncludePath, normalized);
+    }
+
+    private Path existingMudlibFilePath(String path) {
+        Path resolved = resolveMudlibTextPath(path);
+        if (resolved == null || !Files.isRegularFile(resolved)) {
+            resolved = resolveMudlibStoragePath(path);
+        }
+        return resolved != null && Files.isRegularFile(resolved) ? resolved : null;
+    }
+
+    private Path existingMudlibPath(String path) {
+        Path resolved = resolveMudlibTextPath(path);
+        if (resolved == null || !Files.exists(resolved)) {
+            resolved = resolveMudlibStoragePath(path);
+        }
+        return resolved != null && Files.exists(resolved) ? resolved : null;
+    }
+
+    private Path writableMudlibPath(String path) {
+        Path resolved = resolveMudlibTextPath(path);
+        if (resolved == null) {
+            resolved = resolveMudlibStoragePath(path);
+        }
+        return resolved;
     }
 
     private Path resolveMudlibTextPath(String path) {

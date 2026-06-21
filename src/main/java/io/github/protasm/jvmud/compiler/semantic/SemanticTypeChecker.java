@@ -689,11 +689,20 @@ public final class SemanticTypeChecker {
 
     private LPCType inferMethodCall(ASTExprCallMethod expr, MethodContext context) {
         ASTParameters parameters = expr.method().parameters();
-        inferArguments(expr.arguments(), parameters != null ? parameters.nodes().stream().map(ASTParameter::symbol).map(Symbol::lpcType).toList() : null, context);
+        inferArguments(
+                expr.arguments(),
+                parameters != null ? parameters.nodes().stream().map(ASTParameter::symbol).map(Symbol::lpcType).toList() : null,
+                context,
+                expr.method().modifiers().isVarargs());
         return valueType(expr.method().symbol());
     }
 
     private void inferArguments(ASTArguments arguments, List<LPCType> expectedTypes, MethodContext context) {
+        inferArguments(arguments, expectedTypes, context, false);
+    }
+
+    private void inferArguments(
+            ASTArguments arguments, List<LPCType> expectedTypes, MethodContext context, boolean allowExtraArguments) {
         if (arguments == null)
             return;
 
@@ -708,7 +717,7 @@ public final class SemanticTypeChecker {
             }
         }
 
-        if (expectedTypes != null && arguments.size() > expectedTypes.size()) {
+        if (expectedTypes != null && !allowExtraArguments && arguments.size() > expectedTypes.size()) {
             problems.add(
                     new CompilationProblem(
                             CompilationStage.ANALYZE,

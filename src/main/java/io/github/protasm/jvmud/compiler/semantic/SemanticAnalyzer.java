@@ -1564,10 +1564,15 @@ public final class SemanticAnalyzer {
             return objectScope.resolveAll(name).stream()
                     .map(ScopedSymbol::method)
                     .filter(Objects::nonNull)
-                    .filter(method -> parameterCount(method) >= arity)
+                    .filter(method -> acceptsArity(method, arity))
                     .min(Comparator.comparingInt(SemanticAnalyzer::parameterCount)
                             .thenComparingInt(this::currentObjectPreference))
                     .orElse(null);
+        }
+
+        private boolean acceptsArity(ASTMethod method, int arity) {
+            int parameterCount = parameterCount(method);
+            return parameterCount >= arity || (method.modifiers().isVarargs() && arity >= parameterCount);
         }
 
         private int currentObjectPreference(ASTMethod method) {

@@ -1273,7 +1273,9 @@ public final class BytecodeCompiler {
             IRMethod method,
             List<IRExpression> arguments,
             List<RuntimeType> parameterTypes) {
-        for (int i = 0; i < arguments.size(); i++) {
+        int emittedArgumentCount =
+                parameterTypes != null ? Math.min(arguments.size(), parameterTypes.size()) : arguments.size();
+        for (int i = 0; i < emittedArgumentCount; i++) {
             IRExpression argument = arguments.get(i);
             emitExpression(mv, internalName, method, argument);
             if (parameterTypes != null && i < parameterTypes.size()) {
@@ -1282,7 +1284,7 @@ public final class BytecodeCompiler {
         }
 
         if (parameterTypes != null) {
-            for (int i = arguments.size(); i < parameterTypes.size(); i++) {
+            for (int i = emittedArgumentCount; i < parameterTypes.size(); i++) {
                 emitDefaultArgument(mv, parameterTypes.get(i));
             }
         }

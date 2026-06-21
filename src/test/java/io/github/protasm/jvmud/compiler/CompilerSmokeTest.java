@@ -2191,6 +2191,22 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void directVarargsMethodCallsMayPassExtraArguments() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/varargs_extra_arg.c", """
+                private nomask varargs int compile(string path, object initiator, string colorConfiguration, int recurse) {
+                    return recurse + 40;
+                }
+
+                int value() {
+                    return compile("/room/start.c", 0, "none", 2, 999);
+                }
+                """);
+
+        assertEquals(42, object.invoke("value"));
+    }
+
+    @Test
     void runtimeEvaluatesLogicalOrFalseWhenBothOperandsAreFalse() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/logical_or.c", """
@@ -3308,7 +3324,35 @@ final class CompilerSmokeTest {
                     return jvmud_read_mudlib_text("../outside");
                 }
 
-                string paged() {
+                int remove_paged() {
+                    return jvmud_remove_mudlib_text("/PAGED");
+                }
+
+                int copy_welcome() {
+                    return jvmud_copy_mudlib_text("/WELCOME", "/COPY");
+                }
+
+                mixed copied() {
+                    return jvmud_read_mudlib_text("/COPY");
+                }
+
+                int rename_copy() {
+                    return jvmud_rename_mudlib_text("/COPY", "/RENAMED");
+                }
+
+                mixed renamed() {
+                    return jvmud_read_mudlib_text("/RENAMED");
+                }
+
+                int create_temp_directory() {
+                    return jvmud_create_mudlib_directory("/TMPDIR");
+                }
+
+                int remove_temp_directory() {
+                    return jvmud_remove_mudlib_directory("/TMPDIR");
+                }
+
+                mixed paged() {
                     return jvmud_read_mudlib_text("/PAGED", 2, 2);
                 }
 
@@ -3336,6 +3380,10 @@ final class CompilerSmokeTest {
                     return jvmud_to_int(jvmud_regex_replace("0010_constructed_research.sql", "([0-9]+)_.*", "\\\\1", 1));
                 }
 
+                int square_root() {
+                    return jvmud_to_int(jvmud_sqrt("16") * 3.0);
+                }
+
                 string number_text() {
                     return jvmud_to_string(12);
                 }
@@ -3354,6 +3402,30 @@ final class CompilerSmokeTest {
 
                 int driver_info_is_false() {
                     return jvmud_driver_info(-44) ? 1 : 0;
+                }
+
+                int preferred_lpc_object_lookup() {
+                    return jvmud_is_object(jvmud_find_lpc_object("/smoke/text_reader.c"));
+                }
+
+                int legacy_lpc_object_lookup() {
+                    return jvmud_is_object(jvmud_find_object("/smoke/text_reader.c"));
+                }
+
+                int object_conversion_lookup() {
+                    return jvmud_is_object(jvmud_to_lpc_object("/smoke/text_reader.c"));
+                }
+
+                mixed call_other(mixed target, string method, mixed arg1, mixed arg2) {
+                    return jvmud_invoke_lpc_object(target, method, arg1, arg2);
+                }
+
+                int add_pair(int left, int right) {
+                    return left + right;
+                }
+
+                int applied_call_other() {
+                    return jvmud_apply_callable(#'call_other, jvmud_current_lpc_object(), "add_pair", ({ 2, 5 }));
                 }
 
                 int local_method_probe() {
@@ -3446,6 +3518,14 @@ final class CompilerSmokeTest {
         assertEquals("Welcome to JVMud.\n", reader.invoke("welcome"));
         assertEquals(0, reader.invoke("escaped"));
         assertEquals("two\nthree\n", reader.invoke("paged"));
+        assertEquals(1, reader.invoke("remove_paged"));
+        assertEquals(0, reader.invoke("paged"));
+        assertEquals(0, reader.invoke("copy_welcome"));
+        assertEquals("Welcome to JVMud.\n", reader.invoke("copied"));
+        assertEquals(0, reader.invoke("rename_copy"));
+        assertEquals("Welcome to JVMud.\n", reader.invoke("renamed"));
+        assertEquals(1, reader.invoke("create_temp_directory"));
+        assertEquals(1, reader.invoke("remove_temp_directory"));
         assertEquals(List.of("0001_first.sql", "0002_second.sql"), reader.invoke("migration_names"));
         assertEquals(List.of(
                 "/secure/simulated-efuns/database/migrations/0001_first.sql",
@@ -3455,11 +3535,16 @@ final class CompilerSmokeTest {
         assertEquals("Alice", reader.invoke("capitalized"));
         assertEquals(List.of("alpha", "beta", ""), reader.invoke("split"));
         assertEquals(10, reader.invoke("number"));
+        assertEquals(12, reader.invoke("square_root"));
         assertEquals("12", reader.invoke("number_text"));
         assertEquals(List.of("alpha.c", "gamma.c"), reader.invoke("regex_matches"));
         assertEquals("look", reader.invoke("realms_command_text"));
         assertEquals(0, reader.invoke("regex_no_match_is_false"));
         assertEquals(0, reader.invoke("driver_info_is_false"));
+        assertEquals(1, reader.invoke("preferred_lpc_object_lookup"));
+        assertEquals(1, reader.invoke("legacy_lpc_object_lookup"));
+        assertEquals(1, reader.invoke("object_conversion_lookup"));
+        assertEquals(7, reader.invoke("applied_call_other"));
         assertEquals(1, reader.invoke("local_method_probe"));
         assertEquals(1, reader.invoke("explicit_method_probe"));
         assertEquals(0, reader.invoke("missing_method_probe"));
@@ -3892,6 +3977,10 @@ final class CompilerSmokeTest {
                     enable_commands();
                 }
 
+                void configure_commandable(int enabled) {
+                    jvmud_configure_lpc_object(this_object(), 0, enabled);
+                }
+
                 object lookup(mixed name) {
                     return find_living(name);
                 }
@@ -3916,6 +4005,10 @@ final class CompilerSmokeTest {
 
         player.invoke("make_commandable");
 
+        assertEquals(true, player.invoke("is_registered"));
+        player.invoke("configure_commandable", 0);
+        assertEquals(false, player.invoke("is_registered"));
+        player.invoke("configure_commandable", 1);
         assertEquals(true, player.invoke("is_registered"));
     }
 
@@ -4197,6 +4290,38 @@ final class CompilerSmokeTest {
 
         assertEquals(1, runtime.dispatchCommand(player.instance(), "look"));
         assertEquals("handled look\n", runtime.outputTranscript());
+    }
+
+    @Test
+    void lifecyclePrefersMostDerivedNoArgumentHookWhenOptionalInvocationTrimsArguments() throws Exception {
+        Files.writeString(tempDir.resolve("base.c"), """
+                int marker = 0;
+
+                void create() {
+                    marker = 1;
+                }
+
+                int value() {
+                    return marker;
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                inherit "/base.c";
+
+                void create() {
+                    marker = 2;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "create")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+
+        assertEquals(2, player.invoke("value"));
     }
 
     @Test

@@ -100,6 +100,11 @@ public final class RuntimeContext {
     private Function<String, Object> mudlibTextReader = path -> 0;
     private BiFunction<String, Integer, Object> mudlibPathLister = (path, flags) -> List.of();
     private BiFunction<String, Object, Integer> mudlibTextAppender = (path, text) -> 0;
+    private Function<String, Integer> mudlibTextRemover = path -> 0;
+    private BiFunction<String, String, Integer> mudlibTextCopier = (source, destination) -> -1;
+    private BiFunction<String, String, Integer> mudlibTextRenamer = (source, destination) -> -1;
+    private Function<String, Integer> mudlibDirectoryCreator = path -> 0;
+    private Function<String, Integer> mudlibDirectoryRemover = path -> 0;
     private BiFunction<Object, String, Integer> playerTransferHandler = (actor, gameId) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateSaver = (path, object) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateRestorer = (path, object) -> 0;
@@ -163,6 +168,26 @@ public final class RuntimeContext {
 
     public void setMudlibTextAppender(BiFunction<String, Object, Integer> mudlibTextAppender) {
         this.mudlibTextAppender = (mudlibTextAppender != null) ? mudlibTextAppender : (path, text) -> 0;
+    }
+
+    public void setMudlibTextRemover(Function<String, Integer> mudlibTextRemover) {
+        this.mudlibTextRemover = (mudlibTextRemover != null) ? mudlibTextRemover : path -> 0;
+    }
+
+    public void setMudlibTextCopier(BiFunction<String, String, Integer> mudlibTextCopier) {
+        this.mudlibTextCopier = (mudlibTextCopier != null) ? mudlibTextCopier : (source, destination) -> -1;
+    }
+
+    public void setMudlibTextRenamer(BiFunction<String, String, Integer> mudlibTextRenamer) {
+        this.mudlibTextRenamer = (mudlibTextRenamer != null) ? mudlibTextRenamer : (source, destination) -> -1;
+    }
+
+    public void setMudlibDirectoryCreator(Function<String, Integer> mudlibDirectoryCreator) {
+        this.mudlibDirectoryCreator = (mudlibDirectoryCreator != null) ? mudlibDirectoryCreator : path -> 0;
+    }
+
+    public void setMudlibDirectoryRemover(Function<String, Integer> mudlibDirectoryRemover) {
+        this.mudlibDirectoryRemover = (mudlibDirectoryRemover != null) ? mudlibDirectoryRemover : path -> 0;
     }
 
     public void setPlayerTransferHandler(BiFunction<Object, String, Integer> playerTransferHandler) {
@@ -895,6 +920,26 @@ public final class RuntimeContext {
         return mudlibTextAppender.apply(path, text);
     }
 
+    public int removeMudlibText(String path) {
+        return mudlibTextRemover.apply(path);
+    }
+
+    public int copyMudlibText(String source, String destination) {
+        return mudlibTextCopier.apply(source, destination);
+    }
+
+    public int renameMudlibText(String source, String destination) {
+        return mudlibTextRenamer.apply(source, destination);
+    }
+
+    public int createMudlibDirectory(String path) {
+        return mudlibDirectoryCreator.apply(path);
+    }
+
+    public int removeMudlibDirectory(String path) {
+        return mudlibDirectoryRemover.apply(path);
+    }
+
     public int transferCurrentPlayerToGame(String gameId) {
         String normalizedGameId = normalizeRegistryText(gameId);
         if (normalizedGameId == null) {
@@ -1237,6 +1282,12 @@ public final class RuntimeContext {
     public void enableEntityCommands(Object object) {
         if (object != null) {
             commandEnabledEntities.add(object);
+        }
+    }
+
+    public void disableEntityCommands(Object object) {
+        if (object != null) {
+            commandEnabledEntities.remove(object);
         }
     }
 
@@ -1732,10 +1783,16 @@ public final class RuntimeContext {
     }
 
     private Method findMethod(Class<?> targetClass, String methodName, int arity) throws NoSuchMethodException {
+        Method best = null;
         for (Method method : targetClass.getMethods()) {
             if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
-                return method;
+                if (best == null || declaredCloserToTarget(method, best, targetClass)) {
+                    best = method;
+                }
             }
+        }
+        if (best != null) {
+            return best;
         }
         throw new NoSuchMethodException(targetClass.getName() + "." + methodName + "/" + arity);
     }
@@ -1751,7 +1808,9 @@ public final class RuntimeContext {
                 if (!method.getName().equals(methodName) || method.getParameterCount() < args.length) {
                     continue;
                 }
-                if (best == null || method.getParameterCount() < best.getParameterCount()) {
+                if (best == null || method.getParameterCount() < best.getParameterCount()
+                        || (method.getParameterCount() == best.getParameterCount()
+                                && declaredCloserToTarget(method, best, targetClass))) {
                     best = method;
                 }
             }
@@ -1772,7 +1831,9 @@ public final class RuntimeContext {
                 if (!method.getName().equals(methodName) || method.getParameterCount() > args.length) {
                     continue;
                 }
-                if (best == null || method.getParameterCount() > best.getParameterCount()) {
+                if (best == null || method.getParameterCount() > best.getParameterCount()
+                        || (method.getParameterCount() == best.getParameterCount()
+                                && declaredCloserToTarget(method, best, targetClass))) {
                     best = method;
                 }
             }
@@ -1783,6 +1844,24 @@ public final class RuntimeContext {
             System.arraycopy(args, 0, trimmed, 0, trimmed.length);
             return new InvocationPlan(best, adaptArguments(best, trimmed));
         }
+    }
+
+    private boolean declaredCloserToTarget(Method candidate, Method current, Class<?> targetClass) {
+        return inheritanceDistance(targetClass, candidate.getDeclaringClass())
+                < inheritanceDistance(targetClass, current.getDeclaringClass());
+    }
+
+    private int inheritanceDistance(Class<?> targetClass, Class<?> declaringClass) {
+        int distance = 0;
+        Class<?> cursor = targetClass;
+        while (cursor != null) {
+            if (cursor.equals(declaringClass)) {
+                return distance;
+            }
+            cursor = cursor.getSuperclass();
+            distance++;
+        }
+        return Integer.MAX_VALUE;
     }
 
     private Object[] adaptArguments(Method method, Object[] args) {

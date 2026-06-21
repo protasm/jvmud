@@ -508,6 +508,8 @@ public final class MudInstance implements InstanceHost {
             if (boundActor != persona.actor()) {
                 String objectId = Objects.requireNonNullElse(runtime.objectId(boundActor), persona.objectId());
                 persona.replaceActor(objectId, boundActor);
+                runtime.invokeOptionalObject(boundActor, "addCommands");
+                runtime.clearOutputTranscript();
             }
         });
     }

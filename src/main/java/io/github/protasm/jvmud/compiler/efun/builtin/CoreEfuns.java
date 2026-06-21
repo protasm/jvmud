@@ -166,12 +166,14 @@ import javax.crypto.spec.PBEKeySpec;
  *       session.</li>
  *   <li>{@code jvmud_interactive_info(mixed user, int key) : mixed} returns LPC false for
  *       driver-specific interactive metadata JVMud does not expose.</li>
- *   <li>{@code jvmud_object_info(mixed object, int key) : mixed} returns LPC false for
+ *   <li>{@code jvmud_lpc_object_info(mixed object, int key) : mixed} returns LPC false for
  *       driver-specific object metadata JVMud does not expose.</li>
- *   <li>{@code jvmud_configure_object(mixed object, int key, mixed value) : status} accepts
- *       driver-specific object configuration requests conservatively.</li>
- *   <li>{@code jvmud_find_object(string path) : mixed} returns an already loaded object, or LPC false
- *       when the path is not loaded.</li>
+ *   <li>{@code jvmud_configure_lpc_object(mixed object, int key, mixed value) : status} bridges
+ *       supported driver object configuration requests such as command enablement.</li>
+ *   <li>{@code jvmud_find_lpc_object(string path) : mixed} returns an already loaded LPC object, or
+ *       LPC false when the path is not loaded.</li>
+ *   <li>{@code jvmud_to_lpc_object(mixed pathOrObject) : mixed} resolves an LPC object value or
+ *       returns LPC false when no loaded object matches.</li>
  *   <li>{@code jvmud_shutdown() : void} accepts legacy mudlib shutdown requests.</li>
  *   <li>{@code jvmud_set_this_player(mixed player) : void} accepts legacy current-player mutation
  *       requests while JVMud keeps session ownership on the engine side.</li>
@@ -179,6 +181,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       supplied LPC message.</li>
  *   <li>{@code jvmud_query_idle(mixed user) : int} returns idle time for a user/player object.</li>
  *   <li>{@code jvmud_query_ip_number(mixed user) : mixed} returns the user's remote IP address, or
+ *       the runtime's false/null value when unavailable.</li>
+ *   <li>{@code jvmud_query_ip_name(mixed user) : mixed} returns the user's remote host address, or
  *       the runtime's false/null value when unavailable.</li>
  *   <li>{@code jvmud_driver_info(int key) : mixed} returns LPC false for unsupported driver-info
  *       queries.</li>
@@ -216,8 +220,18 @@ import javax.crypto.spec.PBEKeySpec;
  *       file names, including simple glob support for compatibility file discovery.</li>
  *   <li>{@code jvmud_append_mudlib_text(string path, mixed text) : status} appends text to a
  *       mudlib-relative file.</li>
+ *   <li>{@code jvmud_remove_mudlib_text(string path) : status} removes a mudlib-relative file.</li>
+ *   <li>{@code jvmud_copy_mudlib_text(string source, string destination) : int} copies a
+ *       mudlib-relative file, returning LDMud-style zero for success.</li>
+ *   <li>{@code jvmud_rename_mudlib_text(string source, string destination) : int} renames a
+ *       mudlib-relative path, returning LDMud-style zero for success.</li>
+ *   <li>{@code jvmud_create_mudlib_directory(string path) : status} creates a mudlib-relative
+ *       directory.</li>
+ *   <li>{@code jvmud_remove_mudlib_directory(string path) : status} removes an empty
+ *       mudlib-relative directory.</li>
  *   <li>{@code jvmud_size(mixed value) : int} returns the size of a string, collection, mapping, or
  *       array.</li>
+ *   <li>{@code jvmud_sqrt(mixed value) : float} returns the square root of a numeric value.</li>
  *   <li>{@code jvmud_lowercase_text(mixed value) : string} lowercases text.</li>
  *   <li>{@code jvmud_uppercase_text(mixed value) : string} uppercases text.</li>
  *   <li>{@code jvmud_split_text(string text, string delimiter) : array} splits text on a literal
@@ -275,6 +289,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       size.</li>
  *   <li>{@code jvmud_sscanf(mixed input, mixed format, mixed ...captures) : int} is registered for
  *       arities 3 through 8.</li>
+ *   <li>{@code jvmud_apply_callable(function callback, mixed ...args) : mixed} invokes a callable
+ *       and expands a final array argument for LDMud-style {@code apply} calls.</li>
  *   <li>{@code jvmud_invoke_lpc_object(mixed target, string methodName, mixed ...args) : mixed}
  *       invokes an optional method on an LPC object or path-resolved shared object; this overload is
  *       registered for arities 2 through 6.</li>
@@ -378,6 +394,8 @@ public final class CoreEfuns {
                 (runtime, args) -> sizeOf(args[0])));
         efuns.add(efun("jvmud_random", LPCType.LPCINT, List.of(LPCType.LPCINT),
                 (runtime, args) -> random(((Number) args[0]).intValue())));
+        efuns.add(efun("jvmud_sqrt", LPCType.LPCFLOAT, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> Math.sqrt(toDouble(args[0]))));
         efuns.add(efun("jvmud_users", LPCType.LPCARRAY, List.of(),
                 (runtime, args) -> runtime.users()));
         efuns.add(efun("jvmud_previous_object", LPCType.LPCOBJECT, List.of(),
@@ -386,16 +404,22 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.isInteractive(args[0]) ? 1 : 0));
         efuns.add(efun("jvmud_interactive_info", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
                 (runtime, args) -> 0));
+        efuns.add(efun("jvmud_lpc_object_info", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
+                (runtime, args) -> 0));
         efuns.add(efun("jvmud_object_info", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
                 (runtime, args) -> 0));
+        efuns.add(efun("jvmud_configure_lpc_object", LPCType.LPCSTATUS,
+                List.of(LPCType.LPCMIXED, LPCType.LPCINT, LPCType.LPCMIXED),
+                (runtime, args) -> configureLpcObject(runtime, args[0], ((Number) args[1]).intValue(), args[2])));
         efuns.add(efun("jvmud_configure_object", LPCType.LPCSTATUS,
                 List.of(LPCType.LPCMIXED, LPCType.LPCINT, LPCType.LPCMIXED),
-                (runtime, args) -> 1));
+                (runtime, args) -> configureLpcObject(runtime, args[0], ((Number) args[1]).intValue(), args[2])));
+        efuns.add(efun("jvmud_find_lpc_object", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> findLpcObject(runtime, String.valueOf(args[0]))));
         efuns.add(efun("jvmud_find_object", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
-                (runtime, args) -> {
-                    Object object = runtime.getObject(String.valueOf(args[0]));
-                    return object != null ? object : 0;
-                }));
+                (runtime, args) -> findLpcObject(runtime, String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_to_lpc_object", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> toLpcObject(runtime, args[0])));
         efuns.add(efun("jvmud_shutdown", LPCType.LPCVOID, List.of(),
                 (runtime, args) -> null));
         efuns.add(efun("jvmud_set_this_player", LPCType.LPCVOID, List.of(LPCType.LPCMIXED),
@@ -407,6 +431,8 @@ public final class CoreEfuns {
         efuns.add(efun("jvmud_query_idle", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.queryIdle(args[0])));
         efuns.add(efun("jvmud_query_ip_number", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.queryIpNumber(args[0])));
+        efuns.add(efun("jvmud_query_ip_name", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.queryIpNumber(args[0])));
         efuns.add(efun("jvmud_driver_info", LPCType.LPCMIXED, List.of(LPCType.LPCINT),
                 (runtime, args) -> 0));
@@ -429,6 +455,18 @@ public final class CoreEfuns {
         efuns.add(efun("jvmud_append_mudlib_text", LPCType.LPCSTATUS,
                 List.of(LPCType.LPCSTRING, LPCType.LPCMIXED),
                 (runtime, args) -> runtime.appendMudlibText(String.valueOf(args[0]), args[1])));
+        efuns.add(efun("jvmud_remove_mudlib_text", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.removeMudlibText(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_copy_mudlib_text", LPCType.LPCINT,
+                List.of(LPCType.LPCSTRING, LPCType.LPCSTRING),
+                (runtime, args) -> runtime.copyMudlibText(String.valueOf(args[0]), String.valueOf(args[1]))));
+        efuns.add(efun("jvmud_rename_mudlib_text", LPCType.LPCINT,
+                List.of(LPCType.LPCSTRING, LPCType.LPCSTRING),
+                (runtime, args) -> runtime.renameMudlibText(String.valueOf(args[0]), String.valueOf(args[1]))));
+        efuns.add(efun("jvmud_create_mudlib_directory", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.createMudlibDirectory(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_remove_mudlib_directory", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.removeMudlibDirectory(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_transfer_player_to_game", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.transferCurrentPlayerToGame(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_save_lpc_object_state", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
@@ -546,6 +584,9 @@ public final class CoreEfuns {
                         Collections.nCopies(Math.max(0, ((Number) args[0]).intValue()), Integer.valueOf(0)))));
         for (int arity = 2; arity <= 6; arity++) {
             efuns.add(invokeLpcObjectEfun(arity));
+        }
+        for (int arity = 1; arity <= 10; arity++) {
+            efuns.add(applyCallableEfun(arity));
         }
         efuns.add(efun("jvmud_load_lpc_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.loadOrGetObject(String.valueOf(args[0]))));
@@ -1033,6 +1074,21 @@ public final class CoreEfuns {
         }
     }
 
+    private static double toDouble(Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        String text = String.valueOf(value).trim();
+        if (text.isEmpty()) {
+            return 0.0d;
+        }
+        try {
+            return Double.parseDouble(text);
+        } catch (NumberFormatException e) {
+            return 0.0d;
+        }
+    }
+
     private static String javaRegexReplacement(String replacement) {
         StringBuilder converted = new StringBuilder();
         for (int i = 0; i < replacement.length(); i++) {
@@ -1084,6 +1140,38 @@ public final class CoreEfuns {
         return result;
     }
 
+    private static Object findLpcObject(RuntimeContext runtime, String path) {
+        Object object = runtime.getObject(path);
+        if (object == null) {
+            object = runtime.getObject(stripLeadingSlash(path));
+        }
+        if (object == null) {
+            object = runtime.getObject(stripExtension(stripLeadingSlash(path)));
+        }
+        return object != null ? object : 0;
+    }
+
+    private static Object toLpcObject(RuntimeContext runtime, Object value) {
+        if (value == null || Integer.valueOf(0).equals(value)) {
+            return 0;
+        }
+        if (runtime.objectId(value) != null) {
+            return value;
+        }
+        return findLpcObject(runtime, String.valueOf(value));
+    }
+
+    private static int configureLpcObject(RuntimeContext runtime, Object object, int key, Object value) {
+        if (key == 0) {
+            if (Truth.isTruthy(value)) {
+                runtime.enableEntityCommands(object);
+            } else {
+                runtime.disableEntityCommands(object);
+            }
+        }
+        return 1;
+    }
+
     private static Efun captureSessionInputEfun(int arity) {
         List<LPCType> parameters = new ArrayList<>();
         parameters.add(LPCType.LPCSTRING);
@@ -1114,6 +1202,26 @@ public final class CoreEfuns {
         }
         return efun("jvmud_invoke_lpc_object", LPCType.LPCMIXED, parameters,
                 (runtime, args) -> invokeLpcObject(runtime, args));
+    }
+
+    private static Efun applyCallableEfun(int arity) {
+        return efun("jvmud_apply_callable", LPCType.LPCMIXED, Collections.nCopies(arity, LPCType.LPCMIXED),
+                (runtime, args) -> applyCallable(runtime, args));
+    }
+
+    private static Object applyCallable(RuntimeContext runtime, Object[] args) {
+        if (args.length == 0 || !(args[0] instanceof RuntimeCallable callback)) {
+            return 0;
+        }
+        List<Object> invocationArgs = new ArrayList<>();
+        for (int i = 1; i < args.length; i++) {
+            if (i == args.length - 1 && args[i] instanceof List<?> finalArray) {
+                invocationArgs.addAll(finalArray);
+            } else {
+                invocationArgs.add(args[i]);
+            }
+        }
+        return callback.call(runtime, invocationArgs.toArray());
     }
 
     private static Object invokeLpcObject(RuntimeContext runtime, Object[] args) {
@@ -1175,6 +1283,13 @@ public final class CoreEfuns {
             stripped = stripped.substring(1);
         }
         return stripped;
+    }
+
+    private static String stripExtension(String path) {
+        if (path.endsWith(".c")) {
+            return path.substring(0, path.length() - 2);
+        }
+        return path;
     }
 
     private static Efun efun(String name, LPCType returnType, List<LPCType> parameters, EfunBody body) {

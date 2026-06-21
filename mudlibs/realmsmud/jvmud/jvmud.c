@@ -55,6 +55,19 @@ void add_action(string method, string verb, int prefix) {
     jvmud_add_action(method, verb, prefix);
 }
 
+void enable_commands() {
+    jvmud_enable_commands();
+}
+
+void disable_commands() {
+    jvmud_configure_lpc_object(jvmud_current_lpc_object(), 0, 0);
+}
+
+int exec(object newObject, object oldObject) {
+    int ret = jvmud_rebind_session_lpc_object(newObject, oldObject);
+    return ret;
+}
+
 void addUser(object user) {
     load_object("/secure/simul_efun.c")->addUser(user);
 }
@@ -516,6 +529,30 @@ int isValidPersistenceObject(mixed persistence) {
 
 string getGuestName(object player) {
     return "guest";
+}
+
+object findPlayer(string name) {
+    return 0;
+}
+
+object findLiving(string name) {
+    return findPlayer(name);
+}
+
+int createWizard(string wizardName, string level) {
+    return 1;
+}
+
+int demoteWizardToPlayer(string wizardName) {
+    return 1;
+}
+
+mapping availableRoles() {
+    return ([]);
+}
+
+int createRole(string newRole, string type) {
+    return 1;
 }
 
 string addRoleToPlayer(object character, string newRole) {
