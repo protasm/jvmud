@@ -1660,6 +1660,34 @@ public final class RuntimeContext {
         }
     }
 
+    /**
+     * Removes command actions owned by a handler from one actor's current command table.
+     *
+     * <p>This backs compatibility {@code remove_action()} calls used by temporary selectors and
+     * conversations. The mudlib names the actor whose command table should be edited; JVMud uses
+     * the current LPC object as the owning action handler.</p>
+     */
+    public int removeCommandActions(Object actor, Object handler) {
+        if (actor == null || handler == null) {
+            return 0;
+        }
+        Map<String, List<CommandAction>> actionsByVerb = commandActions.get(actor);
+        if (actionsByVerb == null) {
+            return 0;
+        }
+        int removed = 0;
+        for (List<CommandAction> actions : actionsByVerb.values()) {
+            int before = actions.size();
+            actions.removeIf(action -> action.handler() == handler);
+            removed += before - actions.size();
+        }
+        actionsByVerb.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+        if (actionsByVerb.isEmpty()) {
+            commandActions.remove(actor);
+        }
+        return removed;
+    }
+
     public void clearPendingActionMethods() {
         pendingActionStack.get().clear();
     }

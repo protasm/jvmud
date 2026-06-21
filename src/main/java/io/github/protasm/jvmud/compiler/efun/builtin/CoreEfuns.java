@@ -89,6 +89,10 @@ import javax.crypto.spec.PBEKeySpec;
  *       and registers a verb.</li>
  *   <li>{@code jvmud_add_action(string methodName, string verb, status prefix) : void} registers
  *       a verb, optionally as a prefix verb.</li>
+ *   <li>{@code jvmud_remove_action(int flags) : int} removes current handler actions from the
+ *       active command actor.</li>
+ *   <li>{@code jvmud_remove_action(int flags, mixed actor) : int} removes current handler actions
+ *       from the supplied actor.</li>
  *   <li>{@code jvmud_add_verb(string verb) : void} registers a verb for the current interaction
  *       scope.</li>
  * </ul>
@@ -710,6 +714,11 @@ public final class CoreEfuns {
                     runtime.registerVerb(String.valueOf(args[1]), Truth.isTruthy(args[2]));
                     return null;
                 }));
+        efuns.add(efun("jvmud_remove_action", LPCType.LPCINT, List.of(LPCType.LPCINT),
+                (runtime, args) -> runtime.removeCommandActions(
+                        runtime.currentCommandActor(), runtime.currentObject())));
+        efuns.add(efun("jvmud_remove_action", LPCType.LPCINT, List.of(LPCType.LPCINT, LPCType.LPCMIXED),
+                (runtime, args) -> runtime.removeCommandActions(args[1], runtime.currentObject())));
         efuns.add(efun("jvmud_add_verb", LPCType.LPCVOID, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> {
                     runtime.registerVerb(String.valueOf(args[0]));

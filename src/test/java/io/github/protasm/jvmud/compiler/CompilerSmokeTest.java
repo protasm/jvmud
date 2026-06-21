@@ -6668,6 +6668,10 @@ final class CompilerSmokeTest {
                     jvmud_add_action(method, verb, flag);
                 }
 
+                int remove_action(int flags, mixed actor) {
+                    return jvmud_remove_action(flags, actor);
+                }
+
                 object clone_object(string path) {
                     return jvmud_clone_lpc_object(path);
                 }
@@ -6706,19 +6710,24 @@ final class CompilerSmokeTest {
                 }
 
                 int executeCommand(string command) {
-                    return 0;
+                    write("player " + command + "\\n");
+                    return 1;
                 }
                 """);
         Files.writeString(tempDir.resolve("selector.c"), """
+                object User;
+
                 void init() {
                     add_action("applySelection", "", 3);
                 }
 
                 void initiateSelector(object user) {
+                    User = user;
                     tell_object(user, "selector menu\\n");
                 }
 
                 int applySelection(string choice) {
+                    remove_action(1, User);
                     write("selected " + choice + "\\n");
                     return 1;
                 }
@@ -6747,6 +6756,9 @@ final class CompilerSmokeTest {
         runtime.refreshCommandActions(player.instance());
         assertEquals(1, runtime.dispatchCommand(player.instance(), "1"));
         assertEquals("selector menu\nselected 1\n", output.toString());
+
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "look"));
+        assertEquals("selector menu\nselected 1\nplayer look\n", output.toString());
     }
 
     @Test

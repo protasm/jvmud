@@ -499,10 +499,12 @@ string *regexplode(string input, string pattern) {
     return jvmud_regex_explode(input, pattern);
 }
 
-void remove_action(int flags) {
+int remove_action(int flags) {
+    return jvmud_remove_action(flags);
 }
 
-void remove_action(int flags, mixed actor) {
+int remove_action(int flags, mixed actor) {
+    return jvmud_remove_action(flags, actor);
 }
 
 int sizeof(mixed value) {
