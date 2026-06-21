@@ -2855,6 +2855,23 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeSupportsLdmudStringColumnFormatMode() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/ldmud_column_format.c", """
+                string sprintf(string format, mixed arg1, mixed arg2) {
+                    return jvmud_format_text(format, arg1, arg2);
+                }
+
+                string wrapped() {
+                    return sprintf("%=-*s", 12, "this is a very long sentence");
+                }
+                """);
+
+        assertEquals("this is a   \nvery long   \nsentence    ", object.invoke("wrapped"));
+    }
+
+    @Test
     void runtimeIndexesMixedStringValuesAsCharacterCodes() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/mixed_string_index.c", """
