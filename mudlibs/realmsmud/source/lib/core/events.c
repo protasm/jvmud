@@ -117,6 +117,14 @@ public nomask int registerEventHandler(string eventHandler)
        (member(validEventHandlers, eventHandler) < 0))
     {
         validEventHandlers += ({ eventHandler });
+        foreach(object subscriber in m_indices(eventList))
+        {
+            if(objectp(subscriber) && function_exists(eventHandler, subscriber) &&
+                (member(eventList[subscriber], eventHandler) < 0))
+            {
+                eventList[subscriber] += ({ eventHandler });
+            }
+        }
         ret = 1;
     }
     return ret;

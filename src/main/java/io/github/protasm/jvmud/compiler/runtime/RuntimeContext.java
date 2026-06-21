@@ -82,6 +82,7 @@ public final class RuntimeContext {
     private final Map<Object, SessionBinding> sessionsByPersona = new IdentityHashMap<>();
     private final Map<Object, PersonaId> personaIdsByProjection = new IdentityHashMap<>();
     private final Map<Object, PendingSessionInput> pendingInputsByPersona = new IdentityHashMap<>();
+    private final Map<Object, StringBuilder> pendingTargetedOutputByPersona = new IdentityHashMap<>();
     private final RuntimeDatabaseService databaseService = new RuntimeDatabaseService();
     private final StringBuilder outputTranscript = new StringBuilder();
     private final ThreadLocal<Deque<Object>> currentObjectStack =
@@ -280,13 +281,17 @@ public final class RuntimeContext {
      * Writes text only to the target object's bound session.
      *
      * <p>Unlike {@link #write(Object)}, this targeted write deliberately does not fall back to the
-     * ambient output transcript when the target is not interactive. A mudlib can attempt to write
-     * text to an ordinary LPC object, but that should not leak text to the current actor.</p>
+     * ambient output transcript when the target is not interactive. If that target is later bound to
+     * a Session, JVMud flushes the pending text to the target's own output sink.</p>
      */
     public void writeToLpcObject(Object target, Object value) {
         SessionBinding binding = target != null ? sessionsByPersona.get(target) : null;
         if (binding != null && receivesPlayerBoundMessages(target)) {
             writeToSession(binding, value);
+        } else if (target != null && receivesPlayerBoundMessages(target)) {
+            pendingTargetedOutputByPersona
+                    .computeIfAbsent(target, ignored -> new StringBuilder())
+                    .append(formattedMessageText(value));
         }
     }
 
@@ -740,11 +745,10 @@ public final class RuntimeContext {
         Consumer<String> sink = sessionOutputSink != null ? sessionOutputSink : ignored -> {};
         SessionBinding existing = sessions.get(engineSessionId);
         PlayerId playerId = existing != null ? existing.sessionRecord().playerId() : legacyPlayerIdFor(persona);
-        Optional<Object> mudlibProfileProjection = Optional.ofNullable(mudlibProjection);
+        Optional<Object> mudlibProfileProjection = existing != null
+                ? existing.playerRecord().mudlibProfileProjection()
+                : Optional.ofNullable(mudlibProjection);
         Instant connectedAt = existing != null ? existing.sessionRecord().connectedAt() : null;
-        if (existing != null && mudlibProfileProjection.isEmpty()) {
-            mudlibProfileProjection = existing.playerRecord().mudlibProfileProjection();
-        }
         if (existing != null) {
             detachSessionFromRecords(existing);
         }
@@ -783,6 +787,7 @@ public final class RuntimeContext {
         sessions.put(engineSessionId, binding);
         sessionsByPersona.put(persona, binding);
         personaIdsByProjection.put(persona, personaId);
+        flushPendingTargetedOutput(persona, binding);
     }
 
     /**
@@ -804,7 +809,10 @@ public final class RuntimeContext {
                 binding.sessionRecord().id().value(),
                 newObject,
                 binding.sessionRecord().remoteAddress().orElse(null),
-                binding.outputSink());
+                binding.outputSink(),
+                MudlibProjection.personaBehavior(
+                        Objects.requireNonNullElse(objectId(newObject), objectReference(newObject)),
+                        newObject));
         return true;
     }
 
@@ -1105,6 +1113,22 @@ public final class RuntimeContext {
         }
     }
 
+    /**
+     * Reports whether a generated LPC object exposes a public method with the requested arity.
+     *
+     * <p>Runtime callable values use this to decide whether a quoted function reference names a
+     * method on its lexical object or should fall through to a global efun alias.</p>
+     *
+     * @param target generated LPC object to inspect
+     * @param methodName LPC method name
+     * @param arity number of arguments expected by the caller
+     * @return {@code true} when the object can receive that method call
+     */
+    public boolean hasObjectMethod(Object target, String methodName, int arity) {
+        Object resolvedTarget = resolveInvocationTarget(target);
+        return resolvedTarget != null && hasMethod(resolvedTarget.getClass(), methodName, arity);
+    }
+
     private Object invokeObjectPreservingCurrentObject(Object target, String methodName, Object... args) {
         target = resolveInvocationTarget(target);
         if (target == null) {
@@ -1358,6 +1382,7 @@ public final class RuntimeContext {
         commandEnabledEntities.remove(object);
         commandActions.remove(object);
         pendingInputsByPersona.remove(object);
+        pendingTargetedOutputByPersona.remove(object);
         removeCommandHandler(object);
         String id = objectIds.remove(object);
         if (id != null) {
@@ -1695,7 +1720,9 @@ public final class RuntimeContext {
             if (entry.getKey().equals(verb) || !verb.startsWith(entry.getKey())) {
                 continue;
             }
-            for (CommandAction action : entry.getValue()) {
+            List<CommandAction> prefixActions = entry.getValue();
+            for (int i = prefixActions.size() - 1; i >= 0; i--) {
+                CommandAction action = prefixActions.get(i);
                 if (action.prefixMatch()) {
                     actions.add(action);
                 }
@@ -2188,6 +2215,13 @@ public final class RuntimeContext {
         @Override
         public Object[] extraArgs() {
             return extraArgs.clone();
+        }
+    }
+
+    private void flushPendingTargetedOutput(Object persona, SessionBinding binding) {
+        StringBuilder pendingOutput = pendingTargetedOutputByPersona.remove(persona);
+        if (pendingOutput != null && !pendingOutput.isEmpty()) {
+            writeToSession(binding, pendingOutput.toString());
         }
     }
 

@@ -473,6 +473,13 @@ public final class SemanticTypeChecker {
                 expr.setInferredType(LPCType.LPCMAPPING);
                 return LPCType.LPCMAPPING;
             }
+            if (leftType == LPCType.LPCMIXED
+                    || rightType == LPCType.LPCMIXED
+                    || leftType == LPCType.LPCERROR
+                    || rightType == LPCType.LPCERROR) {
+                expr.setInferredType(LPCType.LPCMIXED);
+                return LPCType.LPCMIXED;
+            }
 
             ensureNumericOperands(leftType, rightType, expr.line(), "Addition expects numeric operands");
             LPCType resultType = promotedNumericType(leftType, rightType);
@@ -513,6 +520,13 @@ public final class SemanticTypeChecker {
                     && isStringLikeForDifference(rightType)) {
                 expr.setInferredType(LPCType.LPCSTRING);
                 return LPCType.LPCSTRING;
+            }
+            if (leftType == LPCType.LPCMIXED
+                    || rightType == LPCType.LPCMIXED
+                    || leftType == LPCType.LPCERROR
+                    || rightType == LPCType.LPCERROR) {
+                expr.setInferredType(LPCType.LPCMIXED);
+                return LPCType.LPCMIXED;
             }
             ensureNumericOperands(leftType, rightType, expr.line(), op + " expects numeric operands");
             LPCType resultType = promotedNumericType(leftType, rightType);

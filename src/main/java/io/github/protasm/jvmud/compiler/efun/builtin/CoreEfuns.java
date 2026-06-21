@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
@@ -242,8 +244,9 @@ import javax.crypto.spec.PBEKeySpec;
  *       values whose string forms match a regular expression, or LPC false when no value
  *       matches. JVMud accepts common LDMud regexp idioms before running the pattern on Java's
  *       regex engine.</li>
- *   <li>{@code jvmud_regex_replace(string input, string pattern, string replacement, int flags) :
- *       string} performs a compatibility regex replacement for legacy mudlib text helpers.</li>
+ *   <li>{@code jvmud_regex_replace(string input, string pattern, mixed replacement, int flags) :
+ *       string} performs a compatibility regex replacement for legacy mudlib text helpers,
+ *       including function callbacks that receive each matched string.</li>
  *   <li>{@code jvmud_regex_explode(string input, string pattern) : array} splits text around
  *       regular-expression matches while preserving matched delimiters.</li>
  *   <li>{@code jvmud_to_int(mixed value) : int} converts numeric values and base-10 text to an
@@ -516,11 +519,12 @@ public final class CoreEfuns {
                 List.of(LPCType.LPCARRAY, LPCType.LPCSTRING, LPCType.LPCINT),
                 (runtime, args) -> regexMatch(args[0], String.valueOf(args[1]), ((Number) args[2]).intValue())));
         efuns.add(efun("jvmud_regex_replace", LPCType.LPCSTRING,
-                List.of(LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCINT),
+                List.of(LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCMIXED, LPCType.LPCINT),
                 (runtime, args) -> regexReplace(
+                        runtime,
                         String.valueOf(args[0]),
                         String.valueOf(args[1]),
-                        String.valueOf(args[2]),
+                        args[2],
                         ((Number) args[3]).intValue())));
         efuns.add(efun("jvmud_regex_explode", LPCType.LPCARRAY,
                 List.of(LPCType.LPCSTRING, LPCType.LPCSTRING),
@@ -1021,12 +1025,32 @@ public final class CoreEfuns {
         output.append(current);
     }
 
-    private static String regexReplace(String input, String pattern, String replacement, int flags) {
+    private static String regexReplace(RuntimeContext runtime, String input, String pattern, Object replacement, int flags) {
         String javaPattern = javaRegexPattern(pattern);
-        String javaReplacement = javaRegexReplacement(replacement);
+        if (replacement instanceof RuntimeCallable callback) {
+            return regexReplaceWithCallback(runtime, input, javaPattern, callback, flags);
+        }
+        String javaReplacement = javaRegexReplacement(String.valueOf(replacement));
         return flags == 0
                 ? input.replaceFirst(javaPattern, javaReplacement)
                 : input.replaceAll(javaPattern, javaReplacement);
+    }
+
+    private static String regexReplaceWithCallback(
+            RuntimeContext runtime, String input, String javaPattern, RuntimeCallable callback, int flags) {
+        Matcher matcher = Pattern.compile(javaPattern).matcher(input);
+        StringBuffer output = new StringBuffer();
+        int replacements = 0;
+        while (matcher.find()) {
+            if (flags == 0 && replacements > 0) {
+                break;
+            }
+            Object replacement = callback.call(runtime, matcher.group());
+            matcher.appendReplacement(output, Matcher.quoteReplacement(String.valueOf(replacement)));
+            replacements++;
+        }
+        matcher.appendTail(output);
+        return output.toString();
     }
 
     private static Object regexMatch(Object values, String pattern, int flags) {

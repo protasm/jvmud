@@ -374,6 +374,12 @@ public class Scanner {
                 unescaped.append(c);
                 continue;
             }
+            if (value.charAt(i + 1) == 'x' && i + 3 < value.length()
+                    && isHexDigit(value.charAt(i + 2)) && isHexDigit(value.charAt(i + 3))) {
+                unescaped.append((char) ((hexValue(value.charAt(i + 2)) << 4) + hexValue(value.charAt(i + 3))));
+                i += 3;
+                continue;
+            }
             unescaped.append((char) escapedCharacterValue(value.charAt(++i)));
         }
         return unescaped.toString();
@@ -410,6 +416,16 @@ public class Scanner {
         case '"' -> '"';
         default -> c;
         };
+    }
+
+    private int hexValue(char c) {
+        if (c >= '0' && c <= '9') {
+            return c - '0';
+        }
+        if (c >= 'a' && c <= 'f') {
+            return c - 'a' + 10;
+        }
+        return c - 'A' + 10;
     }
 
     private boolean isWhitespace(char c) {

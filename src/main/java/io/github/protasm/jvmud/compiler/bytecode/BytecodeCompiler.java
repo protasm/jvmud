@@ -5,6 +5,7 @@ import static org.objectweb.asm.Opcodes.*;
 import io.github.protasm.jvmud.compiler.ir.*;
 import io.github.protasm.jvmud.compiler.parser.type.BinaryOpType;
 import io.github.protasm.jvmud.compiler.parser.type.UnaryOpType;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeArithmetic;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeComparison;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCoercions;
@@ -376,7 +377,7 @@ public final class BytecodeCompiler {
         }
 
         if (expression instanceof IRInlineCallableLiteral inlineCallableLiteral) {
-            emitInlineCallableLiteral(mv, inlineCallableLiteral);
+            emitInlineCallableLiteral(mv, method, inlineCallableLiteral);
             return;
         }
 
@@ -598,8 +599,8 @@ public final class BytecodeCompiler {
     }
 
     /** Emits the first runtime value form for LPC inline closures. */
-    private void emitInlineCallableLiteral(MethodVisitor mv, IRInlineCallableLiteral literal) {
-        String helperName = nextCallableHelperName();
+    private void emitInlineCallableLiteral(MethodVisitor mv, IRMethod method, IRInlineCallableLiteral literal) {
+        String helperName = nextCallableHelperName(method);
         emitInlineCallableHelper(helperName, literal);
 
         mv.visitTypeInsn(NEW, Type.getInternalName(RuntimeFunctionLiteral.class));
@@ -609,11 +610,12 @@ public final class BytecodeCompiler {
         mv.visitVarInsn(ALOAD, 0);
         mv.visitLdcInsn(helperName);
         emitInlineCallableCaptures(mv, literal);
+        mv.visitLdcInsn(Type.getObjectType(activeInternalName));
         mv.visitMethodInsn(
                 INVOKESPECIAL,
                 Type.getInternalName(RuntimeFunctionLiteral.class),
                 "<init>",
-                "(Ljava/lang/String;ILjava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;)V",
+                "(Ljava/lang/String;ILjava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;Ljava/lang/Class;)V",
                 false);
     }
 
@@ -913,6 +915,16 @@ public final class BytecodeCompiler {
             return;
         }
 
+        if (op == BinaryOpType.BOP_ADD && binary.type().kind() == RuntimeValueKind.MIXED) {
+            emitDynamicAdd(mv, internalName, method, binary);
+            return;
+        }
+
+        if (op == BinaryOpType.BOP_SUB && binary.type().kind() == RuntimeValueKind.MIXED) {
+            emitDynamicSubtract(mv, internalName, method, binary);
+            return;
+        }
+
         if ((op == BinaryOpType.BOP_EQ || op == BinaryOpType.BOP_NE)
                 && (binary.left().type().isReferenceLike() || binary.right().type().isReferenceLike())) {
             emitReferenceEquality(mv, internalName, method, binary);
@@ -970,6 +982,32 @@ public final class BytecodeCompiler {
         return binary.type().kind() == RuntimeValueKind.FLOAT
                 || binary.left().type().kind() == RuntimeValueKind.FLOAT
                 || binary.right().type().kind() == RuntimeValueKind.FLOAT;
+    }
+
+    private void emitDynamicAdd(MethodVisitor mv, String internalName, IRMethod method, IRBinaryOperation binary) {
+        emitExpression(mv, internalName, method, binary.left());
+        boxIfNeeded(mv, binary.left().type());
+        emitExpression(mv, internalName, method, binary.right());
+        boxIfNeeded(mv, binary.right().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeArithmetic.class),
+                "add",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                false);
+    }
+
+    private void emitDynamicSubtract(MethodVisitor mv, String internalName, IRMethod method, IRBinaryOperation binary) {
+        emitExpression(mv, internalName, method, binary.left());
+        boxIfNeeded(mv, binary.left().type());
+        emitExpression(mv, internalName, method, binary.right());
+        boxIfNeeded(mv, binary.right().type());
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeArithmetic.class),
+                "subtract",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                false);
     }
 
     /** Returns true for operators whose primitive JVM emission may use int or float opcodes. */
@@ -2071,8 +2109,20 @@ public final class BytecodeCompiler {
         return LITERAL_HELPER_PREFIX + literalHelperCounter++;
     }
 
-    private String nextCallableHelperName() {
-        return CALLABLE_HELPER_PREFIX + callableHelperCounter++;
+    private String nextCallableHelperName(IRMethod method) {
+        String methodPart = method != null ? sanitizeHelperNamePart(method.name()) : "expr";
+        return CALLABLE_HELPER_PREFIX + methodPart + "$" + callableHelperCounter++;
+    }
+
+    private String sanitizeHelperNamePart(String value) {
+        if (value == null || value.isBlank())
+            return "anon";
+        StringBuilder builder = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            builder.append(Character.isLetterOrDigit(ch) || ch == '_' || ch == '$' ? ch : '_');
+        }
+        return builder.toString();
     }
 
     private String nextFieldInitializerHelperName() {

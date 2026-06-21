@@ -487,11 +487,11 @@ object present_clone(string blueprint, mixed container) {
     return 0;
 }
 
-string regreplace(string input, string pattern, string replacement) {
+string regreplace(string input, string pattern, mixed replacement) {
     return jvmud_regex_replace(input, pattern, replacement, 0);
 }
 
-string regreplace(string input, string pattern, string replacement, int flags) {
+string regreplace(string input, string pattern, mixed replacement, int flags) {
     return jvmud_regex_replace(input, pattern, replacement, flags);
 }
 

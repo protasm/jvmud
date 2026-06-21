@@ -170,7 +170,7 @@ public final class SemanticAnalyzer {
             objectScope.declare(method.symbol(), unit, null, method);
         }
 
-        resolveIdentifiers(astObject, objectScope, parentUnit, problems);
+        resolveIdentifiers(astObject, objectScope, parentUnit, directParentUnits, problems);
 
         for (ASTMethod method : astObject.methods()) {
             SemanticScope methodScope = new SemanticScope(objectScope);
@@ -765,9 +765,13 @@ public final class SemanticAnalyzer {
     }
 
     private void resolveIdentifiers(
-            ASTObject astObject, SemanticScope objectScope, CompilationUnit parentUnit, List<CompilationProblem> problems) {
-        IdentifierResolver resolver =
-                new IdentifierResolver(astObject.name(), objectScope, parentUnit, runtimeContext, typeResolver, problems);
+            ASTObject astObject,
+            SemanticScope objectScope,
+            CompilationUnit parentUnit,
+            List<CompilationUnit> directParentUnits,
+            List<CompilationProblem> problems) {
+        IdentifierResolver resolver = new IdentifierResolver(
+                astObject.name(), objectScope, parentUnit, directParentUnits, runtimeContext, typeResolver, problems);
 
         for (ASTField field : astObject.fields()) {
             if (field.initializer() != null)
@@ -827,6 +831,7 @@ public final class SemanticAnalyzer {
         private final String currentObjectName;
         private final SemanticScope objectScope;
         private final CompilationUnit parentUnit;
+        private final List<CompilationUnit> directParentUnits;
         private final RuntimeContext runtimeContext;
         private final TypeResolver typeResolver;
         private final List<CompilationProblem> problems;
@@ -835,12 +840,14 @@ public final class SemanticAnalyzer {
                 String currentObjectName,
                 SemanticScope objectScope,
                 CompilationUnit parentUnit,
+                List<CompilationUnit> directParentUnits,
                 RuntimeContext runtimeContext,
                 TypeResolver typeResolver,
                 List<CompilationProblem> problems) {
             this.currentObjectName = currentObjectName;
             this.objectScope = objectScope;
             this.parentUnit = parentUnit;
+            this.directParentUnits = directParentUnits != null ? List.copyOf(directParentUnits) : List.of();
             this.runtimeContext = runtimeContext;
             this.typeResolver = typeResolver;
             this.problems = problems;
@@ -1334,7 +1341,7 @@ public final class SemanticAnalyzer {
                 return new ASTExprError(unresolvedCall.line());
             }
 
-            ASTExpression inheritedCall = resolveQualifiedPrimaryParentCall(unresolvedCall, resolvedArgs);
+            ASTExpression inheritedCall = resolveQualifiedInheritedParentCall(unresolvedCall, resolvedArgs);
             if (inheritedCall != null)
                 return inheritedCall;
 
@@ -1347,35 +1354,66 @@ public final class SemanticAnalyzer {
         }
 
         /**
-         * Resolves {@code parentName::method()} when {@code parentName} names the primary inherited
-         * object, which can be emitted as a JVM {@code invokespecial} dispatch.
+         * Resolves {@code parentName::method()} when {@code parentName} names a directly inherited
+         * LPC object. The primary parent is emitted as a JVM {@code invokespecial}; secondary
+         * parents are flattened into the current generated class and can dispatch normally.
          */
-        private ASTExpression resolveQualifiedPrimaryParentCall(
+        private ASTExpression resolveQualifiedInheritedParentCall(
                 ASTExprUnresolvedQualifiedCall unresolvedCall, ASTArguments resolvedArgs) {
-            if (parentUnit == null || parentUnit.semanticModel() == null)
-                return null;
+            for (CompilationUnit directParentUnit : directParentUnits) {
+                if (directParentUnit == null || directParentUnit.semanticModel() == null)
+                    continue;
 
-            ASTObject parentObject = parentUnit.semanticModel().astObject();
-            if (parentObject == null || !matchesObjectQualifier(unresolvedCall.qualifier(), parentObject.name()))
-                return null;
+                ASTObject parentObject = directParentUnit.semanticModel().astObject();
+                if (parentObject == null || !matchesObjectQualifier(unresolvedCall.qualifier(), parentObject.name()))
+                    continue;
 
-            SemanticScope parentScope = parentUnit.semanticModel().objectScope();
-            ASTMethod parentMethod = parentScope.resolveAll(unresolvedCall.name()).stream()
-                    .map(ScopedSymbol::method)
-                    .filter(Objects::nonNull)
-                    .filter(method -> parameterCount(method) >= resolvedArgs.size())
-                    .min(Comparator.comparingInt(SemanticAnalyzer::parameterCount))
-                    .orElse(null);
-            if (parentMethod != null)
-                return new ASTExprCallMethod(unresolvedCall.line(), parentMethod, resolvedArgs, true);
+                SemanticScope parentScope = directParentUnit.semanticModel().objectScope();
+                ASTMethod parentMethod = parentScope.resolveAll(unresolvedCall.name()).stream()
+                        .map(ScopedSymbol::method)
+                        .filter(Objects::nonNull)
+                        .filter(method -> acceptsArity(method, resolvedArgs.size()))
+                        .min(Comparator.comparingInt(SemanticAnalyzer::parameterCount))
+                        .orElse(null);
+                if (parentMethod != null)
+                    return new ASTExprCallMethod(
+                            unresolvedCall.line(),
+                            directParentUnit == parentUnit
+                                    ? parentMethod
+                                    : qualifiedInheritedMethod(parentMethod),
+                            resolvedArgs,
+                            directParentUnit == parentUnit);
 
-            problems.add(
-                    new CompilationProblem(
-                            CompilationStage.ANALYZE,
-                            "Inherited method '" + unresolvedCall.name() + "' is not defined in qualified parent '"
-                                    + unresolvedCall.qualifier() + "'.",
-                            unresolvedCall.line()));
-            return new ASTExprError(unresolvedCall.line());
+                problems.add(
+                        new CompilationProblem(
+                                CompilationStage.ANALYZE,
+                                "Inherited method '" + unresolvedCall.name() + "' is not defined in qualified parent '"
+                                        + unresolvedCall.qualifier() + "'.",
+                                unresolvedCall.line()));
+                return new ASTExprError(unresolvedCall.line());
+            }
+
+            return null;
+        }
+
+        private ASTMethod qualifiedInheritedMethod(ASTMethod parentMethod) {
+            ASTMethod method = new ASTMethod(
+                    parentMethod.line(),
+                    currentObjectName,
+                    new Symbol(
+                            parentMethod.symbol().lpcType(),
+                            qualifiedInheritedMethodName(parentMethod.ownerName(), parentMethod.symbol().name())));
+            method.setParameters(parentMethod.parameters());
+            return method;
+        }
+
+        private static String qualifiedInheritedMethodName(String ownerInternalName, String methodName) {
+            StringBuilder builder = new StringBuilder("$jvmud$qualified$");
+            for (int i = 0; i < ownerInternalName.length(); i++) {
+                char ch = ownerInternalName.charAt(i);
+                builder.append(Character.isLetterOrDigit(ch) || ch == '_' ? ch : '_');
+            }
+            return builder.append('$').append(methodName).toString();
         }
 
         private boolean matchesObjectQualifier(String qualifier, String objectName) {

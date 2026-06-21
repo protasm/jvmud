@@ -17,16 +17,29 @@ protected nomask void setUpUserForSelection()
     Description = "Would you like to display a mini map in room\n"
         "descriptions that support it?\nWithout mini map:\n";
 
-    load_object(StartLocation());
-    load_object("/areas/eledhel/southern-city/southern-city.c");
-    object exampleRoom = 
-        load_object("/areas/eledhel/southern-city/12x1.c");
+    object exampleRoom = 0;
+    string previewError = catch (load_object(StartLocation()));
+    if (!previewError)
+    {
+        previewError = catch (load_object("/areas/eledhel/southern-city/southern-city.c"));
+    }
+    if (!previewError)
+    {
+        previewError = catch (exampleRoom = load_object("/areas/eledhel/southern-city/12x1.c"));
+    }
 
-    User->setMiniMap("off", 1);
-    Description += exampleRoom->long(0, User) + "With mini map:\n";
+    if (!previewError && exampleRoom)
+    {
+        User->setMiniMap("off", 1);
+        Description += exampleRoom->long(0, User) + "With mini map:\n";
 
-    User->setMiniMap("on", 1);
-    Description += exampleRoom->long(0, User);
+        User->setMiniMap("on", 1);
+        Description += exampleRoom->long(0, User);
+    }
+    else
+    {
+        Description += "Mini map preview is unavailable in this runtime.\n";
+    }
 
     Data = ([
         "1":([

@@ -654,14 +654,18 @@ public final class IRLowerer {
             return;
 
         List<ASTMethod> methodsToFlatten = new ArrayList<>();
+        List<QualifiedFlattenedMethod> qualifiedMethodsToFlatten = new ArrayList<>();
         Set<MethodKey> imported = new HashSet<>();
+        Set<QualifiedMethodKey> qualifiedImported = new HashSet<>();
         collectSecondaryInheritedMethods(
                 objectScope.symbols().values(),
                 fieldsBySymbol,
                 flattenedInheritedMethodOwners,
                 declaredMethodKeys,
                 imported,
+                qualifiedImported,
                 methodsToFlatten,
+                qualifiedMethodsToFlatten,
                 objectInternalName,
                 parentInternalName,
                 primaryParentLineage);
@@ -674,7 +678,9 @@ public final class IRLowerer {
                     flattenedInheritedMethodOwners,
                     declaredMethodKeys,
                     imported,
+                    qualifiedImported,
                     methodsToFlatten,
+                    qualifiedMethodsToFlatten,
                     objectInternalName,
                     parentInternalName,
                     primaryParentLineage);
@@ -690,6 +696,17 @@ public final class IRLowerer {
                             problems,
                             objectInternalName));
         }
+        for (QualifiedFlattenedMethod qualifiedMethod : qualifiedMethodsToFlatten) {
+            methods.add(
+                    lowerMethod(
+                            qualifiedMethod.method(),
+                            qualifiedMethod.emittedName(),
+                            fieldsBySymbol,
+                            flattenedInheritedMethodOwners,
+                            primaryParentLineage,
+                            problems,
+                            objectInternalName));
+        }
     }
 
     private void collectSecondaryInheritedMethods(
@@ -698,7 +715,9 @@ public final class IRLowerer {
             Set<String> flattenedInheritedMethodOwners,
             Set<MethodKey> declaredMethodKeys,
             Set<MethodKey> imported,
+            Set<QualifiedMethodKey> qualifiedImported,
             List<ASTMethod> methodsToFlatten,
+            List<QualifiedFlattenedMethod> qualifiedMethodsToFlatten,
             String objectInternalName,
             String parentInternalName,
             Set<String> primaryParentLineage) {
@@ -715,17 +734,40 @@ public final class IRLowerer {
                     continue;
 
                 MethodKey key = new MethodKey(method.symbol().name(), parameterCount(method));
-                if (declaredMethodKeys.contains(key) || !imported.add(key))
-                    continue;
-
                 flattenedInheritedMethodOwners.add(ownerInternalName);
-                methodsToFlatten.add(method);
+                QualifiedMethodKey qualifiedKey =
+                        new QualifiedMethodKey(ownerInternalName, method.symbol().name(), parameterCount(method));
+                if (qualifiedImported.add(qualifiedKey)) {
+                    qualifiedMethodsToFlatten.add(new QualifiedFlattenedMethod(
+                            method,
+                            qualifiedInheritedMethodName(ownerInternalName, method.symbol().name())));
+                }
+                if (!declaredMethodKeys.contains(key) && imported.add(key))
+                    methodsToFlatten.add(method);
             }
         }
     }
 
     private IRMethod lowerMethod(
             ASTMethod method,
+            Map<Symbol, IRField> fieldsBySymbol,
+            Set<String> flattenedInheritedMethodOwners,
+            Set<String> primaryParentLineage,
+            List<CompilationProblem> problems,
+            String objectInternalName) {
+        return lowerMethod(
+                method,
+                method.symbol().name(),
+                fieldsBySymbol,
+                flattenedInheritedMethodOwners,
+                primaryParentLineage,
+                problems,
+                objectInternalName);
+    }
+
+    private IRMethod lowerMethod(
+            ASTMethod method,
+            String emittedName,
             Map<Symbol, IRField> fieldsBySymbol,
             Set<String> flattenedInheritedMethodOwners,
             Set<String> primaryParentLineage,
@@ -754,7 +796,7 @@ public final class IRLowerer {
 
         return new IRMethod(
                 method.line(),
-                method.symbol().name(),
+                emittedName,
                 context.returnType,
                 context.parameters,
                 context.locals,
@@ -762,6 +804,15 @@ public final class IRLowerer {
                 entryBlock.label(),
                 overridesParent,
                 overriddenOwnerInternalName);
+    }
+
+    private static String qualifiedInheritedMethodName(String ownerInternalName, String methodName) {
+        StringBuilder builder = new StringBuilder("$jvmud$qualified$");
+        for (int i = 0; i < ownerInternalName.length(); i++) {
+            char ch = ownerInternalName.charAt(i);
+            builder.append(Character.isLetterOrDigit(ch) || ch == '_' ? ch : '_');
+        }
+        return builder.append('$').append(methodName).toString();
     }
 
     private void lowerParameters(ASTMethod method, MethodContext context) {
@@ -1876,6 +1927,10 @@ public final class IRLowerer {
     }
 
     private record MethodKey(String name, int arity) {}
+
+    private record QualifiedMethodKey(String ownerInternalName, String name, int arity) {}
+
+    private record QualifiedFlattenedMethod(ASTMethod method, String emittedName) {}
 
     private RuntimeType sliceReplacementType(RuntimeType targetType) {
         if (targetType == null || targetType.kind() == RuntimeValueKind.MIXED)
