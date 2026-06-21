@@ -180,7 +180,9 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_query_idle(mixed user) : int} returns idle time for a user/player object.</li>
  *   <li>{@code jvmud_query_ip_number(mixed user) : mixed} returns the user's remote IP address, or
  *       the runtime's false/null value when unavailable.</li>
- *   <li>{@code jvmud_capture_session_input(string methodName, int noEcho[, mixed ...args]) : void}
+ *   <li>{@code jvmud_driver_info(int key) : mixed} returns LPC false for unsupported driver-info
+ *       queries.</li>
+ *   <li>{@code jvmud_capture_session_input(string methodName, int flags[, mixed ...args]) : void}
  *       routes the next session input line to a method on the current object, followed by any
  *       captured compatibility arguments.</li>
  *   <li>{@code jvmud_transfer_player_to_game(string gameId) : status} asks the host to transfer
@@ -208,7 +210,8 @@ import javax.crypto.spec.PBEKeySpec;
  *
  * <h2>Text, collections, invocation, and compatibility helpers</h2>
  * <ul>
- *   <li>{@code jvmud_read_mudlib_text(string path) : mixed} reads a mudlib-relative text file.</li>
+ *   <li>{@code jvmud_read_mudlib_text(string path[, int startLine, int lineCount]) : mixed} reads a
+ *       mudlib-relative text file, optionally slicing lines for legacy {@code read_file} calls.</li>
  *   <li>{@code jvmud_list_mudlib_paths(string path[, int flags]) : array} lists mudlib-relative
  *       file names, including simple glob support for compatibility file discovery.</li>
  *   <li>{@code jvmud_append_mudlib_text(string path, mixed text) : status} appends text to a
@@ -220,10 +223,10 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_split_text(string text, string delimiter) : array} splits text on a literal
  *       delimiter while preserving empty trailing fields.</li>
  *   <li>{@code jvmud_regex_match(array values, string pattern[, int flags]) : mixed} returns the
- *       values whose string forms match a Java regular expression, or LPC false when no value
- *       matches.</li>
+ *       values whose string forms match a regular expression, or LPC false when no value
+ *       matches. JVMud accepts the LDMud character-class idiom for matching literal {@code [}.</li>
  *   <li>{@code jvmud_regex_replace(string input, string pattern, string replacement, int flags) :
- *       string} performs a Java-regex replacement for legacy mudlib text helpers.</li>
+ *       string} performs a regex replacement for legacy mudlib text helpers.</li>
  *   <li>{@code jvmud_regex_explode(string input, string pattern) : array} splits text around
  *       regular-expression matches while preserving matched delimiters.</li>
  *   <li>{@code jvmud_to_int(mixed value) : int} converts numeric values and base-10 text to an
@@ -405,8 +408,17 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.queryIdle(args[0])));
         efuns.add(efun("jvmud_query_ip_number", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.queryIpNumber(args[0])));
+        efuns.add(efun("jvmud_driver_info", LPCType.LPCMIXED, List.of(LPCType.LPCINT),
+                (runtime, args) -> 0));
         efuns.add(efun("jvmud_read_mudlib_text", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.readMudlibText(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_read_mudlib_text", LPCType.LPCMIXED,
+                List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCINT),
+                (runtime, args) -> readMudlibText(
+                        runtime,
+                        String.valueOf(args[0]),
+                        ((Number) args[1]).intValue(),
+                        ((Number) args[2]).intValue())));
         efuns.add(efun("jvmud_list_mudlib_paths", LPCType.LPCARRAY, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.listMudlibPaths(String.valueOf(args[0]), 1)));
         efuns.add(efun("jvmud_list_mudlib_paths", LPCType.LPCARRAY,
@@ -508,7 +520,7 @@ public final class CoreEfuns {
                 (runtime, args) -> mappingFromKeys(args[0])));
         efuns.add(efun("jvmud_mapping_delete", LPCType.LPCMAPPING, List.of(LPCType.LPCMAPPING, LPCType.LPCMIXED),
                 (runtime, args) -> mappingDelete(args[0], args[1])));
-        for (int arity = 2; arity <= 8; arity++) {
+        for (int arity = 2; arity <= 16; arity++) {
             efuns.add(captureSessionInputEfun(arity));
         }
         efuns.add(efun("jvmud_is_string", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
@@ -944,10 +956,11 @@ public final class CoreEfuns {
     }
 
     private static String regexReplace(String input, String pattern, String replacement, int flags) {
+        String javaPattern = javaRegexPattern(pattern);
         String javaReplacement = javaRegexReplacement(replacement);
         return flags == 0
-                ? input.replaceFirst(pattern, javaReplacement)
-                : input.replaceAll(pattern, javaReplacement);
+                ? input.replaceFirst(javaPattern, javaReplacement)
+                : input.replaceAll(javaPattern, javaReplacement);
     }
 
     private static Object regexMatch(Object values, String pattern, int flags) {
@@ -955,7 +968,7 @@ public final class CoreEfuns {
             throw new IllegalArgumentException("jvmud_regex_match expects an array of values");
         }
         int javaFlags = flags == 0 ? 0 : java.util.regex.Pattern.DOTALL;
-        java.util.regex.Pattern compiled = java.util.regex.Pattern.compile(pattern, javaFlags);
+        java.util.regex.Pattern compiled = java.util.regex.Pattern.compile(javaRegexPattern(pattern), javaFlags);
         List<Object> matches = new ArrayList<>();
         for (Object value : source) {
             String text = String.valueOf(value);
@@ -967,7 +980,7 @@ public final class CoreEfuns {
     }
 
     private static List<String> regexExplode(String input, String pattern) {
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(pattern).matcher(input);
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(javaRegexPattern(pattern)).matcher(input);
         List<String> parts = new ArrayList<>();
         int lastEnd = 0;
         while (matcher.find()) {
@@ -977,6 +990,32 @@ public final class CoreEfuns {
         }
         parts.add(input.substring(lastEnd));
         return parts;
+    }
+
+    private static String javaRegexPattern(String pattern) {
+        String literalLeftBracket = "\\" + "u005B";
+        return pattern
+                .replace("[^[", "[^" + literalLeftBracket)
+                .replace("[[", "[" + literalLeftBracket);
+    }
+
+    private static Object readMudlibText(RuntimeContext runtime, String path, int startLine, int lineCount) {
+        Object text = runtime.readMudlibText(path);
+        if (!(text instanceof String content) || lineCount <= 0) {
+            return text;
+        }
+
+        String[] lines = content.split("(?<=\\n)", -1);
+        int start = Math.max(0, startLine - 1);
+        if (start >= lines.length) {
+            return "";
+        }
+        int end = Math.min(lines.length, start + lineCount);
+        StringBuilder selected = new StringBuilder();
+        for (int i = start; i < end; i++) {
+            selected.append(lines[i]);
+        }
+        return selected.toString();
     }
 
     private static int toInt(Object value) {
@@ -1060,7 +1099,7 @@ public final class CoreEfuns {
                     }
                     runtime.captureSessionInput(
                             String.valueOf(args[0]),
-                            ((Number) args[1]).intValue() != 0,
+                            (((Number) args[1]).intValue() & 1) != 0,
                             extraArgs);
                     return null;
                 });

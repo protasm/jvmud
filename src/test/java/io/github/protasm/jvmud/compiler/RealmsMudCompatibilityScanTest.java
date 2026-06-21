@@ -146,15 +146,18 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jvmud_db_fetch", boundary.directEfunAlias("db_fetch").orElseThrow());
         assertEquals("jvmud_write_to_lpc_object", boundary.directEfunAlias("tell_object").orElseThrow());
         assertEquals("jvmud_rebind_session_lpc_object", boundary.directEfunAlias("exec").orElseThrow());
+        assertEquals("jvmud_capture_session_input", boundary.directEfunAlias("input_to").orElseThrow());
         assertEquals("jvmud_current_lpc_object", boundary.directEfunAlias("this_object").orElseThrow());
         assertEquals("jvmud_query_ip_number", boundary.directEfunAlias("query_ip_number").orElseThrow());
         assertEquals("jvmud_list_mudlib_paths", boundary.directEfunAlias("get_dir").orElseThrow());
         assertEquals("jvmud_load_lpc_object", boundary.directEfunAlias("load_object").orElseThrow());
         assertEquals("jvmud_clone_lpc_object", boundary.directEfunAlias("clone_object").orElseThrow());
         assertEquals("jvmud_method_exists", boundary.directEfunAlias("function_exists").orElseThrow());
+        assertEquals("jvmud_find_entity", boundary.directEfunAlias("present").orElseThrow());
         assertEquals("jvmud_set_entity_location", boundary.directEfunAlias("set_environment").orElseThrow());
         assertEquals("jvmud_entity_location", boundary.directEfunAlias("environment").orElseThrow());
         assertEquals("jvmud_regex_match", boundary.directEfunAlias("regexp").orElseThrow());
+        assertEquals("jvmud_driver_info", boundary.directEfunAlias("driver_info").orElseThrow());
         assertEquals("jvmud_to_int", boundary.directEfunAlias("to_int").orElseThrow());
         assertEquals("jvmud_to_string", boundary.directEfunAlias("to_string").orElseThrow());
         assertEquals("jvmud_member", boundary.directEfunAlias("member").orElseThrow());

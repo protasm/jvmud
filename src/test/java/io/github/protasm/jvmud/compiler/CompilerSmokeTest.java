@@ -596,6 +596,64 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimePropagatesStringContextThroughNestedDynamicConcat() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/dynamic_string_concat.c", """
+                object configuration;
+
+                void set_configuration(object value) {
+                    configuration = value;
+                }
+
+                public nomask varargs string decorate(string text, string textClass, string type, string configuration) {
+                    return text;
+                }
+
+                string copyright(string colorConfiguration) {
+                    return configuration->decorate("Copyright", "heading", "help", colorConfiguration) +
+                        configuration->decorate(" body ", "text", "help", colorConfiguration) +
+                        configuration->decorate("license", "url", "help", colorConfiguration);
+                }
+                """);
+
+        object.invoke("set_configuration", object.instance());
+        assertEquals("Copyright body license", object.invoke("copyright", "none"));
+    }
+
+    @Test
+    void runtimeSupportsFalseSentinelAndOrFallbackInObjectContexts() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/object_false_sentinel.c", """
+                object target;
+
+                void set_target(object value) {
+                    target = value;
+                }
+
+                mixed maybe_object(int present) {
+                    if (present) {
+                        return target;
+                    }
+                    return 0;
+                }
+
+                object fallback(int present) {
+                    return maybe_object(present) || target;
+                }
+
+                object chained_fallback(int first, int second) {
+                    return maybe_object(first) || maybe_object(second) || target;
+                }
+                """);
+
+        object.invoke("set_target", object.instance());
+        assertSame(object.instance(), object.invoke("fallback", 0));
+        assertSame(object.instance(), object.invoke("fallback", 1));
+        assertSame(object.instance(), object.invoke("chained_fallback", 0, 0));
+        assertSame(object.instance(), object.invoke("chained_fallback", 0, 1));
+    }
+
+    @Test
     void runtimeSupportsFalseSentinelInCollectionContexts() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/collection_false_sentinel.c", """
@@ -3188,6 +3246,14 @@ final class CompilerSmokeTest {
                     jvmud_capture_session_input("answer", 0);
                 }
 
+                void ask_charmode() {
+                    jvmud_capture_session_input("answer", 2);
+                }
+
+                void ask_secret() {
+                    jvmud_capture_session_input("answer", 1);
+                }
+
                 void answer(mixed line) {
                     response = line;
                     jvmud_write("Hello " + response + "\\n");
@@ -3203,17 +3269,29 @@ final class CompilerSmokeTest {
         player.invoke("ask");
 
         assertTrue(runtime.hasCapturedSessionInput(player.instance()));
+        assertFalse(runtime.capturedSessionInputNoEcho(player.instance()));
         assertEquals("Name: ", output.toString());
 
         runtime.deliverCapturedSessionInput(player.instance(), "Alice");
 
         assertEquals("Alice", player.invoke("last_response"));
         assertEquals("Name: Hello Alice\n", output.toString());
+
+        player.invoke("ask_charmode");
+        assertTrue(runtime.hasCapturedSessionInput(player.instance()));
+        assertFalse(runtime.capturedSessionInputNoEcho(player.instance()));
+        runtime.deliverCapturedSessionInput(player.instance(), "Bob");
+        assertEquals("Bob", player.invoke("last_response"));
+
+        player.invoke("ask_secret");
+        assertTrue(runtime.hasCapturedSessionInput(player.instance()));
+        assertTrue(runtime.capturedSessionInputNoEcho(player.instance()));
     }
 
     @Test
     void runtimeReadsMudlibRootedTextForCompatibilityShims() throws Exception {
         Files.writeString(tempDir.resolve("WELCOME"), "Welcome to JVMud.\n");
+        Files.writeString(tempDir.resolve("PAGED"), "one\ntwo\nthree\n");
         Path migrations = tempDir.resolve("secure/simulated-efuns/database/migrations");
         Files.createDirectories(migrations);
         Files.writeString(migrations.resolve("0002_second.sql"), "select 2;\n");
@@ -3228,6 +3306,10 @@ final class CompilerSmokeTest {
 
                 mixed escaped() {
                     return jvmud_read_mudlib_text("../outside");
+                }
+
+                string paged() {
+                    return jvmud_read_mudlib_text("/PAGED", 2, 2);
                 }
 
                 string *migration_names() {
@@ -3262,8 +3344,16 @@ final class CompilerSmokeTest {
                     return jvmud_regex_match(({ "alpha.c", "beta.txt", "gamma.c" }), "[.]c$");
                 }
 
+                string realms_command_text() {
+                    return jvmud_regex_replace("look [##Target##]", "^([^[#]+) +[[#].*", "\\\\1", 1);
+                }
+
                 int regex_no_match_is_false() {
                     return jvmud_regex_match(({ "bonus" }), "^-") ? 1 : 0;
+                }
+
+                int driver_info_is_false() {
+                    return jvmud_driver_info(-44) ? 1 : 0;
                 }
 
                 int local_method_probe() {
@@ -3355,6 +3445,7 @@ final class CompilerSmokeTest {
 
         assertEquals("Welcome to JVMud.\n", reader.invoke("welcome"));
         assertEquals(0, reader.invoke("escaped"));
+        assertEquals("two\nthree\n", reader.invoke("paged"));
         assertEquals(List.of("0001_first.sql", "0002_second.sql"), reader.invoke("migration_names"));
         assertEquals(List.of(
                 "/secure/simulated-efuns/database/migrations/0001_first.sql",
@@ -3366,7 +3457,9 @@ final class CompilerSmokeTest {
         assertEquals(10, reader.invoke("number"));
         assertEquals("12", reader.invoke("number_text"));
         assertEquals(List.of("alpha.c", "gamma.c"), reader.invoke("regex_matches"));
+        assertEquals("look", reader.invoke("realms_command_text"));
         assertEquals(0, reader.invoke("regex_no_match_is_false"));
+        assertEquals(0, reader.invoke("driver_info_is_false"));
         assertEquals(1, reader.invoke("local_method_probe"));
         assertEquals(1, reader.invoke("explicit_method_probe"));
         assertEquals(0, reader.invoke("missing_method_probe"));

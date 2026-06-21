@@ -421,9 +421,13 @@ public final class SemanticTypeChecker {
     }
 
     private LPCType inferBinaryType(ASTExprOpBinary expr, MethodContext context, LPCType expectedType) {
-        LPCType leftType = inferExpressionType(expr.left(), context);
-        LPCType rightType = inferExpressionType(expr.right(), context);
         BinaryOpType op = expr.operator();
+        LPCType operandExpectedType = (op == BinaryOpType.BOP_ADD && expectedType == LPCType.LPCSTRING)
+                || (op == BinaryOpType.BOP_OR && isFallbackExpectedType(expectedType))
+                        ? expectedType
+                        : null;
+        LPCType leftType = inferExpressionType(expr.left(), context, operandExpectedType);
+        LPCType rightType = inferExpressionType(expr.right(), context, operandExpectedType);
 
         switch (op) {
         case BOP_ADD -> {
@@ -588,7 +592,8 @@ public final class SemanticTypeChecker {
     private boolean isFallbackExpectedType(LPCType expectedType) {
         return expectedType == LPCType.LPCSTRING
                 || expectedType == LPCType.LPCARRAY
-                || expectedType == LPCType.LPCMAPPING;
+                || expectedType == LPCType.LPCMAPPING
+                || expectedType == LPCType.LPCOBJECT;
     }
 
     /**

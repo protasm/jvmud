@@ -1067,7 +1067,8 @@ public final class BytecodeCompiler {
     private boolean isReferenceFallbackType(RuntimeType type) {
         return type.kind() == RuntimeValueKind.STRING
                 || type.kind() == RuntimeValueKind.ARRAY
-                || type.kind() == RuntimeValueKind.MAPPING;
+                || type.kind() == RuntimeValueKind.MAPPING
+                || type.kind() == RuntimeValueKind.OBJECT;
     }
 
     private void emitComparison(MethodVisitor mv, BinaryOpType op) {
