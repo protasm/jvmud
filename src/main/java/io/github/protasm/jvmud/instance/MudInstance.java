@@ -362,8 +362,6 @@ public final class MudInstance implements InstanceHost {
             runtime.clearOutputTranscript();
             if (announceConnection) {
                 writeToPlayerForSession(sessionId, CONNECTED_BANNER);
-                writeToPlayerForSession(sessionId, "Attached " + name + " as " + objectId
-                        + " in " + startingPlacePath + ".\n");
             }
             if (visitingUserId != null) {
                 runtime.withCommandActor(actor, () ->
@@ -372,6 +370,14 @@ public final class MudInstance implements InstanceHost {
                 name = visitingUserId;
             } else {
                 invokePlayerSessionConnected(actor);
+            }
+            runDueScheduledWork();
+            if (announceConnection
+                    && runtime.sessionRecord(sessionId).isPresent()
+                    && runtime.lpcObjectForSession(sessionId).orElse(null) == actor
+                    && !runtime.hasCapturedSessionInput(actor)) {
+                writeToPlayerForSession(sessionId, "Attached " + name + " as " + objectId
+                        + " in " + startingPlacePath + ".\n");
             }
             return new InstancePersona(this, sessionId, objectId, name, visitingUserId != null ? visitingUserId : name,
                     visitingGender, actor, remoteAddress);
@@ -461,6 +467,7 @@ public final class MudInstance implements InstanceHost {
             runtime.clearOutputTranscript();
             Object result = runtime.deliverCapturedSessionInput(persona.actor(), commandLine);
             runtime.clearOutputTranscript();
+            runDueScheduledWork();
             if (!isAttached(persona)) {
                 removeWorldEntity(persona);
                 return 1;
@@ -472,9 +479,14 @@ public final class MudInstance implements InstanceHost {
         runtime.clearOutputTranscript();
         runtime.refreshCommandActions(persona.actor());
         Object result = runtime.dispatchCommand(persona.actor(), commandLine);
+        runDueScheduledWork();
         refreshBoundActor(persona);
         runtime.clearOutputTranscript();
         return result;
+    }
+
+    private void runDueScheduledWork() {
+        worldRuntime.scheduler().advanceBy(0);
     }
 
     private void refreshBoundActor(InstancePersona persona) {

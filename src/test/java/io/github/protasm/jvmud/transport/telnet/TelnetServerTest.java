@@ -1428,6 +1428,57 @@ final class TelnetServerTest {
     }
 
     @Test
+    void telnetLoginWhoDoesNotExposePendingLoginControllerOrDeadPrompt() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                mfun_object = jvmud/mfuns
+                player_object = obj/login
+                initial_place = room/start
+                lifecycle.player_session_connected = logon
+                """);
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                string short() {
+                    return "start";
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/login.c"), """
+                void logon() {
+                    write("Please enter your login name: ");
+                    input_to("get_login");
+                }
+
+                void get_login(string name) {
+                    if (name == "who") {
+                        write("users=" + sizeof(users()) + "\\n");
+                        destruct(this_object());
+                    }
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                String greeting = readUntilQuietAfterContains(socket, "Please enter your login name: ");
+                assertTrue(greeting.contains("JVMud telnet."), greeting);
+                assertFalse(greeting.contains("Attached player"), greeting);
+
+                socket.getOutputStream().write("who\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String output = readUntilSocketClosed(socket);
+
+                assertTrue(output.contains("users=0"), output);
+                assertFalse(output.contains(">"), output);
+                assertFalse(output.contains("You can't do that."), output);
+            }
+        }
+    }
+
+    @Test
     void telnetSessionInvokesConfiguredPlayerPostRebindLifecycleHook() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
@@ -1813,7 +1864,7 @@ final class TelnetServerTest {
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
                 String reattached = readUntilContains(socket, "Name: ");
-                assertTrue(reattached.contains("Attached player 4 as obj/test_player#clone3"), reattached);
+                assertFalse(reattached.contains("Attached player"), reattached);
                 assertTrue(reattached.contains("Name: "), reattached);
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));

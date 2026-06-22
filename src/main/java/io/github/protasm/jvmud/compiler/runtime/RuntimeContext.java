@@ -778,11 +778,25 @@ public final class RuntimeContext {
         return objectFactory.apply(sourcePath);
     }
 
+    /**
+     * Returns mudlib-facing interactive personas that are in normal command mode.
+     *
+     * <p>Login controllers waiting for their own {@code input_to()} callbacks are still bound to
+     * the socket for input delivery, but legacy {@code users()} output should not count them as
+     * logged-in players. Gameplay objects that are temporarily waiting on another object's input
+     * callback, such as a pager command, remain visible.</p>
+     */
     public List<Object> users() {
         return sessions.values().stream()
                 .map(SessionBinding::personaProjection)
                 .filter(Objects::nonNull)
+                .filter(persona -> !isSelfCapturedInputPersona(persona))
                 .toList();
+    }
+
+    private boolean isSelfCapturedInputPersona(Object persona) {
+        PendingSessionInput pendingInput = pendingInputsByPersona.get(persona);
+        return pendingInput != null && pendingInput.handler() == persona;
     }
 
     /** Returns true when the supplied LPC object is currently bound to an active JVMud session. */
@@ -975,11 +989,15 @@ public final class RuntimeContext {
         return pendingInput != null && pendingInput.noEcho();
     }
 
+    /**
+     * Delivers one line to a pending {@code input_to()} callback while preserving that pending state
+     * for runtime queries made during the callback.
+     */
     public Object deliverCapturedSessionInput(Object persona, String line) {
         Objects.requireNonNull(persona, "persona");
         Objects.requireNonNull(line, "line");
         touchPersona(persona);
-        PendingSessionInput pendingInput = pendingInputsByPersona.remove(persona);
+        PendingSessionInput pendingInput = pendingInputsByPersona.get(persona);
         if (pendingInput == null) {
             return 0;
         }
@@ -987,8 +1005,13 @@ public final class RuntimeContext {
         Object[] invocationArgs = new Object[extraArgs.length + 1];
         invocationArgs[0] = line;
         System.arraycopy(extraArgs, 0, invocationArgs, 1, extraArgs.length);
-        return withCommandActor(persona, () ->
-                invokeObject(pendingInput.handler(), pendingInput.methodName(), invocationArgs));
+        try {
+            return withCommandActor(persona, () ->
+                    invokeObject(pendingInput.handler(), pendingInput.methodName(), invocationArgs));
+        } finally {
+            pendingInputsByPersona.computeIfPresent(persona, (ignored, current) ->
+                    current == pendingInput ? null : current);
+        }
     }
 
     public int queryIdle(Object persona) {
