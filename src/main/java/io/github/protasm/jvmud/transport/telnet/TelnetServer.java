@@ -346,6 +346,21 @@ public final class TelnetServer implements AutoCloseable {
                 failedCompileAttempts++;
                 failedCompileObjectIds.add(objectId);
             }
+            String outcome = compiled ? "compiled" : "failed";
+            double elapsedMillis = elapsedNanos / 1_000_000.0;
+            System.out.printf(
+                    Locale.ROOT,
+                    "startup compile /%s: %s in %.1f ms.%n",
+                    objectId,
+                    outcome,
+                    elapsedMillis);
+        }
+
+        @Override
+        public void objectCompileStarted(String objectId, Path sourcePath) {
+            if (enabled) {
+                System.out.println("startup compile /" + objectId + ": starting.");
+            }
         }
 
         String summary() {

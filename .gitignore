@@ -2,3 +2,4 @@ target/
 mudlibs/lp245/players/*.o
 mudlibs/lp245/source/log/COMPILER
 mudlibs/lpmuseum/accounts/*.o
+mudlibs/realmsmud/jvmud/startup.log
