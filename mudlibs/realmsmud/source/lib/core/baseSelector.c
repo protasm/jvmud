@@ -25,6 +25,30 @@ protected string CompletionEvent;
 private string *UndoLog = ({ });
 
 /////////////////////////////////////////////////////////////////////////////
+private nomask string plainSelectionLabel(string choice)
+{
+    choice = regreplace(choice || "", "(\x1b[[0-9;]+m)", "", 1);
+    choice = regreplace(choice, "[ \t\r\n]+", " ", 1);
+    choice = regreplace(choice, "^ ", "", 1);
+    return regreplace(choice, " $", "", 1);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+private nomask string abbreviatedSelectionLabel(string choice)
+{
+    choice = plainSelectionLabel(choice);
+    if (textWidth(choice) > 48)
+    {
+        while ((sizeof(choice) > 0) && (textWidth(choice) > 45))
+        {
+            choice = choice[0..(sizeof(choice) - 2)];
+        }
+        choice += "...";
+    }
+    return choice;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 public void InitializeSelector()
 {
 
@@ -288,11 +312,7 @@ public nomask int applySelection(string arguments)
         else if(member(Data, arguments))
         {
             ret = Success;
-            string choice = Data[arguments]["name"];
-            if (sizeof(choice) > 48)
-            {
-                choice = choice[0..48] + "...";
-            }
+            string choice = abbreviatedSelectionLabel(Data[arguments]["name"]);
 
             tell_object(User, configuration->decorate(
                 sprintf("You have selected '%s'.\n", choice),

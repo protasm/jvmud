@@ -4,6 +4,8 @@ import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 
 /** Applies engine-owned presentation formatting to text leaving the runtime. */
 public final class OutgoingTextFormatter {
+    private static final char ESCAPE = '\u001B';
+
     private OutgoingTextFormatter() {}
 
     public static String wrap(String text, int maxLineLength) {
@@ -38,8 +40,8 @@ public final class OutgoingTextFormatter {
 
     private static void appendWrappedLine(StringBuilder output, String line, int maxLineLength) {
         String remaining = line;
-        while (remaining.length() > maxLineLength) {
-            int breakAt = lastWhitespaceAtOrBefore(remaining, maxLineLength);
+        while (visibleLength(remaining) > maxLineLength) {
+            int breakAt = lastWhitespaceAtOrBeforeVisibleColumn(remaining, maxLineLength);
             if (breakAt < 0) {
                 output.append(remaining);
                 return;
@@ -50,14 +52,56 @@ public final class OutgoingTextFormatter {
         output.append(remaining);
     }
 
-    private static int lastWhitespaceAtOrBefore(String text, int maxLineLength) {
-        int last = Math.min(maxLineLength, text.length() - 1);
-        for (int i = last; i >= 0; i--) {
-            if (Character.isWhitespace(text.charAt(i))) {
-                return i;
+    private static int visibleLength(String text) {
+        int visible = 0;
+        for (int i = 0; i < text.length(); ) {
+            int ansiEnd = ansiEscapeEnd(text, i);
+            if (ansiEnd > i) {
+                i = ansiEnd;
+                continue;
+            }
+            int codePoint = text.codePointAt(i);
+            visible++;
+            i += Character.charCount(codePoint);
+        }
+        return visible;
+    }
+
+    private static int lastWhitespaceAtOrBeforeVisibleColumn(String text, int maxLineLength) {
+        int lastWhitespace = -1;
+        int visible = 0;
+        for (int i = 0; i < text.length(); ) {
+            int ansiEnd = ansiEscapeEnd(text, i);
+            if (ansiEnd > i) {
+                i = ansiEnd;
+                continue;
+            }
+            int codePoint = text.codePointAt(i);
+            if (visible > maxLineLength) {
+                break;
+            }
+            if (Character.isWhitespace(codePoint)) {
+                lastWhitespace = i;
+            }
+            visible++;
+            i += Character.charCount(codePoint);
+        }
+        return lastWhitespace;
+    }
+
+    private static int ansiEscapeEnd(String text, int index) {
+        if (index + 1 >= text.length() || text.charAt(index) != ESCAPE || text.charAt(index + 1) != '[') {
+            return index;
+        }
+        int cursor = index + 2;
+        while (cursor < text.length()) {
+            char current = text.charAt(cursor);
+            cursor++;
+            if (current == 'm') {
+                return cursor;
             }
         }
-        return -1;
+        return index;
     }
 
     private static String stripLeadingWhitespace(String text) {

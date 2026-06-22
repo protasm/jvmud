@@ -14,6 +14,20 @@ final class OutgoingTextFormatterTest {
     }
 
     @Test
+    void ignoresAnsiColorSequencesWhenWrapping() {
+        assertEquals(
+                "\u001B[0;32mSer Osis of D'Liver can kiss my arse.\u001B[0m",
+                OutgoingTextFormatter.wrap("\u001B[0;32mSer Osis of D'Liver can kiss my arse.\u001B[0m", 40));
+    }
+
+    @Test
+    void wrapsColoredTextAtVisibleWhitespace() {
+        assertEquals(
+                "\u001B[0;32mone two three four\u001B[0m\nfive six seven",
+                OutgoingTextFormatter.wrap("\u001B[0;32mone two three four\u001B[0m five six seven", 20));
+    }
+
+    @Test
     void leavesLongWordsIntactWhenNoWhitespaceCanBeUsed() {
         assertEquals(
                 "supercalifragilistic",
