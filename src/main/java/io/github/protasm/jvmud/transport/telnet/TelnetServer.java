@@ -366,6 +366,24 @@ public final class TelnetServer implements AutoCloseable {
             }
         }
 
+        @Override
+        public void objectLoadFailed(String objectId, Path sourcePath, int depth, Throwable failure) {
+            if (active) {
+                System.out.println(loadIndent(depth)
+                        + "startup object /"
+                        + objectId
+                        + ": "
+                        + failureSummary(failure));
+            }
+        }
+
+        @Override
+        public void objectCompileFailed(String objectId, Path sourcePath, Throwable failure) {
+            if (active) {
+                System.out.println("startup compile /" + objectId + ": " + failureSummary(failure));
+            }
+        }
+
         void finishStartup() {
             active = false;
         }
@@ -395,6 +413,16 @@ public final class TelnetServer implements AutoCloseable {
             if (enabled) {
                 System.out.println(summary());
             }
+        }
+
+        private static String failureSummary(Throwable failure) {
+            String message = failure.getMessage();
+            if (message == null || message.isBlank()) {
+                message = failure.getClass().getName();
+            } else {
+                message = failure.getClass().getSimpleName() + ": " + message;
+            }
+            return "failed because " + message;
         }
     }
 

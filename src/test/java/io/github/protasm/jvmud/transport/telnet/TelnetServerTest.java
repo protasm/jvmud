@@ -2220,6 +2220,43 @@ final class TelnetServerTest {
     }
 
     @Test
+    void objectLoadObserverReportsRuntimeFailureCause() throws Exception {
+        Files.writeString(tempDir.resolve("broken.c"), """
+                void reset() {
+                    jvmud_raise_error("missing setup");
+                }
+                """);
+
+        List<String> objectLoadEvents = new java.util.ArrayList<>();
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
+                .baseIncludePath(tempDir)
+                .objectLoadObserver(new LPCObjectLoadObserver() {
+                    @Override
+                    public void objectLoadFailed(String objectId, Path sourcePath, int depth, Throwable failure) {
+                        objectLoadEvents.add("failed " + depth + " " + objectId + " " + failure.getMessage());
+                    }
+
+                    @Override
+                    public void objectLoadFinished(
+                            String objectId, Path sourcePath, int depth, boolean loaded, long elapsedNanos) {
+                        objectLoadEvents.add("finish " + depth + " " + objectId + " " + loaded);
+                    }
+                })
+                .build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "reset")
+                .build());
+
+        assertThrows(RuntimeException.class, () -> runtime.load("broken"));
+
+        assertEquals(2, objectLoadEvents.size());
+        assertTrue(objectLoadEvents.get(0).startsWith("failed 0 broken "), objectLoadEvents.toString());
+        assertTrue(objectLoadEvents.get(0).contains("missing setup"), objectLoadEvents.toString());
+        assertEquals("finish 0 broken false", objectLoadEvents.get(1));
+    }
+
+    @Test
     void startupObjectLoadTraceSummarizesUniqueObjectsAndAttempts() {
         TelnetServer.StartupObjectLoadTrace trace = TelnetServer.commandLineObjectLoadTrace(true);
         PrintStream originalOut = System.out;
@@ -2254,6 +2291,33 @@ final class TelnetServerTest {
                         + "startup compile summary: compiled 2 unique object(s) across 3 compile attempt(s), "
                         + "failed 1 unique object(s) across 1 compile attempt(s).",
                 trace.summary());
+    }
+
+    @Test
+    void startupObjectLoadTracePrintsFailureCause() {
+        TelnetServer.StartupObjectLoadTrace trace = TelnetServer.commandLineObjectLoadTrace(true);
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
+            trace.objectLoadFailed(
+                    "obj/broken",
+                    tempDir.resolve("obj/broken.c"),
+                    1,
+                    new IllegalStateException("database not installed"));
+            trace.objectCompileFailed(
+                    "obj/uncompiled",
+                    tempDir.resolve("obj/uncompiled.c"),
+                    new IllegalArgumentException("bad syntax"));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        String text = output.toString(StandardCharsets.UTF_8);
+        assertTrue(text.contains(
+                "  startup object /obj/broken: failed because IllegalStateException: database not installed"), text);
+        assertTrue(text.contains(
+                "startup compile /obj/uncompiled: failed because IllegalArgumentException: bad syntax"), text);
     }
 
     @Test

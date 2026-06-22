@@ -183,6 +183,7 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jvmud_format_text", boundary.directEfunAlias("sprintf").orElseThrow());
         assertEquals("jvmud_db_exec", boundary.directEfunAlias("db_exec").orElseThrow());
         assertEquals("jvmud_db_fetch", boundary.directEfunAlias("db_fetch").orElseThrow());
+        assertEquals("jvmud_find_player", boundary.directEfunAlias("findPlayer").orElseThrow());
         assertEquals("jvmud_write_to_lpc_object", boundary.directEfunAlias("tell_object").orElseThrow());
         assertTrue(boundary.directEfunAlias("exec").isEmpty());
         assertEquals("jvmud_capture_session_input", boundary.directEfunAlias("input_to").orElseThrow());

@@ -188,6 +188,7 @@ public final class LPCRuntime {
                 endObjectLoad(objectId);
             }
         } catch (RuntimeException | Error e) {
+            objectLoadObserver.objectLoadFailed(objectId, normalized, depth, e);
             objectLoadObserver.objectLoadFinished(objectId, normalized, depth, false, System.nanoTime() - startedAt);
             throw e;
         }
@@ -264,9 +265,11 @@ public final class LPCRuntime {
         } catch (IOException e) {
             String message = "Failed to read source file: " + normalized;
             notifyCompilationError(objectId, message + ": " + e.getMessage());
+            objectLoadObserver.objectCompileFailed(objectId, normalized, e);
             objectLoadObserver.objectCompileFinished(objectId, normalized, false, System.nanoTime() - startedAt);
             throw new LPCRuntimeException(message, e);
         } catch (RuntimeException | Error e) {
+            objectLoadObserver.objectCompileFailed(objectId, normalized, e);
             objectLoadObserver.objectCompileFinished(objectId, normalized, false, System.nanoTime() - startedAt);
             throw e;
         }
@@ -276,6 +279,7 @@ public final class LPCRuntime {
         try {
             result = pipeline.run(normalized, source, jvmInternalName(objectId), displayPath, ParserOptions.defaults());
         } catch (RuntimeException | Error e) {
+            objectLoadObserver.objectCompileFailed(objectId, normalized, e);
             objectLoadObserver.objectCompileFinished(objectId, normalized, false, System.nanoTime() - startedAt);
             throw e;
         }

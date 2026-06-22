@@ -4990,6 +4990,36 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void findPlayerReturnsInteractiveUserByMudlibName() throws Exception {
+        Files.writeString(tempDir.resolve("player.c"), """
+                string RealName() {
+                    return "Gorthaur";
+                }
+
+                object find_player(string name) {
+                    return jvmud_find_player(name);
+                }
+                """);
+        Files.writeString(tempDir.resolve("offline.c"), """
+                string RealName() {
+                    return "Dwight";
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+        LPCObjectHandle offline = runtime.load(tempDir.resolve("offline.c"));
+        runtime.bindSession("s1", player.instance(), "127.0.0.1", ignored -> {});
+
+        assertSame(player.instance(), player.invoke("find_player", "gorthaur"));
+        assertSame(player.instance(), player.invoke("find_player", " GORTHAUR "));
+        assertNull(player.invoke("find_player", "dwight"));
+        assertFalse(runtime.isInteractive(offline.instance()));
+    }
+
+    @Test
     void commandDispatchTreatsActorMovementAsHandledWhenMudlibReturnsZeroish() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.createDirectories(tempDir.resolve("room"));
@@ -5195,6 +5225,83 @@ final class CompilerSmokeTest {
 
         assertEquals(1, runtime.dispatchCommand(player.instance(), "look"));
         assertEquals("handled look\n", runtime.outputTranscript());
+    }
+
+    @Test
+    void commandDispatchRunsScopedDirectionBeforeDecliningCatchAllAction() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void add_action(string method, string verb) {
+                    jvmud_add_action(method, verb);
+                }
+
+                void add_action(string method, string verb, int flag) {
+                    jvmud_add_action(method, verb, flag);
+                }
+
+                void move_object(mixed ob, mixed destination) {
+                    jvmud_move_entity(ob, destination);
+                }
+
+                object this_player() {
+                    return jvmud_current_actor();
+                }
+
+                string query_verb() {
+                    return jvmud_current_verb();
+                }
+
+                void write(mixed value) {
+                    jvmud_write(value);
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                void create() {
+                    add_action("executeCommand", "", 2);
+                }
+
+                int executeCommand(string command) {
+                    return 0;
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void init() {
+                    add_action("move", "west");
+                }
+
+                int move(string ignored) {
+                    if (query_verb() != "west") {
+                        return 0;
+                    }
+                    write("west moved\\n");
+                    move_object(this_player(), "room/next");
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/next.c"), """
+                string short() {
+                    return "next room";
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED, "create")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+        LPCObjectHandle start = runtime.load(tempDir.resolve("room/start.c"));
+        LPCObjectHandle next = runtime.load(tempDir.resolve("room/next.c"));
+        runtime.moveObject(player.instance(), start.instance());
+        runtime.refreshCommandActions(player.instance());
+
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "west"));
+        assertEquals(next.instance(), runtime.environment(player.instance()));
+        assertEquals("west moved\n", runtime.outputTranscript());
     }
 
     @Test

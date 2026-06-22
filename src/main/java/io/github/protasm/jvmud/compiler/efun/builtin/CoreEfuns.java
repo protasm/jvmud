@@ -173,6 +173,8 @@ import javax.crypto.spec.PBEKeySpec;
  * <h2>Session, users, persistence, and security helpers</h2>
  * <ul>
  *   <li>{@code jvmud_users() : array} returns the active user/player objects known to the runtime.</li>
+ *   <li>{@code jvmud_find_player(string name) : object} finds an active interactive user/player
+ *       by common mudlib name methods.</li>
  *   <li>{@code jvmud_previous_object() : object} returns the previous LPC object on the runtime call
  *       stack.</li>
  *   <li>{@code jvmud_interactive(mixed user) : status} reports whether an object is bound to an active
@@ -430,6 +432,8 @@ public final class CoreEfuns {
                 (runtime, args) -> Math.sqrt(toDouble(args[0]))));
         efuns.add(efun("jvmud_users", LPCType.LPCARRAY, List.of(),
                 (runtime, args) -> runtime.users()));
+        efuns.add(efun("jvmud_find_player", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> findPlayer(runtime, String.valueOf(args[0]))));
         efuns.add(efun("jvmud_previous_object", LPCType.LPCOBJECT, List.of(),
                 (runtime, args) -> runtime.previousObject()));
         efuns.add(efun("jvmud_interactive", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
@@ -865,6 +869,39 @@ public final class CoreEfuns {
             }
         }
         return false;
+    }
+
+    private static Object findPlayer(RuntimeContext runtime, String name) {
+        String normalizedName = normalizePlayerName(name);
+        if (normalizedName.isEmpty()) {
+            return 0;
+        }
+        for (Object user : runtime.users()) {
+            if (user != null && playerNameMatches(runtime, user, normalizedName)) {
+                return user;
+            }
+        }
+        return 0;
+    }
+
+    private static boolean playerNameMatches(RuntimeContext runtime, Object user, String normalizedName) {
+        for (String methodName : List.of("RealName", "Name", "query_name", "name")) {
+            if (!methodExists(user, methodName)) {
+                continue;
+            }
+            Object value = runtime.invokeOptionalObject(user, methodName);
+            if (normalizePlayerName(value).equals(normalizedName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizePlayerName(Object value) {
+        if (value == null || (value instanceof Number number && number.intValue() == 0)) {
+            return "";
+        }
+        return String.valueOf(value).trim().toLowerCase(Locale.ROOT);
     }
 
     private static List<String> lpcObjectMethods(Object target) {

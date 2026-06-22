@@ -28,6 +28,16 @@ public interface LPCObjectLoadObserver {
     default void objectLoadFinished(String objectId, Path sourcePath, int depth, boolean loaded, long elapsedNanos) {}
 
     /**
+     * Called when a shared LPC object load fails with an exception.
+     *
+     * @param objectId canonical mudlib object id
+     * @param sourcePath resolved source path
+     * @param depth nested load depth reported at start
+     * @param failure exception or error that prevented the load
+     */
+    default void objectLoadFailed(String objectId, Path sourcePath, int depth, Throwable failure) {}
+
+    /**
      * Called before the runtime compiles a source file through {@link LPCRuntime#compile(Path)}.
      *
      * @param objectId canonical mudlib object id
@@ -44,4 +54,13 @@ public interface LPCObjectLoadObserver {
      * @param elapsedNanos elapsed compile time in nanoseconds
      */
     default void objectCompileFinished(String objectId, Path sourcePath, boolean compiled, long elapsedNanos) {}
+
+    /**
+     * Called when a source compilation attempt fails with an exception.
+     *
+     * @param objectId canonical mudlib object id
+     * @param sourcePath resolved source path
+     * @param failure exception or error that prevented compilation
+     */
+    default void objectCompileFailed(String objectId, Path sourcePath, Throwable failure) {}
 }
