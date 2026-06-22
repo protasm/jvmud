@@ -382,6 +382,7 @@ void input_to(string method, int flags, mixed arg1, mixed arg2) {
 string program_name(mixed ob) {
     string ret = jvmud_lpc_object_id(ob);
     if (ret && sizeof(ret)) {
+        ret = regreplace(ret, "(#[^.]*)", "", 1);
         if (ret[0] != '/') {
             ret = "/" + ret;
         }

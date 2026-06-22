@@ -127,6 +127,14 @@ final class RealmsMudCompatibilityScanTest {
                 "Help detail rendering should pass the numeric unicode flag through display helpers.");
     }
 
+    @Test
+    void realmsProgramNameReportsBlueprintPathForClones() throws IOException {
+        String jvmudShimSource = Files.readString(MUDLIB_ROOT.resolve("jvmud/jvmud.c"));
+        assertTrue(
+                jvmudShimSource.contains("ret = regreplace(ret, \"(#[^.]*)\", \"\", 1);"),
+                "RealmsMUD security checks compare program_name() to blueprint paths, so clone ids must be stripped.");
+    }
+
     private static List<String> compatibilitySet(Path sourceRoot) throws IOException {
         Set<String> sourceNames = new LinkedHashSet<>(BOOT_AND_CORE_COMPATIBILITY_SET);
         for (String sweepRoot : COMPATIBILITY_SWEEP_ROOTS) {
