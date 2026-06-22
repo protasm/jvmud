@@ -14,8 +14,10 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -77,15 +79,17 @@ public final class TelnetServer implements AutoCloseable {
             return;
         }
 
+        StartupObjectLoadTrace startupLoadTrace = commandLineObjectLoadTrace(options.traceStartupLoads());
         TelnetServer server = new TelnetServer(
                 options.bindAddress(),
                 options.port(),
                 options.mudlibRoot(),
                 options.configObjectPath(),
                 commandLineBootProgress(),
-                commandLineObjectLoadObserver(options.traceStartupLoads()));
+                startupLoadTrace);
         server.start();
         System.out.println(server.preloadSummary());
+        startupLoadTrace.printSummaryIfEnabled();
         System.out.println("JVMud mudlib listening on " + server.bindAddress() + ":" + server.port());
         Runtime.getRuntime().addShutdownHook(new Thread(server::close, "jvmud-start-shutdown"));
         server.await();
@@ -277,34 +281,99 @@ public final class TelnetServer implements AutoCloseable {
         };
     }
 
-    private static LPCObjectLoadObserver commandLineObjectLoadObserver(boolean traceStartupLoads) {
-        if (!traceStartupLoads) {
-            return LPCObjectLoadObserver.NONE;
-        }
-        return new LPCObjectLoadObserver() {
-            @Override
-            public void objectLoadStarted(String objectId, Path sourcePath, int depth) {
-                System.out.println(loadIndent(depth) + "startup object /" + objectId + ": starting.");
-            }
-
-            @Override
-            public void objectLoadFinished(
-                    String objectId, Path sourcePath, int depth, boolean loaded, long elapsedNanos) {
-                String outcome = loaded ? "loaded" : "failed";
-                double elapsedMillis = elapsedNanos / 1_000_000.0;
-                System.out.printf(
-                        Locale.ROOT,
-                        "%sstartup object /%s: %s in %.1f ms.%n",
-                        loadIndent(depth),
-                        objectId,
-                        outcome,
-                        elapsedMillis);
-            }
-        };
+    static StartupObjectLoadTrace commandLineObjectLoadTrace(boolean traceStartupLoads) {
+        return new StartupObjectLoadTrace(traceStartupLoads);
     }
 
     private static String loadIndent(int depth) {
         return "  ".repeat(Math.max(0, depth));
+    }
+
+    static final class StartupObjectLoadTrace implements LPCObjectLoadObserver {
+        private final boolean enabled;
+        private final Set<String> loadedObjectIds = new HashSet<>();
+        private final Set<String> failedObjectIds = new HashSet<>();
+        private final Set<String> compiledObjectIds = new HashSet<>();
+        private final Set<String> failedCompileObjectIds = new HashSet<>();
+        private int loadedAttempts;
+        private int failedAttempts;
+        private int compiledAttempts;
+        private int failedCompileAttempts;
+
+        StartupObjectLoadTrace(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        @Override
+        public void objectLoadStarted(String objectId, Path sourcePath, int depth) {
+            if (enabled) {
+                System.out.println(loadIndent(depth) + "startup object /" + objectId + ": starting.");
+            }
+        }
+
+        @Override
+        public void objectLoadFinished(String objectId, Path sourcePath, int depth, boolean loaded, long elapsedNanos) {
+            if (!enabled) {
+                return;
+            }
+            if (loaded) {
+                loadedAttempts++;
+                loadedObjectIds.add(objectId);
+            } else {
+                failedAttempts++;
+                failedObjectIds.add(objectId);
+            }
+            String outcome = loaded ? "loaded" : "failed";
+            double elapsedMillis = elapsedNanos / 1_000_000.0;
+            System.out.printf(
+                    Locale.ROOT,
+                    "%sstartup object /%s: %s in %.1f ms.%n",
+                    loadIndent(depth),
+                    objectId,
+                    outcome,
+                    elapsedMillis);
+        }
+
+        @Override
+        public void objectCompileFinished(String objectId, Path sourcePath, boolean compiled, long elapsedNanos) {
+            if (!enabled) {
+                return;
+            }
+            if (compiled) {
+                compiledAttempts++;
+                compiledObjectIds.add(objectId);
+            } else {
+                failedCompileAttempts++;
+                failedCompileObjectIds.add(objectId);
+            }
+        }
+
+        String summary() {
+            return "startup object load summary: loaded "
+                    + loadedObjectIds.size()
+                    + " unique object(s) across "
+                    + loadedAttempts
+                    + " load attempt(s), failed "
+                    + failedObjectIds.size()
+                    + " unique object(s) across "
+                    + failedAttempts
+                    + " load attempt(s).\n"
+                    + "startup compile summary: compiled "
+                    + compiledObjectIds.size()
+                    + " unique object(s) across "
+                    + compiledAttempts
+                    + " compile attempt(s), failed "
+                    + failedCompileObjectIds.size()
+                    + " unique object(s) across "
+                    + failedCompileAttempts
+                    + " compile attempt(s).";
+        }
+
+        void printSummaryIfEnabled() {
+            if (enabled) {
+                System.out.println(summary());
+            }
+        }
     }
 
     private void acceptLoop() {

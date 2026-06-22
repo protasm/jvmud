@@ -2,9 +2,9 @@ package io.github.protasm.jvmud.compiler.exec;
 
 import java.nio.file.Path;
 
-/** Observes host-side LPC object load attempts for diagnostics. */
+/** Observes host-side LPC object load and compile attempts for diagnostics. */
 public interface LPCObjectLoadObserver {
-    /** Observer that ignores all load events. */
+    /** Observer that ignores all diagnostic events. */
     LPCObjectLoadObserver NONE = new LPCObjectLoadObserver() {};
 
     /**
@@ -26,4 +26,22 @@ public interface LPCObjectLoadObserver {
      * @param elapsedNanos elapsed load time in nanoseconds
      */
     default void objectLoadFinished(String objectId, Path sourcePath, int depth, boolean loaded, long elapsedNanos) {}
+
+    /**
+     * Called before the runtime compiles a source file through {@link LPCRuntime#compile(Path)}.
+     *
+     * @param objectId canonical mudlib object id
+     * @param sourcePath resolved source path
+     */
+    default void objectCompileStarted(String objectId, Path sourcePath) {}
+
+    /**
+     * Called after the runtime finishes a source compilation attempt.
+     *
+     * @param objectId canonical mudlib object id
+     * @param sourcePath resolved source path
+     * @param compiled whether compilation completed without reported problems
+     * @param elapsedNanos elapsed compile time in nanoseconds
+     */
+    default void objectCompileFinished(String objectId, Path sourcePath, boolean compiled, long elapsedNanos) {}
 }

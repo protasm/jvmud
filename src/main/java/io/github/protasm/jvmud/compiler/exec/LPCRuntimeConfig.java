@@ -70,7 +70,7 @@ public final class LPCRuntimeConfig {
         return compilationObserver;
     }
 
-    /** Returns the observer used for host-side LPC object load diagnostics. */
+    /** Returns the observer used for host-side LPC object load and compile diagnostics. */
     public LPCObjectLoadObserver objectLoadObserver() {
         return objectLoadObserver;
     }
@@ -134,7 +134,7 @@ public final class LPCRuntimeConfig {
             return this;
         }
 
-        /** Supplies an observer for host-side LPC object load attempts. */
+        /** Supplies an observer for host-side LPC object load and compile attempts. */
         public Builder objectLoadObserver(LPCObjectLoadObserver objectLoadObserver) {
             if (objectLoadObserver != null) {
                 this.objectLoadObserver = objectLoadObserver;

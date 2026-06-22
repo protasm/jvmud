@@ -249,26 +249,39 @@ public final class LPCRuntime {
     public CompilationResult compile(Path sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
+        String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
+        long startedAt = System.nanoTime();
+        objectLoadObserver.objectCompileStarted(objectId, normalized);
         String source;
 
         try {
             if (!Files.exists(normalized)) {
-                String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
                 String message = "Source file not found: " + normalized;
                 notifyCompilationError(objectId, message);
                 throw new LPCRuntimeException(message);
             }
             source = Files.readString(normalized);
         } catch (IOException e) {
-            String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
             String message = "Failed to read source file: " + normalized;
             notifyCompilationError(objectId, message + ": " + e.getMessage());
+            objectLoadObserver.objectCompileFinished(objectId, normalized, false, System.nanoTime() - startedAt);
             throw new LPCRuntimeException(message, e);
+        } catch (RuntimeException | Error e) {
+            objectLoadObserver.objectCompileFinished(objectId, normalized, false, System.nanoTime() - startedAt);
+            throw e;
         }
 
-        String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
         String displayPath = "/" + objectId;
-        return pipeline.run(normalized, source, jvmInternalName(objectId), displayPath, ParserOptions.defaults());
+        CompilationResult result;
+        try {
+            result = pipeline.run(normalized, source, jvmInternalName(objectId), displayPath, ParserOptions.defaults());
+        } catch (RuntimeException | Error e) {
+            objectLoadObserver.objectCompileFinished(objectId, normalized, false, System.nanoTime() - startedAt);
+            throw e;
+        }
+        objectLoadObserver.objectCompileFinished(
+                objectId, normalized, result.getProblems().isEmpty(), System.nanoTime() - startedAt);
+        return result;
     }
 
     /** Attempts to load source and captures runtime failures as a result object. */

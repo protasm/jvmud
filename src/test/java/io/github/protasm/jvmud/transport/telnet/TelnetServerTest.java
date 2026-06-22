@@ -25,8 +25,10 @@ import io.github.protasm.jvmud.instance.MudlibBoot;
 import io.github.protasm.jvmud.instance.MudlibBootProgress;
 import io.github.protasm.jvmud.instance.MudlibBootResult;
 import io.github.protasm.jvmud.instance.InstancePersona;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.PrintStream;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.net.Socket;
@@ -2189,6 +2191,17 @@ final class TelnetServerTest {
                             String objectId, Path sourcePath, int depth, boolean loaded, long elapsedNanos) {
                         objectLoadEvents.add("finish " + depth + " " + objectId + " " + loaded);
                     }
+
+                    @Override
+                    public void objectCompileStarted(String objectId, Path sourcePath) {
+                        objectLoadEvents.add("compile-start " + objectId);
+                    }
+
+                    @Override
+                    public void objectCompileFinished(
+                            String objectId, Path sourcePath, boolean compiled, long elapsedNanos) {
+                        objectLoadEvents.add("compile-finish " + objectId + " " + compiled);
+                    }
                 })
                 .build());
         CoreEfuns.registerCore(runtime);
@@ -2197,9 +2210,39 @@ final class TelnetServerTest {
 
         assertEquals(List.of(
                 "start 0 obj/preload",
+                "compile-start obj/preload",
+                "compile-finish obj/preload true",
                 "start 1 obj/dependency",
+                "compile-start obj/dependency",
+                "compile-finish obj/dependency true",
                 "finish 1 obj/dependency true",
                 "finish 0 obj/preload true"), objectLoadEvents);
+    }
+
+    @Test
+    void startupObjectLoadTraceSummarizesUniqueObjectsAndAttempts() {
+        TelnetServer.StartupObjectLoadTrace trace = TelnetServer.commandLineObjectLoadTrace(true);
+        PrintStream originalOut = System.out;
+        try {
+            System.setOut(new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8));
+            trace.objectLoadFinished("obj/one", tempDir.resolve("obj/one.c"), 0, true, 1_000_000);
+            trace.objectLoadFinished("obj/one", tempDir.resolve("obj/one.c"), 0, true, 2_000_000);
+            trace.objectLoadFinished("obj/two", tempDir.resolve("obj/two.c"), 0, true, 3_000_000);
+            trace.objectLoadFinished("obj/broken", tempDir.resolve("obj/broken.c"), 0, false, 4_000_000);
+            trace.objectCompileFinished("obj/one", tempDir.resolve("obj/one.c"), true, 5_000_000);
+            trace.objectCompileFinished("obj/one", tempDir.resolve("obj/one.c"), true, 6_000_000);
+            trace.objectCompileFinished("obj/two", tempDir.resolve("obj/two.c"), true, 7_000_000);
+            trace.objectCompileFinished("obj/broken", tempDir.resolve("obj/broken.c"), false, 8_000_000);
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertEquals(
+                "startup object load summary: loaded 2 unique object(s) across 3 load attempt(s), "
+                        + "failed 1 unique object(s) across 1 load attempt(s).\n"
+                        + "startup compile summary: compiled 2 unique object(s) across 3 compile attempt(s), "
+                        + "failed 1 unique object(s) across 1 compile attempt(s).",
+                trace.summary());
     }
 
     @Test
