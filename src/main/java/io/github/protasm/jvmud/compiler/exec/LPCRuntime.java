@@ -71,6 +71,7 @@ public final class LPCRuntime {
     private final CompilationPipeline pipeline;
     private final Path baseIncludePath;
     private final List<Path> includeSearchPaths;
+    private final LPCObjectLoadObserver objectLoadObserver;
     private final List<String> loadingObjectIds = new ArrayList<>();
     private final LpcObjectStateStore objectStateStore = new LpcObjectStateStore();
     private final boolean useBoundaryMudlibRootForIncludes;
@@ -84,6 +85,7 @@ public final class LPCRuntime {
         Objects.requireNonNull(config, "config");
         this.baseIncludePath = config.baseIncludePath();
         this.includeSearchPaths = config.includeSearchPaths();
+        this.objectLoadObserver = config.objectLoadObserver();
         this.useBoundaryMudlibRootForIncludes = config.includeResolver() == null;
         this.runtimeContext = new RuntimeContext(config.resolveIncludeResolver());
         this.runtimeContext.setObjectFactory(this::cloneObject);
@@ -165,18 +167,29 @@ public final class LPCRuntime {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
         String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
-        if (!Files.exists(normalized)) {
-            Object supplied = notifyObjectSourceMissing(objectId);
-            if (supplied != null) {
-                return new LPCObjectHandle(this, objectId, supplied.getClass(), supplied);
-            }
-        }
-
-        beginObjectLoad(objectId);
+        int depth = loadingObjectIds.size();
+        long startedAt = System.nanoTime();
+        objectLoadObserver.objectLoadStarted(objectId, normalized, depth);
         try {
-            return loadUnchecked(normalized, objectId);
-        } finally {
-            endObjectLoad(objectId);
+            if (!Files.exists(normalized)) {
+                Object supplied = notifyObjectSourceMissing(objectId);
+                if (supplied != null) {
+                    objectLoadObserver.objectLoadFinished(objectId, normalized, depth, true, System.nanoTime() - startedAt);
+                    return new LPCObjectHandle(this, objectId, supplied.getClass(), supplied);
+                }
+            }
+
+            beginObjectLoad(objectId);
+            try {
+                LPCObjectHandle handle = loadUnchecked(normalized, objectId);
+                objectLoadObserver.objectLoadFinished(objectId, normalized, depth, true, System.nanoTime() - startedAt);
+                return handle;
+            } finally {
+                endObjectLoad(objectId);
+            }
+        } catch (RuntimeException | Error e) {
+            objectLoadObserver.objectLoadFinished(objectId, normalized, depth, false, System.nanoTime() - startedAt);
+            throw e;
         }
     }
 

@@ -21,6 +21,7 @@ public final class LPCRuntimeConfig {
     private final ClassLoader parentClassLoader;
     private final IncludeResolver includeResolver;
     private final CompilationObserver compilationObserver;
+    private final LPCObjectLoadObserver objectLoadObserver;
 
     private LPCRuntimeConfig(Builder builder) {
         this.baseIncludePath = (builder.baseIncludePath != null)
@@ -31,6 +32,7 @@ public final class LPCRuntimeConfig {
         this.parentClassLoader = Objects.requireNonNull(builder.parentClassLoader, "parentClassLoader");
         this.includeResolver = builder.includeResolver;
         this.compilationObserver = Objects.requireNonNull(builder.compilationObserver, "compilationObserver");
+        this.objectLoadObserver = Objects.requireNonNull(builder.objectLoadObserver, "objectLoadObserver");
     }
 
     /** Starts a builder with local-development defaults. */
@@ -68,6 +70,11 @@ public final class LPCRuntimeConfig {
         return compilationObserver;
     }
 
+    /** Returns the observer used for host-side LPC object load diagnostics. */
+    public LPCObjectLoadObserver objectLoadObserver() {
+        return objectLoadObserver;
+    }
+
     IncludeResolver resolveIncludeResolver() {
         if (includeResolver != null) {
             return includeResolver;
@@ -83,6 +90,7 @@ public final class LPCRuntimeConfig {
         private ClassLoader parentClassLoader = LPCRuntimeConfig.class.getClassLoader();
         private IncludeResolver includeResolver;
         private CompilationObserver compilationObserver = CompilationObserver.NONE;
+        private LPCObjectLoadObserver objectLoadObserver = LPCObjectLoadObserver.NONE;
 
         /** Sets the mudlib root used to resolve host-supplied source paths. */
         public Builder baseIncludePath(Path baseIncludePath) {
@@ -122,6 +130,14 @@ public final class LPCRuntimeConfig {
         public Builder compilationObserver(CompilationObserver compilationObserver) {
             if (compilationObserver != null) {
                 this.compilationObserver = compilationObserver;
+            }
+            return this;
+        }
+
+        /** Supplies an observer for host-side LPC object load attempts. */
+        public Builder objectLoadObserver(LPCObjectLoadObserver objectLoadObserver) {
+            if (objectLoadObserver != null) {
+                this.objectLoadObserver = objectLoadObserver;
             }
             return this;
         }

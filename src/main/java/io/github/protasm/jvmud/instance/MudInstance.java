@@ -1,6 +1,7 @@
 package io.github.protasm.jvmud.instance;
 
 import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
+import io.github.protasm.jvmud.compiler.exec.LPCObjectLoadObserver;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.engine.world.Capability;
@@ -89,7 +90,7 @@ public final class MudInstance implements InstanceHost {
     }
 
     public static MudInstance boot(Path mudlibRoot, String configObjectPath) {
-        return boot(mudlibRoot, configObjectPath, MudlibBootProgress.none());
+        return boot(mudlibRoot, configObjectPath, MudlibBootProgress.none(), LPCObjectLoadObserver.NONE);
     }
 
     /**
@@ -101,9 +102,27 @@ public final class MudInstance implements InstanceHost {
      * @return booted mud instance ready for session attachment
      */
     public static MudInstance boot(Path mudlibRoot, String configObjectPath, MudlibBootProgress progress) {
+        return boot(mudlibRoot, configObjectPath, progress, LPCObjectLoadObserver.NONE);
+    }
+
+    /**
+     * Boots a persistent mud instance with host-visible preload and object-load diagnostics.
+     *
+     * @param mudlibRoot filesystem root of the selected mudlib
+     * @param configObjectPath mudlib-relative JVMud configuration path
+     * @param progress callback for local startup progress events
+     * @param objectLoadObserver observer for each shared LPC object load attempt
+     * @return booted mud instance ready for session attachment
+     */
+    public static MudInstance boot(
+            Path mudlibRoot,
+            String configObjectPath,
+            MudlibBootProgress progress,
+            LPCObjectLoadObserver objectLoadObserver) {
         Path normalizedRoot = mudlibRoot.toAbsolutePath().normalize();
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(normalizedRoot)
+                .objectLoadObserver(objectLoadObserver)
                 .build());
         CoreEfuns.registerCore(runtime);
 

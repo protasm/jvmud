@@ -1,5 +1,6 @@
 package io.github.protasm.jvmud.transport.telnet;
 
+import io.github.protasm.jvmud.compiler.exec.LPCObjectLoadObserver;
 import io.github.protasm.jvmud.instance.InstanceHost;
 import io.github.protasm.jvmud.instance.MudlibBoot;
 import io.github.protasm.jvmud.instance.MudlibBootProgress;
@@ -13,6 +14,7 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,6 +32,7 @@ public final class TelnetServer implements AutoCloseable {
     private final Path mudlibRoot;
     private final String configObjectPath;
     private final MudlibBootProgress bootProgress;
+    private final LPCObjectLoadObserver objectLoadObserver;
     private final ExecutorService sessions;
     private InstanceHost mud;
     private WorldClock worldClock;
@@ -39,7 +42,7 @@ public final class TelnetServer implements AutoCloseable {
     private boolean shutdownNotified;
 
     public TelnetServer(String bindAddress, int port, Path mudlibRoot, String configObjectPath) {
-        this(bindAddress, port, mudlibRoot, configObjectPath, MudlibBootProgress.none());
+        this(bindAddress, port, mudlibRoot, configObjectPath, MudlibBootProgress.none(), LPCObjectLoadObserver.NONE);
     }
 
     private TelnetServer(
@@ -47,12 +50,14 @@ public final class TelnetServer implements AutoCloseable {
             int port,
             Path mudlibRoot,
             String configObjectPath,
-            MudlibBootProgress bootProgress) {
+            MudlibBootProgress bootProgress,
+            LPCObjectLoadObserver objectLoadObserver) {
         this.bindAddress = Objects.requireNonNull(bindAddress, "bindAddress");
         this.requestedPort = port;
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         this.configObjectPath = Objects.requireNonNullElse(configObjectPath, MudlibBoot.DEFAULT_CONFIG_PATH);
         this.bootProgress = Objects.requireNonNullElse(bootProgress, MudlibBootProgress.none());
+        this.objectLoadObserver = Objects.requireNonNullElse(objectLoadObserver, LPCObjectLoadObserver.NONE);
         this.sessions = Executors.newCachedThreadPool(new TelnetThreadFactory("jvmud-session"));
     }
 
@@ -77,7 +82,8 @@ public final class TelnetServer implements AutoCloseable {
                 options.port(),
                 options.mudlibRoot(),
                 options.configObjectPath(),
-                commandLineBootProgress());
+                commandLineBootProgress(),
+                commandLineObjectLoadObserver(options.traceStartupLoads()));
         server.start();
         System.out.println(server.preloadSummary());
         System.out.println("JVMud mudlib listening on " + server.bindAddress() + ":" + server.port());
@@ -86,27 +92,34 @@ public final class TelnetServer implements AutoCloseable {
     }
 
     static LaunchOptions parseLaunchOptions(String[] args) {
-        if (args.length > 1) {
-            throw new IllegalArgumentException("Too many arguments.");
-        }
-
         if (args.length == 1 && ("-help".equals(args[0]) || "--help".equals(args[0]))) {
-            return optionsForConfigFile(DEFAULT_CONFIG_FILE, true);
-        }
-        if (args.length == 1 && args[0].startsWith("-")) {
-            throw new IllegalArgumentException("Unknown option: " + args[0]);
+            return optionsForConfigFile(DEFAULT_CONFIG_FILE, true, false);
         }
 
-        Path configFile = args.length == 1 ? Path.of(args[0]) : DEFAULT_CONFIG_FILE;
-        return optionsForConfigFile(configFile, false);
+        boolean traceStartupLoads = false;
+        Path configFile = null;
+        for (String arg : args) {
+            if ("--trace-startup-loads".equals(arg)) {
+                traceStartupLoads = true;
+            } else if (arg.startsWith("-")) {
+                throw new IllegalArgumentException("Unknown option: " + arg);
+            } else if (configFile == null) {
+                configFile = Path.of(arg);
+            } else {
+                throw new IllegalArgumentException("Too many arguments.");
+            }
+        }
+
+        return optionsForConfigFile(configFile != null ? configFile : DEFAULT_CONFIG_FILE, false, traceStartupLoads);
     }
 
-    private static LaunchOptions optionsForConfigFile(Path configFile, boolean help) {
+    private static LaunchOptions optionsForConfigFile(Path configFile, boolean help, boolean traceStartupLoads) {
         Path resolvedConfigFile = resolveConfigFile(configFile);
         Path mudlibRoot = mudlibRootForConfigFile(resolvedConfigFile);
         String configObjectPath = mudlibRoot.relativize(resolvedConfigFile).toString()
                 .replace('\\', '/');
-        return new LaunchOptions(mudlibRoot, DEFAULT_PORT, DEFAULT_BIND_ADDRESS, configObjectPath, help);
+        return new LaunchOptions(
+                mudlibRoot, DEFAULT_PORT, DEFAULT_BIND_ADDRESS, configObjectPath, help, traceStartupLoads);
     }
 
     private static Path mudlibRootForConfigFile(Path configFile) {
@@ -150,6 +163,7 @@ public final class TelnetServer implements AutoCloseable {
     private static String usage() {
         return "Usage: scripts/jvmud-start [mudlib-config-file]\n"
                 + "Default: scripts/jvmud-start mudlibs/lpmuseum/jvmud/lpmuseum.config\n"
+                + "Options: --trace-startup-loads prints every underlying startup object load.\n"
                 + "Listens on localhost:4000.";
     }
 
@@ -157,7 +171,7 @@ public final class TelnetServer implements AutoCloseable {
         if (running) {
             return;
         }
-        mud = MudlibRouter.boot(mudlibRoot, configObjectPath, bootProgress);
+        mud = MudlibRouter.boot(mudlibRoot, configObjectPath, bootProgress, objectLoadObserver);
         startWorldClock();
         serverSocket = new ServerSocket(requestedPort, 50, InetAddress.getByName(bindAddress));
         running = true;
@@ -263,6 +277,36 @@ public final class TelnetServer implements AutoCloseable {
         };
     }
 
+    private static LPCObjectLoadObserver commandLineObjectLoadObserver(boolean traceStartupLoads) {
+        if (!traceStartupLoads) {
+            return LPCObjectLoadObserver.NONE;
+        }
+        return new LPCObjectLoadObserver() {
+            @Override
+            public void objectLoadStarted(String objectId, Path sourcePath, int depth) {
+                System.out.println(loadIndent(depth) + "startup object /" + objectId + ": starting.");
+            }
+
+            @Override
+            public void objectLoadFinished(
+                    String objectId, Path sourcePath, int depth, boolean loaded, long elapsedNanos) {
+                String outcome = loaded ? "loaded" : "failed";
+                double elapsedMillis = elapsedNanos / 1_000_000.0;
+                System.out.printf(
+                        Locale.ROOT,
+                        "%sstartup object /%s: %s in %.1f ms.%n",
+                        loadIndent(depth),
+                        objectId,
+                        outcome,
+                        elapsedMillis);
+            }
+        };
+    }
+
+    private static String loadIndent(int depth) {
+        return "  ".repeat(Math.max(0, depth));
+    }
+
     private void acceptLoop() {
         while (running) {
             try {
@@ -297,5 +341,6 @@ public final class TelnetServer implements AutoCloseable {
             int port,
             String bindAddress,
             String configObjectPath,
-            boolean help) {}
+            boolean help,
+            boolean traceStartupLoads) {}
 }

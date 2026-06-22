@@ -1,5 +1,6 @@
 package io.github.protasm.jvmud.instance;
 
+import io.github.protasm.jvmud.compiler.exec.LPCObjectLoadObserver;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,7 +23,7 @@ public final class MudlibRouter implements InstanceHost {
     }
 
     public static MudlibRouter boot(Path defaultMudlibRoot, String defaultConfigPath) {
-        return boot(defaultMudlibRoot, defaultConfigPath, MudlibBootProgress.none());
+        return boot(defaultMudlibRoot, defaultConfigPath, MudlibBootProgress.none(), LPCObjectLoadObserver.NONE);
     }
 
     /**
@@ -34,12 +35,30 @@ public final class MudlibRouter implements InstanceHost {
      * @return router with the default mudlib, and any automatic sibling mounts, registered
      */
     public static MudlibRouter boot(Path defaultMudlibRoot, String defaultConfigPath, MudlibBootProgress progress) {
-        MudInstance defaultMud = MudInstance.boot(defaultMudlibRoot, defaultConfigPath, progress);
+        return boot(defaultMudlibRoot, defaultConfigPath, progress, LPCObjectLoadObserver.NONE);
+    }
+
+    /**
+     * Boots the default mudlib router with host-visible preload and object-load diagnostics.
+     *
+     * @param defaultMudlibRoot filesystem root of the default mudlib
+     * @param defaultConfigPath mudlib-relative JVMud configuration path for the default mudlib
+     * @param progress callback for local startup progress events
+     * @param objectLoadObserver observer for each shared LPC object load attempt
+     * @return router with the default mudlib, and any automatic sibling mounts, registered
+     */
+    public static MudlibRouter boot(
+            Path defaultMudlibRoot,
+            String defaultConfigPath,
+            MudlibBootProgress progress,
+            LPCObjectLoadObserver objectLoadObserver) {
+        MudInstance defaultMud = MudInstance.boot(defaultMudlibRoot, defaultConfigPath, progress, objectLoadObserver);
         MudlibRouter host = new MudlibRouter(defaultMud);
         if ("lpmuseum".equals(defaultMud.gameId())) {
             Path siblingLp245 = defaultMud.mudlibRoot().getParent().resolve("lp245");
             if (Files.isDirectory(siblingLp245)) {
-                host.register(MudInstance.boot(siblingLp245, MudlibBoot.LP245_CONFIG_PATH, progress));
+                host.register(MudInstance.boot(
+                        siblingLp245, MudlibBoot.LP245_CONFIG_PATH, progress, objectLoadObserver));
             }
         }
         return host;

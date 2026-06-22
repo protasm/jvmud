@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.protasm.jvmud.compiler.exec.LPCObjectLoadObserver;
 import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
@@ -51,6 +52,7 @@ final class TelnetServerTest {
         assertEquals("localhost", options.bindAddress());
         assertEquals(MudlibBoot.DEFAULT_CONFIG_PATH, options.configObjectPath());
         assertFalse(options.help());
+        assertFalse(options.traceStartupLoads());
     }
 
     @Test
@@ -63,6 +65,18 @@ final class TelnetServerTest {
         assertEquals(4000, options.port());
         assertEquals("localhost", options.bindAddress());
         assertEquals("jvmud/lp245.config", options.configObjectPath());
+        assertFalse(options.traceStartupLoads());
+    }
+
+    @Test
+    void telnetServerLaunchOptionsAcceptStartupLoadTraceFlag() {
+        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {
+                "--trace-startup-loads", "mudlibs/realmsmud/jvmud/realmsmud.config"
+        });
+
+        assertEquals(repositoryRoot().resolve("mudlibs/realmsmud"), options.mudlibRoot());
+        assertEquals("jvmud/realmsmud.config", options.configObjectPath());
+        assertTrue(options.traceStartupLoads());
     }
 
     @Test
@@ -70,6 +84,7 @@ final class TelnetServerTest {
         TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {"--help"});
 
         assertTrue(options.help());
+        assertFalse(options.traceStartupLoads());
     }
 
     @Test
@@ -80,6 +95,8 @@ final class TelnetServerTest {
                 TelnetServer.parseLaunchOptions(new String[] {"mudlibs/lpmuseum/jvmud/lpmuseum.config", "extra"}));
         assertThrows(IllegalArgumentException.class, () ->
                 TelnetServer.parseLaunchOptions(new String[] {"-bogus", "value"}));
+        assertThrows(IllegalArgumentException.class, () ->
+                TelnetServer.parseLaunchOptions(new String[] {"--trace-startup-loads", "one", "two"}));
     }
 
     @Test
@@ -2137,6 +2154,52 @@ final class TelnetServerTest {
                 "finish MANIFEST_OBJECT obj/preload true",
                 "start MANIFEST_OBJECT obj/broken",
                 "finish MANIFEST_OBJECT obj/broken false"), progressEvents);
+    }
+
+    @Test
+    void objectLoadObserverReportsIndirectStartupLoads() throws Exception {
+        Files.createDirectories(tempDir.resolve("config"));
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.writeString(tempDir.resolve("config/startup"), """
+                lifecycle.object_loaded = reset
+                preload_objects = obj/preload
+                """);
+        Files.writeString(tempDir.resolve("obj/preload.c"), """
+                void reset() {
+                    jvmud_load_lpc_object("/obj/dependency");
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/dependency.c"), """
+                string short() {
+                    return "dependency";
+                }
+                """);
+
+        List<String> objectLoadEvents = new java.util.ArrayList<>();
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
+                .baseIncludePath(tempDir)
+                .objectLoadObserver(new LPCObjectLoadObserver() {
+                    @Override
+                    public void objectLoadStarted(String objectId, Path sourcePath, int depth) {
+                        objectLoadEvents.add("start " + depth + " " + objectId);
+                    }
+
+                    @Override
+                    public void objectLoadFinished(
+                            String objectId, Path sourcePath, int depth, boolean loaded, long elapsedNanos) {
+                        objectLoadEvents.add("finish " + depth + " " + objectId + " " + loaded);
+                    }
+                })
+                .build());
+        CoreEfuns.registerCore(runtime);
+
+        new MudlibBoot(runtime, tempDir, "config/startup", false, false).boot();
+
+        assertEquals(List.of(
+                "start 0 obj/preload",
+                "start 1 obj/dependency",
+                "finish 1 obj/dependency true",
+                "finish 0 obj/preload true"), objectLoadEvents);
     }
 
     @Test
