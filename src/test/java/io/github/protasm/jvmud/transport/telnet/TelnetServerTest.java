@@ -21,6 +21,7 @@ import io.github.protasm.jvmud.instance.LegacyPlayerObjectAdapter;
 import io.github.protasm.jvmud.instance.LocalSessionActor;
 import io.github.protasm.jvmud.instance.MudInstance;
 import io.github.protasm.jvmud.instance.MudlibBoot;
+import io.github.protasm.jvmud.instance.MudlibBootProgress;
 import io.github.protasm.jvmud.instance.MudlibBootResult;
 import io.github.protasm.jvmud.instance.InstancePersona;
 import java.io.IOException;
@@ -2024,6 +2025,67 @@ final class TelnetServerTest {
         assertTrue(result.skippedPreloads().isEmpty());
         assertEquals(List.of("obj/preload"), result.preloadManifestPreloadedObjects());
         assertTrue(result.preloadManifestSkippedPreloads().isEmpty());
+    }
+
+    @Test
+    void bootReportsProgressAroundConfiguredAndManifestPreloads() throws Exception {
+        Files.createDirectories(tempDir.resolve("config"));
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.writeString(tempDir.resolve("config/startup"), """
+                preload_objects = obj/configured
+                preload_file = init_file
+                """);
+        Files.writeString(tempDir.resolve("init_file"), """
+                obj/preload
+                obj/broken
+                """);
+        Files.writeString(tempDir.resolve("obj/configured.c"), """
+                string short() {
+                    return "configured";
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/preload.c"), """
+                string short() {
+                    return "preload";
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/broken.c"), "int broken( { return 1; }\n");
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
+                .baseIncludePath(tempDir)
+                .build());
+        CoreEfuns.registerCore(runtime);
+        List<String> progressEvents = new java.util.ArrayList<>();
+
+        MudlibBootResult result = new MudlibBoot(
+                        runtime,
+                        tempDir,
+                        "config/startup",
+                        false,
+                        false,
+                        new MudlibBootProgress() {
+                            @Override
+                            public void preloadStarted(PreloadKind kind, String sourcePath) {
+                                progressEvents.add("start " + kind + " " + sourcePath);
+                            }
+
+                            @Override
+                            public void preloadFinished(PreloadKind kind, String sourcePath, boolean loaded) {
+                                progressEvents.add("finish " + kind + " " + sourcePath + " " + loaded);
+                            }
+                        })
+                .boot();
+
+        assertTrue(result.preloadedObjects().contains("obj/configured"));
+        assertTrue(result.preloadManifestPreloadedObjects().contains("obj/preload"));
+        assertTrue(result.preloadManifestSkippedPreloads().contains("obj/broken"));
+        assertEquals(List.of(
+                "start CONFIGURED_OBJECT obj/configured",
+                "finish CONFIGURED_OBJECT obj/configured true",
+                "start MANIFEST_OBJECT obj/preload",
+                "finish MANIFEST_OBJECT obj/preload true",
+                "start MANIFEST_OBJECT obj/broken",
+                "finish MANIFEST_OBJECT obj/broken false"), progressEvents);
     }
 
     @Test

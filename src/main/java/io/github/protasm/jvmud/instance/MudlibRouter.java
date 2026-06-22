@@ -22,12 +22,24 @@ public final class MudlibRouter implements InstanceHost {
     }
 
     public static MudlibRouter boot(Path defaultMudlibRoot, String defaultConfigPath) {
-        MudInstance defaultMud = MudInstance.boot(defaultMudlibRoot, defaultConfigPath);
+        return boot(defaultMudlibRoot, defaultConfigPath, MudlibBootProgress.none());
+    }
+
+    /**
+     * Boots the default mudlib router and reports host-visible progress while startup objects load.
+     *
+     * @param defaultMudlibRoot filesystem root of the default mudlib
+     * @param defaultConfigPath mudlib-relative JVMud configuration path for the default mudlib
+     * @param progress callback for local startup progress events
+     * @return router with the default mudlib, and any automatic sibling mounts, registered
+     */
+    public static MudlibRouter boot(Path defaultMudlibRoot, String defaultConfigPath, MudlibBootProgress progress) {
+        MudInstance defaultMud = MudInstance.boot(defaultMudlibRoot, defaultConfigPath, progress);
         MudlibRouter host = new MudlibRouter(defaultMud);
         if ("lpmuseum".equals(defaultMud.gameId())) {
             Path siblingLp245 = defaultMud.mudlibRoot().getParent().resolve("lp245");
             if (Files.isDirectory(siblingLp245)) {
-                host.register(MudInstance.boot(siblingLp245, MudlibBoot.LP245_CONFIG_PATH));
+                host.register(MudInstance.boot(siblingLp245, MudlibBoot.LP245_CONFIG_PATH, progress));
             }
         }
         return host;

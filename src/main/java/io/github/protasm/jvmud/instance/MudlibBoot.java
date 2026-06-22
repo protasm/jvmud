@@ -31,6 +31,7 @@ public final class MudlibBoot {
     private final String configPath;
     private final boolean createInitialActor;
     private final boolean loadInitialPlace;
+    private final MudlibBootProgress progress;
 
     public MudlibBoot(LPCRuntime runtime, Path mudlibRoot) {
         this(runtime, mudlibRoot, DEFAULT_CONFIG_PATH);
@@ -50,11 +51,32 @@ public final class MudlibBoot {
             String configPath,
             boolean createInitialActor,
             boolean loadInitialPlace) {
+        this(runtime, mudlibRoot, configPath, createInitialActor, loadInitialPlace, MudlibBootProgress.none());
+    }
+
+    /**
+     * Creates a mudlib boot coordinator with an optional host-visible progress callback.
+     *
+     * @param runtime LPC runtime used to compile and instantiate mudlib objects
+     * @param mudlibRoot filesystem root of the selected mudlib
+     * @param configPath mudlib-relative JVMud configuration path
+     * @param createInitialActor whether boot should create a local actor
+     * @param loadInitialPlace whether boot should load the configured starting place
+     * @param progress callback for local startup progress events
+     */
+    public MudlibBoot(
+            LPCRuntime runtime,
+            Path mudlibRoot,
+            String configPath,
+            boolean createInitialActor,
+            boolean loadInitialPlace,
+            MudlibBootProgress progress) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         this.configPath = Objects.requireNonNullElse(configPath, DEFAULT_CONFIG_PATH);
         this.createInitialActor = createInitialActor;
         this.loadInitialPlace = loadInitialPlace;
+        this.progress = Objects.requireNonNullElse(progress, MudlibBootProgress.none());
     }
 
     public MudlibBootResult boot() {
@@ -289,7 +311,11 @@ public final class MudlibBoot {
     private void preloadConfiguredObjects(
             MudlibBoundary boundary, List<String> preloadedObjects, List<String> skippedPreloads) {
         for (String sourcePath : boundary.preloadObjectPaths()) {
-            preloadObject(sourcePath, preloadedObjects, skippedPreloads);
+            preloadObject(
+                    sourcePath,
+                    MudlibBootProgress.PreloadKind.CONFIGURED_OBJECT,
+                    preloadedObjects,
+                    skippedPreloads);
         }
     }
 
@@ -330,7 +356,13 @@ public final class MudlibBoot {
                     continue;
                 }
 
-                preloadObject(sourcePath, preloadedObjects, skippedPreloads, preloadManifestPreloadedObjects, preloadManifestSkippedPreloads);
+                preloadObject(
+                        sourcePath,
+                        MudlibBootProgress.PreloadKind.MANIFEST_OBJECT,
+                        preloadedObjects,
+                        skippedPreloads,
+                        preloadManifestPreloadedObjects,
+                        preloadManifestSkippedPreloads);
             }
         } catch (IOException e) {
             skippedPreloads.add(preloadFilePath);
@@ -338,16 +370,22 @@ public final class MudlibBoot {
         }
     }
 
-    private void preloadObject(String sourcePath, List<String> preloadedObjects, List<String> skippedPreloads) {
-        preloadObject(sourcePath, preloadedObjects, skippedPreloads, null, null);
+    private void preloadObject(
+            String sourcePath,
+            MudlibBootProgress.PreloadKind kind,
+            List<String> preloadedObjects,
+            List<String> skippedPreloads) {
+        preloadObject(sourcePath, kind, preloadedObjects, skippedPreloads, null, null);
     }
 
     private void preloadObject(
             String sourcePath,
+            MudlibBootProgress.PreloadKind kind,
             List<String> preloadedObjects,
             List<String> skippedPreloads,
             List<String> preloadManifestPreloadedObjects,
             List<String> preloadManifestSkippedPreloads) {
+        progress.preloadStarted(kind, sourcePath);
         LPCLoadResult result = runtime.tryLoad(sourcePath);
         if (result.succeeded()) {
             LPCObjectHandle handle = result.handle().orElseThrow();
@@ -355,11 +393,13 @@ public final class MudlibBoot {
             if (preloadManifestPreloadedObjects != null) {
                 preloadManifestPreloadedObjects.add(handle.internalName());
             }
+            progress.preloadFinished(kind, sourcePath, true);
         } else {
             skippedPreloads.add(sourcePath);
             if (preloadManifestSkippedPreloads != null) {
                 preloadManifestSkippedPreloads.add(sourcePath);
             }
+            progress.preloadFinished(kind, sourcePath, false);
         }
     }
 

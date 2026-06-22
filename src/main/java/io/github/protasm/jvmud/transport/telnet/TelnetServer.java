@@ -2,6 +2,7 @@ package io.github.protasm.jvmud.transport.telnet;
 
 import io.github.protasm.jvmud.instance.InstanceHost;
 import io.github.protasm.jvmud.instance.MudlibBoot;
+import io.github.protasm.jvmud.instance.MudlibBootProgress;
 import io.github.protasm.jvmud.instance.MudlibBootResult;
 import io.github.protasm.jvmud.instance.MudlibRouter;
 import io.github.protasm.jvmud.engine.time.WorldClock;
@@ -28,6 +29,7 @@ public final class TelnetServer implements AutoCloseable {
     private final int requestedPort;
     private final Path mudlibRoot;
     private final String configObjectPath;
+    private final MudlibBootProgress bootProgress;
     private final ExecutorService sessions;
     private InstanceHost mud;
     private WorldClock worldClock;
@@ -37,10 +39,20 @@ public final class TelnetServer implements AutoCloseable {
     private boolean shutdownNotified;
 
     public TelnetServer(String bindAddress, int port, Path mudlibRoot, String configObjectPath) {
+        this(bindAddress, port, mudlibRoot, configObjectPath, MudlibBootProgress.none());
+    }
+
+    private TelnetServer(
+            String bindAddress,
+            int port,
+            Path mudlibRoot,
+            String configObjectPath,
+            MudlibBootProgress bootProgress) {
         this.bindAddress = Objects.requireNonNull(bindAddress, "bindAddress");
         this.requestedPort = port;
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         this.configObjectPath = Objects.requireNonNullElse(configObjectPath, MudlibBoot.DEFAULT_CONFIG_PATH);
+        this.bootProgress = Objects.requireNonNullElse(bootProgress, MudlibBootProgress.none());
         this.sessions = Executors.newCachedThreadPool(new TelnetThreadFactory("jvmud-session"));
     }
 
@@ -61,7 +73,11 @@ public final class TelnetServer implements AutoCloseable {
         }
 
         TelnetServer server = new TelnetServer(
-                options.bindAddress(), options.port(), options.mudlibRoot(), options.configObjectPath());
+                options.bindAddress(),
+                options.port(),
+                options.mudlibRoot(),
+                options.configObjectPath(),
+                commandLineBootProgress());
         server.start();
         System.out.println(server.preloadSummary());
         System.out.println("JVMud mudlib listening on " + server.bindAddress() + ":" + server.port());
@@ -141,7 +157,7 @@ public final class TelnetServer implements AutoCloseable {
         if (running) {
             return;
         }
-        mud = MudlibRouter.boot(mudlibRoot, configObjectPath);
+        mud = MudlibRouter.boot(mudlibRoot, configObjectPath, bootProgress);
         startWorldClock();
         serverSocket = new ServerSocket(requestedPort, 50, InetAddress.getByName(bindAddress));
         running = true;
@@ -223,6 +239,28 @@ public final class TelnetServer implements AutoCloseable {
         }
         worldClock = new WorldClock(mud::advanceWorldTick, tickInterval);
         worldClock.start();
+    }
+
+    private static MudlibBootProgress commandLineBootProgress() {
+        return new MudlibBootProgress() {
+            @Override
+            public void preloadStarted(PreloadKind kind, String sourcePath) {
+                System.out.println(preloadLabel(kind) + " " + sourcePath + ": starting.");
+            }
+
+            @Override
+            public void preloadFinished(PreloadKind kind, String sourcePath, boolean loaded) {
+                String outcome = loaded ? "compiled." : "skipped.";
+                System.out.println(preloadLabel(kind) + " " + sourcePath + ": " + outcome);
+            }
+        };
+    }
+
+    private static String preloadLabel(MudlibBootProgress.PreloadKind kind) {
+        return switch (kind) {
+            case CONFIGURED_OBJECT -> "preload configured object";
+            case MANIFEST_OBJECT -> "preload manifest object";
+        };
     }
 
     private void acceptLoop() {

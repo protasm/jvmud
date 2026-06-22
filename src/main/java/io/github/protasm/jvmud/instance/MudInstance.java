@@ -89,6 +89,18 @@ public final class MudInstance implements InstanceHost {
     }
 
     public static MudInstance boot(Path mudlibRoot, String configObjectPath) {
+        return boot(mudlibRoot, configObjectPath, MudlibBootProgress.none());
+    }
+
+    /**
+     * Boots a persistent mud instance and reports host-visible progress to the supplied callback.
+     *
+     * @param mudlibRoot filesystem root of the selected mudlib
+     * @param configObjectPath mudlib-relative JVMud configuration path
+     * @param progress callback for local startup progress events
+     * @return booted mud instance ready for session attachment
+     */
+    public static MudInstance boot(Path mudlibRoot, String configObjectPath, MudlibBootProgress progress) {
         Path normalizedRoot = mudlibRoot.toAbsolutePath().normalize();
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(normalizedRoot)
@@ -96,7 +108,7 @@ public final class MudInstance implements InstanceHost {
         CoreEfuns.registerCore(runtime);
 
         MudlibBootResult result =
-                new MudlibBoot(runtime, normalizedRoot, configObjectPath, false).boot();
+                new MudlibBoot(runtime, normalizedRoot, configObjectPath, false, true, progress).boot();
         if (result.startingRoom() == null) {
             throw new IllegalStateException("Mudlib boot did not provide a starting place.");
         }
