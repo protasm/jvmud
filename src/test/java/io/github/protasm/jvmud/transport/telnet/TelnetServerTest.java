@@ -31,6 +31,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -858,6 +859,7 @@ final class TelnetServerTest {
                     return 1;
                 }
                 """);
+        installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
         try (TelnetServer server = new TelnetServer(
                 "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
@@ -899,6 +901,7 @@ final class TelnetServerTest {
                     return 1;
                 }
                 """);
+        installMinimalMudlibPlayer(mudlibRoot, "room/village/vill_green");
 
         try (TelnetServer server = new TelnetServer(
                 "127.0.0.1", 0, mudlibRoot, MudlibBoot.DEFAULT_CONFIG_PATH)) {
@@ -1449,6 +1452,7 @@ final class TelnetServerTest {
                 void finish_login(string name) {
                     object player = jvmud_clone_lpc_object("/obj/player.c");
                     jvmud_rebind_session_lpc_object(player, this_object());
+                    jvmud_destroy_lpc_object(this_object());
                     write("Welcome " + name + "\\n");
                 }
                 """);
@@ -1482,6 +1486,81 @@ final class TelnetServerTest {
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
+            }
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                String nextLogin = readUntilQuietAfterContains(socket, "Name: ");
+                assertTrue(nextLogin.contains("Name: "), nextLogin);
+                assertFalse(nextLogin.contains("Could not attach player"), nextLogin);
+                assertFalse(nextLogin.contains("Attached player 2 in"), nextLogin);
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
+    void telnetSessionDoesNotFallbackToHostPersonaWhenConfiguredMudlibPlayerAttachFails() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                mfun_object = jvmud/mfuns
+                player_object = obj/login
+                initial_place = room/start
+                lifecycle.player_session_connected = logon
+                """);
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                string short() {
+                    return "start";
+                }
+                """);
+        Files.writeString(tempDir.resolve("obj/login.c"), """
+                void logon() {
+                    raise_error("login attach failed");
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                String output = readUntilSocketClosed(socket);
+                assertTrue(output.contains("Could not attach player:"), output);
+                assertFalse(output.contains("Attached player 1 in"), output);
+                assertFalse(output.contains("You can't do that."), output);
+            }
+        }
+    }
+
+    @Test
+    void telnetSessionDoesNotCreateHostPersonaWhenMudlibPlayerObjectIsMissing() throws Exception {
+        installMfunShim();
+        Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                mfun_object = jvmud/mfuns
+                initial_place = room/start
+                """);
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                string short() {
+                    return "start";
+                }
+                """);
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                String output = readUntilSocketClosed(socket);
+                assertTrue(output.contains("Mudlib config must define player_object"), output);
+                assertFalse(output.contains("Attached player 1 in"), output);
+                assertFalse(output.contains("You can't do that."), output);
             }
         }
     }
@@ -1760,6 +1839,7 @@ final class TelnetServerTest {
                     return 1;
                 }
                 """);
+        installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
         try (TelnetServer server = new TelnetServer(
                 "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
@@ -1816,6 +1896,7 @@ final class TelnetServerTest {
                     return 1;
                 }
                 """);
+        installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
         try (TelnetServer server = new TelnetServer(
                 "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
@@ -2430,5 +2511,43 @@ final class TelnetServerTest {
                     jvmud_destroy_lpc_object(ob);
                 }
                 """);
+    }
+
+    private void installMinimalMudlibPlayer(Path mudlibRoot, String initialPlace) throws Exception {
+        Files.createDirectories(mudlibRoot.resolve("obj"));
+        Files.writeString(mudlibRoot.resolve("obj/player.c"), """
+                string query_name() {
+                    return "mudlib player";
+                }
+
+                string query_real_name() {
+                    return "mudlib player";
+                }
+
+                int query_level() {
+                    return 0;
+                }
+
+                int query_invis() {
+                    return 0;
+                }
+
+                int remove_ghost() {
+                    return 1;
+                }
+
+                int id(mixed value) {
+                    return value == "player" || value == "me";
+                }
+                """);
+        String playerConfig = "player_object = obj/player\ninitial_place = " + initialPlace + "\n";
+        Files.writeString(
+                mudlibRoot.resolve(MudlibBoot.DEFAULT_CONFIG_PATH),
+                playerConfig,
+                StandardOpenOption.APPEND);
+        Files.writeString(
+                mudlibRoot.resolve(MudlibBoot.LP245_CONFIG_PATH),
+                playerConfig,
+                StandardOpenOption.APPEND);
     }
 }

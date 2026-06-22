@@ -1,5 +1,8 @@
 package io.github.protasm.jvmud.compiler.runtime;
 
+import java.util.List;
+import java.util.Map;
+
 /** Runtime coercion helpers for LPC compatibility values. */
 public final class RuntimeCoercions {
     private RuntimeCoercions() {}
@@ -28,6 +31,24 @@ public final class RuntimeCoercions {
             return null;
         }
         return String.valueOf(value);
+    }
+
+    /**
+     * Coerces a dynamically typed LPC value into an explicit array context.
+     *
+     * <p>Some legacy mudlibs use {@code ([])} as a falsey empty collection placeholder before
+     * passing it into array-typed helpers that only check {@code sizeof()}. LDMud tolerates that at
+     * runtime; JVMud preserves the practical behavior only for the empty-mapping case and leaves
+     * non-empty mappings incompatible with arrays.</p>
+     */
+    public static Object toArrayValue(Object value) {
+        if (value instanceof Number number && number.doubleValue() == 0.0d) {
+            return null;
+        }
+        if (value instanceof Map<?, ?> map && map.isEmpty()) {
+            return List.of();
+        }
+        return value;
     }
 
     /** Returns an incremented numeric value for dynamically typed mutation expressions. */

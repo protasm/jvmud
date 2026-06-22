@@ -35,7 +35,12 @@ final class TelnetSession implements Runnable {
                 BufferedInputStream in = new BufferedInputStream(socket.getInputStream());
                 OutputStream rawOut = socket.getOutputStream();
                 PrintWriter out = new PrintWriter(new OutputStreamWriter(rawOut, StandardCharsets.UTF_8), true)) {
-            session = new SessionState(mud.attachPersona(out, socket.getInetAddress().getHostAddress()));
+            try {
+                session = new SessionState(mud.attachPersona(out, socket.getInetAddress().getHostAddress()));
+            } catch (RuntimeException e) {
+                out.println("Could not attach player: " + e.getMessage());
+                return;
+            }
             mud.printPromptIfReady(session.persona, out);
             updateEchoMode(session, rawOut, out);
 

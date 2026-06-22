@@ -1158,6 +1158,46 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeClampsOutOfRangeReadSlices() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/out_of_range_read_slices.c", """
+                mixed value() {
+                    mixed *values;
+
+                    values = ({ "a", "b", "c" });
+                    return ({
+                        "abcdef"[0..76],
+                        "abcdef"[9..12],
+                        values[1..9],
+                        values[6..8]
+                    });
+                }
+                """);
+
+        assertEquals(List.of("abcdef", "", List.of("b", "c"), List.of()), object.invoke("value"));
+    }
+
+    @Test
+    void emptyMappingsCanFlowIntoArrayContextsAsEmptyArrays() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/empty_mapping_array_context.c", """
+                int accepts_array(string *values) {
+                    return values == 0 ? -1 : 0;
+                }
+
+                int value() {
+                    mixed values;
+
+                    values = ([]);
+                    return accepts_array(values);
+                }
+                """);
+
+        assertEquals(0, object.invoke("value"));
+        assertEquals(0, runtime.invokeObject(object.instance(), "accepts_array", Map.of()));
+    }
+
+    @Test
     void runtimeSupportsFromEndArraySliceAssignment() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/from_end_slice_assignment.c", """
@@ -3636,6 +3676,61 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void compatibilityGlobalWrappersPreserveFunctionReferencesInMixedArguments() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/jvmud.c"), """
+                string regreplace(string input, string pattern, mixed replacement, int flags) {
+                    return jvmud_regex_replace(input, pattern, replacement, flags);
+                }
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                string value() {
+                    return regreplace("you ponder.", "^[a-z]", #'upper_case, 1);
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .compatibilityGlobalObjectPath("jvmud/jvmud")
+                .directEfunAlias("upper_case", "jvmud_uppercase_text")
+                .build());
+
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+
+        assertEquals("You ponder.", caller.invoke("value"));
+    }
+
+    @Test
+    void callableDirectEfunAliasesBypassStringTypedMudlibWrappers() throws Exception {
+        Files.createDirectories(tempDir.resolve("secure"));
+        Files.writeString(tempDir.resolve("secure/simul_efun.c"), """
+                public nomask varargs string regreplace(string inputString, string search,
+                    string replace, int flags)
+                {
+                    return efun::regreplace(inputString, search, replace, flags);
+                }
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                string value() {
+                    return regreplace("you ponder.", "^[a-z]", #'upper_case, 1);
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mudlibGlobalObjectPath("secure/simul_efun")
+                .directEfunAlias("regreplace", "jvmud_regex_replace")
+                .directEfunAlias("upper_case", "jvmud_uppercase_text")
+                .build());
+
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+
+        assertEquals("You ponder.", caller.invoke("value"));
+    }
+
+    @Test
     void mfunCanSliceArraysForMudlibCompatibilityHelpers() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.writeString(tempDir.resolve("jvmud/functions.c"), """
@@ -4074,6 +4169,10 @@ final class CompilerSmokeTest {
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("regreplace", "jvmud_regex_replace")
+                .directEfunAlias("upper_case", "jvmud_uppercase_text")
+                .build());
         LPCObjectHandle reader = runtime.loadSource("smoke/text_reader.c", """
                 mixed welcome() {
                     return jvmud_read_mudlib_text("/WELCOME");
@@ -4170,6 +4269,10 @@ final class CompilerSmokeTest {
 
                 string callback_efun_regex_replacement() {
                     return jvmud_regex_replace("you ponder.", "^[a-z]", #'jvmud_uppercase_text, 1);
+                }
+
+                string callback_direct_efun_regex_replacement() {
+                    return regreplace("you ponder.", "^[a-z]", #'upper_case, 1);
                 }
 
                 string second_person_verb(string match) {
@@ -4338,6 +4441,7 @@ final class CompilerSmokeTest {
         assertEquals(List.of("?"), reader.invoke("realms_question_command_alias_matches_literal"));
         assertEquals("you ponder", reader.invoke("callback_regex_replacement"));
         assertEquals("You ponder.", reader.invoke("callback_efun_regex_replacement"));
+        assertEquals("You ponder.", reader.invoke("callback_direct_efun_regex_replacement"));
         assertEquals(0, reader.invoke("regex_no_match_is_false"));
         assertEquals(0, reader.invoke("driver_info_is_false"));
         assertEquals(1, reader.invoke("preferred_lpc_object_lookup"));
@@ -5307,6 +5411,22 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void presentDoesNotMatchBlankIdentifiers() throws Exception {
+        Files.writeString(tempDir.resolve("thing.c"), """
+                int id(string str) {
+                    return str == "";
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle room = runtime.loadSource("smoke/room.c", "int value() { return 1; }");
+        LPCObjectHandle thing = runtime.load(tempDir.resolve("thing.c"));
+        runtime.moveObject(thing.instance(), room.instance());
+
+        assertNull(runtime.present("", room.instance()));
+    }
+
+    @Test
     void setEntityLocationUpdatesLocationAndInventory() throws Exception {
         Files.writeString(tempDir.resolve("thing.c"), """
                 int id(string str) {
@@ -5702,7 +5822,29 @@ final class CompilerSmokeTest {
         CoreEfuns.registerCore(runtime);
         LPCObjectHandle child = runtime.load(childPath);
 
-        assertEquals(List.of("/base_one.c", "/grandparent.c", "/base_two.c"), child.invoke("inherited_programs"));
+        assertEquals(List.of("/child.c", "/base_one.c", "/grandparent.c", "/base_two.c"), child.invoke("inherited_programs"));
+    }
+
+    @Test
+    void runtimeReportsCloneProgramBeforeInheritedLpcPrograms() throws Exception {
+        Files.writeString(tempDir.resolve("base.c"), """
+                int base_value() {
+                    return 1;
+                }
+                """);
+        Files.writeString(tempDir.resolve("child.c"), """
+                inherit "base.c";
+
+                string *inherited_programs() {
+                    return jvmud_inherited_programs(jvmud_current_lpc_object());
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        Object child = runtime.cloneObject("child.c");
+
+        assertEquals(List.of("/child.c", "/base.c"), runtime.invokeObject(child, "inherited_programs"));
     }
 
     @Test

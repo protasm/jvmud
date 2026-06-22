@@ -4,7 +4,6 @@ import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.engine.world.Capability;
-import io.github.protasm.jvmud.engine.world.Entity;
 import io.github.protasm.jvmud.engine.world.Location;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
@@ -206,7 +205,7 @@ public final class MudInstance implements InstanceHost {
         if (persona != null) {
             return persona;
         }
-        return attachHostPersona(id, sessionId, out, remoteAddress, announceConnection);
+        throw new IllegalStateException("Mudlib config must define player_object for hosted sessions.");
     }
 
     synchronized InstancePersona attachVisitingPersona(
@@ -220,7 +219,7 @@ public final class MudInstance implements InstanceHost {
         if (persona != null) {
             return persona;
         }
-        return attachHostPersona(id, sessionId, out, remoteAddress, userId, false);
+        throw new IllegalStateException("Mudlib config must define player_object for visiting sessions.");
     }
 
     synchronized void suspendPersonaForTransfer(InstancePersona persona) {
@@ -365,50 +364,9 @@ public final class MudInstance implements InstanceHost {
             return new InstancePersona(this, sessionId, objectId, name, visitingUserId != null ? visitingUserId : name,
                     visitingGender, actor, remoteAddress);
         } catch (RuntimeException | LinkageError e) {
-            System.err.println("Could not attach mudlib player object " + playerObjectPath
-                    + "; falling back to host persona: " + e.getMessage());
             runtime.clearOutputTranscript();
-            return null;
+            throw new IllegalStateException("Could not attach mudlib player object " + playerObjectPath + ".", e);
         }
-    }
-
-    private InstancePersona attachHostPersona(
-            int id,
-            String sessionId,
-            PrintWriter out,
-            String remoteAddress,
-            boolean announceConnection) {
-        return attachHostPersona(id, sessionId, out, remoteAddress, "player " + id, announceConnection);
-    }
-
-    private InstancePersona attachHostPersona(
-            int id,
-            String sessionId,
-            PrintWriter out,
-            String remoteAddress,
-            String name,
-            boolean announceConnection) {
-        String objectId = "persona/" + id;
-        Place startingPlace = placeFor(startingPlacePath);
-        Entity entity = worldRuntime.createEntity(
-                objectId,
-                name,
-                startingPlace,
-                Capability.ACTOR,
-                Capability.PERCEPTIVE);
-        LocalSessionActor actor = new LocalSessionActor(runtime, worldRuntime, entity, name);
-        runtime.registerHostObject(objectId, actor);
-        runtime.moveObject(actor, startingPlaceObject);
-        runtime.bindSession(sessionId, actor, remoteAddress, text -> {
-            out.print(text);
-            out.flush();
-        });
-        runtime.clearOutputTranscript();
-        if (announceConnection) {
-            writeToPlayerForSession(sessionId, CONNECTED_BANNER);
-            writeToPlayerForSession(sessionId, "Attached " + name + " in " + startingPlacePath + ".\n");
-        }
-        return new InstancePersona(this, sessionId, objectId, name, actor, remoteAddress);
     }
 
     private void writeToPlayerForSession(String sessionId, String text) {
@@ -511,6 +469,9 @@ public final class MudInstance implements InstanceHost {
         runtime.lpcObjectForSession(persona.sessionId()).ifPresent(boundActor -> {
             if (boundActor != persona.actor()) {
                 String objectId = Objects.requireNonNullElse(runtime.objectId(boundActor), persona.objectId());
+                // A mudlib-side session rebind replaces the live actor; the old entity must not
+                // reserve its object id or remain addressable as the connected player.
+                removeWorldEntity(persona);
                 persona.replaceActor(objectId, boundActor);
                 invokePlayerSessionPostRebind(boundActor);
             }

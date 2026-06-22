@@ -2305,6 +2305,18 @@ public final class BytecodeCompiler {
                     "(Ljava/lang/Object;)Ljava/lang/String;",
                     false);
             return;
+        case ARRAY:
+            if (source != null && !source.isReferenceLike())
+                boxIfNeeded(mv, source);
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Type.getInternalName(RuntimeCoercions.class),
+                    "toArrayValue",
+                    "(Ljava/lang/Object;)Ljava/lang/Object;",
+                    false);
+            if (target.objectInternalName() != null)
+                mv.visitTypeInsn(CHECKCAST, target.objectInternalName());
+            return;
         default:
             if (source != null && !source.isReferenceLike())
                 boxIfNeeded(mv, source);

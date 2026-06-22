@@ -125,13 +125,19 @@ public final class RuntimeIndex {
 
     public static Object slice(Object target, Object startValue, Object endValue) {
         if (target instanceof CharSequence text) {
-            int start = resolveIndex(startValue, text.length());
-            int end = inclusiveEnd(endValue, text.length());
+            int start = clampedSliceStart(startValue, text.length());
+            int end = clampedSliceEnd(endValue, text.length());
+            if (end < start) {
+                return "";
+            }
             return text.subSequence(start, end + 1).toString();
         }
         if (target instanceof List<?> list) {
-            int start = resolveIndex(startValue, list.size());
-            int end = inclusiveEnd(endValue, list.size());
+            int start = clampedSliceStart(startValue, list.size());
+            int end = clampedSliceEnd(endValue, list.size());
+            if (end < start) {
+                return List.of();
+            }
             return new ArrayList<>(list.subList(start, end + 1));
         }
         throw new IllegalArgumentException("Cannot slice value: " + target);
@@ -198,6 +204,14 @@ public final class RuntimeIndex {
         if (endValue instanceof Number || endValue instanceof FromEnd)
             return resolveIndex(endValue, size);
         throw new IllegalArgumentException("Slice end expects integer or omitted bound: " + endValue);
+    }
+
+    private static int clampedSliceStart(Object startValue, int size) {
+        return Math.max(0, Math.min(resolveIndex(startValue, size), size));
+    }
+
+    private static int clampedSliceEnd(Object endValue, int size) {
+        return Math.max(-1, Math.min(inclusiveEnd(endValue, size), size - 1));
     }
 
     private static int resolveIndex(Object index, int size) {
