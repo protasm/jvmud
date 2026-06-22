@@ -33,7 +33,12 @@ protected nomask int executeOnSelf(string unparsedCommand, object owner,
 
         if (ret)
         {
-            displayMessage(specificationData, "use ability message",
+            // JVMud compatibility note: this previously passed the whole
+            // specification mapping and key string to displayMessage(), but
+            // displayMessage() expects the resolved message string first.
+            // displayMessage(specificationData, "use ability message",
+            //     owner, owner);
+            displayMessage(specificationData["use ability message"],
                 owner, owner);
         }
     }
