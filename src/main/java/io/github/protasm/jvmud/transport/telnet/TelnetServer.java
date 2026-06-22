@@ -88,6 +88,7 @@ public final class TelnetServer implements AutoCloseable {
                 commandLineBootProgress(),
                 startupLoadTrace);
         server.start();
+        startupLoadTrace.finishStartup();
         System.out.println(server.preloadSummary());
         startupLoadTrace.printSummaryIfEnabled();
         System.out.println("JVMud mudlib listening on " + server.bindAddress() + ":" + server.port());
@@ -291,6 +292,7 @@ public final class TelnetServer implements AutoCloseable {
 
     static final class StartupObjectLoadTrace implements LPCObjectLoadObserver {
         private final boolean enabled;
+        private boolean active;
         private final Set<String> loadedObjectIds = new HashSet<>();
         private final Set<String> failedObjectIds = new HashSet<>();
         private final Set<String> compiledObjectIds = new HashSet<>();
@@ -302,18 +304,19 @@ public final class TelnetServer implements AutoCloseable {
 
         StartupObjectLoadTrace(boolean enabled) {
             this.enabled = enabled;
+            this.active = enabled;
         }
 
         @Override
         public void objectLoadStarted(String objectId, Path sourcePath, int depth) {
-            if (enabled) {
+            if (active) {
                 System.out.println(loadIndent(depth) + "startup object /" + objectId + ": starting.");
             }
         }
 
         @Override
         public void objectLoadFinished(String objectId, Path sourcePath, int depth, boolean loaded, long elapsedNanos) {
-            if (!enabled) {
+            if (!active) {
                 return;
             }
             if (loaded) {
@@ -336,7 +339,7 @@ public final class TelnetServer implements AutoCloseable {
 
         @Override
         public void objectCompileFinished(String objectId, Path sourcePath, boolean compiled, long elapsedNanos) {
-            if (!enabled) {
+            if (!active) {
                 return;
             }
             if (compiled) {
@@ -358,9 +361,13 @@ public final class TelnetServer implements AutoCloseable {
 
         @Override
         public void objectCompileStarted(String objectId, Path sourcePath) {
-            if (enabled) {
+            if (active) {
                 System.out.println("startup compile /" + objectId + ": starting.");
             }
+        }
+
+        void finishStartup() {
+            active = false;
         }
 
         String summary() {

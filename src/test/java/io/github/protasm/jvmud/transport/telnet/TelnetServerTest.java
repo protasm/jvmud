@@ -2243,6 +2243,17 @@ final class TelnetServerTest {
                         + "startup compile summary: compiled 2 unique object(s) across 3 compile attempt(s), "
                         + "failed 1 unique object(s) across 1 compile attempt(s).",
                 trace.summary());
+
+        trace.finishStartup();
+        trace.objectLoadFinished("obj/later", tempDir.resolve("obj/later.c"), 0, true, 9_000_000);
+        trace.objectCompileFinished("obj/later", tempDir.resolve("obj/later.c"), true, 10_000_000);
+
+        assertEquals(
+                "startup object load summary: loaded 2 unique object(s) across 3 load attempt(s), "
+                        + "failed 1 unique object(s) across 1 load attempt(s).\n"
+                        + "startup compile summary: compiled 2 unique object(s) across 3 compile attempt(s), "
+                        + "failed 1 unique object(s) across 1 compile attempt(s).",
+                trace.summary());
     }
 
     @Test
