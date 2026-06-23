@@ -3,8 +3,6 @@ package io.github.protasm.jvmud.instance;
 import io.github.protasm.jvmud.compiler.exec.LPCLoadResult;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
-import io.github.protasm.jvmud.engine.world.Capability;
-import io.github.protasm.jvmud.engine.world.Entity;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundaryConfigReader;
 import io.github.protasm.jvmud.engine.world.Place;
@@ -24,12 +22,10 @@ public final class MudlibBoot {
     public static final String LP245_CONFIG_PATH = "jvmud/lp245.config";
     static final String DEFAULT_BOUNDARY_OBJECT = "jvmud/mudlib";
     static final String DEFAULT_STARTING_ROOM = "room/village/vill_green";
-    static final String LOCAL_ACTOR_HANDLE = "local/player";
 
     private final LPCRuntime runtime;
     private final Path mudlibRoot;
     private final String configPath;
-    private final boolean createInitialActor;
     private final boolean loadInitialPlace;
     private final MudlibBootProgress progress;
 
@@ -60,7 +56,7 @@ public final class MudlibBoot {
      * @param runtime LPC runtime used to compile and instantiate mudlib objects
      * @param mudlibRoot filesystem root of the selected mudlib
      * @param configPath mudlib-relative JVMud configuration path
-     * @param createInitialActor whether boot should create a local actor
+     * @param createInitialActor retained for constructor compatibility; boot no longer creates a host actor
      * @param loadInitialPlace whether boot should load the configured starting place
      * @param progress callback for local startup progress events
      */
@@ -74,7 +70,6 @@ public final class MudlibBoot {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         this.configPath = Objects.requireNonNullElse(configPath, DEFAULT_CONFIG_PATH);
-        this.createInitialActor = createInitialActor;
         this.loadInitialPlace = loadInitialPlace;
         this.progress = Objects.requireNonNullElse(progress, MudlibBootProgress.none());
     }
@@ -92,28 +87,13 @@ public final class MudlibBoot {
         inaugurateMasterIfPresent(boundary);
         preloadManifest(boundary, preloadedObjects, skippedPreloads, preloadManifestPreloadedObjects, preloadManifestSkippedPreloads);
 
-        Object actor = null;
         String initialPlace = null;
         String initialPlacePath = boundary.initialPlacePath().orElse(DEFAULT_STARTING_ROOM);
-        String initialPersonaId = LOCAL_ACTOR_HANDLE;
         if (loadInitialPlace && mudlibFileExists(boundary, initialPlacePath)) {
             try {
-                Object placeObject = runtime.loadOrGetObject(initialPlacePath);
+                runtime.loadOrGetObject(initialPlacePath);
                 Place startingPlace = worldRuntime.createPlace(initialPlacePath, initialPlacePath);
                 initialPlace = initialPlacePath;
-                if (createInitialActor) {
-                    Entity actorEntity = worldRuntime.createEntity(
-                            initialPersonaId,
-                            "local player",
-                            startingPlace,
-                            Capability.ACTOR,
-                            Capability.PERCEPTIVE);
-                    LocalSessionActor localActor =
-                            new LocalSessionActor(runtime, worldRuntime, actorEntity, "local player");
-                    runtime.registerHostObject(initialPersonaId, localActor);
-                    runtime.moveObject(localActor, placeObject);
-                    actor = localActor;
-                }
             } catch (RuntimeException e) {
                 skippedPreloads.add(initialPlacePath);
             }
@@ -127,8 +107,8 @@ public final class MudlibBoot {
                 preloadManifestPreloadedObjects,
                 preloadManifestSkippedPreloads,
                 initialPlace,
-                actor == null ? null : initialPersonaId,
-                actor);
+                null,
+                null);
     }
 
     private MudlibBoundary discoverMudlibBoundary(

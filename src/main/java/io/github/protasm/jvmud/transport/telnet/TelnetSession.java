@@ -118,7 +118,7 @@ final class TelnetSession implements Runnable {
 
     private void executePlayerCommand(SessionState session, PrintWriter out, String commandLine) {
         try {
-            Object result = mud.dispatch(session.persona, out, normalizePlayerCommand(commandLine));
+            Object result = mud.dispatch(session.persona, out, commandLine);
             if (Integer.valueOf(0).equals(result)) {
                 out.println("You can't do that.");
             }
@@ -126,23 +126,6 @@ final class TelnetSession implements Runnable {
             out.println("Something goes wrong.");
             System.err.println("Unhandled telnet command error: " + e.getMessage());
         }
-    }
-
-    private String normalizePlayerCommand(String commandLine) {
-        String trimmed = commandLine.trim();
-        if (trimmed.startsWith("go ")) {
-            trimmed = trimmed.substring(3).trim();
-        }
-        return switch (trimmed) {
-        case "n" -> "north";
-        case "s" -> "south";
-        case "e" -> "east";
-        case "w" -> "west";
-        case "u" -> "up";
-        case "d" -> "down";
-        case "l" -> "look";
-        default -> trimmed;
-        };
     }
 
     private boolean handleTelnetCommand(

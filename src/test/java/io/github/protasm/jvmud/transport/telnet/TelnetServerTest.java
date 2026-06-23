@@ -9,17 +9,10 @@ import io.github.protasm.jvmud.compiler.exec.LPCObjectLoadObserver;
 import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
-import io.github.protasm.jvmud.engine.world.Capability;
-import io.github.protasm.jvmud.engine.world.Entity;
-import io.github.protasm.jvmud.engine.world.Link;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjectionRole;
-import io.github.protasm.jvmud.engine.world.Place;
-import io.github.protasm.jvmud.engine.world.World;
-import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import io.github.protasm.jvmud.instance.LegacyPlayerObjectAdapter;
-import io.github.protasm.jvmud.instance.LocalSessionActor;
 import io.github.protasm.jvmud.instance.MudInstance;
 import io.github.protasm.jvmud.instance.MudlibBoot;
 import io.github.protasm.jvmud.instance.MudlibBootProgress;
@@ -120,8 +113,6 @@ final class TelnetServerTest {
                         "protasm", "neutral");
                 assertTrue(greeting.contains("Hi, Protasm! Welcome to LPMuseum."), greeting);
                 assertTrue(greeting.contains("Protasm enters LPMuseum through the museum doors."), greeting);
-                assertTrue(greeting.contains("Grand Concourse of LPMuseum"), greeting);
-                assertTrue(greeting.contains("A directory and a docent are here."), greeting);
 
                 try (Socket second = new Socket("127.0.0.1", server.port())) {
                     second.setSoTimeout(5000);
@@ -550,8 +541,6 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
                 String welcomeBack = readUntilQuietAfterContains(socket, "Hi, Solfeggio! Welcome to LPMuseum.");
                 assertTrue(welcomeBack.contains("Hi, Solfeggio! Welcome to LPMuseum."), welcomeBack);
-                assertTrue(welcomeBack.contains("Grand Concourse of LPMuseum"), welcomeBack);
-                assertTrue(welcomeBack.contains("A directory and a docent are here."), welcomeBack);
                 assertFalse(welcomeBack.contains("Email address"), welcomeBack);
                 assertFalse(welcomeBack.contains("Persona name"), welcomeBack);
 
@@ -894,6 +883,53 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
                 String look = readUntilContains(socket, "A test green.");
                 assertTrue(look.contains("A test green."));
+
+                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+            }
+        }
+    }
+
+    @Test
+    void telnetSessionPassesPlayerCommandsWithoutMudlibAliasKnowledge() throws Exception {
+        installMfunShim();
+        Files.createDirectories(tempDir.resolve("room/village"));
+        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
+                void init() {
+                    add_action("short_w", "w");
+                    add_action("long_west", "west");
+                }
+
+                int short_w(mixed str) {
+                    write("raw w command\\n");
+                    return 1;
+                }
+
+                int long_west(mixed str) {
+                    write("west command\\n");
+                    return 1;
+                }
+                """);
+        installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                readUntilContains(socket, "Attached player 1");
+
+                socket.getOutputStream().write("w\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String shortCommand = readUntilContains(socket, "raw w command");
+                assertTrue(shortCommand.contains("raw w command"), shortCommand);
+                assertFalse(shortCommand.contains("west command"), shortCommand);
+
+                socket.getOutputStream().write("west\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String longCommand = readUntilContains(socket, "west command");
+                assertTrue(longCommand.contains("west command"), longCommand);
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -1999,36 +2035,6 @@ final class TelnetServerTest {
     }
 
     @Test
-    void localSessionMovementRegistersNativeWorldLinks() throws Exception {
-        Files.createDirectories(tempDir.resolve("room"));
-        Files.createDirectories(tempDir.resolve("room/village"));
-        Files.writeString(tempDir.resolve("room/village/vill_green.c"), """
-                void long(mixed str) {
-                }
-                """);
-
-        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
-        CoreEfuns.registerCore(runtime);
-        WorldRuntime worldRuntime = new WorldRuntime(new World("test", "Test World"));
-        Place church = worldRuntime.createPlace("room/village/church", "Village church");
-        Entity actorEntity = worldRuntime.createEntity(
-                "session/local", "local session", church, Capability.ACTOR, Capability.PERCEPTIVE);
-        LocalSessionActor actor = new LocalSessionActor(runtime, worldRuntime, actorEntity, "tester");
-
-        assertEquals(1, actor.move_player("south#room/village/vill_green"));
-
-        Place green = worldRuntime.place("room/village/vill_green");
-        Link south = worldRuntime.linkFrom(church, "south");
-        assertEquals(green, south.destination());
-        assertEquals(church, south.origin());
-        assertEquals(green, worldRuntime.locationOf(actorEntity));
-
-        Files.writeString(tempDir.resolve("room/bad.c"), "int broken( { return 1; }\n");
-        assertEquals(0, actor.move_player("east#room/bad"));
-        assertEquals(green, worldRuntime.locationOf(actorEntity));
-    }
-
-    @Test
     void bootPreloadsExplicitManifestAndRegistersStartingPlaceWithoutPlayerHandle() throws Exception {
         installMfunShim();
         Files.createDirectories(tempDir.resolve("obj"));
@@ -2409,7 +2415,8 @@ final class TelnetServerTest {
         assertTrue(result.preloadedObjects().contains("config/mudlib"));
         assertTrue(result.preloadedObjects().contains("obj/preload"));
         assertEquals("place/start", result.startingRoom());
-        assertEquals("local/player", result.actorHandle());
+        assertEquals(null, result.actorHandle());
+        assertEquals(null, result.actor());
     }
 
     @Test

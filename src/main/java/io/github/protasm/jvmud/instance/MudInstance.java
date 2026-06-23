@@ -342,7 +342,6 @@ public final class MudInstance implements InstanceHost {
                 account.passwordHash());
         runtime.invokeObject(actor, "save_account");
         runtime.invokeObject(actor, "enter_museum");
-        forceLookCommand(actor);
         runtime.clearOutputTranscript();
         return new InstancePersona(this, sessionId, objectId, account.personaName(), account.accountId(), account.gender(), actor,
                 remoteAddress);
@@ -416,12 +415,6 @@ public final class MudInstance implements InstanceHost {
             return;
         }
         runtime.invokeObject(actor, playerSessionConnectedMethod);
-        runtime.clearOutputTranscript();
-    }
-
-    private void forceLookCommand(Object actor) {
-        runtime.refreshCommandActions(actor);
-        runtime.dispatchCommand(actor, "look");
         runtime.clearOutputTranscript();
     }
 
