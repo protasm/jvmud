@@ -111,7 +111,6 @@ public final class RuntimeContext {
     private BiFunction<String, String, Integer> mudlibTextRenamer = (source, destination) -> -1;
     private Function<String, Integer> mudlibDirectoryCreator = path -> 0;
     private Function<String, Integer> mudlibDirectoryRemover = path -> 0;
-    private Function<String, Boolean> mudlibObjectSourceExists = path -> true;
     private BiFunction<Object, String, Integer> playerTransferHandler = (actor, gameId) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateSaver = (path, object) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateRestorer = (path, object) -> 0;
@@ -195,11 +194,6 @@ public final class RuntimeContext {
 
     public void setMudlibDirectoryRemover(Function<String, Integer> mudlibDirectoryRemover) {
         this.mudlibDirectoryRemover = (mudlibDirectoryRemover != null) ? mudlibDirectoryRemover : path -> 0;
-    }
-
-    /** Sets the host resolver used to check whether a mudlib object source path exists. */
-    public void setMudlibObjectSourceExists(Function<String, Boolean> mudlibObjectSourceExists) {
-        this.mudlibObjectSourceExists = (mudlibObjectSourceExists != null) ? mudlibObjectSourceExists : path -> true;
     }
 
     public void setPlayerTransferHandler(BiFunction<Object, String, Integer> playerTransferHandler) {
@@ -1896,9 +1890,6 @@ public final class RuntimeContext {
             for (CommandAction action : actions) {
                 Object environmentBefore = environment(actor);
                 Object result = invokeCommandAction(action, trimmed, argument);
-                if (isEnvironmentMovementAction(action, environmentBefore)) {
-                    throwIfBrokenMovementDestination(actor, verb, environmentBefore, result);
-                }
                 if (Truth.isTruthy(result)) {
                     return result;
                 }
@@ -1930,66 +1921,8 @@ public final class RuntimeContext {
             return false;
         }
         Object environmentBefore = environment(actor);
-        Optional<String> destination = movementDestination(environment, verb);
         Object result = invokeObject(environment, "move", argument);
-        throwIfBrokenMovementDestination(actor, environmentBefore, result, destination);
         return Truth.isTruthy(result) || environment(actor) != environmentBefore;
-    }
-
-    private boolean isEnvironmentMovementAction(CommandAction action, Object environment) {
-        return environment != null && action.handler() == environment && "move".equals(action.methodName());
-    }
-
-    private void throwIfBrokenMovementDestination(
-            Object actor,
-            String verb,
-            Object environmentBefore,
-            Object result) {
-        throwIfBrokenMovementDestination(
-                actor,
-                environmentBefore,
-                result,
-                movementDestination(environmentBefore, verb));
-    }
-
-    private void throwIfBrokenMovementDestination(
-            Object actor,
-            Object environmentBefore,
-            Object result,
-            Optional<String> destination) {
-        if (Truth.isTruthy(result) && environment(actor) == environmentBefore
-                && destination.isPresent() && !mudlibObjectSourceExists.apply(destination.orElseThrow())) {
-            throw new IllegalStateException("Movement destination does not exist: " + destination.orElseThrow());
-        }
-    }
-
-    private Optional<String> movementDestination(Object environment, String verb) {
-        Object exits = invokeOptionalObject(environment, "getExitDirections");
-        if (!(exits instanceof Map<?, ?> exitMap)) {
-            return Optional.empty();
-        }
-        Object state = invokeOptionalObject(environment, "currentState");
-        if (!Truth.isTruthy(state)) {
-            state = "default";
-        }
-        Optional<String> destination = movementDestination(exitMap, state, verb);
-        return destination.isPresent() ? destination : movementDestination(exitMap, "default", verb);
-    }
-
-    private Optional<String> movementDestination(Map<?, ?> exits, Object state, String verb) {
-        Object stateExits = exits.get(state);
-        if (!(stateExits instanceof Map<?, ?> directions)) {
-            return Optional.empty();
-        }
-        Object entry = directions.get(verb);
-        if (entry instanceof String destination) {
-            return Optional.of(destination);
-        }
-        if (entry instanceof Map<?, ?> mappedExit && !Truth.isTruthy(mappedExit.get("region"))
-                && mappedExit.get("destination") instanceof String destination) {
-            return Optional.of(destination);
-        }
-        return Optional.empty();
     }
 
     private String applyCommandAlias(String commandLine) {
