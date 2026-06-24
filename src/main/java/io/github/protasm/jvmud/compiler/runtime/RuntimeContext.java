@@ -1896,6 +1896,9 @@ public final class RuntimeContext {
             for (CommandAction action : actions) {
                 Object environmentBefore = environment(actor);
                 Object result = invokeCommandAction(action, trimmed, argument);
+                if (isEnvironmentMovementAction(action, environmentBefore)) {
+                    throwIfBrokenMovementDestination(actor, verb, environmentBefore, result);
+                }
                 if (Truth.isTruthy(result)) {
                     return result;
                 }
@@ -1929,11 +1932,35 @@ public final class RuntimeContext {
         Object environmentBefore = environment(actor);
         Optional<String> destination = movementDestination(environment, verb);
         Object result = invokeObject(environment, "move", argument);
+        throwIfBrokenMovementDestination(actor, environmentBefore, result, destination);
+        return Truth.isTruthy(result) || environment(actor) != environmentBefore;
+    }
+
+    private boolean isEnvironmentMovementAction(CommandAction action, Object environment) {
+        return environment != null && action.handler() == environment && "move".equals(action.methodName());
+    }
+
+    private void throwIfBrokenMovementDestination(
+            Object actor,
+            String verb,
+            Object environmentBefore,
+            Object result) {
+        throwIfBrokenMovementDestination(
+                actor,
+                environmentBefore,
+                result,
+                movementDestination(environmentBefore, verb));
+    }
+
+    private void throwIfBrokenMovementDestination(
+            Object actor,
+            Object environmentBefore,
+            Object result,
+            Optional<String> destination) {
         if (Truth.isTruthy(result) && environment(actor) == environmentBefore
                 && destination.isPresent() && !mudlibObjectSourceExists.apply(destination.orElseThrow())) {
             throw new IllegalStateException("Movement destination does not exist: " + destination.orElseThrow());
         }
-        return Truth.isTruthy(result) || environment(actor) != environmentBefore;
     }
 
     private Optional<String> movementDestination(Object environment, String verb) {
