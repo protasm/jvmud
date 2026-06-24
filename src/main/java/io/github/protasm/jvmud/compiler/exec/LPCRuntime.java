@@ -98,6 +98,7 @@ public final class LPCRuntime {
         this.runtimeContext.setMudlibTextRenamer(this::renameMudlibText);
         this.runtimeContext.setMudlibDirectoryCreator(this::createMudlibDirectory);
         this.runtimeContext.setMudlibDirectoryRemover(this::removeMudlibDirectory);
+        this.runtimeContext.setMudlibObjectSourceExists(this::mudlibObjectSourceExists);
         this.runtimeContext.setLPCObjectStateSaver(this::saveLPCObjectState);
         this.runtimeContext.setLPCObjectStateRestorer(this::restoreLPCObjectState);
         this.runtimeContext.setTimedRuntimeErrorHandler(this::notifyTimedRuntimeError);
@@ -416,6 +417,12 @@ public final class LPCRuntime {
     /** Returns the registered object id for an object, or {@code null} if it is not registered. */
     public String objectId(Object object) {
         return runtimeContext.objectId(object);
+    }
+
+    /** Returns whether a mudlib object source path resolves to a regular LPC source file. */
+    public boolean mudlibObjectSourceExists(String path) {
+        Objects.requireNonNull(path, "path");
+        return Files.isRegularFile(resolveSourcePathWithExtensions(path));
     }
 
     /** Reads a mudlib-relative text file, returning LPC false ({@code 0}) when unavailable. */

@@ -488,6 +488,11 @@ public final class MudInstance implements InstanceHost {
             return result;
         }
 
+        if (isRealmsHereCommand(commandLine)) {
+            printCurrentRoomPath(persona, out);
+            return 1;
+        }
+
         runtime.clearOutputTranscript();
         runtime.refreshCommandActions(persona.actor());
         Object result = runtime.dispatchCommand(persona.actor(), commandLine);
@@ -495,6 +500,16 @@ public final class MudInstance implements InstanceHost {
         refreshBoundActor(persona);
         runtime.clearOutputTranscript();
         return result;
+    }
+
+    private boolean isRealmsHereCommand(String commandLine) {
+        return "realmsmud".equals(gameId) && "here".equals(commandLine.trim());
+    }
+
+    private void printCurrentRoomPath(InstancePersona persona, PrintWriter out) {
+        Object location = runtime.environment(persona.actor());
+        String objectId = location != null ? runtime.objectId(location) : null;
+        out.println(objectId != null ? "/" + objectId + ".c" : "No current room.");
     }
 
     private void runDueScheduledWork() {
@@ -547,13 +562,16 @@ public final class MudInstance implements InstanceHost {
             if (handler == null) {
                 return false;
             }
-            runtime.invokeOptionalObject(
-                    handler,
-                    runtimeErrorMethod,
-                    persona.actor(),
-                    context,
-                    operation,
-                    error.getMessage());
+            runtime.withCommandActor(persona.actor(), () -> {
+                runtime.invokeOptionalObject(
+                        handler,
+                        runtimeErrorMethod,
+                        persona.actor(),
+                        context,
+                        operation,
+                        error.getMessage());
+                return null;
+            });
             runtime.clearOutputTranscript();
             return true;
         } catch (RuntimeException | LinkageError handlerFailure) {
