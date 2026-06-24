@@ -1937,16 +1937,14 @@ public final class RuntimeContext {
     }
 
     private Optional<String> movementDestination(Object environment, String verb) {
-        if (!hasMethod(environment.getClass(), "getExitDirections", 0)) {
-            return Optional.empty();
-        }
         Object exits = invokeOptionalObject(environment, "getExitDirections");
         if (!(exits instanceof Map<?, ?> exitMap)) {
             return Optional.empty();
         }
-        Object state = hasMethod(environment.getClass(), "currentState", 0)
-                ? invokeOptionalObject(environment, "currentState")
-                : "default";
+        Object state = invokeOptionalObject(environment, "currentState");
+        if (!Truth.isTruthy(state)) {
+            state = "default";
+        }
         Optional<String> destination = movementDestination(exitMap, state, verb);
         return destination.isPresent() ? destination : movementDestination(exitMap, "default", verb);
     }

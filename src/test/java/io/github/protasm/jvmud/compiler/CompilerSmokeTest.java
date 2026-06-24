@@ -388,11 +388,11 @@ final class CompilerSmokeTest {
                     return ({ "west" });
                 }
 
-                mapping getExitDirections() {
+                mapping getExitDirections(mixed ignored) {
                     return ([ "default": ([ "west": "/room/missing.c" ]) ]);
                 }
 
-                string currentState() {
+                string currentState(mixed ignored) {
                     return "default";
                 }
 
