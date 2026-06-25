@@ -210,6 +210,9 @@ public final class MudlibBoot {
         configBoundary.mudlibGlobalObjectPath()
                 .or(() -> objectBoundary.mudlibGlobalObjectPath())
                 .ifPresent(builder::mudlibGlobalObjectPath);
+        configBoundary.mudlibGlobalObjectSourcePath()
+                .or(() -> objectBoundary.mudlibGlobalObjectSourcePath())
+                .ifPresent(builder::mudlibGlobalObjectSourcePath);
         configBoundary.compatibilityGlobalObjectPath()
                 .or(() -> objectBoundary.compatibilityGlobalObjectPath())
                 .ifPresent(builder::compatibilityGlobalObjectPath);
@@ -236,8 +239,10 @@ public final class MudlibBoot {
         configBoundary.lifecycleEvents().forEach(builder::handle);
         objectBoundary.lifecycleMethods().forEach(builder::lifecycleMethod);
         configBoundary.lifecycleMethods().forEach(builder::lifecycleMethod);
-        objectBoundary.engineFunctionAliases().forEach(builder::engineFunction);
-        configBoundary.engineFunctionAliases().forEach(builder::engineFunction);
+        objectBoundary.engineFunctionAliases().forEach((mudlibName, engineName) ->
+                builder.engineFunction(engineName, mudlibName));
+        configBoundary.engineFunctionAliases().forEach((mudlibName, engineName) ->
+                builder.engineFunction(engineName, mudlibName));
         objectBoundary.compatibilityPredefines().forEach(builder::compatibilityPredefine);
         configBoundary.compatibilityPredefines().forEach(builder::compatibilityPredefine);
         objectBoundary.compatibilityFunctionPredefines().forEach((macroName, replacements) ->

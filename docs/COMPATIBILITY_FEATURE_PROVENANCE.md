@@ -137,9 +137,9 @@ exposing legacy names as preferred engine APIs.
 - Native guidance: `PREFERRED`
 
 JVMud supports `jvmud::name(...)` as a direct namespace for JVMud-native efuns.
-The namespace accepts shortened calls such as `jvmud::size(...)` for
-`jvmud_size(...)`, but it deliberately bypasses mudlib compatibility aliases so
-legacy driver names remain a boundary concern.
+The namespace requires exact JVMud-native efun names such as
+`jvmud::jvmud_size(...)`, and it deliberately bypasses mudlib compatibility
+aliases so legacy driver names remain a boundary concern.
 
 ### Protected Evaluation Syntax
 

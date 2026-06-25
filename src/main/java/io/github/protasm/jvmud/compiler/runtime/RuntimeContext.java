@@ -242,14 +242,14 @@ public final class RuntimeContext {
     }
 
     /**
-     * Sets the JVMud compatibility global object path used by older callers.
+     * Sets the mudlib-owned global mfun object path used by older callers.
      *
      * @deprecated use {@link #setMudlibBoundary(MudlibBoundary)} with
-     *     {@link MudlibBoundary#compatibilityGlobalObjectPath()} metadata.
+     *     {@link MudlibBoundary#mudlibGlobalObjectPath()} metadata.
      */
     @Deprecated(forRemoval = false)
     public void setMfunObjectPath(String mfunObjectPath) {
-        this.compatibilityGlobalObjectPath = normalizeMudlibPath(mfunObjectPath);
+        this.mudlibGlobalObjectPath = normalizeMudlibPath(mfunObjectPath);
         globalObjectDeclarations.clear();
     }
 
@@ -454,10 +454,9 @@ public final class RuntimeContext {
     /**
      * Invokes a mudlib-visible function through the active compatibility boundary.
      *
-     * <p>Mudlib globals normally shadow engine efuns. When the mudlib profile declares a direct
-     * efun alias and the call carries a first-class callable, the alias is allowed to reach the
-     * engine before a string-typed mudlib wrapper can coerce the callable into display text. This
-     * models LDMud-style simulated efun wrappers that forward closure replacements to driver efuns.
+     * <p>Mfuns normally shadow engine efuns. When the mudlib profile maps a mudlib-visible name to
+     * an engine function and the call carries a first-class callable, the mapped engine function is
+     * allowed to run before a string-typed mfun wrapper can coerce the callable into display text.
      * </p>
      */
     public Object invokeEfun(String name, int arity, Object[] args) {
@@ -595,6 +594,17 @@ public final class RuntimeContext {
         GlobalObjectSource inMemory = inMemoryGlobalObjectSources.get(objectPath);
         if (inMemory != null) {
             return inMemory;
+        }
+
+        if (objectPath.equals(mudlibGlobalObjectPath)
+                && mudlibBoundary.mudlibGlobalObjectSourcePath().isPresent()) {
+            Path sourcePath = mudlibBoundary.mudlibGlobalObjectSourcePath().orElseThrow();
+            if (Files.isRegularFile(sourcePath)) {
+                return new GlobalObjectSource(
+                        Files.readString(sourcePath),
+                        sourcePath,
+                        "/" + objectPath + ".c");
+            }
         }
 
         if (objectPath.equals(compatibilityGlobalObjectPath)

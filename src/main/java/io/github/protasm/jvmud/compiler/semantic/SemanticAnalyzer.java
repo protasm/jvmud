@@ -1411,18 +1411,9 @@ public final class SemanticAnalyzer {
 
         /**
          * Resolves {@code jvmud::name(...)} against JVMud-native efun names only.
-         *
-         * <p>The namespace accepts both the full engine name, such as {@code jvmud_size}, and the
-         * shortened namespace form {@code size}. It intentionally bypasses mudlib compatibility
-         * aliases so legacy names like {@code sizeof} remain an {@code efun::} concern.</p>
          */
         private Efun resolveJvmudEngineFunction(String name, int arity) {
-            Efun efun = runtimeContext.resolveEngineEfun(name, arity);
-            if (efun != null)
-                return efun;
-
-            String nativeName = name.startsWith("jvmud_") ? name : "jvmud_" + name;
-            return name.equals(nativeName) ? null : runtimeContext.resolveEngineEfun(nativeName, arity);
+            return runtimeContext.resolveEngineEfun(name, arity);
         }
 
         private ASTExpression resolveParentCall(

@@ -44,7 +44,7 @@ final class RealmsMudCompatibilityScanTest {
                     "secure/master.c",
                     "secure/simul_efun.c",
                     "secure/login.c",
-                    "jvmud/jvmud.c",
+                    "jvmud/compat.c",
                     "lib/core/baseSelector.c",
                     "lib/core/events.c",
                     "lib/core/messageParser.c",
@@ -129,7 +129,7 @@ final class RealmsMudCompatibilityScanTest {
 
     @Test
     void realmsProgramNameReportsBlueprintPathForClones() throws IOException {
-        String jvmudShimSource = Files.readString(MUDLIB_ROOT.resolve("jvmud/jvmud.c"));
+        String jvmudShimSource = Files.readString(MUDLIB_ROOT.resolve("jvmud/compat.c"));
         assertTrue(
                 jvmudShimSource.contains("ret = regreplace(ret, \"(#[^.]*)\", \"\", 1);"),
                 "RealmsMUD security checks compare program_name() to blueprint paths, so clone ids must be stripped.");
@@ -163,9 +163,9 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("RealmsMUD", boundary.gameName().orElseThrow());
         assertEquals("jvmud/mudlib", boundary.boundaryObjectPath().orElseThrow());
         assertEquals("secure/simul_efun", boundary.mudlibGlobalObjectPath().orElseThrow());
-        assertEquals("jvmud/jvmud", boundary.compatibilityGlobalObjectPath().orElseThrow());
+        assertEquals("jvmud/compat", boundary.compatibilityGlobalObjectPath().orElseThrow());
         assertEquals(
-                MUDLIB_ROOT.resolve("jvmud/jvmud.c").toAbsolutePath().normalize(),
+                MUDLIB_ROOT.resolve("jvmud/compat.c").toAbsolutePath().normalize(),
                 boundary.compatibilityGlobalObjectSourcePath().orElseThrow());
         assertEquals("secure/login", boundary.playerObjectPath().orElseThrow());
         assertEquals(">", boundary.playerPrompt().orElseThrow());
@@ -218,6 +218,8 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jvmud_mapping_from_keys", boundary.engineFunction("mkmapping").orElseThrow());
         assertEquals("jvmud_mapping_delete", boundary.engineFunction("m_delete").orElseThrow());
         assertEquals("jvmud_inherited_programs", boundary.engineFunction("inherit_list").orElseThrow());
+        assertEquals("jvmud_serialize_lpc_value", boundary.engineFunction("save_value").orElseThrow());
+        assertEquals("jvmud_deserialize_lpc_value", boundary.engineFunction("restore_value").orElseThrow());
         assertEquals("jvmud_apply_callable", boundary.engineFunction("apply").orElseThrow());
         assertEquals("jvmud_filter", boundary.engineFunction("filter").orElseThrow());
         assertEquals("jvmud_map", boundary.engineFunction("map").orElseThrow());

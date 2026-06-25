@@ -2427,7 +2427,7 @@ final class TelnetServerTest {
                 database.url = jdbc:test://localhost/mud
                 database.user = muduser
                 database.password = mudpass
-                engine_function.sizeof = jvmud_size
+                engine_function.jvmud_size = sizeof
                 ldmud_compat_predefine.__VERSION_MAJOR__ = 3
                 ldmud_compat_predefine.__VERSION_MINOR__ = 6
                 ldmud_compat_function_predefine.__EFUN_DEFINED__.text_width = 0

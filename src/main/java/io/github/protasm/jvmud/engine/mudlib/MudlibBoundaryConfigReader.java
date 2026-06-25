@@ -65,17 +65,14 @@ public final class MudlibBoundaryConfigReader {
         addString(builder::gameName, firstValue(values, "game_name"));
         builder.mudlibRootPath(resolveMudlibRootPath(configFile, mudlibRoot, firstValue(values, "mudlib_root")));
         addString(builder::boundaryObjectPath, firstValue(values, "mudlib_object"));
-        addString(builder::mudlibGlobalObjectPath, firstValue(values, "mudlib_global_object"));
-        Path compatibilityObject = configFile.getParent() != null ? configFile.getParent().resolve("jvmud.c") : null;
-        if (compatibilityObject != null && Files.isRegularFile(compatibilityObject)) {
-            builder.compatibilityGlobalObjectPath(mudlibObjectPath(mudlibRoot, compatibilityObject));
-            builder.compatibilityGlobalObjectSourcePath(compatibilityObject);
-        } else {
-            String legacyCompatibilityObject = firstValue(values, "compatibility_global_object", "mfun_object");
-            addString(builder::compatibilityGlobalObjectPath, legacyCompatibilityObject);
-            compatibilityObjectSourcePath(mudlibRoot, legacyCompatibilityObject)
-                    .ifPresent(builder::compatibilityGlobalObjectSourcePath);
-        }
+        String mfunObject = firstValue(values, "mfun_object");
+        addString(builder::mudlibGlobalObjectPath, mfunObject);
+        objectSourcePath(configFile, mudlibRoot, mfunObject)
+                .ifPresent(builder::mudlibGlobalObjectSourcePath);
+        String compatibilityObject = firstValue(values, "compatibility_object");
+        addString(builder::compatibilityGlobalObjectPath, compatibilityObject);
+        objectSourcePath(configFile, mudlibRoot, compatibilityObject)
+                .ifPresent(builder::compatibilityGlobalObjectSourcePath);
         addString(builder::playerObjectPath, firstValue(values, "persona_object", "player_object"));
         String playerPrompt = firstValue(values, "player_prompt");
         if (playerPrompt == null) {
@@ -228,18 +225,7 @@ public final class MudlibBoundaryConfigReader {
         }
     }
 
-    private static String mudlibObjectPath(Path mudlibRoot, Path sourcePath) {
-        Path root = mudlibRoot.toAbsolutePath().normalize();
-        Path source = sourcePath.toAbsolutePath().normalize();
-        Path relative = source.startsWith(root) ? root.relativize(source) : source.getFileName();
-        String path = relative.toString().replace('\\', '/');
-        if (path.endsWith(".c")) {
-            path = path.substring(0, path.length() - 2);
-        }
-        return path;
-    }
-
-    private static java.util.Optional<Path> compatibilityObjectSourcePath(Path mudlibRoot, String objectPath) {
+    private static java.util.Optional<Path> objectSourcePath(Path configFile, Path mudlibRoot, String objectPath) {
         if (objectPath == null || objectPath.isBlank()) {
             return java.util.Optional.empty();
         }
@@ -250,8 +236,19 @@ public final class MudlibBoundaryConfigReader {
         if (!normalized.endsWith(".c")) {
             normalized = normalized + ".c";
         }
-        Path source = mudlibRoot.resolve(normalized).toAbsolutePath().normalize();
-        return Files.isRegularFile(source) ? java.util.Optional.of(source) : java.util.Optional.empty();
+        Path configDir = configFile.getParent();
+        if (configDir != null) {
+            String configDirName = configDir.getFileName() != null ? configDir.getFileName().toString() : "";
+            String profileRelative = normalized.startsWith(configDirName + "/")
+                    ? normalized.substring(configDirName.length() + 1)
+                    : normalized;
+            Path profileSource = configDir.resolve(profileRelative).toAbsolutePath().normalize();
+            if (Files.isRegularFile(profileSource)) {
+                return java.util.Optional.of(profileSource);
+            }
+        }
+        Path mudlibSource = mudlibRoot.resolve(normalized).toAbsolutePath().normalize();
+        return Files.isRegularFile(mudlibSource) ? java.util.Optional.of(mudlibSource) : java.util.Optional.empty();
     }
 
     private static void addBoundedInt(java.util.function.IntConsumer setter, String value) {
@@ -354,14 +351,15 @@ public final class MudlibBoundaryConfigReader {
                 continue;
             }
 
-            String mudlibName = key.substring("engine_function.".length());
-            if (mudlibName.isBlank() || entry.getValue().isEmpty()) {
+            String engineName = key.substring("engine_function.".length());
+            if (engineName.isBlank() || entry.getValue().isEmpty()) {
                 continue;
             }
 
-            String engineName = entry.getValue().get(0);
-            if (!engineName.isBlank()) {
-                builder.engineFunction(mudlibName, engineName);
+            for (String mudlibName : entry.getValue()) {
+                if (!mudlibName.isBlank()) {
+                    builder.engineFunction(engineName, mudlibName);
+                }
             }
         }
     }

@@ -37,15 +37,15 @@
       <p>
         JVMud's core efuns use JVMud-native names. Legacy driver names belong
         in mudlib compatibility profiles through engine function aliases such as
-        <code>engine_function.sizeof = jvmud_size</code>. That keeps familiar LPC
+        <code>engine_function.jvmud_size = sizeof</code>. That keeps familiar LPC
         source usable without making old driver vocabulary the engine model.
       </p>
       <p>
         Mudlib code can also qualify calls. <code>efun::name(...)</code>
-        bypasses mudlib shim methods while still honoring configured direct
+        bypasses mudlib shim methods while still honoring configured engine-function
         aliases. <code>jvmud::name(...)</code> resolves only JVMud-native efuns,
-        accepting either <code>jvmud_size(...)</code> or the shortened
-        <code>jvmud::size(...)</code> form.
+        such as <code>jvmud::jvmud_size(...)</code>; it does not invent a
+        <code>jvmud_</code> prefix for bad calls.
       </p>
     </section>
 

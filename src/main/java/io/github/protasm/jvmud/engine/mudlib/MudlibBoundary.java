@@ -39,6 +39,7 @@ public final class MudlibBoundary {
     private final Path mudlibRootPath;
     private final String boundaryObjectPath;
     private final String mudlibGlobalObjectPath;
+    private final Path mudlibGlobalObjectSourcePath;
     private final String compatibilityGlobalObjectPath;
     private final Path compatibilityGlobalObjectSourcePath;
     private final String playerObjectPath;
@@ -65,6 +66,7 @@ public final class MudlibBoundary {
         this.mudlibRootPath = normalizeOptionalFilesystemPath(builder.mudlibRootPath);
         this.boundaryObjectPath = normalizeOptionalPath(builder.boundaryObjectPath);
         this.mudlibGlobalObjectPath = normalizeOptionalPath(builder.mudlibGlobalObjectPath);
+        this.mudlibGlobalObjectSourcePath = normalizeOptionalFilesystemPath(builder.mudlibGlobalObjectSourcePath);
         this.compatibilityGlobalObjectPath = normalizeOptionalPath(builder.compatibilityGlobalObjectPath);
         this.compatibilityGlobalObjectSourcePath = normalizeOptionalFilesystemPath(builder.compatibilityGlobalObjectSourcePath);
         this.playerObjectPath = normalizeOptionalPath(builder.playerObjectPath);
@@ -121,6 +123,16 @@ public final class MudlibBoundary {
         return Optional.ofNullable(mudlibGlobalObjectPath);
     }
 
+    /**
+     * Returns the optional filesystem source for the mudlib-owned global mfun object.
+     *
+     * <p>This lets profile-side mfun objects live beside the JVMud manifest even when the mudlib
+     * source root points at imported upstream content.</p>
+     */
+    public Optional<Path> mudlibGlobalObjectSourcePath() {
+        return Optional.ofNullable(mudlibGlobalObjectSourcePath);
+    }
+
     /** Returns the optional JVMud compatibility global function object path. */
     public Optional<String> compatibilityGlobalObjectPath() {
         return Optional.ofNullable(compatibilityGlobalObjectPath);
@@ -129,22 +141,16 @@ public final class MudlibBoundary {
     /**
      * Returns the optional filesystem source for the JVMud compatibility global object.
      *
-     * <p>This is usually discovered from a {@code jvmud.c} file that sits beside the mudlib
-     * manifest. It lets the compiler inspect that profile-side helper object's declarations even
-     * when the upstream mudlib source root lives in a different folder.</p>
+     * <p>This lets the compiler inspect a profile-side helper object's declarations even when the
+     * upstream mudlib source root lives in a different folder.</p>
      */
     public Optional<Path> compatibilityGlobalObjectSourcePath() {
         return Optional.ofNullable(compatibilityGlobalObjectSourcePath);
     }
 
-    /**
-     * Returns the optional object path for legacy mudlib function adapters.
-     *
-     * @deprecated use {@link #compatibilityGlobalObjectPath()}.
-     */
-    @Deprecated(forRemoval = false)
+    /** Returns the optional mudlib-owned global mfun object path. */
     public Optional<String> mfunObjectPath() {
-        return compatibilityGlobalObjectPath();
+        return mudlibGlobalObjectPath();
     }
 
     /** Returns the optional LPC player object path used when binding interactive sessions. */
@@ -316,6 +322,7 @@ public final class MudlibBoundary {
                 || gameName != null
                 || mudlibRootPath != null
                 || mudlibGlobalObjectPath != null
+                || mudlibGlobalObjectSourcePath != null
                 || compatibilityGlobalObjectPath != null
                 || compatibilityGlobalObjectSourcePath != null
                 || playerObjectPath != null
@@ -451,6 +458,7 @@ public final class MudlibBoundary {
         private Path mudlibRootPath;
         private String boundaryObjectPath;
         private String mudlibGlobalObjectPath;
+        private Path mudlibGlobalObjectSourcePath;
         private String compatibilityGlobalObjectPath;
         private Path compatibilityGlobalObjectSourcePath;
         private String playerObjectPath;
@@ -509,6 +517,12 @@ public final class MudlibBoundary {
             return this;
         }
 
+        /** Sets the filesystem source for the mudlib-owned global mfun object. */
+        public Builder mudlibGlobalObjectSourcePath(Path mudlibGlobalObjectSourcePath) {
+            this.mudlibGlobalObjectSourcePath = mudlibGlobalObjectSourcePath;
+            return this;
+        }
+
         /** Sets the JVMud compatibility global function object path. */
         public Builder compatibilityGlobalObjectPath(String compatibilityGlobalObjectPath) {
             this.compatibilityGlobalObjectPath = compatibilityGlobalObjectPath;
@@ -521,14 +535,9 @@ public final class MudlibBoundary {
             return this;
         }
 
-        /**
-         * Sets a mudlib object path for legacy mfun/efun adapter behavior.
-         *
-         * @deprecated use {@link #compatibilityGlobalObjectPath(String)}.
-         */
-        @Deprecated(forRemoval = false)
+        /** Sets the mudlib-owned global mfun object path. */
         public Builder mfunObjectPath(String mfunObjectPath) {
-            return compatibilityGlobalObjectPath(mfunObjectPath);
+            return mudlibGlobalObjectPath(mfunObjectPath);
         }
 
         /** Sets the LPC player object path used when binding interactive sessions. */
@@ -656,9 +665,9 @@ public final class MudlibBoundary {
             return this;
         }
 
-        /** Maps a mudlib-visible function spelling to a JVMud-native engine function name. */
-        public Builder engineFunction(String mudlibName, String engineName) {
-            String normalizedMudlibName = normalizeRequiredText(mudlibName, "Engine function source name");
+        /** Maps a JVMud-native engine function name to a mudlib-visible function spelling. */
+        public Builder engineFunction(String engineName, String mudlibName) {
+            String normalizedMudlibName = normalizeRequiredText(mudlibName, "Mudlib-visible engine function name");
             String normalizedEngineName = normalizeOptionalText(engineName);
             if (normalizedEngineName == null) {
                 engineFunctionAliases.remove(normalizedMudlibName);

@@ -54,10 +54,10 @@
       <p>
         LPC source may use <code>efun::name(...)</code> to call through the
         mudlib boundary's engine function translation table. JVMud also supports
-        <code>jvmud::name(...)</code> for JVMud-native efuns only; it accepts
-        shortened names such as <code>jvmud::size(...)</code> as a call to
-        <code>jvmud_size(...)</code>, but it does not apply legacy mudlib
-        aliases such as <code>sizeof</code>.
+        <code>jvmud::name(...)</code> for exact JVMud-native efun names only,
+        such as <code>jvmud::jvmud_size(...)</code>. It does not invent a
+        <code>jvmud_</code> prefix or apply legacy mudlib aliases such as
+        <code>sizeof</code>.
       </p>
     </section>
   </main>

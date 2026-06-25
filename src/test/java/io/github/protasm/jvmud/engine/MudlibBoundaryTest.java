@@ -126,7 +126,7 @@ final class MudlibBoundaryTest {
                 lifecycle.runtime_error = runtime_error
                 lifecycle.scheduled_tick_error = heart_beat_error
                 lifecycle.server_shutdown = notify_shutdown
-                engine_function.sizeof = jvmud_size
+                engine_function.jvmud_size = sizeof
                 ldmud_compat_predefine.__VERSION__ = "JVMud LDMud compatibility"
                 ldmud_compat_predefine.__VERSION_MAJOR__ = 3
                 ldmud_compat_function_predefine.PROBE.text_width = 0
@@ -180,23 +180,44 @@ final class MudlibBoundaryTest {
     }
 
     @Test
-    void configReaderDetectsSiblingJvmudCompatibilityGlobalObject() throws IOException {
+    void configReaderUsesExplicitCompatibilityObject() throws IOException {
         Path config = tempDir.resolve("jvmud").resolve("realmsmud.config");
         Files.createDirectories(config.getParent());
-        Path compatibilityObject = config.getParent().resolve("jvmud.c");
+        Path compatibilityObject = config.getParent().resolve("compat.c");
         Files.writeString(compatibilityObject, "mixed helper() { return 1; }\n");
         Files.writeString(config, """
                 mudlib_root = ../source
-                mudlib_global_object = secure/simul_efun
+                mfun_object = secure/simul_efun
+                compatibility_object = jvmud/compat
                 """);
 
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/realmsmud.config");
 
         assertEquals("secure/simul_efun", boundary.mudlibGlobalObjectPath().orElseThrow());
-        assertEquals("jvmud/jvmud", boundary.compatibilityGlobalObjectPath().orElseThrow());
+        assertEquals("secure/simul_efun", boundary.mfunObjectPath().orElseThrow());
+        assertTrue(boundary.mudlibGlobalObjectSourcePath().isEmpty());
+        assertEquals("jvmud/compat", boundary.compatibilityGlobalObjectPath().orElseThrow());
         assertEquals(
                 compatibilityObject.toAbsolutePath().normalize(),
                 boundary.compatibilityGlobalObjectSourcePath().orElseThrow());
+    }
+
+    @Test
+    void configReaderDoesNotDiscoverSiblingCompatibilityObjectImplicitly() throws IOException {
+        Path config = tempDir.resolve("jvmud").resolve("realmsmud.config");
+        Files.createDirectories(config.getParent());
+        Files.writeString(config.getParent().resolve("jvmud.c"), "mixed helper() { return 1; }\n");
+        Files.writeString(config, """
+                mudlib_root = ../source
+                mfun_object = secure/simul_efun
+                """);
+
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/realmsmud.config");
+
+        assertEquals("secure/simul_efun", boundary.mfunObjectPath().orElseThrow());
+        assertTrue(boundary.mudlibGlobalObjectSourcePath().isEmpty());
+        assertTrue(boundary.compatibilityGlobalObjectPath().isEmpty());
+        assertTrue(boundary.compatibilityGlobalObjectSourcePath().isEmpty());
     }
 
     @Test
