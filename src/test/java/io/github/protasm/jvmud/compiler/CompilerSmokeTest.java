@@ -2292,6 +2292,10 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsSortArrayWithInlineStringComparator() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("sort_array", "jvmud_sort_array")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_sort.c", """
                 mixed value() {
                     return sort_array(({"b", "a", "c"}), (: $1 > $2 :));
@@ -2304,6 +2308,10 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsSortArrayInlineComparatorExtraArguments() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("sort_array", "jvmud_sort_array")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_sort_extra_arguments.c", """
                 mixed value() {
                     mapping order;
@@ -2355,6 +2363,9 @@ final class CompilerSmokeTest {
     void runtimeSupportsNestedSortArrayFilterInlineCallables() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("sort_array", "jvmud_sort_array")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/nested_sort_filter_inline_callables.c", """
                 private mapping specificationData = ([
                     "name": "ash blond hair",
@@ -2400,6 +2411,9 @@ final class CompilerSmokeTest {
                 """);
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("sort_array", "jvmud_sort_array")
+                .build());
 
         LPCObjectHandle object = runtime.load(tempDir.resolve("callable_child.c"));
 
@@ -2860,24 +2874,6 @@ final class CompilerSmokeTest {
                     return jvmud_to_int(a) > jvmud_to_int(b);
                 }
 
-                mixed *sort_array(mixed *values, string method) {
-                    mixed *ret = values + ({ });
-                    int size = jvmud_size(ret);
-                    int i;
-                    int j;
-
-                    for (i = 0; i < size; i++) {
-                        for (j = i + 1; j < size; j++) {
-                            if (sortMethod(ret[i], ret[j])) {
-                                mixed swap = ret[i];
-                                ret[i] = ret[j];
-                                ret[j] = swap;
-                            }
-                        }
-                    }
-                    return ret;
-                }
-
                 protected string displayDetails(string choice) {
                     return "";
                 }
@@ -2913,6 +2909,9 @@ final class CompilerSmokeTest {
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("sort_array", "jvmud_sort_array")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/inherited_selector.c", """
                 inherit "/lib/selector_base.c";
                 """);

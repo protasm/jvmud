@@ -5,7 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Runtime helpers for LPC {@code filter()} and {@code map()} collection callbacks. */
+/** Runtime helpers for LPC collection callbacks. */
 public final class RuntimeCollectionTransform {
     private RuntimeCollectionTransform() {}
 
@@ -56,6 +56,29 @@ public final class RuntimeCollectionTransform {
             result.add(callback.call(runtime, callbackArgs(item, extras)));
         }
         return result;
+    }
+
+    /**
+     * Applies callable-form LPC {@code sort_array()} semantics.
+     *
+     * <p>The callback receives the two candidate values as {@code $1} and {@code $2}. Additional
+     * arguments are forwarded starting at {@code $3}. A truthy callback result swaps the two
+     * candidate values, matching the selection-sort behavior historically used by JVMud's compiler
+     * lowering for {@code sort_array(values, (: ... :))}.</p>
+     */
+    public static Object sortArray(Object source, RuntimeCallable callback, Object[] extras, RuntimeContext runtime) {
+        List<Object> items = new ArrayList<>(RuntimeForeach.items(source));
+        int size = items.size();
+        for (int i = 0; i < size; i++) {
+            for (int j = i + 1; j < size; j++) {
+                if (Truth.isTruthy(callback.call(runtime, callbackArgs(items.get(i), items.get(j), extras)))) {
+                    Object swap = items.get(i);
+                    items.set(i, items.get(j));
+                    items.set(j, swap);
+                }
+            }
+        }
+        return items;
     }
 
     private static Object[] callbackArgs(Object item, Object[] extras) {

@@ -48,7 +48,6 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSortArray;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTypedFunctionLiteral;
@@ -1357,9 +1356,6 @@ public final class IRLowerer {
         if (expression instanceof ASTExprCollectionTransform transform)
             return lowerCollectionTransform(transform, context, problems);
 
-        if (expression instanceof ASTExprSortArray sortArray)
-            return lowerSortArray(sortArray, context, problems);
-
         if (expression instanceof ASTExprArrayLiteral arrayLiteral) {
             List<IRExpression> elements = new ArrayList<>();
             for (ASTExpression element : arrayLiteral.elements())
@@ -1959,32 +1955,6 @@ public final class IRLowerer {
             collectCaptureLocals(slice.start(), argumentLocals, capturesBySlot);
             collectCaptureLocals(slice.end(), argumentLocals, capturesBySlot);
         }
-    }
-
-    private IRExpression lowerSortArray(
-            ASTExprSortArray sortArray, MethodContext context, List<CompilationProblem> problems) {
-        IRExpression source = lowerExpression(sortArray.source(), context, problems);
-        List<IRExpression> extras = new ArrayList<>();
-        for (ASTExpression extra : sortArray.extraArguments())
-            extras.add(lowerExpression(extra, context, problems));
-
-        IRLocal itemsLocal = context.addSyntheticLocal(sortArray.line(), "sort_items", RuntimeTypes.MIXED);
-        IRLocal indexLocal = context.addSyntheticLocal(sortArray.line(), "sort_index", RuntimeTypes.INT);
-        IRLocal innerIndexLocal = context.addSyntheticLocal(sortArray.line(), "sort_inner_index", RuntimeTypes.INT);
-        IRLocal swapLocal = context.addSyntheticLocal(sortArray.line(), "sort_swap", RuntimeTypes.MIXED);
-
-        IRExpression comparator = lowerExpression(sortArray.comparator(), context, problems);
-
-        return new IRSortArray(
-                sortArray.line(),
-                coerceIfNeeded(source, RuntimeTypes.MIXED),
-                comparator,
-                itemsLocal,
-                indexLocal,
-                innerIndexLocal,
-                swapLocal,
-                extras,
-                RuntimeTypes.arrayOf(RuntimeTypes.MIXED));
     }
 
     private int maxClosureArgumentIndex(ASTExpression expression) {

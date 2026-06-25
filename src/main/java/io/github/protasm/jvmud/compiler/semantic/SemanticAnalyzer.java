@@ -44,7 +44,6 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprProtectedEval;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSequence;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSortArray;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTypedFunctionLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedAssignment;
@@ -997,28 +996,6 @@ public final class SemanticAnalyzer {
                         resolvedExtras);
             }
 
-            if (expression instanceof ASTExprSortArray sortArray) {
-                ASTExpression resolvedSource = resolveExpression(sortArray.source(), context);
-                List<ASTExpression> resolvedExtras = new ArrayList<>();
-                boolean extrasChanged = false;
-                for (ASTExpression extra : sortArray.extraArguments()) {
-                    ASTExpression resolvedExtra = resolveExpression(extra, context);
-                    resolvedExtras.add(resolvedExtra);
-                    if (resolvedExtra != extra)
-                        extrasChanged = true;
-                }
-                ASTExpression resolvedComparator = resolveCallableExpression(sortArray.comparator(), context);
-                if (resolvedSource == sortArray.source()
-                        && resolvedComparator == sortArray.comparator()
-                        && !extrasChanged)
-                    return sortArray;
-                return new ASTExprSortArray(
-                        sortArray.line(),
-                        resolvedSource,
-                        resolvedComparator,
-                        resolvedExtras);
-            }
-
             if (expression instanceof ASTExprDynamicInvoke dynamicInvoke) {
                 ASTExpression resolvedTarget = resolveExpression(dynamicInvoke.target(), context);
                 ASTArguments resolvedArgs = resolveArguments(dynamicInvoke.arguments(), context);
@@ -1270,10 +1247,6 @@ public final class SemanticAnalyzer {
             if (transform != null)
                 return transform;
 
-            ASTExprSortArray sortArray = sortArrayTransform(unresolvedCall, resolvedArgs);
-            if (sortArray != null)
-                return sortArray;
-
             ASTMethod method = resolveMethod(unresolvedCall.name(), resolvedArgs.size());
 
             if (method != null)
@@ -1330,24 +1303,6 @@ public final class SemanticAnalyzer {
                     : ASTExprCollectionTransform.Operation.MAP;
             return new ASTExprCollectionTransform(
                     unresolvedCall.line(), operation, args.get(0).expression(), callback, extras);
-        }
-
-        private ASTExprSortArray sortArrayTransform(ASTExprUnresolvedCall unresolvedCall, ASTArguments args) {
-            if (!"sort_array".equals(unresolvedCall.name()))
-                return null;
-
-            if (args == null || args.size() < 2)
-                return null;
-
-            ASTExpression callback = args.get(1).expression();
-            if (!isCallableArgument(callback))
-                return null;
-
-            List<ASTExpression> extras = new ArrayList<>();
-            for (int i = 2; i < args.size(); i++)
-                extras.add(args.get(i).expression());
-
-            return new ASTExprSortArray(unresolvedCall.line(), args.get(0).expression(), callback, extras);
         }
 
         private boolean isCallableArgument(ASTExpression expression) {

@@ -6,6 +6,7 @@ import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
+import io.github.protasm.jvmud.compiler.runtime.RuntimeCollectionTransform;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeMapping;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
@@ -282,6 +283,9 @@ import javax.crypto.spec.PBEKeySpec;
  *       inclusive start and end indexes.</li>
  *   <li>{@code jvmud_member(mixed value, mixed needle) : int} checks mapping key membership or
  *       returns the index of a value in an array or string.</li>
+ *   <li>{@code jvmud_sort_array(array values, mixed comparator[, mixed ...args]) : array} sorts a
+ *       copy of an array using a callable comparator or current-object method name. Mudlib
+ *       manifests can expose this under legacy names such as {@code sort_array}.</li>
  *   <li>{@code jvmud_mapping_keys(mapping value) : array} returns the mapping's keys in runtime
  *       iteration order.</li>
  *   <li>{@code jvmud_mapping_values(mapping value) : array} returns the mapping's values in
@@ -616,6 +620,9 @@ public final class CoreEfuns {
                 (runtime, args) -> args[0] instanceof Map<?, ?> ? 1 : 0));
         for (int arity = 2; arity <= 8; arity++) {
             efuns.add(filterIndicesEfun(arity));
+        }
+        for (int arity = 2; arity <= 8; arity++) {
+            efuns.add(sortArrayEfun(arity));
         }
         for (int arity = 3; arity <= 8; arity++) {
             efuns.add(sscanfEfun(arity));
@@ -1495,6 +1502,36 @@ public final class CoreEfuns {
         }
         return efun("jvmud_filter_indices", LPCType.LPCMAPPING, parameters,
                 (runtime, args) -> filterIndices(runtime, args));
+    }
+
+    private static Efun sortArrayEfun(int arity) {
+        List<LPCType> parameters = new ArrayList<>();
+        parameters.add(LPCType.LPCARRAY);
+        parameters.add(LPCType.LPCMIXED);
+        for (int i = 2; i < arity; i++) {
+            parameters.add(LPCType.LPCMIXED);
+        }
+        return efun("jvmud_sort_array", LPCType.LPCARRAY, parameters,
+                (runtime, args) -> sortArray(runtime, args));
+    }
+
+    private static Object sortArray(RuntimeContext runtime, Object[] args) {
+        Object[] extraArgs = new Object[Math.max(0, args.length - 2)];
+        if (extraArgs.length > 0) {
+            System.arraycopy(args, 2, extraArgs, 0, extraArgs.length);
+        }
+        if (args[1] instanceof RuntimeCallable callback) {
+            return RuntimeCollectionTransform.sortArray(args[0], callback, extraArgs, runtime);
+        }
+        if (args[1] instanceof String methodName) {
+            Object current = runtime.currentObject();
+            RuntimeCallable comparator = (callbackRuntime, callbackArgs) -> callbackRuntime.invokeOptionalObject(
+                    current,
+                    methodName,
+                    callbackArgs);
+            return RuntimeCollectionTransform.sortArray(args[0], comparator, extraArgs, runtime);
+        }
+        throw new IllegalArgumentException("jvmud_sort_array expects a callable or method name as its second argument");
     }
 
     private static Object filterIndices(RuntimeContext runtime, Object[] args) {

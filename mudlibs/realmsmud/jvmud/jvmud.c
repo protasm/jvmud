@@ -207,14 +207,6 @@ int db_connect(string database, string user, string password) {
     return load_object("/secure/simul_efun.c")->db_connect(database, user, password);
 }
 
-string db_conv_string(mixed value) {
-    return jvmud_db_escape(value);
-}
-
-mixed db_error(int handle) {
-    return jvmud_db_error(handle);
-}
-
 int db_exec(int handle, string sql) {
     return load_object("/secure/simul_efun.c")->db_exec(handle, sql);
 }
@@ -223,10 +215,6 @@ void debug_message(mixed message) {
 }
 
 void debug_message(mixed message, int flags) {
-}
-
-mixed db_fetch(int handle) {
-    return jvmud_db_fetch(handle);
 }
 
 int *db_handles() {
@@ -308,16 +296,8 @@ string *inherit_list() {
     return inherit_list(this_object());
 }
 
-string *inherit_list(mixed ob) {
-    return jvmud_inherited_programs(ob);
-}
-
 int intp(mixed value) {
     return jvmud_is_int(value);
-}
-
-int floatp(mixed value) {
-    return jvmud_is_float(value);
 }
 
 float log(float value) {
@@ -455,14 +435,6 @@ object *wizards() {
     return load_object("/secure/simul_efun.c")->wizards();
 }
 
-object present(mixed id) {
-    return jvmud_find_entity(id);
-}
-
-object present(mixed id, mixed container) {
-    return jvmud_find_entity(id, container);
-}
-
 string query_verb() {
     return jvmud_current_verb();
 }
@@ -516,10 +488,6 @@ int remove_action(int flags, mixed actor) {
     return jvmud_remove_action(flags, actor);
 }
 
-int sizeof(mixed value) {
-    return jvmud_size(value);
-}
-
 int *rusage() {
     return ({ 0, 0 });
 }
@@ -535,10 +503,6 @@ int set_heart_beat(int enabled) {
 
 string StartLocation() {
     return "/areas/eledhel/southern-city/12x2.c";
-}
-
-object this_object() {
-    return jvmud_current_lpc_object();
 }
 
 int time() {
@@ -623,28 +587,6 @@ string version() {
     return "JVMud RealmsMUD LDMud compatibility";
 }
 
-mixed *sort_array(mixed *values, string method) {
-    mixed *ret = values + ({ });
-    int size = sizeof(ret);
-    int i;
-    int j;
-
-    for (i = 0; i < size; i++) {
-        for (j = i + 1; j < size; j++) {
-            if (call_other(this_object(), method, ret[i], ret[j])) {
-                mixed swap = ret[i];
-                ret[i] = ret[j];
-                ret[j] = swap;
-            }
-        }
-    }
-    return ret;
-}
-
-void set_driver_hook(int hook, mixed callback) {
-    jvmud_set_driver_hook(hook, callback);
-}
-
 function unbound_lambda(mixed *parameters, mixed body) {
     return (: 0 :);
 }
@@ -663,94 +605,6 @@ int write_file(string path, mixed text) {
 
 int write_file(string path, mixed text, int flags) {
     return jvmud_append_mudlib_text(path, text);
-}
-
-string sprintf(string format) {
-    return jvmud_format_text(format);
-}
-
-string sprintf(string format, mixed arg1) {
-    return jvmud_format_text(format, arg1);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2) {
-    return jvmud_format_text(format, arg1, arg2);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3) {
-    return jvmud_format_text(format, arg1, arg2, arg3);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5, mixed arg6) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5, mixed arg6, mixed arg7) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5, mixed arg6, mixed arg7, mixed arg8) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
-        arg8);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
-        arg8, arg9);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
-        arg8, arg9, arg10);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10,
-    mixed arg11) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
-        arg8, arg9, arg10, arg11);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10,
-    mixed arg11, mixed arg12) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
-        arg8, arg9, arg10, arg11, arg12);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10,
-    mixed arg11, mixed arg12, mixed arg13) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
-        arg8, arg9, arg10, arg11, arg12, arg13);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10,
-    mixed arg11, mixed arg12, mixed arg13, mixed arg14) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
-        arg8, arg9, arg10, arg11, arg12, arg13, arg14);
-}
-
-string sprintf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
-    mixed arg5, mixed arg6, mixed arg7, mixed arg8, mixed arg9, mixed arg10,
-    mixed arg11, mixed arg12, mixed arg13, mixed arg14, mixed arg15) {
-    return jvmud_format_text(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
-        arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15);
 }
 
 mapping filter_indices(mapping values, function callback) {
