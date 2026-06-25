@@ -21,7 +21,6 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprClosureArgument;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCollectionTransform;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldMutation;
@@ -245,13 +244,6 @@ public final class SemanticTypeChecker {
         if (expression instanceof ASTExprTypedFunctionLiteral typedFunction) {
             inferExpressionType(typedFunction.body(), context, typedFunction.returnSymbol().lpcType());
             return LPCType.LPCFUNCTION;
-        }
-        if (expression instanceof ASTExprCollectionTransform transform) {
-            inferExpressionType(transform.source(), context, LPCType.LPCARRAY);
-            inferExpressionType(transform.callback(), context, LPCType.LPCFUNCTION);
-            for (ASTExpression extra : transform.extraArguments())
-                inferExpressionType(extra, context);
-            return transform.lpcType();
         }
         if (expression instanceof ASTExprFunctionReference)
             return LPCType.LPCFUNCTION;

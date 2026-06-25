@@ -21,7 +21,6 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprClosureArgument;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCollectionTransform;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldStore;
@@ -1353,9 +1352,6 @@ public final class IRLowerer {
             return new IRLocalLoad(closureArgument.line(), local);
         }
 
-        if (expression instanceof ASTExprCollectionTransform transform)
-            return lowerCollectionTransform(transform, context, problems);
-
         if (expression instanceof ASTExprArrayLiteral arrayLiteral) {
             List<IRExpression> elements = new ArrayList<>();
             for (ASTExpression element : arrayLiteral.elements())
@@ -1656,38 +1652,6 @@ public final class IRLowerer {
                         "Unsupported expression kind: " + expression.getClass().getSimpleName(),
                         expression.line()));
         return new IRConstant(expression.line(), null, RuntimeTypes.MIXED);
-    }
-
-    private IRExpression lowerCollectionTransform(
-            ASTExprCollectionTransform transform, MethodContext context, List<CompilationProblem> problems) {
-        IRExpression source = lowerExpression(transform.source(), context, problems);
-        List<IRExpression> extras = new ArrayList<>();
-        for (ASTExpression extra : transform.extraArguments())
-            extras.add(lowerExpression(extra, context, problems));
-
-        IRLocal sourceLocal = context.addSyntheticLocal(transform.line(), "closure_source", RuntimeTypes.MIXED);
-        IRLocal itemsLocal = context.addSyntheticLocal(transform.line(), "closure_items", RuntimeTypes.MIXED);
-        IRLocal resultLocal = context.addSyntheticLocal(transform.line(), "closure_result", RuntimeTypes.MIXED);
-        IRLocal indexLocal = context.addSyntheticLocal(transform.line(), "closure_index", RuntimeTypes.INT);
-        IRExpression callback = lowerExpression(transform.callback(), context, problems);
-
-        IRCollectionTransform.Operation operation = transform.operation() == ASTExprCollectionTransform.Operation.FILTER
-                ? IRCollectionTransform.Operation.FILTER
-                : IRCollectionTransform.Operation.MAP;
-        RuntimeType resultType = runtimeType(transform.lpcType());
-        if (resultType == null)
-            resultType = RuntimeTypes.MIXED;
-        return new IRCollectionTransform(
-                transform.line(),
-                operation,
-                coerceIfNeeded(source, RuntimeTypes.MIXED),
-                extras,
-                callback,
-                sourceLocal,
-                itemsLocal,
-                resultLocal,
-                indexLocal,
-                resultType);
     }
 
     private IRExpression lowerInlineCallableLiteral(

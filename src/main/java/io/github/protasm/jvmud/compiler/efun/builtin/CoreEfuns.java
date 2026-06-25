@@ -286,6 +286,12 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_sort_array(array values, mixed comparator[, mixed ...args]) : array} sorts a
  *       copy of an array using a callable comparator or current-object method name. Mudlib
  *       manifests can expose this under legacy names such as {@code sort_array}.</li>
+ *   <li>{@code jvmud_filter(mixed values, function callback, mixed ...args) : mixed} filters
+ *       arrays, strings, and mappings with a callable predicate. Mudlib manifests can expose this
+ *       under legacy names such as {@code filter}.</li>
+ *   <li>{@code jvmud_map(mixed values, function callback, mixed ...args) : mixed} maps arrays,
+ *       strings, and mappings with a callable transformer. Mudlib manifests can expose this under
+ *       legacy names such as {@code map}.</li>
  *   <li>{@code jvmud_mapping_keys(mapping value) : array} returns the mapping's keys in runtime
  *       iteration order.</li>
  *   <li>{@code jvmud_mapping_values(mapping value) : array} returns the mapping's values in
@@ -620,6 +626,12 @@ public final class CoreEfuns {
                 (runtime, args) -> args[0] instanceof Map<?, ?> ? 1 : 0));
         for (int arity = 2; arity <= 8; arity++) {
             efuns.add(filterIndicesEfun(arity));
+        }
+        for (int arity = 2; arity <= 8; arity++) {
+            efuns.add(filterEfun(arity));
+        }
+        for (int arity = 2; arity <= 8; arity++) {
+            efuns.add(mapEfun(arity));
         }
         for (int arity = 2; arity <= 8; arity++) {
             efuns.add(sortArrayEfun(arity));
@@ -1502,6 +1514,50 @@ public final class CoreEfuns {
         }
         return efun("jvmud_filter_indices", LPCType.LPCMAPPING, parameters,
                 (runtime, args) -> filterIndices(runtime, args));
+    }
+
+    private static Efun filterEfun(int arity) {
+        List<LPCType> parameters = new ArrayList<>();
+        parameters.add(LPCType.LPCMIXED);
+        parameters.add(LPCType.LPCFUNCTION);
+        for (int i = 2; i < arity; i++) {
+            parameters.add(LPCType.LPCMIXED);
+        }
+        return efun("jvmud_filter", LPCType.LPCMIXED, parameters,
+                (runtime, args) -> filter(runtime, args));
+    }
+
+    private static Object filter(RuntimeContext runtime, Object[] args) {
+        if (!(args[1] instanceof RuntimeCallable callback)) {
+            throw new IllegalArgumentException("jvmud_filter expects a callable as its second argument");
+        }
+        Object[] extraArgs = new Object[Math.max(0, args.length - 2)];
+        if (extraArgs.length > 0) {
+            System.arraycopy(args, 2, extraArgs, 0, extraArgs.length);
+        }
+        return RuntimeCollectionTransform.filter(args[0], callback, extraArgs, runtime);
+    }
+
+    private static Efun mapEfun(int arity) {
+        List<LPCType> parameters = new ArrayList<>();
+        parameters.add(LPCType.LPCMIXED);
+        parameters.add(LPCType.LPCFUNCTION);
+        for (int i = 2; i < arity; i++) {
+            parameters.add(LPCType.LPCMIXED);
+        }
+        return efun("jvmud_map", LPCType.LPCMIXED, parameters,
+                (runtime, args) -> map(runtime, args));
+    }
+
+    private static Object map(RuntimeContext runtime, Object[] args) {
+        if (!(args[1] instanceof RuntimeCallable callback)) {
+            throw new IllegalArgumentException("jvmud_map expects a callable as its second argument");
+        }
+        Object[] extraArgs = new Object[Math.max(0, args.length - 2)];
+        if (extraArgs.length > 0) {
+            System.arraycopy(args, 2, extraArgs, 0, extraArgs.length);
+        }
+        return RuntimeCollectionTransform.map(args[0], callback, extraArgs, runtime);
     }
 
     private static Efun sortArrayEfun(int arity) {

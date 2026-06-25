@@ -821,6 +821,10 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsFalseSentinelInCollectionContexts() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/collection_false_sentinel.c", """
                 mixed maybe_array(int present) {
                     if (present) {
@@ -2145,6 +2149,10 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsInlineCallableFilterArguments() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_filter.c", """
                 mixed value() {
                     return filter(({1, 0, 2, 0, 3}), (: $1 :));
@@ -2221,6 +2229,10 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsInlineCallableReturnShorthand() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_filter_return_shorthand.c", """
                 mixed value() {
                     return filter(({1, 0, 2, 0, 3}), (: return $1; :));
@@ -2235,6 +2247,7 @@ final class CompilerSmokeTest {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
                 .directEfunAlias("member", "jvmud_member")
                 .directEfunAlias("pointerp", "jvmud_is_array")
                 .directEfunAlias("sizeof", "jvmud_size")
@@ -2263,6 +2276,10 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsInlineCallableMapArguments() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("map", "jvmud_map")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_map.c", """
                 mixed value() {
                     return map(({1, 2, 3}), (: $1 * $2 :), 10);
@@ -2327,6 +2344,10 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsInlineCallableExtraArgumentsAndMappingLookup() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_filter_mapping_lookup.c", """
                 mixed value() {
                     mapping values;
@@ -2343,6 +2364,9 @@ final class CompilerSmokeTest {
     void runtimeSupportsInlineCallableSecondExtraArgumentAndMappingLookup() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/inline_filter_two_extras.c", """
                 mixed value() {
                     mapping values;
@@ -2364,6 +2388,7 @@ final class CompilerSmokeTest {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
                 .directEfunAlias("sort_array", "jvmud_sort_array")
                 .build());
         LPCObjectHandle object = runtime.loadSource("smoke/nested_sort_filter_inline_callables.c", """
@@ -2412,6 +2437,7 @@ final class CompilerSmokeTest {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
                 .directEfunAlias("sort_array", "jvmud_sort_array")
                 .build());
 
@@ -2424,6 +2450,10 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsFunctionReferenceFilterArguments() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/function_reference_filter.c", """
                 int matches(mixed value) {
                     return value;
@@ -2440,6 +2470,10 @@ final class CompilerSmokeTest {
     @Test
     void runtimeSupportsFunctionReferenceExtraArgumentsAndMappingLookup() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
+                .build());
         LPCObjectHandle object = runtime.loadSource("smoke/function_reference_filter_extra_arguments.c", """
                 int selected(string key, mapping values, string expected) {
                     return values[key] == expected;
@@ -4169,6 +4203,7 @@ final class CompilerSmokeTest {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .directEfunAlias("filter", "jvmud_filter")
                 .directEfunAlias("regreplace", "jvmud_regex_replace")
                 .directEfunAlias("upper_case", "jvmud_uppercase_text")
                 .build());

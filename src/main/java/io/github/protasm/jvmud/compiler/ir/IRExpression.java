@@ -14,7 +14,6 @@ public sealed interface IRExpression extends IRNode
                 IRCoerce,
                 IRConditionalExpression,
                 IRConstant,
-                IRCollectionTransform,
                 IRDynamicInvoke,
                 IRDynamicInvokeExpression,
                 IRDynamicInvokeField,

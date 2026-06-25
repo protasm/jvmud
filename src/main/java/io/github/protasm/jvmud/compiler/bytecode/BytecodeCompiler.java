@@ -9,7 +9,6 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeArithmetic;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeComparison;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCoercions;
-import io.github.protasm.jvmud.compiler.runtime.RuntimeCollectionTransform;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeArray;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeEquality;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeForeach;
@@ -358,11 +357,6 @@ public final class BytecodeCompiler {
 
         if (expression instanceof IRConstant constant) {
             emitConstant(mv, constant);
-            return;
-        }
-
-        if (expression instanceof IRCollectionTransform transform) {
-            emitCollectionTransform(mv, internalName, method, transform);
             return;
         }
 
@@ -1591,44 +1585,6 @@ public final class BytecodeCompiler {
             mv.visitMethodInsn(INVOKEVIRTUAL, "java/util/ArrayList", "add", "(Ljava/lang/Object;)Z", false);
             mv.visitInsn(POP);
         }
-    }
-
-    private void emitCollectionTransform(
-            MethodVisitor mv, String internalName, IRMethod method, IRCollectionTransform transform) {
-        emitExpression(mv, internalName, method, transform.source());
-        boxIfNeeded(mv, transform.source().type());
-
-        emitExpression(mv, internalName, method, transform.callback());
-        boxIfNeeded(mv, transform.callback().type());
-        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(RuntimeCallable.class));
-
-        pushInt(mv, transform.extraArguments().size());
-        mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
-        for (int i = 0; i < transform.extraArguments().size(); i++) {
-            IRExpression extra = transform.extraArguments().get(i);
-            mv.visitInsn(DUP);
-            pushInt(mv, i);
-            emitExpression(mv, internalName, method, extra);
-            boxIfNeeded(mv, extra.type());
-            mv.visitInsn(AASTORE);
-        }
-
-        mv.visitMethodInsn(
-                INVOKESTATIC,
-                Type.getInternalName(RuntimeContextHolder.class),
-                "requireCurrent",
-                "()Lio/github/protasm/jvmud/compiler/runtime/RuntimeContext;",
-                false);
-
-        String helperName = transform.operation() == IRCollectionTransform.Operation.FILTER ? "filter" : "map";
-        mv.visitMethodInsn(
-                INVOKESTATIC,
-                Type.getInternalName(RuntimeCollectionTransform.class),
-                helperName,
-                "(Ljava/lang/Object;Lio/github/protasm/jvmud/compiler/runtime/RuntimeCallable;[Ljava/lang/Object;"
-                        + "Lio/github/protasm/jvmud/compiler/runtime/RuntimeContext;)Ljava/lang/Object;",
-                false);
-        return;
     }
 
     private void emitListSize(MethodVisitor mv, IRLocal listLocal) {

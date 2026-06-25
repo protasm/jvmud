@@ -219,6 +219,8 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jvmud_mapping_delete", boundary.directEfunAlias("m_delete").orElseThrow());
         assertEquals("jvmud_inherited_programs", boundary.directEfunAlias("inherit_list").orElseThrow());
         assertEquals("jvmud_apply_callable", boundary.directEfunAlias("apply").orElseThrow());
+        assertEquals("jvmud_filter", boundary.directEfunAlias("filter").orElseThrow());
+        assertEquals("jvmud_map", boundary.directEfunAlias("map").orElseThrow());
         assertEquals("jvmud_sort_array", boundary.directEfunAlias("sort_array").orElseThrow());
         assertEquals("jvmud_random", boundary.directEfunAlias("random").orElseThrow());
         assertEquals("jvmud_capitalize_text", boundary.directEfunAlias("capitalize").orElseThrow());

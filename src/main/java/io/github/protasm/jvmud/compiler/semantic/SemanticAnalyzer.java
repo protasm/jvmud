@@ -22,7 +22,6 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallEfun;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCallMethod;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprClosureArgument;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprCollectionTransform;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprDynamicInvoke;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprFieldMutation;
@@ -976,26 +975,6 @@ public final class SemanticAnalyzer {
                         resolvedBody);
             }
 
-            if (expression instanceof ASTExprCollectionTransform transform) {
-                ASTExpression resolvedSource = resolveExpression(transform.source(), context);
-                ASTExpression resolvedCallback = resolveCallableExpression(transform.callback(), context);
-                List<ASTExpression> resolvedExtras = new ArrayList<>();
-                boolean changed = resolvedSource != transform.source() || resolvedCallback != transform.callback();
-                for (ASTExpression extra : transform.extraArguments()) {
-                    ASTExpression resolved = resolveExpression(extra, context);
-                    changed |= resolved != extra;
-                    resolvedExtras.add(resolved);
-                }
-                if (!changed)
-                    return transform;
-                return new ASTExprCollectionTransform(
-                        transform.line(),
-                        transform.operation(),
-                        resolvedSource,
-                        resolvedCallback,
-                        resolvedExtras);
-            }
-
             if (expression instanceof ASTExprDynamicInvoke dynamicInvoke) {
                 ASTExpression resolvedTarget = resolveExpression(dynamicInvoke.target(), context);
                 ASTArguments resolvedArgs = resolveArguments(dynamicInvoke.arguments(), context);
@@ -1243,10 +1222,6 @@ public final class SemanticAnalyzer {
 
         private ASTExpression resolveCall(ASTExprUnresolvedCall unresolvedCall, LocalResolutionContext context) {
             ASTArguments resolvedArgs = resolveArguments(unresolvedCall.arguments(), context);
-            ASTExprCollectionTransform transform = collectionTransform(unresolvedCall, resolvedArgs);
-            if (transform != null)
-                return transform;
-
             ASTMethod method = resolveMethod(unresolvedCall.name(), resolvedArgs.size());
 
             if (method != null)
@@ -1281,32 +1256,6 @@ public final class SemanticAnalyzer {
                             "Unknown type '" + symbol.declaredTypeName() + "' in typed function literal.",
                             line));
             symbol.resolveDeclaredType(LPCType.LPCMIXED);
-        }
-
-        private ASTExprCollectionTransform collectionTransform(ASTExprUnresolvedCall unresolvedCall, ASTArguments args) {
-            if (!"filter".equals(unresolvedCall.name()) && !"map".equals(unresolvedCall.name()))
-                return null;
-
-            if (args == null || args.size() < 2)
-                return null;
-
-            ASTExpression callback = args.get(1).expression();
-            if (!isCallableArgument(callback))
-                return null;
-
-            List<ASTExpression> extras = new ArrayList<>();
-            for (int i = 2; i < args.size(); i++)
-                extras.add(args.get(i).expression());
-
-            ASTExprCollectionTransform.Operation operation = "filter".equals(unresolvedCall.name())
-                    ? ASTExprCollectionTransform.Operation.FILTER
-                    : ASTExprCollectionTransform.Operation.MAP;
-            return new ASTExprCollectionTransform(
-                    unresolvedCall.line(), operation, args.get(0).expression(), callback, extras);
-        }
-
-        private boolean isCallableArgument(ASTExpression expression) {
-            return expression instanceof ASTExprInlineCallable || expression.lpcType() == LPCType.LPCFUNCTION;
         }
 
         private ASTExpression resolveQualifiedCall(
