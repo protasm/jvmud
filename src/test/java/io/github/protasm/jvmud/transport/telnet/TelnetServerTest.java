@@ -2427,7 +2427,7 @@ final class TelnetServerTest {
                 database.url = jdbc:test://localhost/mud
                 database.user = muduser
                 database.password = mudpass
-                direct_efun.sizeof = jvmud_size
+                engine_function.sizeof = jvmud_size
                 ldmud_compat_predefine.__VERSION_MAJOR__ = 3
                 ldmud_compat_predefine.__VERSION_MINOR__ = 6
                 ldmud_compat_function_predefine.__EFUN_DEFINED__.text_width = 0
@@ -2451,7 +2451,7 @@ final class TelnetServerTest {
         assertEquals("jdbc:test://localhost/mud", boundary.databaseJdbcUrl().orElseThrow());
         assertEquals("muduser", boundary.databaseUser().orElseThrow());
         assertEquals("mudpass", boundary.databasePassword().orElseThrow());
-        assertEquals("jvmud_size", boundary.directEfunAliases().get("sizeof"));
+        assertEquals("jvmud_size", boundary.engineFunctionAliases().get("sizeof"));
         assertEquals("3", boundary.compatibilityPredefines().get("__VERSION_MAJOR__"));
         assertEquals("6", boundary.compatibilityPredefines().get("__VERSION_MINOR__"));
         assertEquals(

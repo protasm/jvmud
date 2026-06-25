@@ -1227,7 +1227,7 @@ public final class SemanticAnalyzer {
             if (method != null)
                 return new ASTExprCallMethod(unresolvedCall.line(), method, resolvedArgs);
 
-            Efun efun = resolveDirectEfun(unresolvedCall.name(), resolvedArgs.size());
+            Efun efun = resolveEngineFunction(unresolvedCall.name(), resolvedArgs.size());
 
             if (efun != null)
                 return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
@@ -1263,7 +1263,7 @@ public final class SemanticAnalyzer {
             ASTArguments resolvedArgs = resolveArguments(unresolvedCall.arguments(), context);
 
             if ("efun".equals(unresolvedCall.qualifier())) {
-                Efun efun = resolveEngineDirectEfun(unresolvedCall.name(), resolvedArgs.size());
+                Efun efun = resolveQualifiedEngineFunction(unresolvedCall.name(), resolvedArgs.size());
 
                 if (efun != null)
                     return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
@@ -1277,7 +1277,7 @@ public final class SemanticAnalyzer {
             }
 
             if ("jvmud".equals(unresolvedCall.qualifier())) {
-                Efun efun = resolveJvmudDirectEfun(unresolvedCall.name(), resolvedArgs.size());
+                Efun efun = resolveJvmudEngineFunction(unresolvedCall.name(), resolvedArgs.size());
 
                 if (efun != null)
                     return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
@@ -1387,21 +1387,21 @@ public final class SemanticAnalyzer {
             return Objects.equals(qualifier, simpleName);
         }
 
-        private Efun resolveDirectEfun(String name, int arity) {
+        private Efun resolveEngineFunction(String name, int arity) {
             Efun efun = runtimeContext.resolveEfun(name, arity);
             if (efun != null)
                 return efun;
 
-            String engineName = runtimeContext.directEfunName(name);
+            String engineName = runtimeContext.engineFunctionName(name);
             return name.equals(engineName) ? null : runtimeContext.resolveEfun(engineName, arity);
         }
 
         /**
          * Resolves {@code efun::name(...)} against the engine efun registry only, while still
-         * honoring the mudlib boundary's direct-efun alias table.
+         * honoring the mudlib boundary's engine function table.
          */
-        private Efun resolveEngineDirectEfun(String name, int arity) {
-            String engineName = runtimeContext.directEfunName(name);
+        private Efun resolveQualifiedEngineFunction(String name, int arity) {
+            String engineName = runtimeContext.engineFunctionName(name);
             Efun efun = runtimeContext.resolveEngineEfun(engineName, arity);
             if (efun != null)
                 return efun;
@@ -1416,7 +1416,7 @@ public final class SemanticAnalyzer {
          * shortened namespace form {@code size}. It intentionally bypasses mudlib compatibility
          * aliases so legacy names like {@code sizeof} remain an {@code efun::} concern.</p>
          */
-        private Efun resolveJvmudDirectEfun(String name, int arity) {
+        private Efun resolveJvmudEngineFunction(String name, int arity) {
             Efun efun = runtimeContext.resolveEngineEfun(name, arity);
             if (efun != null)
                 return efun;

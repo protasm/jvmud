@@ -90,7 +90,7 @@ public final class MudlibBoundaryConfigReader {
         addString(builder::databaseJdbcUrl, firstValue(values, "database.url", "database.jdbc_url"));
         addString(builder::databaseUser, firstValue(values, "database.user"));
         addString(builder::databasePassword, firstValue(values, "database.password"));
-        addDirectEfunAliases(builder, values);
+        addEngineFunctions(builder, values);
         addLdmudCompatibilityPredefines(builder, values);
         addLdmudCompatibilityFunctionPredefines(builder, values);
         addLifecycleEvents(builder, allValues(values, "handled_lifecycle_events"));
@@ -347,21 +347,21 @@ public final class MudlibBoundaryConfigReader {
         }
     }
 
-    private static void addDirectEfunAliases(MudlibBoundary.Builder builder, Map<String, List<String>> values) {
+    private static void addEngineFunctions(MudlibBoundary.Builder builder, Map<String, List<String>> values) {
         for (Map.Entry<String, List<String>> entry : values.entrySet()) {
             String key = entry.getKey().trim();
-            if (!key.startsWith("direct_efun.")) {
+            if (!key.startsWith("engine_function.")) {
                 continue;
             }
 
-            String mudlibName = key.substring("direct_efun.".length());
+            String mudlibName = key.substring("engine_function.".length());
             if (mudlibName.isBlank() || entry.getValue().isEmpty()) {
                 continue;
             }
 
             String engineName = entry.getValue().get(0);
             if (!engineName.isBlank()) {
-                builder.directEfunAlias(mudlibName, engineName);
+                builder.engineFunction(mudlibName, engineName);
             }
         }
     }

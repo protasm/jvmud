@@ -55,7 +55,7 @@ public final class MudlibBoundary {
     private final Duration temporalTickInterval;
     private final Set<MudlibLifecycleEvent> lifecycleEvents;
     private final Map<MudlibLifecycleEvent, String> lifecycleMethods;
-    private final Map<String, String> directEfunAliases;
+    private final Map<String, String> engineFunctionAliases;
     private final Map<String, String> compatibilityPredefines;
     private final Map<String, Map<String, String>> compatibilityFunctionPredefines;
 
@@ -81,7 +81,7 @@ public final class MudlibBoundary {
         this.temporalTickInterval = builder.temporalTickInterval;
         this.lifecycleEvents = immutableCopy(builder.lifecycleEvents);
         this.lifecycleMethods = immutableCopy(builder.lifecycleMethods);
-        this.directEfunAliases = normalizeTextMap(builder.directEfunAliases);
+        this.engineFunctionAliases = normalizeTextMap(builder.engineFunctionAliases);
         this.compatibilityPredefines = normalizeTextMap(builder.compatibilityPredefines);
         this.compatibilityFunctionPredefines = normalizeNestedTextMap(builder.compatibilityFunctionPredefines);
     }
@@ -239,21 +239,21 @@ public final class MudlibBoundary {
     }
 
     /**
-     * Returns direct-efun name translations declared by this mudlib boundary.
+     * Returns engine function name translations declared by this mudlib boundary.
      *
-     * <p>Keys are legacy/direct driver efun spellings used by mudlib source, and values are
+     * <p>Keys are mudlib-visible function spellings used by mudlib source, and values are
      * JVMud-native engine efun names. This keeps legacy vocabulary at the compatibility boundary
      * instead of adding those names to the engine efun catalog.</p>
      *
-     * @return immutable map from mudlib efun name to JVMud efun name
+     * @return immutable map from mudlib-visible function name to JVMud engine function name
      */
-    public Map<String, String> directEfunAliases() {
-        return directEfunAliases;
+    public Map<String, String> engineFunctionAliases() {
+        return engineFunctionAliases;
     }
 
-    /** Returns the JVMud-native efun name for a direct mudlib efun spelling, if one is declared. */
-    public Optional<String> directEfunAlias(String mudlibName) {
-        return Optional.ofNullable(directEfunAliases.get(normalizeRequiredText(mudlibName, "Direct efun name")));
+    /** Returns the JVMud-native engine function name for a mudlib-visible spelling, if one is declared. */
+    public Optional<String> engineFunction(String mudlibName) {
+        return Optional.ofNullable(engineFunctionAliases.get(normalizeRequiredText(mudlibName, "Engine function name")));
     }
 
     /**
@@ -332,7 +332,7 @@ public final class MudlibBoundary {
                 || !temporalTickInterval.isZero()
                 || !lifecycleEvents.isEmpty()
                 || !lifecycleMethods.isEmpty()
-                || !directEfunAliases.isEmpty()
+                || !engineFunctionAliases.isEmpty()
                 || !compatibilityPredefines.isEmpty()
                 || !compatibilityFunctionPredefines.isEmpty();
     }
@@ -470,7 +470,7 @@ public final class MudlibBoundary {
                 EnumSet.noneOf(MudlibLifecycleEvent.class);
         private final EnumMap<MudlibLifecycleEvent, String> lifecycleMethods =
                 new EnumMap<>(MudlibLifecycleEvent.class);
-        private final java.util.LinkedHashMap<String, String> directEfunAliases =
+        private final java.util.LinkedHashMap<String, String> engineFunctionAliases =
                 new java.util.LinkedHashMap<>();
         private final java.util.LinkedHashMap<String, String> compatibilityPredefines =
                 new java.util.LinkedHashMap<>();
@@ -656,14 +656,14 @@ public final class MudlibBoundary {
             return this;
         }
 
-        /** Maps a mudlib direct-efun spelling to a JVMud-native engine efun name. */
-        public Builder directEfunAlias(String mudlibName, String engineName) {
-            String normalizedMudlibName = normalizeRequiredText(mudlibName, "Direct efun source name");
+        /** Maps a mudlib-visible function spelling to a JVMud-native engine function name. */
+        public Builder engineFunction(String mudlibName, String engineName) {
+            String normalizedMudlibName = normalizeRequiredText(mudlibName, "Engine function source name");
             String normalizedEngineName = normalizeOptionalText(engineName);
             if (normalizedEngineName == null) {
-                directEfunAliases.remove(normalizedMudlibName);
+                engineFunctionAliases.remove(normalizedMudlibName);
             } else {
-                directEfunAliases.put(normalizedMudlibName, normalizedEngineName);
+                engineFunctionAliases.put(normalizedMudlibName, normalizedEngineName);
             }
             return this;
         }

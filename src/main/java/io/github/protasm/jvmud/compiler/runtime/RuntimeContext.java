@@ -265,8 +265,8 @@ public final class RuntimeContext {
                 this.mudlibBoundary.databasePassword().orElse(null));
     }
 
-    public String directEfunName(String mudlibName) {
-        return mudlibBoundary.directEfunAlias(mudlibName).orElse(mudlibName);
+    public String engineFunctionName(String mudlibName) {
+        return mudlibBoundary.engineFunction(mudlibName).orElse(mudlibName);
     }
 
     public void setScheduler(WorldScheduler scheduler) {
@@ -461,7 +461,7 @@ public final class RuntimeContext {
      * </p>
      */
     public Object invokeEfun(String name, int arity, Object[] args) {
-        Efun callableAlias = resolveCallableDirectAlias(name, arity, args);
+        Efun callableAlias = resolveCallableEngineFunction(name, arity, args);
         if (callableAlias != null) {
             return callableAlias.invoke(this, args);
         }
@@ -477,8 +477,8 @@ public final class RuntimeContext {
         return efun.invoke(this, args);
     }
 
-    private Efun resolveCallableDirectAlias(String name, int arity, Object[] args) {
-        String engineName = directEfunName(name);
+    private Efun resolveCallableEngineFunction(String name, int arity, Object[] args) {
+        String engineName = engineFunctionName(name);
         if (name.equals(engineName) || !hasCallableArgument(args)) {
             return null;
         }
@@ -533,7 +533,7 @@ public final class RuntimeContext {
             return efun;
         }
 
-        String engineName = directEfunName(name);
+        String engineName = engineFunctionName(name);
         return name.equals(engineName) ? null : efunRegistry.lookup(engineName, arity);
     }
 

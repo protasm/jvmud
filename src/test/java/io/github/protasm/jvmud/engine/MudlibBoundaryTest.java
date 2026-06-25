@@ -126,7 +126,7 @@ final class MudlibBoundaryTest {
                 lifecycle.runtime_error = runtime_error
                 lifecycle.scheduled_tick_error = heart_beat_error
                 lifecycle.server_shutdown = notify_shutdown
-                direct_efun.sizeof = jvmud_size
+                engine_function.sizeof = jvmud_size
                 ldmud_compat_predefine.__VERSION__ = "JVMud LDMud compatibility"
                 ldmud_compat_predefine.__VERSION_MAJOR__ = 3
                 ldmud_compat_function_predefine.PROBE.text_width = 0
@@ -168,8 +168,8 @@ final class MudlibBoundaryTest {
         assertEquals("runtime_error", boundary.lifecycleMethod(MudlibLifecycleEvent.RUNTIME_ERROR).orElseThrow());
         assertEquals("heart_beat_error", boundary.lifecycleMethod(MudlibLifecycleEvent.SCHEDULED_TICK_ERROR).orElseThrow());
         assertEquals("notify_shutdown", boundary.lifecycleMethod(MudlibLifecycleEvent.SERVER_SHUTDOWN).orElseThrow());
-        assertEquals("jvmud_size", boundary.directEfunAlias("sizeof").orElseThrow());
-        assertEquals(Map.of("sizeof", "jvmud_size"), boundary.directEfunAliases());
+        assertEquals("jvmud_size", boundary.engineFunction("sizeof").orElseThrow());
+        assertEquals(Map.of("sizeof", "jvmud_size"), boundary.engineFunctionAliases());
         assertEquals(
                 Map.of("__VERSION__", "\"JVMud LDMud compatibility\"", "__VERSION_MAJOR__", "3"),
                 boundary.compatibilityPredefines());
