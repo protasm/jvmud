@@ -1,23 +1,3 @@
-void call_out(string method, int delay) {
-    jvmud_schedule_deferred_callback(method, delay);
-}
-
-void call_out(string method, int delay, mixed arg) {
-    jvmud_schedule_deferred_callback(method, delay, arg);
-}
-
-void call_out(string method, int delay, mixed arg1, mixed arg2) {
-    jvmud_schedule_deferred_callback(method, delay, arg1, arg2);
-}
-
-void call_out(string method, int delay, mixed arg1, mixed arg2, mixed arg3) {
-    jvmud_schedule_deferred_callback(method, delay, arg1, arg2, arg3);
-}
-
-void call_out(string method, int delay, mixed arg1, mixed arg2, mixed arg3, mixed arg4) {
-    jvmud_schedule_deferred_callback(method, delay, arg1, arg2, arg3, arg4);
-}
-
 object *all_inventory() {
     return all_inventory(this_object());
 }
@@ -409,10 +389,6 @@ void printf(string format, mixed arg1, mixed arg2, mixed arg3, mixed arg4,
 
 string RealmsDatabase() {
     return "RealmsLib";
-}
-
-int remove_call_out(string method) {
-    return jvmud_cancel_deferred_callback(method);
 }
 
 void move_object(mixed ob, mixed destination) {
