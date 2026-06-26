@@ -3000,6 +3000,24 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeCompilesVarargsEfunCallPastFormerRegistrationCap() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/open_ended_efun_tail.c", """
+                string value() {
+                    return jvmud_format_text("ok",
+                        1, 2, 3, 4, 5, 6,
+                        7, 8, 9, 10, 11, 12,
+                        13, 14, 15, 16, 17, 18,
+                        19, 20, 21, 22, 23, 24,
+                        25, 26, 27, 28, 29);
+                }
+                """);
+
+        assertEquals("ok", object.invoke("value"));
+    }
+
+    @Test
     void runtimeIndexesMixedStringValuesAsCharacterCodes() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/mixed_string_index.c", """

@@ -17,8 +17,9 @@ import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
  * needs: current object, previous object, command Persona, output/session sinks, object loading,
  * containment, scheduling, persistence, and host integration.</p>
  *
- * <p>Implementations are looked up by exact arity. If an efun supports several argument counts,
- * register one {@code Efun} instance per supported arity.</p>
+ * <p>Implementations are looked up by compatible arity. Fixed-arity signatures match only their
+ * declared argument count; varargs signatures match their fixed prefix plus any number of tail
+ * arguments.</p>
  */
 public interface Efun {
     /**
@@ -54,9 +55,10 @@ public interface Efun {
     }
 
     /**
-     * Returns the number of LPC arguments this implementation accepts.
+     * Returns the fixed number of LPC arguments this implementation accepts before any optional
+     * varargs tail.
      *
-     * @return exact arity used for registry lookup and invocation checks
+     * @return fixed arity used for registry lookup and invocation checks
      */
     default int arity() {
         return signature().arity();
@@ -72,14 +74,16 @@ public interface Efun {
      * @param context active runtime context for the LPC execution
      * @param args evaluated LPC argument values, or {@code null} for no arguments
      * @return LPC result value, or {@code null} for void efuns
-     * @throws IllegalArgumentException if the supplied argument count differs from the signature
+     * @throws IllegalArgumentException if the supplied argument count is not accepted by the signature
      */
     default Object invoke(RuntimeContext context, Object[] args) {
         Object[] a = (args == null) ? new Object[0] : args;
 
-        if (a.length != arity())
+        if (!signature().acceptsArity(a.length))
             throw new IllegalArgumentException(
-                    "engine function '" + symbol().name() + "' expects " + arity() + " arg(s); got " + a.length);
+                    "engine function '" + symbol().name() + "' expects "
+                            + (signature().isVarargs() ? "at least " : "")
+                            + arity() + " arg(s); got " + a.length);
 
         return call(context, a);
     }

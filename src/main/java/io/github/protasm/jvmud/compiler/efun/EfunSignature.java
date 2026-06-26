@@ -9,18 +9,24 @@ import java.util.Objects;
  * Describes the LPC-facing signature of an engine function.
  *
  * <p>The {@link Symbol} stores the function name and return type. The parameter list stores the
- * LPC types accepted by one concrete overload. JVMud overloads efuns by arity, so two signatures may
- * share a name when their parameter counts differ.</p>
+ * fixed LPC parameter types accepted by one overload. Signatures may also declare an optional
+ * varargs tail type for engine functions that accept any number of additional arguments.</p>
  *
  * @param symbol function symbol containing the LPC-facing name and return type
- * @param parameterTypes LPC parameter types for this overload
+ * @param parameterTypes fixed LPC parameter types for this overload
+ * @param varargsParameterType LPC type accepted by additional tail arguments, or {@code null}
  */
-public record EfunSignature(Symbol symbol, List<LPCType> parameterTypes) {
+public record EfunSignature(Symbol symbol, List<LPCType> parameterTypes, LPCType varargsParameterType) {
+    public EfunSignature(Symbol symbol, List<LPCType> parameterTypes) {
+        this(symbol, parameterTypes, null);
+    }
+
     /**
      * Creates an immutable signature.
      *
      * <p>A {@code null} parameter list is normalized to an empty list so zero-argument efuns can be
-     * declared tersely by simple callers.</p>
+     * declared tersely by simple callers. A {@code null} varargs parameter type means the signature
+     * accepts only its fixed parameters.</p>
      */
     public EfunSignature {
         Objects.requireNonNull(symbol, "symbol");
@@ -46,11 +52,26 @@ public record EfunSignature(Symbol symbol, List<LPCType> parameterTypes) {
     }
 
     /**
-     * Returns the exact number of LPC arguments accepted by this overload.
+     * Returns the fixed number of LPC arguments before any optional varargs tail.
      *
      * @return parameter count
      */
     public int arity() {
         return parameterTypes.size();
+    }
+
+    /** Returns whether this signature accepts optional tail arguments. */
+    public boolean isVarargs() {
+        return varargsParameterType != null;
+    }
+
+    /** Returns whether this signature accepts a call with {@code arity} arguments. */
+    public boolean acceptsArity(int arity) {
+        return arity == arity() || (isVarargs() && arity >= arity());
+    }
+
+    /** Returns whether this signature is an exact fixed-arity match for {@code arity}. */
+    public boolean isExactArity(int arity) {
+        return arity == arity();
     }
 }

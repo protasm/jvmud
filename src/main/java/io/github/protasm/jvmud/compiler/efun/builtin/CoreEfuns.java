@@ -275,8 +275,7 @@ import javax.crypto.spec.PBEKeySpec;
  *       by {@code jvmud_serialize_lpc_value}.</li>
  *   <li>{@code jvmud_format_text(string format, mixed ...args) : string} formats text using the
  *       host formatter with LPC {@code %O} object placeholders treated as string placeholders and
- *       LDMud string column mode handled directly; this overload is registered for arities 1
- *       through 24.</li>
+ *       LDMud string column mode handled directly.</li>
  *   <li>{@code jvmud_extract_text(mixed value, int from) : string} extracts text from an inclusive
  *       start index through the end.</li>
  *   <li>{@code jvmud_extract_text(mixed value, int from, int to) : string} extracts text using
@@ -315,17 +314,15 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_is_mapping(mixed value) : status} reports whether a value is Java-backed LPC
  *       mapping data.</li>
  *   <li>{@code jvmud_filter_indices(mapping values, function callback, mixed ...args) : mapping} returns
- *       a mapping containing the entries whose keys satisfy a callable predicate; this overload is
- *       registered for arities 2 through 8.</li>
+ *       a mapping containing the entries whose keys satisfy a callable predicate.</li>
  *   <li>{@code jvmud_allocate(int size) : array} returns a zero-filled LPC array of non-negative
  *       size.</li>
- *   <li>{@code jvmud_sscanf(mixed input, mixed format, mixed ...captures) : int} is registered for
- *       arities 3 through 8.</li>
+ *   <li>{@code jvmud_sscanf(mixed input, mixed format, mixed capture, mixed ...captures) : int}
+ *       captures formatted text into one or more assignable LPC values.</li>
  *   <li>{@code jvmud_apply_callable(function callback, mixed ...args) : mixed} invokes a callable
  *       and expands a final array argument for LDMud-style {@code apply} calls.</li>
  *   <li>{@code jvmud_invoke_lpc_object(mixed target, string methodName, mixed ...args) : mixed}
- *       invokes an optional method on an LPC object or path-resolved shared object; this overload is
- *       registered for arities 2 through 6.</li>
+ *       invokes an optional method on an LPC object or path-resolved shared object.</li>
  *   <li>{@code jvmud_set_light(int delta) : int} adjusts the current runtime light level and
  *       returns the resulting value.</li>
  * </ul>
@@ -581,9 +578,7 @@ public final class CoreEfuns {
                 (runtime, args) -> RuntimeValueCodec.serialize(args[0])));
         efuns.add(efun("jvmud_deserialize_lpc_value", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> RuntimeValueCodec.deserialize(String.valueOf(args[0]))));
-        for (int arity = 1; arity <= 24; arity++) {
-            efuns.add(formatTextEfun(arity));
-        }
+        efuns.add(formatTextEfun());
         efuns.add(efun("jvmud_extract_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
                 (runtime, args) -> extractText(
                         String.valueOf(args[0]),
@@ -607,9 +602,7 @@ public final class CoreEfuns {
                 (runtime, args) -> mappingFromKeys(args[0])));
         efuns.add(efun("jvmud_mapping_delete", LPCType.LPCMAPPING, List.of(LPCType.LPCMAPPING, LPCType.LPCMIXED),
                 (runtime, args) -> mappingDelete(args[0], args[1])));
-        for (int arity = 2; arity <= 16; arity++) {
-            efuns.add(captureSessionInputEfun(arity));
-        }
+        efuns.add(captureSessionInputEfun());
         efuns.add(efun("jvmud_is_string", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof String ? 1 : 0));
         efuns.add(efun("jvmud_is_int", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
@@ -624,30 +617,16 @@ public final class CoreEfuns {
                 (runtime, args) -> args[0] instanceof List<?> ? 1 : 0));
         efuns.add(efun("jvmud_is_mapping", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> args[0] instanceof Map<?, ?> ? 1 : 0));
-        for (int arity = 2; arity <= 8; arity++) {
-            efuns.add(filterIndicesEfun(arity));
-        }
-        for (int arity = 2; arity <= 8; arity++) {
-            efuns.add(filterEfun(arity));
-        }
-        for (int arity = 2; arity <= 8; arity++) {
-            efuns.add(mapEfun(arity));
-        }
-        for (int arity = 2; arity <= 8; arity++) {
-            efuns.add(sortArrayEfun(arity));
-        }
-        for (int arity = 3; arity <= 8; arity++) {
-            efuns.add(sscanfEfun(arity));
-        }
+        efuns.add(filterIndicesEfun());
+        efuns.add(filterEfun());
+        efuns.add(mapEfun());
+        efuns.add(sortArrayEfun());
+        efuns.add(sscanfEfun());
         efuns.add(efun("jvmud_allocate", LPCType.LPCARRAY, List.of(LPCType.LPCINT),
                 (runtime, args) -> new ArrayList<>(
                         Collections.nCopies(Math.max(0, ((Number) args[0]).intValue()), Integer.valueOf(0)))));
-        for (int arity = 2; arity <= 6; arity++) {
-            efuns.add(invokeLpcObjectEfun(arity));
-        }
-        for (int arity = 1; arity <= 10; arity++) {
-            efuns.add(applyCallableEfun(arity));
-        }
+        efuns.add(invokeLpcObjectEfun());
+        efuns.add(applyCallableEfun());
         efuns.add(efun("jvmud_load_lpc_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.loadOrGetObject(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_clone_lpc_object", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
@@ -702,38 +681,16 @@ public final class CoreEfuns {
                     return null;
                 }));
         efuns.add(efun("jvmud_schedule_deferred_callback", LPCType.LPCVOID,
-                List.of(LPCType.LPCSTRING, LPCType.LPCINT),
+                List.of(LPCType.LPCSTRING, LPCType.LPCINT), LPCType.LPCMIXED,
                 (runtime, args) -> {
-                    runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue());
-                    return null;
-                }));
-        efuns.add(efun("jvmud_schedule_deferred_callback", LPCType.LPCVOID,
-                List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED),
-                (runtime, args) -> {
-                    runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue(), args[2]);
-                    return null;
-                }));
-        efuns.add(efun("jvmud_schedule_deferred_callback", LPCType.LPCVOID,
-                List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED, LPCType.LPCMIXED),
-                (runtime, args) -> {
-                    runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue(),
-                            args[2], args[3]);
-                    return null;
-                }));
-        efuns.add(efun("jvmud_schedule_deferred_callback", LPCType.LPCVOID,
-                List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED, LPCType.LPCMIXED,
-                        LPCType.LPCMIXED),
-                (runtime, args) -> {
-                    runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue(),
-                            args[2], args[3], args[4]);
-                    return null;
-                }));
-        efuns.add(efun("jvmud_schedule_deferred_callback", LPCType.LPCVOID,
-                List.of(LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCMIXED, LPCType.LPCMIXED,
-                        LPCType.LPCMIXED, LPCType.LPCMIXED),
-                (runtime, args) -> {
-                    runtime.scheduleDeferredCallback(String.valueOf(args[0]), ((Number) args[1]).intValue(),
-                            args[2], args[3], args[4], args[5]);
+                    Object[] callbackArgs = new Object[Math.max(0, args.length - 2)];
+                    if (callbackArgs.length > 0) {
+                        System.arraycopy(args, 2, callbackArgs, 0, callbackArgs.length);
+                    }
+                    runtime.scheduleDeferredCallback(
+                            String.valueOf(args[0]),
+                            ((Number) args[1]).intValue(),
+                            callbackArgs);
                     return null;
                 }));
         efuns.add(efun("jvmud_cancel_deferred_callback", LPCType.LPCINT, List.of(LPCType.LPCSTRING),
@@ -1064,13 +1021,8 @@ public final class CoreEfuns {
         return ThreadLocalRandom.current().nextInt(max);
     }
 
-    private static Efun formatTextEfun(int arity) {
-        List<LPCType> parameters = new ArrayList<>();
-        parameters.add(LPCType.LPCSTRING);
-        for (int i = 1; i < arity; i++) {
-            parameters.add(LPCType.LPCMIXED);
-        }
-        return efun("jvmud_format_text", LPCType.LPCSTRING, parameters,
+    private static Efun formatTextEfun() {
+        return efun("jvmud_format_text", LPCType.LPCSTRING, List.of(LPCType.LPCSTRING), LPCType.LPCMIXED,
                 (runtime, args) -> formatText(args));
     }
 
@@ -1505,25 +1457,15 @@ public final class CoreEfuns {
         return converted.toString();
     }
 
-    private static Efun filterIndicesEfun(int arity) {
-        List<LPCType> parameters = new ArrayList<>();
-        parameters.add(LPCType.LPCMAPPING);
-        parameters.add(LPCType.LPCFUNCTION);
-        for (int i = 2; i < arity; i++) {
-            parameters.add(LPCType.LPCMIXED);
-        }
-        return efun("jvmud_filter_indices", LPCType.LPCMAPPING, parameters,
+    private static Efun filterIndicesEfun() {
+        return efun("jvmud_filter_indices", LPCType.LPCMAPPING,
+                List.of(LPCType.LPCMAPPING, LPCType.LPCFUNCTION), LPCType.LPCMIXED,
                 (runtime, args) -> filterIndices(runtime, args));
     }
 
-    private static Efun filterEfun(int arity) {
-        List<LPCType> parameters = new ArrayList<>();
-        parameters.add(LPCType.LPCMIXED);
-        parameters.add(LPCType.LPCFUNCTION);
-        for (int i = 2; i < arity; i++) {
-            parameters.add(LPCType.LPCMIXED);
-        }
-        return efun("jvmud_filter", LPCType.LPCMIXED, parameters,
+    private static Efun filterEfun() {
+        return efun("jvmud_filter", LPCType.LPCMIXED,
+                List.of(LPCType.LPCMIXED, LPCType.LPCFUNCTION), LPCType.LPCMIXED,
                 (runtime, args) -> filter(runtime, args));
     }
 
@@ -1538,14 +1480,9 @@ public final class CoreEfuns {
         return RuntimeCollectionTransform.filter(args[0], callback, extraArgs, runtime);
     }
 
-    private static Efun mapEfun(int arity) {
-        List<LPCType> parameters = new ArrayList<>();
-        parameters.add(LPCType.LPCMIXED);
-        parameters.add(LPCType.LPCFUNCTION);
-        for (int i = 2; i < arity; i++) {
-            parameters.add(LPCType.LPCMIXED);
-        }
-        return efun("jvmud_map", LPCType.LPCMIXED, parameters,
+    private static Efun mapEfun() {
+        return efun("jvmud_map", LPCType.LPCMIXED,
+                List.of(LPCType.LPCMIXED, LPCType.LPCFUNCTION), LPCType.LPCMIXED,
                 (runtime, args) -> map(runtime, args));
     }
 
@@ -1560,14 +1497,9 @@ public final class CoreEfuns {
         return RuntimeCollectionTransform.map(args[0], callback, extraArgs, runtime);
     }
 
-    private static Efun sortArrayEfun(int arity) {
-        List<LPCType> parameters = new ArrayList<>();
-        parameters.add(LPCType.LPCARRAY);
-        parameters.add(LPCType.LPCMIXED);
-        for (int i = 2; i < arity; i++) {
-            parameters.add(LPCType.LPCMIXED);
-        }
-        return efun("jvmud_sort_array", LPCType.LPCARRAY, parameters,
+    private static Efun sortArrayEfun() {
+        return efun("jvmud_sort_array", LPCType.LPCARRAY,
+                List.of(LPCType.LPCARRAY, LPCType.LPCMIXED), LPCType.LPCMIXED,
                 (runtime, args) -> sortArray(runtime, args));
     }
 
@@ -1645,14 +1577,9 @@ public final class CoreEfuns {
         return 1;
     }
 
-    private static Efun captureSessionInputEfun(int arity) {
-        List<LPCType> parameters = new ArrayList<>();
-        parameters.add(LPCType.LPCSTRING);
-        parameters.add(LPCType.LPCINT);
-        for (int i = 2; i < arity; i++) {
-            parameters.add(LPCType.LPCMIXED);
-        }
-        return efun("jvmud_capture_session_input", LPCType.LPCVOID, parameters,
+    private static Efun captureSessionInputEfun() {
+        return efun("jvmud_capture_session_input", LPCType.LPCVOID,
+                List.of(LPCType.LPCSTRING, LPCType.LPCINT), LPCType.LPCMIXED,
                 (runtime, args) -> {
                     Object[] extraArgs = new Object[Math.max(0, args.length - 2)];
                     if (extraArgs.length > 0) {
@@ -1666,19 +1593,14 @@ public final class CoreEfuns {
                 });
     }
 
-    private static Efun invokeLpcObjectEfun(int arity) {
-        List<LPCType> parameters = new ArrayList<>();
-        parameters.add(LPCType.LPCMIXED);
-        parameters.add(LPCType.LPCSTRING);
-        for (int i = 2; i < arity; i++) {
-            parameters.add(LPCType.LPCMIXED);
-        }
-        return efun("jvmud_invoke_lpc_object", LPCType.LPCMIXED, parameters,
+    private static Efun invokeLpcObjectEfun() {
+        return efun("jvmud_invoke_lpc_object", LPCType.LPCMIXED,
+                List.of(LPCType.LPCMIXED, LPCType.LPCSTRING), LPCType.LPCMIXED,
                 (runtime, args) -> invokeLpcObject(runtime, args));
     }
 
-    private static Efun applyCallableEfun(int arity) {
-        return efun("jvmud_apply_callable", LPCType.LPCMIXED, Collections.nCopies(arity, LPCType.LPCMIXED),
+    private static Efun applyCallableEfun() {
+        return efun("jvmud_apply_callable", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED), LPCType.LPCMIXED,
                 (runtime, args) -> applyCallable(runtime, args));
     }
 
@@ -1745,8 +1667,9 @@ public final class CoreEfuns {
         return argument == null || Integer.valueOf(0).equals(argument);
     }
 
-    private static Efun sscanfEfun(int arity) {
-        return efun("jvmud_sscanf", LPCType.LPCINT, Collections.nCopies(arity, LPCType.LPCMIXED),
+    private static Efun sscanfEfun() {
+        return efun("jvmud_sscanf", LPCType.LPCINT,
+                List.of(LPCType.LPCMIXED, LPCType.LPCMIXED, LPCType.LPCMIXED), LPCType.LPCMIXED,
                 (runtime, args) -> RuntimeScanf.scan(args[0], args[1], args.length - 2)[0]);
     }
 
@@ -1771,10 +1694,15 @@ public final class CoreEfuns {
     }
 
     private static Efun efun(String name, LPCType returnType, List<LPCType> parameters, EfunBody body) {
+        return efun(name, returnType, parameters, null, body);
+    }
+
+    private static Efun efun(
+            String name, LPCType returnType, List<LPCType> parameters, LPCType varargsParameterType, EfunBody body) {
         return new Efun() {
             @Override
             public EfunSignature signature() {
-                return new EfunSignature(new Symbol(returnType, name), parameters);
+                return new EfunSignature(new Symbol(returnType, name), parameters, varargsParameterType);
             }
 
             @Override

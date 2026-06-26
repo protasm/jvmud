@@ -646,7 +646,7 @@ public final class SemanticTypeChecker {
         if (isSizeFunction(signature)) {
             inferSizeofArgument(expr.arguments(), context);
         } else {
-            inferArguments(expr.arguments(), signature.parameterTypes(), context);
+            inferArguments(expr.arguments(), signature.parameterTypes(), signature.varargsParameterType(), context);
         }
         return signature.returnType();
     }
@@ -698,6 +698,36 @@ public final class SemanticTypeChecker {
 
     private void inferArguments(ASTArguments arguments, List<LPCType> expectedTypes, MethodContext context) {
         inferArguments(arguments, expectedTypes, context, false);
+    }
+
+    private void inferArguments(
+            ASTArguments arguments, List<LPCType> expectedTypes, LPCType varargsType, MethodContext context) {
+        if (arguments == null)
+            return;
+
+        for (int i = 0; i < arguments.size(); i++) {
+            ASTArgument argument = arguments.get(i);
+            LPCType expected = null;
+            if (expectedTypes != null && i < expectedTypes.size()) {
+                expected = expectedTypes.get(i);
+            } else if (expectedTypes != null && varargsType != null && i >= expectedTypes.size()) {
+                expected = varargsType;
+            }
+            LPCType actual = inferExpressionType(argument.expression(), context, explicitExpectedType(expected));
+
+            if (expected != null) {
+                actual = coerceZeroLiteralFalse(expected, argument.expression(), actual);
+                ensureAssignable(expected, actual, argument.line(), "Argument " + (i + 1) + " type mismatch");
+            }
+        }
+
+        if (expectedTypes != null && varargsType == null && arguments.size() > expectedTypes.size()) {
+            problems.add(
+                    new CompilationProblem(
+                            CompilationStage.ANALYZE,
+                            "Argument count mismatch: expected at most " + expectedTypes.size() + " but found " + arguments.size(),
+                            arguments.line()));
+        }
     }
 
     private void inferArguments(

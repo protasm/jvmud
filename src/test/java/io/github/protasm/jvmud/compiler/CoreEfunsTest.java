@@ -1,8 +1,16 @@
 package io.github.protasm.jvmud.compiler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import io.github.protasm.jvmud.compiler.efun.Efun;
+import io.github.protasm.jvmud.compiler.efun.EfunRegistry;
+import io.github.protasm.jvmud.compiler.efun.EfunSignature;
 import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
+import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
+import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
@@ -19,6 +27,37 @@ import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
 
 final class CoreEfunsTest {
+    @Test
+    void varargsEfunAcceptsOpenEndedTail() {
+        RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(Path.of("."), List.of()));
+        CoreEfuns.registerCore(context);
+
+        assertNotNull(context.resolveEfun("jvmud_format_text", 30));
+        assertEquals("ok", context.invokeEfun("jvmud_format_text", 30, thirtyFormatArgs()));
+        assertNotNull(context.resolveEfun("jvmud_capture_session_input", 20));
+    }
+
+    @Test
+    void exactEfunSignatureBeatsVarargsFallback() {
+        EfunRegistry registry = new EfunRegistry();
+        Efun fixed = testEfun("probe", List.of(LPCType.LPCINT), null, "fixed");
+        Efun varargs = testEfun("probe", List.of(LPCType.LPCINT), LPCType.LPCMIXED, "varargs");
+        registry.register(varargs);
+        registry.register(fixed);
+
+        assertSame(fixed, registry.lookup("probe", 1));
+        assertSame(varargs, registry.lookup("probe", 2));
+    }
+
+    @Test
+    void ambiguousVarargsEfunSignaturesFailAtLookup() {
+        EfunRegistry registry = new EfunRegistry();
+        registry.register(testEfun("probe", List.of(LPCType.LPCINT), LPCType.LPCMIXED, "left"));
+        registry.register(testEfun("probe", List.of(LPCType.LPCINT), LPCType.LPCMIXED, "right"));
+
+        assertThrows(IllegalStateException.class, () -> registry.lookup("probe", 2));
+    }
+
     @Test
     void dbConnectThreeArgumentEfunKeepsMissingCredentialsNullable() throws SQLException {
         CapturingDriver driver = new CapturingDriver();
@@ -39,6 +78,32 @@ final class CoreEfunsTest {
         } finally {
             DriverManager.deregisterDriver(driver);
         }
+    }
+
+    private static Object[] thirtyFormatArgs() {
+        Object[] args = new Object[30];
+        args[0] = "ok";
+        for (int i = 1; i < args.length; i++) {
+            args[i] = i;
+        }
+        return args;
+    }
+
+    private static Efun testEfun(String name, List<LPCType> parameters, LPCType varargsParameterType, Object result) {
+        return new Efun() {
+            @Override
+            public EfunSignature signature() {
+                return new EfunSignature(
+                        new Symbol(LPCType.LPCMIXED, name),
+                        parameters,
+                        varargsParameterType);
+            }
+
+            @Override
+            public Object call(RuntimeContext context, Object[] args) {
+                return result;
+            }
+        };
     }
 
     private static final class CapturingDriver implements Driver {
