@@ -322,7 +322,8 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_apply_callable(function callback, mixed ...args) : mixed} invokes a callable
  *       and expands a final array argument for LDMud-style {@code apply} calls.</li>
  *   <li>{@code jvmud_invoke_lpc_object(mixed target, string methodName, mixed ...args) : mixed}
- *       invokes an optional method on an LPC object or path-resolved shared object.</li>
+ *       invokes an optional method on an LPC object, a path-resolved shared object, or each object
+ *       in an LPC array.</li>
  *   <li>{@code jvmud_set_light(int delta) : int} adjusts the current runtime light level and
  *       returns the resulting value.</li>
  * </ul>
@@ -1626,6 +1627,14 @@ public final class CoreEfuns {
     }
 
     private static Object invokeLpcObject(RuntimeContext runtime, Object target, String methodName, Object... arguments) {
+        if (target instanceof List<?> targets) {
+            Object result = 0;
+            for (Object element : targets) {
+                result = invokeLpcObject(runtime, element, methodName, arguments);
+            }
+            return result;
+        }
+
         Object resolvedTarget = resolveTarget(runtime, target);
         if (resolvedTarget == null) {
             return 0;

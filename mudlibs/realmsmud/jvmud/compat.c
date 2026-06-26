@@ -31,62 +31,6 @@ void addUser(object user) {
     load_object("/secure/simul_efun.c")->addUser(user);
 }
 
-mixed call_direct(mixed target, string method) {
-    if (pointerp(target)) {
-        mixed ret = 0;
-        foreach(mixed ob in target) {
-            ret = jvmud_invoke_lpc_object(ob, method);
-        }
-        return ret;
-    }
-    return jvmud_invoke_lpc_object(target, method);
-}
-
-mixed call_direct(mixed target, string method, mixed arg1) {
-    if (pointerp(target)) {
-        mixed ret = 0;
-        foreach(mixed ob in target) {
-            ret = jvmud_invoke_lpc_object(ob, method, arg1);
-        }
-        return ret;
-    }
-    return jvmud_invoke_lpc_object(target, method, arg1);
-}
-
-mixed call_direct(mixed target, string method, mixed arg1, mixed arg2) {
-    if (pointerp(target)) {
-        mixed ret = 0;
-        foreach(mixed ob in target) {
-            ret = jvmud_invoke_lpc_object(ob, method, arg1, arg2);
-        }
-        return ret;
-    }
-    return jvmud_invoke_lpc_object(target, method, arg1, arg2);
-}
-
-mixed call_direct(mixed target, string method, mixed arg1, mixed arg2, mixed arg3) {
-    if (pointerp(target)) {
-        mixed ret = 0;
-        foreach(mixed ob in target) {
-            ret = jvmud_invoke_lpc_object(ob, method, arg1, arg2, arg3);
-        }
-        return ret;
-    }
-    return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3);
-}
-
-mixed call_direct(mixed target, string method, mixed arg1, mixed arg2, mixed arg3,
-    mixed arg4) {
-    if (pointerp(target)) {
-        mixed ret = 0;
-        foreach(mixed ob in target) {
-            ret = jvmud_invoke_lpc_object(ob, method, arg1, arg2, arg3, arg4);
-        }
-        return ret;
-    }
-    return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3, arg4);
-}
-
 mixed command(string command_line) {
     return jvmud_dispatch_entity_command(jvmud_current_agent(), command_line);
 }

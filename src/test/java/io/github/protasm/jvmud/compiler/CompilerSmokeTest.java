@@ -7280,6 +7280,33 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeDispatchesCoreEngineFunctionsAcrossArrayTargets() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+
+        LPCObjectHandle object = runtime.loadSource("engine_function/array_call.c", """
+                int value;
+
+                int set_value(int new_value) {
+                    value = new_value;
+                    return value;
+                }
+
+                int reflected_array_value() {
+                    object *targets = ({ jvmud_current_lpc_object(), jvmud_current_lpc_object() });
+                    return jvmud_invoke_lpc_object(targets, "set_value", 27);
+                }
+
+                int current_value() {
+                    return value;
+                }
+                """);
+
+        assertEquals(27, object.invoke("reflected_array_value"));
+        assertEquals(27, object.invoke("current_value"));
+    }
+
+    @Test
     void writeEngineFunctionCapturesOutputForCliAndTests() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
