@@ -140,7 +140,7 @@ import javax.crypto.spec.PBEKeySpec;
  *       world-present entity's runtime location/containment without using a mudlib movement wrapper.</li>
  *   <li>{@code jvmud_move_entity(mixed entity, mixed destination) : void} moves an entity or
  *       path-resolved object.</li>
- *   <li>{@code jvmud_find_entity(string id) : object} searches for an entity in the default
+ *   <li>{@code jvmud_find_entity(mixed id) : object} searches for an entity in the default
  *       location scope.</li>
  *   <li>{@code jvmud_find_entity(mixed id, mixed location) : object} searches for an entity inside
  *       a location or container.</li>
@@ -657,7 +657,7 @@ public final class CoreEfuns {
                     runtime.moveObject(resolveTarget(runtime, args[0]), resolveTarget(runtime, args[1]));
                     return null;
                 }));
-        efuns.add(efun("jvmud_find_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCSTRING),
+        efuns.add(efun("jvmud_find_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.present(args[0], null)));
         efuns.add(efun("jvmud_find_entity", LPCType.LPCOBJECT, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> runtime.present(args[0], args[1])));

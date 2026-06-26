@@ -23,29 +23,8 @@ object *deep_inventory(mixed container) {
     return ret;
 }
 
-void add_action(string method) {
-    jvmud_add_action(method);
-}
-
-void add_action(string method, string verb) {
-    jvmud_add_action(method, verb);
-}
-
-void add_action(string method, string verb, int prefix) {
-    jvmud_add_action(method, verb, prefix);
-}
-
-void enable_commands() {
-    jvmud_enable_commands();
-}
-
 void disable_commands() {
     jvmud_configure_lpc_object(jvmud_current_lpc_object(), 0, 0);
-}
-
-int exec(object newObject, object oldObject) {
-    int ret = jvmud_rebind_session_lpc_object(newObject, oldObject);
-    return ret;
 }
 
 void addUser(object user) {
@@ -105,27 +84,6 @@ mixed call_direct(mixed target, string method, mixed arg1, mixed arg2, mixed arg
         }
         return ret;
     }
-    return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3, arg4);
-}
-
-mixed call_other(mixed target, string method) {
-    return jvmud_invoke_lpc_object(target, method);
-}
-
-mixed call_other(mixed target, string method, mixed arg1) {
-    return jvmud_invoke_lpc_object(target, method, arg1);
-}
-
-mixed call_other(mixed target, string method, mixed arg1, mixed arg2) {
-    return jvmud_invoke_lpc_object(target, method, arg1, arg2);
-}
-
-mixed call_other(mixed target, string method, mixed arg1, mixed arg2, mixed arg3) {
-    return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3);
-}
-
-mixed call_other(mixed target, string method, mixed arg1, mixed arg2, mixed arg3,
-    mixed arg4) {
     return jvmud_invoke_lpc_object(target, method, arg1, arg2, arg3, arg4);
 }
 
@@ -239,14 +197,6 @@ object *filter_objects(object *objects, string method, mixed arg1, mixed arg2) {
     return ret;
 }
 
-string format(mixed text) {
-    return jvmud_wrap_text(text);
-}
-
-string format(mixed text, int width) {
-    return jvmud_wrap_text(text, width);
-}
-
 mixed *functionlist(mixed ob) {
     return jvmud_lpc_object_methods(ob);
 }
@@ -276,12 +226,12 @@ string *inherit_list() {
     return inherit_list(this_object());
 }
 
-int intp(mixed value) {
-    return jvmud_is_int(value);
-}
-
 float log(float value) {
     return 0.0;
+}
+
+int min(int left, int right) {
+    return left < right ? left : right;
 }
 
 string implode(mixed *values, string delimiter) {
@@ -391,36 +341,12 @@ string RealmsDatabase() {
     return "RealmsLib";
 }
 
-void move_object(mixed ob, mixed destination) {
-    jvmud_move_entity(ob, destination);
-}
-
 int mkdir(string path) {
     return 1;
 }
 
-int notify_fail(mixed message) {
-    return jvmud_notify_fail(message);
-}
-
-string object_name(mixed ob) {
-    return jvmud_lpc_object_id(ob);
-}
-
 object *wizards() {
     return load_object("/secure/simul_efun.c")->wizards();
-}
-
-string query_verb() {
-    return jvmud_current_verb();
-}
-
-string query_command() {
-    return query_verb();
-}
-
-int query_idle(mixed user) {
-    return jvmud_query_idle(user);
 }
 
 object present_clone(string blueprint) {
@@ -452,18 +378,6 @@ string regreplace(string input, string pattern, mixed replacement, int flags) {
     return jvmud_regex_replace(input, pattern, replacement, flags);
 }
 
-string *regexplode(string input, string pattern) {
-    return jvmud_regex_explode(input, pattern);
-}
-
-int remove_action(int flags) {
-    return jvmud_remove_action(flags);
-}
-
-int remove_action(int flags, mixed actor) {
-    return jvmud_remove_action(flags, actor);
-}
-
 int *rusage() {
     return ({ 0, 0 });
 }
@@ -479,10 +393,6 @@ int set_heart_beat(int enabled) {
 
 string StartLocation() {
     return "/areas/eledhel/southern-city/12x2.c";
-}
-
-int time() {
-    return jvmud_time();
 }
 
 int abs(int value) {
@@ -567,78 +477,10 @@ function unbound_lambda(mixed *parameters, mixed body) {
     return (: 0 :);
 }
 
-void write(mixed message) {
-    jvmud_write(message);
-}
-
-void tell_room(mixed location, mixed message) {
-    jvmud_emit_perceivable_at(location, message);
-}
-
 int write_file(string path, mixed text) {
     return jvmud_append_mudlib_text(path, text);
 }
 
 int write_file(string path, mixed text, int flags) {
     return jvmud_append_mudlib_text(path, text);
-}
-
-mapping filter_indices(mapping values, function callback) {
-    return jvmud_filter_indices(values, callback);
-}
-
-mapping filter_indices(mapping values, function callback, mixed arg1) {
-    return jvmud_filter_indices(values, callback, arg1);
-}
-
-mapping filter_indices(mapping values, function callback, mixed arg1, mixed arg2) {
-    return jvmud_filter_indices(values, callback, arg1, arg2);
-}
-
-mapping filter_indices(mapping values, function callback, mixed arg1, mixed arg2,
-    mixed arg3) {
-    return jvmud_filter_indices(values, callback, arg1, arg2, arg3);
-}
-
-mapping filter_indices(mapping values, function callback, mixed arg1, mixed arg2,
-    mixed arg3, mixed arg4) {
-    return jvmud_filter_indices(values, callback, arg1, arg2, arg3, arg4);
-}
-
-mapping filter_indices(mapping values, function callback, mixed arg1, mixed arg2,
-    mixed arg3, mixed arg4, mixed arg5) {
-    return jvmud_filter_indices(values, callback, arg1, arg2, arg3, arg4, arg5);
-}
-
-mapping filter_indices(mapping values, function callback, mixed arg1, mixed arg2,
-    mixed arg3, mixed arg4, mixed arg5, mixed arg6) {
-    return jvmud_filter_indices(values, callback, arg1, arg2, arg3, arg4, arg5, arg6);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1) {
-    return jvmud_sscanf(input, format, capture1);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1, mixed capture2) {
-    return jvmud_sscanf(input, format, capture1, capture2);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3) {
-    return jvmud_sscanf(input, format, capture1, capture2, capture3);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3,
-    mixed capture4) {
-    return jvmud_sscanf(input, format, capture1, capture2, capture3, capture4);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3,
-    mixed capture4, mixed capture5) {
-    return jvmud_sscanf(input, format, capture1, capture2, capture3, capture4, capture5);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3,
-    mixed capture4, mixed capture5, mixed capture6) {
-    return jvmud_sscanf(input, format, capture1, capture2, capture3, capture4, capture5,
-        capture6);
 }

@@ -188,6 +188,14 @@ protected nomask void addFinalState(string state, string result)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+protected nomask void addFinalState(string state, string description, int flags,
+    string result)
+{
+    addState(state, description);
+    addFinalState(state, result);
+}
+
+/////////////////////////////////////////////////////////////////////////////
 protected nomask varargs void addState(string state, string description, string entryEvent, string isFinalState)
 {
     if (state && stringp(state) && description && stringp(description) &&

@@ -3515,6 +3515,75 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void mappingLookupCanFeedStringParameterOnVarargsMudlibHelper() {
+        String source = """
+                protected nomask varargs void addFeature(string feature, mixed location) {
+                }
+
+                void setup(mapping exit, string direction, string state) {
+                    addFeature(exit["path type"], direction, state);
+                }
+                """;
+
+        CompilationResult result = new CompilationPipeline("java/lang/Object").run(source);
+
+        assertTrue(result.getProblems().isEmpty(), () -> problemMessages(result));
+    }
+
+    @Test
+    void inheritedMappingLookupCanFeedStringParameterOnVarargsMudlibHelper() throws Exception {
+        Files.writeString(tempDir.resolve("base.c"), """
+                protected nomask varargs void addFeature(string feature, mixed location) {
+                }
+                """);
+        Files.writeString(tempDir.resolve("child.c"), """
+                inherit "/base.c";
+
+                void setup(mapping exit, string direction, string state) {
+                    addFeature(exit["path type"], direction, state);
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+
+        CompilationResult result = runtime.compile(tempDir.resolve("child.c"));
+
+        assertTrue(result.getProblems().isEmpty(), () -> problemMessages(result));
+    }
+
+    @Test
+    void multipleInheritedHelpersKeepSameNamedParametersScopedToTheirMethods() throws Exception {
+        Files.writeString(tempDir.resolve("elements.c"), """
+                protected nomask int addEnvironmentalElement(string element, string type, mixed location) {
+                    return 1;
+                }
+
+                protected nomask varargs void addFeature(string feature, mixed location) {
+                    addEnvironmentalElement(feature, "feature", location);
+                }
+                """);
+        Files.writeString(tempDir.resolve("exits.c"), """
+                protected nomask int addEnvironmentalElement(string element, string type, mixed location) {
+                    return 1;
+                }
+
+                protected nomask varargs void addBuilding(string feature, mixed location, string path, string state) {
+                    addEnvironmentalElement(feature, "building", location);
+                }
+                """);
+        Files.writeString(tempDir.resolve("environment.c"), """
+                virtual inherit "/elements.c";
+                virtual inherit "/exits.c";
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+
+        CompilationResult result = runtime.compile(tempDir.resolve("environment.c"));
+
+        assertTrue(result.getProblems().isEmpty(), () -> problemMessages(result));
+    }
+
+    @Test
     void parserRecordsVirtualInheritWithoutChangingOrdinaryInherits() throws IOException {
         Files.writeString(tempDir.resolve("base.c"), """
                 int base_value() {
@@ -7358,6 +7427,40 @@ final class CompilerSmokeTest {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
         runtime.registerMudlibBoundary(MudlibBoundary.builder().mfunObjectPath("jvmud/mfuns").build());
+        LPCObjectHandle room = runtime.load(tempDir.resolve("room.c"));
+        LPCObjectHandle actor = runtime.load(tempDir.resolve("actor.c"));
+        Object target = runtime.cloneObject("target");
+        runtime.moveObject(actor.instance(), room.instance());
+        runtime.moveObject(target, room.instance());
+
+        actor.invoke("remember", target);
+
+        assertEquals(target, actor.invoke("seen_object"));
+    }
+
+    @Test
+    void engineFunctionAliasPresentAcceptsObjectIdentifier() throws Exception {
+        Files.writeString(tempDir.resolve("room.c"), """
+                """);
+        Files.writeString(tempDir.resolve("actor.c"), """
+                object seen;
+
+                void remember(object ob) {
+                    seen = present(ob);
+                }
+
+                object seen_object() {
+                    return seen;
+                }
+                """);
+        Files.writeString(tempDir.resolve("target.c"), """
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .engineFunction("jvmud_find_entity", "present")
+                .build());
         LPCObjectHandle room = runtime.load(tempDir.resolve("room.c"));
         LPCObjectHandle actor = runtime.load(tempDir.resolve("actor.c"));
         Object target = runtime.cloneObject("target");
