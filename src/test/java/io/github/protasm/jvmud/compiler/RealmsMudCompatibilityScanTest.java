@@ -176,7 +176,7 @@ final class RealmsMudCompatibilityScanTest {
         assertTrue(boundary.preloadObjectPaths().contains("secure/master"));
         assertTrue(boundary.preloadObjectPaths().contains("secure/simul_efun"));
         assertTrue(boundary.preloadObjectPaths().contains("lib/services/environmentService"));
-        assertEquals("jdbc:mysql://localhost:3306/RealmsLib", boundary.databaseJdbcUrl().orElseThrow());
+        assertEquals("jdbc:mysql://127.0.0.1:3306/RealmsLib", boundary.databaseJdbcUrl().orElseThrow());
         assertEquals("realmslib", boundary.databaseUser().orElseThrow());
         assertFalse(boundary.databasePassword().orElseThrow().isBlank());
         assertEquals("jvmud_allocate", boundary.engineFunction("allocate").orElseThrow());
