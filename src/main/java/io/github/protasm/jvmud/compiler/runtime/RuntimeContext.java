@@ -78,7 +78,9 @@ public final class RuntimeContext {
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
     private final Map<String, String> commandAliases = new LinkedHashMap<>();
     private final Map<Object, ScheduledTask> recurringTickTasks = new IdentityHashMap<>();
-    private final Map<Object, Map<String, ScheduledTask>> deferredCallbackTasks = new IdentityHashMap<>();
+    private final Map<Object, Map<String, List<DeferredCallback>>> deferredCallbackTasks =
+            new IdentityHashMap<>();
+    private long nextDeferredCallbackId = 1;
     private final Map<PlayerId, PlayerRecord> players = new LinkedHashMap<>();
     private final Map<SessionId, SessionBinding> sessions = new LinkedHashMap<>();
     private final Map<PersonaId, PersonaRecord> personas = new LinkedHashMap<>();
@@ -120,6 +122,7 @@ public final class RuntimeContext {
     private WorldScheduler scheduler = new WorldScheduler();
     private String mudlibGlobalObjectPath;
     private String compatibilityGlobalObjectPath;
+    private Set<String> compatibilityGlobalOverrides = Set.of();
     private final Map<String, Optional<ASTObject>> globalObjectDeclarations = new LinkedHashMap<>();
     private final Map<String, GlobalObjectSource> inMemoryGlobalObjectSources = new LinkedHashMap<>();
 
@@ -258,6 +261,7 @@ public final class RuntimeContext {
         this.mudlibBoundary = mudlibBoundary != null ? mudlibBoundary : MudlibBoundary.empty();
         this.mudlibGlobalObjectPath = this.mudlibBoundary.mudlibGlobalObjectPath().orElse(null);
         this.compatibilityGlobalObjectPath = this.mudlibBoundary.compatibilityGlobalObjectPath().orElse(null);
+        this.compatibilityGlobalOverrides = this.mudlibBoundary.compatibilityGlobalOverrides();
         globalObjectDeclarations.clear();
         databaseService.configure(
                 this.mudlibBoundary.databaseJdbcUrl().orElse(null),
@@ -497,6 +501,12 @@ public final class RuntimeContext {
     }
 
     private Efun resolveGlobalFunction(String name, int arity) {
+        if (compatibilityGlobalOverrides.contains(name)) {
+            Efun compatibilityOverride = resolveGlobalFunction(compatibilityGlobalObjectPath, name, arity);
+            if (compatibilityOverride != null) {
+                return compatibilityOverride;
+            }
+        }
         Efun mudlibGlobal = resolveGlobalFunction(mudlibGlobalObjectPath, name, arity);
         if (mudlibGlobal != null) {
             return mudlibGlobal;
@@ -1300,6 +1310,15 @@ public final class RuntimeContext {
         }
     }
 
+    /**
+     * Moves one LPC object and immediately starts the destination interaction scope for a connected
+     * command actor.
+     *
+     * <p>Movement is itself a lifecycle boundary. A room and the nearby objects must observe a
+     * connected actor's arrival before that actor can issue another command; deferring their
+     * lifecycle methods until the next command can let the actor leave before entrance events and
+     * temporary interactions are installed.</p>
+     */
     public void moveObject(Object object, Object destination) {
         Objects.requireNonNull(object, "object");
         if (destination instanceof String path) {
@@ -1309,6 +1328,10 @@ public final class RuntimeContext {
             throw new IllegalArgumentException(
                     "Cannot move " + objectIdOrDescription(object) + " into "
                             + objectIdOrDescription(destination) + " because it would create a containment cycle.");
+        }
+
+        if (environments.get(object) == destination) {
+            return;
         }
 
         Object oldEnvironment = environments.remove(object);
@@ -1324,20 +1347,47 @@ public final class RuntimeContext {
     }
 
     private void invokeArrivalLifecycle(Object object, Object destination) {
-        if (!sessionsByPersona.containsKey(destination)) {
-            return;
+        if (sessionsByPersona.containsKey(destination)) {
+            invokeInteractionLifecycle(destination, object);
         }
 
+        for (Object nearby : List.copyOf(inventoryFor(destination))) {
+            if (nearby != object && sessionsByPersona.containsKey(nearby)) {
+                invokeInteractionLifecycle(nearby, object);
+            }
+        }
+
+        if (sessionsByPersona.containsKey(object)) {
+            clearCommandActions(object);
+            clearPendingActionMethods();
+            try {
+                invokeInteractionLifecycle(object, object);
+                invokeInteractionLifecycle(object, destination);
+                for (Object nearby : List.copyOf(inventoryFor(destination))) {
+                    if (nearby != object) {
+                        invokeInteractionLifecycle(object, nearby);
+                    }
+                }
+                for (Object carried : List.copyOf(inventoryFor(object))) {
+                    invokeInteractionLifecycle(object, carried);
+                }
+            } finally {
+                clearPendingActionMethods();
+            }
+        }
+    }
+
+    private void invokeInteractionLifecycle(Object actor, Object handler) {
         String methodName = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElse(null);
-        if (methodName == null || !hasMethod(object.getClass(), methodName, 0)) {
+        if (methodName == null || !hasMethod(handler.getClass(), methodName, 0)) {
             return;
         }
 
         RuntimeContext previous = RuntimeContextHolder.current();
         RuntimeContextHolder.setCurrent(this);
         try {
-            withCommandActor(destination, () -> withScopedCommandRegistration(() -> {
-                invokeObject(object, methodName);
+            withCommandActor(actor, () -> withScopedCommandRegistration(() -> {
+                invokeObject(handler, methodName);
                 return null;
             }));
         } finally {
@@ -1525,6 +1575,15 @@ public final class RuntimeContext {
         return value == null || Integer.valueOf(0).equals(value);
     }
 
+    /**
+     * Schedules a one-shot callback on the current object without replacing other callbacks that
+     * happen to target the same method.
+     *
+     * <p>Method names are not task identities: mudlibs commonly fan out an event by scheduling the
+     * same delivery method once per subscriber. Each registration therefore remains independently
+     * cancellable and deliverable. The active command actor is also captured per registration so
+     * delayed work observes the same actor that initiated it.</p>
+     */
     public void scheduleDeferredCallback(String methodName, int delaySeconds, Object... args) {
         if (methodName == null || methodName.isBlank()) {
             return;
@@ -1538,17 +1597,21 @@ public final class RuntimeContext {
             return;
         }
 
-        Map<String, ScheduledTask> tasks = deferredCallbackTasks.computeIfAbsent(target, ignored -> new LinkedHashMap<>());
-        ScheduledTask previous = tasks.remove(methodName);
-        if (previous != null) {
-            previous.cancel();
-        }
-
+        Map<String, List<DeferredCallback>> tasks =
+                deferredCallbackTasks.computeIfAbsent(target, ignored -> new LinkedHashMap<>());
+        long callbackId = nextDeferredCallbackId++;
+        long dueTick = scheduler.currentTick() + delaySeconds;
+        Object commandActor = currentCommandActor();
         Object[] invocationArgs = args == null ? new Object[0] : args.clone();
-        ScheduledTask task = scheduler.scheduleAfter(delaySeconds, () -> deliverDeferredCallback(target, methodName, invocationArgs));
-        tasks.put(methodName, task);
+        ScheduledTask task = scheduler.scheduleAfter(
+                delaySeconds,
+                () -> deliverDeferredCallback(
+                        target, methodName, callbackId, commandActor, invocationArgs));
+        tasks.computeIfAbsent(methodName, ignored -> new ArrayList<>())
+                .add(new DeferredCallback(callbackId, dueTick, commandActor, task));
     }
 
+    /** Cancels the earliest pending callback for the named method on the current object. */
     public int cancelDeferredCallback(String methodName) {
         if (methodName == null) {
             return -1;
@@ -1559,17 +1622,25 @@ public final class RuntimeContext {
             return -1;
         }
 
-        Map<String, ScheduledTask> tasks = deferredCallbackTasks.get(target);
+        Map<String, List<DeferredCallback>> tasks = deferredCallbackTasks.get(target);
         if (tasks == null) {
             return -1;
         }
 
-        ScheduledTask task = tasks.remove(methodName);
-        if (task == null) {
+        List<DeferredCallback> callbacks = tasks.get(methodName);
+        if (callbacks == null || callbacks.isEmpty()) {
             return -1;
         }
 
-        task.cancel();
+        DeferredCallback callback = callbacks.stream()
+                .min(Comparator.comparingLong(DeferredCallback::dueTick)
+                        .thenComparingLong(DeferredCallback::id))
+                .orElseThrow();
+        callbacks.remove(callback);
+        callback.task().cancel();
+        if (callbacks.isEmpty()) {
+            tasks.remove(methodName);
+        }
         if (tasks.isEmpty()) {
             deferredCallbackTasks.remove(target);
         }
@@ -1607,13 +1678,15 @@ public final class RuntimeContext {
     }
 
     private void cancelDeferredCallbacks(Object target) {
-        Map<String, ScheduledTask> tasks = deferredCallbackTasks.remove(target);
+        Map<String, List<DeferredCallback>> tasks = deferredCallbackTasks.remove(target);
         if (tasks == null) {
             return;
         }
 
-        for (ScheduledTask task : tasks.values()) {
-            task.cancel();
+        for (List<DeferredCallback> callbacks : tasks.values()) {
+            for (DeferredCallback callback : callbacks) {
+                callback.task().cancel();
+            }
         }
     }
 
@@ -1639,23 +1712,39 @@ public final class RuntimeContext {
         }
     }
 
-    private void deliverDeferredCallback(Object target, String methodName, Object[] args) {
-        Map<String, ScheduledTask> tasks = deferredCallbackTasks.get(target);
+    private void deliverDeferredCallback(
+            Object target,
+            String methodName,
+            long callbackId,
+            Object commandActor,
+            Object[] args) {
+        Map<String, List<DeferredCallback>> tasks = deferredCallbackTasks.get(target);
         if (tasks != null) {
-            tasks.remove(methodName);
+            List<DeferredCallback> callbacks = tasks.get(methodName);
+            if (callbacks != null) {
+                callbacks.removeIf(callback -> callback.id() == callbackId);
+                if (callbacks.isEmpty()) {
+                    tasks.remove(methodName);
+                }
+            }
             if (tasks.isEmpty()) {
                 deferredCallbackTasks.remove(target);
             }
         }
 
-        if (!objectIds.containsKey(target) || !hasMethod(target.getClass(), methodName, args.length)) {
+        if (!objectIds.containsKey(target)
+                || !hasMethodAcceptingMissingArguments(target.getClass(), methodName, args.length)) {
             return;
         }
 
         RuntimeContext previous = RuntimeContextHolder.current();
         RuntimeContextHolder.setCurrent(this);
         try {
-            invokeObject(target, methodName, args);
+            if (commandActor == null) {
+                invokeObject(target, methodName, args);
+            } else {
+                withCommandActor(commandActor, () -> invokeObject(target, methodName, args));
+            }
         } catch (RuntimeException | LinkageError e) {
             timedRuntimeErrorHandler.onError(target, "deferred_callback", methodName, e);
         } finally {
@@ -1667,6 +1756,8 @@ public final class RuntimeContext {
     public interface TimedRuntimeErrorHandler {
         void onError(Object target, String context, String operation, Throwable error);
     }
+
+    private record DeferredCallback(long id, long dueTick, Object commandActor, ScheduledTask task) {}
 
     public Object currentObject() {
         return currentObjectStack.get().peek();
@@ -2027,7 +2118,8 @@ public final class RuntimeContext {
 
     private Object invokeCommandAction(CommandAction action, String commandLine, String argument) {
         String actionArgument = action.verb().isEmpty() ? commandLine : argument;
-        boolean hasOneArgument = hasMethod(action.handler().getClass(), action.methodName(), 1);
+        boolean hasOneArgument = hasMethodAcceptingMissingArguments(
+                action.handler().getClass(), action.methodName(), 1);
         boolean hasNoArguments = hasMethod(action.handler().getClass(), action.methodName(), 0);
         if (actionArgument != null && hasOneArgument) {
             return invokeObject(action.handler(), action.methodName(), actionArgument);
@@ -2039,6 +2131,19 @@ public final class RuntimeContext {
             return invokeObject(action.handler(), action.methodName());
         }
         return 0;
+    }
+
+    /**
+     * Reports whether an LPC method can receive the supplied leading arguments after omitted
+     * trailing parameters are padded with their LPC zero values.
+     */
+    private boolean hasMethodAcceptingMissingArguments(Class<?> targetClass, String methodName, int arity) {
+        for (Method method : targetClass.getMethods()) {
+            if (method.getName().equals(methodName) && method.getParameterCount() >= arity) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Method findMethod(Class<?> targetClass, String methodName, int arity) throws NoSuchMethodException {

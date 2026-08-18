@@ -1022,6 +1022,9 @@ final class MudlibCompatibilityScanTest {
             } else if (expression instanceof ASTExprArrayStore store) {
                 store.target().accept(this);
                 store.index().accept(this);
+                if (store.valueIndex() != null) {
+                    store.valueIndex().accept(this);
+                }
                 store.value().accept(this);
             } else if (expression instanceof ASTExprMappingLiteral literal) {
                 literal.entries().forEach(entry -> {

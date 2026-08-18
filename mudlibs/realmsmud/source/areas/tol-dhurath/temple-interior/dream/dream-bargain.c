@@ -44,7 +44,7 @@ public void init()
             colors["vision"][ci[0]] +
             "Time has passed. You stand in a tower overlooking "
             "a city. Xyris's voice fills your mind.\n\n"
-            "@S@'The city below shelters those who would oppose me. You "
+            "'The city below shelters those who would oppose me. You "
             "hold the staff I gave you. Speak the word and it will burn. "
             "Disobey and you will lose everything I have given you.'\n\n"
             "The staff thrums with power in your hands. The city is full "

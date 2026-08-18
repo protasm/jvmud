@@ -60,7 +60,26 @@ private mixed *waves = ({
 /////////////////////////////////////////////////////////////////////////////
 public int id(string item)
 {
-    return item == "gauntlet-hidden";
+    return member(({ "gauntlet-hidden", "gauntlet", "glyph",
+        "central glyph", "glowing glyph", "inscription", "chamber" }),
+        item) > -1;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+private void restoreCompletedGauntlet()
+{
+    object room = environment(this_object());
+    object player = this_player();
+    object stateMachine = objectp(room) ? room->stateMachine() : 0;
+
+    if (objectp(player) && objectp(stateMachine) &&
+        (member(({ "seventh test", "poem complete", "quest complete" }),
+            stateMachine->getCurrentState(player)) > -1))
+    {
+        puzzleSolved = 1;
+        gauntletActive = 0;
+        currentWave = totalWaves;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -292,6 +311,7 @@ public string long()
 /////////////////////////////////////////////////////////////////////////////
 public void init()
 {
+    restoreCompletedGauntlet();
     add_action("beginGauntlet", "step");
     add_action("beginGauntlet", "begin");
     add_action("beginGauntlet", "start");

@@ -38,6 +38,36 @@ public final class RuntimeMapping {
     }
 
     /**
+     * Replaces one value slot in an LDMud multi-value mapping entry.
+     *
+     * @param entry current Java representation of the mapping entry, or {@code null} when absent
+     * @param index zero-based mapping value slot
+     * @param value replacement value
+     * @return the updated entry representation
+     */
+    public static Object replaceValue(Object entry, Object index, Object value) {
+        int numericIndex = index instanceof Number number ? number.intValue() : 0;
+        if (numericIndex < 0)
+            throw new IndexOutOfBoundsException("Mapping value index must not be negative: " + numericIndex);
+
+        if (entry instanceof MultiValue multiValue) {
+            List<Object> values = new ArrayList<>(multiValue.values());
+            while (values.size() <= numericIndex)
+                values.add(Integer.valueOf(0));
+            values.set(numericIndex, value);
+            return new MultiValue(values);
+        }
+        if (numericIndex == 0)
+            return value;
+
+        List<Object> values = new ArrayList<>(Collections.nCopies(numericIndex + 1, Integer.valueOf(0)));
+        if (entry != null)
+            values.set(0, entry);
+        values.set(numericIndex, value);
+        return new MultiValue(values);
+    }
+
+    /**
      * Merges LPC mapping operands while treating the false sentinel as an empty mapping.
      *
      * <p>The right operand wins duplicate keys, matching the direct {@code putAll} order the

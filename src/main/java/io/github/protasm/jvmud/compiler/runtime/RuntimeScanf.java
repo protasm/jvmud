@@ -9,6 +9,17 @@ import java.util.regex.Pattern;
 public final class RuntimeScanf {
     private RuntimeScanf() {}
 
+    /**
+     * Matches an LPC {@code sscanf} format at the start of an input value.
+     *
+     * <p>A successful match need not consume the entire input. A final {@code %s} capture does,
+     * however, receive the remaining input while earlier string captures remain minimal.
+     *
+     * @param inputValue value to scan
+     * @param formatValue LPC {@code sscanf} format
+     * @param captureCount number of output captures supplied by the caller
+     * @return the match count followed by the captured values
+     */
     public static Object[] scan(Object inputValue, Object formatValue, int captureCount) {
         Object[] result = new Object[Math.max(0, captureCount) + 1];
         result[0] = 0;
@@ -23,7 +34,7 @@ public final class RuntimeScanf {
         }
 
         Matcher matcher = format.pattern().matcher(input);
-        if (!matcher.matches()) {
+        if (!matcher.lookingAt()) {
             return result;
         }
 
@@ -50,7 +61,9 @@ public final class RuntimeScanf {
                 if (specifier == 's' || specifier == 'd') {
                     appendLiteral(regex, literal);
                     captureTypes.add(specifier == 'd' ? CaptureType.INT : CaptureType.STRING);
-                    regex.append(specifier == 'd' ? "(-?\\d+)" : "(.*?)");
+                    regex.append(specifier == 'd'
+                            ? "(-?\\d+)"
+                            : hasFollowingFormatContent(format, i + 1) ? "(.*?)" : "(.*)");
                     continue;
                 }
                 literal.append('%').append(specifier);
@@ -60,8 +73,11 @@ public final class RuntimeScanf {
         }
 
         appendLiteral(regex, literal);
-        regex.append("$");
         return new FormatPattern(Pattern.compile(regex.toString(), Pattern.DOTALL), captureTypes);
+    }
+
+    private static boolean hasFollowingFormatContent(String format, int start) {
+        return start < format.length();
     }
 
     private static void appendLiteral(StringBuilder regex, StringBuilder literal) {

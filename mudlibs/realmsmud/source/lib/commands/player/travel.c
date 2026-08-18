@@ -81,7 +81,7 @@ public nomask int execute(string command, object initiator)
         object environment = environment(initiator);
         if (!environment || !environment->isPort()) 
         {
-            tell_object(initiator, "You must be at a trading port to plan travel.");
+            tell_object(initiator, "You must be at a trading port to plan travel.\n");
             ret = 1;
         } 
         else 
@@ -92,6 +92,7 @@ public nomask int execute(string command, object initiator)
 
                 object travelSelector = 
                     clone_object("/lib/modules/domains/trading/selectors/travelSelector.c");
+                travelSelector->setPort(environment);
                 move_object(travelSelector, initiator);
                 travelSelector->setDestination(destination);
                 travelSelector->registerEvent(this_object());

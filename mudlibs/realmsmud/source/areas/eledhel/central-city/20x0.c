@@ -9,7 +9,7 @@ public void Setup()
 {
     setTerrain("/lib/environment/terrain/city.c");
     addBuilding("/lib/environment/buildings/shops/weaponsmith.c",
-        "west", "/areas/eledhel/central-city/maces/2x1.c");
+        "west");
     addBuilding("/lib/environment/buildings/shops/general-shop.c",
         "east", "/areas/eledhel/central-city/21x0.c");
 

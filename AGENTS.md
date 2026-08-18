@@ -44,6 +44,10 @@ command.
 
 - Inspect the relevant tree before changing it; this repo is still being shaped
   after migration.
+- When starting Realms, redirect the verbose startup output to a file whenever
+  possible and inspect only concise summary and error markers. Read or stream
+  the full startup output only when it is necessary for the particular agentic
+  task, such as diagnosing an initialization or preload failure.
 - Keep compiler changes under `src/main/java/io/github/protasm/jvmud/compiler/`
   unless the task is explicitly about engine, instance, transport,
   persistence, mudlibs/lp245, or docs.

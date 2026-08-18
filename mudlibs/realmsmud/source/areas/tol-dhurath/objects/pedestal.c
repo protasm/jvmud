@@ -101,6 +101,51 @@ private mapping validSequences = ([
 ]);
 
 /////////////////////////////////////////////////////////////////////////////
+public string Name()
+{
+    return "test of obedience pedestal";
+}
+
+/////////////////////////////////////////////////////////////////////////////
+private object *participatingPlayers()
+{
+    object party = this_player()->getParty();
+    return objectp(party) ? party->members(1) : ({ this_player() });
+}
+
+/////////////////////////////////////////////////////////////////////////////
+private void recordOpenedPassage()
+{
+    string passageState = sprintf("%s passage open", currentTest);
+
+    foreach(object player in participatingPlayers())
+    {
+        if (objectp(player) && function_exists("characterState", player))
+        {
+            player->characterState(this_object(), passageState);
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+public int restoreOpenedPassage(object player, string test)
+{
+    int ret = 0;
+
+    if (objectp(player) && member(validSequences, test) &&
+        function_exists("characterState", player) &&
+        (player->characterState(this_object()) ==
+            sprintf("%s passage open", test)))
+    {
+        currentTest = test;
+        orbs = validSequences[test] + ([]);
+        platesCanBePressed = 0;
+        ret = 1;
+    }
+    return ret;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 private string orb(string color)
 {
     object user = this_player();
@@ -331,6 +376,7 @@ public void finishPress()
                 "The liquid surrounding the passage way "
                 "widens, allowing safe passage", 78));
 
+            recordOpenedPassage();
             applyExperience();
             object stateMachineService = getService("stateMachine");
 

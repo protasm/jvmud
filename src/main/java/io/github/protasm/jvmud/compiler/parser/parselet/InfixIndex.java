@@ -56,7 +56,7 @@ public class InfixIndex implements InfixParselet {
         if (canAssign) {
             AssignOpType operator = assignmentOperator(parser);
             if (operator != null)
-                return new ASTExprArrayStore(line, left, index, operator, parser.expression());
+                return new ASTExprArrayStore(line, left, index, valueIndex, operator, parser.expression());
         }
         if (canAssign && parser.tokens().match(T_PLUS_PLUS))
             return new ASTExprArrayMutation(line, left, index, 1);

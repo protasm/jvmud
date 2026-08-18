@@ -710,9 +710,12 @@ final class TelnetServerTest {
                 assertTrue(containsTelnetCommand(passwordPrompt, 251, 1), passwordPrompt);
                 assertFalse(passwordPrompt.contains("Password: > "), passwordPrompt);
 
+                socket.getOutputStream().write(new byte[] { (byte) 255, (byte) 253, 1 });
                 socket.getOutputStream().write("Valid1!\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilQuietAfterContains(socket, "Password again: ").contains("Password again: "));
+                String confirmationPrompt = readUntilQuietAfterContains(socket, "Password again: ");
+                assertTrue(confirmationPrompt.contains("Password again: "), confirmationPrompt);
+                assertFalse(containsTelnetCommand(confirmationPrompt, 252, 1), confirmationPrompt);
                 socket.getOutputStream().write("Valid1!\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 String emailPrompt = readUntilQuietAfterContains(socket, "Email address (optional): ");
@@ -1689,8 +1692,9 @@ final class TelnetServerTest {
                     return 1;
                 }
 
-                void capture(string line, string label, int count) {
+                int capture(string line, string label, int count) {
                     write(label + ":" + line + ":" + count + "\\n");
+                    return 0;
                 }
                 """);
         Files.createDirectories(tempDir.resolve("room"));
@@ -1711,7 +1715,9 @@ final class TelnetServerTest {
 
                 socket.getOutputStream().write("blue\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilContains(socket, "left:blue:7").contains("left:blue:7"));
+                String captured = readUntilQuietAfterContains(socket, "left:blue:7");
+                assertTrue(captured.contains("left:blue:7"), captured);
+                assertFalse(captured.contains("You can't do that."), captured);
 
                 socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -2149,6 +2155,12 @@ final class TelnetServerTest {
                             public void preloadFinished(PreloadKind kind, String sourcePath, boolean loaded) {
                                 progressEvents.add("finish " + kind + " " + sourcePath + " " + loaded);
                             }
+
+                            @Override
+                            public void preloadFailed(PreloadKind kind, String sourcePath, Throwable error) {
+                                progressEvents.add("failed " + kind + " " + sourcePath + " "
+                                        + error.getClass().getSimpleName());
+                            }
                         })
                 .boot();
 
@@ -2161,6 +2173,7 @@ final class TelnetServerTest {
                 "start MANIFEST_OBJECT obj/preload",
                 "finish MANIFEST_OBJECT obj/preload true",
                 "start MANIFEST_OBJECT obj/broken",
+                "failed MANIFEST_OBJECT obj/broken LPCRuntimeException",
                 "finish MANIFEST_OBJECT obj/broken false"), progressEvents);
     }
 

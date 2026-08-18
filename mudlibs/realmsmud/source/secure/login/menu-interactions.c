@@ -34,6 +34,7 @@ private nomask void execCharacter(string characterName, string userName)
 
     if (objectp(player))
     {
+        player->setUserName(userName);
         exec(player, this_object());
         addUser(player);
         configureCharset(player, player->charsetConfiguration());

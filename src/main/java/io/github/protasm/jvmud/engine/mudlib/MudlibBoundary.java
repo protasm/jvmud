@@ -42,6 +42,7 @@ public final class MudlibBoundary {
     private final Path mudlibGlobalObjectSourcePath;
     private final String compatibilityGlobalObjectPath;
     private final Path compatibilityGlobalObjectSourcePath;
+    private final Set<String> compatibilityGlobalOverrides;
     private final String playerObjectPath;
     private final String playerPrompt;
     private final int maxLineLength;
@@ -69,6 +70,7 @@ public final class MudlibBoundary {
         this.mudlibGlobalObjectSourcePath = normalizeOptionalFilesystemPath(builder.mudlibGlobalObjectSourcePath);
         this.compatibilityGlobalObjectPath = normalizeOptionalPath(builder.compatibilityGlobalObjectPath);
         this.compatibilityGlobalObjectSourcePath = normalizeOptionalFilesystemPath(builder.compatibilityGlobalObjectSourcePath);
+        this.compatibilityGlobalOverrides = normalizeTextSet(builder.compatibilityGlobalOverrides);
         this.playerObjectPath = normalizeOptionalPath(builder.playerObjectPath);
         this.playerPrompt = normalizeOptionalPrompt(builder.playerPrompt);
         this.maxLineLength = normalizeMaxLineLength(builder.maxLineLength);
@@ -146,6 +148,17 @@ public final class MudlibBoundary {
      */
     public Optional<Path> compatibilityGlobalObjectSourcePath() {
         return Optional.ofNullable(compatibilityGlobalObjectSourcePath);
+    }
+
+    /**
+     * Returns function names for which the compatibility object takes precedence over the
+     * mudlib-owned global object.
+     *
+     * <p>Overrides are explicit so a profile can adapt a small incompatible surface without
+     * replacing the mudlib's remaining global policy.</p>
+     */
+    public Set<String> compatibilityGlobalOverrides() {
+        return compatibilityGlobalOverrides;
     }
 
     /** Returns the optional mudlib-owned global mfun object path. */
@@ -325,6 +338,7 @@ public final class MudlibBoundary {
                 || mudlibGlobalObjectSourcePath != null
                 || compatibilityGlobalObjectPath != null
                 || compatibilityGlobalObjectSourcePath != null
+                || !compatibilityGlobalOverrides.isEmpty()
                 || playerObjectPath != null
                 || playerPrompt != null
                 || maxLineLength != DEFAULT_MAX_LINE_LENGTH
@@ -452,6 +466,17 @@ public final class MudlibBoundary {
         return Collections.unmodifiableSet(normalized);
     }
 
+    private static Set<String> normalizeTextSet(Set<String> values) {
+        if (values.isEmpty()) {
+            return Set.of();
+        }
+        java.util.LinkedHashSet<String> normalized = new java.util.LinkedHashSet<>();
+        for (String value : values) {
+            normalized.add(normalizeRequiredText(value, "Compatibility override name"));
+        }
+        return Collections.unmodifiableSet(normalized);
+    }
+
     public static final class Builder {
         private String gameId;
         private String gameName;
@@ -461,6 +486,8 @@ public final class MudlibBoundary {
         private Path mudlibGlobalObjectSourcePath;
         private String compatibilityGlobalObjectPath;
         private Path compatibilityGlobalObjectSourcePath;
+        private final java.util.LinkedHashSet<String> compatibilityGlobalOverrides =
+                new java.util.LinkedHashSet<>();
         private String playerObjectPath;
         private String playerPrompt;
         private int maxLineLength = DEFAULT_MAX_LINE_LENGTH;
@@ -532,6 +559,12 @@ public final class MudlibBoundary {
         /** Sets the filesystem source for the JVMud compatibility global function object. */
         public Builder compatibilityGlobalObjectSourcePath(Path compatibilityGlobalObjectSourcePath) {
             this.compatibilityGlobalObjectSourcePath = compatibilityGlobalObjectSourcePath;
+            return this;
+        }
+
+        /** Adds a function for which the compatibility object should override the mudlib global. */
+        public Builder compatibilityGlobalOverride(String functionName) {
+            this.compatibilityGlobalOverrides.add(functionName);
             return this;
         }
 

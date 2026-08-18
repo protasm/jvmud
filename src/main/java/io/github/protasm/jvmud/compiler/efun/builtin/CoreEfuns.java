@@ -257,8 +257,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       matches. JVMud accepts common LDMud regexp idioms before running the pattern on Java's
  *       regex engine.</li>
  *   <li>{@code jvmud_regex_replace(string input, string pattern, mixed replacement, int flags) :
- *       string} performs a compatibility regex replacement for legacy mudlib text helpers,
- *       including function callbacks that receive each matched string.</li>
+ *       string} performs a compatibility regex replacement for mudlib text helpers, including
+ *       multiline matches and function callbacks that receive each matched string.</li>
  *   <li>{@code jvmud_regex_explode(string input, string pattern) : array} splits text around
  *       regular-expression matches while preserving matched delimiters.</li>
  *   <li>{@code jvmud_to_int(mixed value) : int} converts numeric values and base-10 text to an
@@ -1271,14 +1271,15 @@ public final class CoreEfuns {
             return regexReplaceWithCallback(runtime, input, javaPattern, callback, flags);
         }
         String javaReplacement = javaRegexReplacement(String.valueOf(replacement));
+        Matcher matcher = Pattern.compile(javaPattern, Pattern.DOTALL).matcher(input);
         return flags == 0
-                ? input.replaceFirst(javaPattern, javaReplacement)
-                : input.replaceAll(javaPattern, javaReplacement);
+                ? matcher.replaceFirst(javaReplacement)
+                : matcher.replaceAll(javaReplacement);
     }
 
     private static String regexReplaceWithCallback(
             RuntimeContext runtime, String input, String javaPattern, RuntimeCallable callback, int flags) {
-        Matcher matcher = Pattern.compile(javaPattern).matcher(input);
+        Matcher matcher = Pattern.compile(javaPattern, Pattern.DOTALL).matcher(input);
         StringBuffer output = new StringBuffer();
         int replacements = 0;
         while (matcher.find()) {

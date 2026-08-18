@@ -70,6 +70,30 @@ public final class RuntimeIndex {
         throw new IllegalArgumentException("Cannot assign indexed value: " + target);
     }
 
+    /**
+     * Stores one value slot in an LDMud multi-value mapping entry.
+     *
+     * @param target mapping to update
+     * @param key mapping key
+     * @param valueIndex zero-based value slot
+     * @param value replacement value
+     * @return the previous value in that slot, or LPC false when it was absent
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Object set(Object target, Object key, Object valueIndex, Object value) {
+        if (target instanceof Map map) {
+            Object oldEntry = map.get(key);
+            Object previous = oldEntry != null
+                    ? RuntimeMapping.select(oldEntry, valueIndex)
+                    : Integer.valueOf(0);
+            map.put(key, RuntimeMapping.replaceValue(oldEntry, valueIndex, value));
+            return previous;
+        }
+        if (valueIndex instanceof Number number && number.intValue() == 0)
+            return set(target, key, value);
+        throw new IllegalArgumentException("Cannot assign multi-value index: " + target);
+    }
+
     /** Mutates a numeric indexed array or mapping value and returns the previous value for postfix operators. */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object mutateNumber(Object target, Object index, int delta) {

@@ -1123,7 +1123,8 @@ public final class BytecodeCompiler {
         return type.kind() == RuntimeValueKind.STRING
                 || type.kind() == RuntimeValueKind.ARRAY
                 || type.kind() == RuntimeValueKind.MAPPING
-                || type.kind() == RuntimeValueKind.OBJECT;
+                || type.kind() == RuntimeValueKind.OBJECT
+                || type.kind() == RuntimeValueKind.MIXED;
     }
 
     private void emitComparison(MethodVisitor mv, BinaryOpType op) {
@@ -2043,13 +2044,24 @@ public final class BytecodeCompiler {
 
     private void emitMappingSet(MethodVisitor mv, String internalName, IRMethod method, IRMappingSet mappingSet) {
         emitExpression(mv, internalName, method, mappingSet.mapping());
-        mv.visitTypeInsn(CHECKCAST, "java/util/Map");
+        boxIfNeeded(mv, mappingSet.mapping().type());
         emitExpression(mv, internalName, method, mappingSet.key());
         boxIfNeeded(mv, mappingSet.key().type());
+        if (mappingSet.valueIndex() != null) {
+            emitExpression(mv, internalName, method, mappingSet.valueIndex());
+            boxIfNeeded(mv, mappingSet.valueIndex().type());
+        }
         emitExpression(mv, internalName, method, mappingSet.value());
         boxIfNeeded(mv, mappingSet.value().type());
+        String descriptor = mappingSet.valueIndex() == null
+                ? "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"
+                : "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;";
         mv.visitMethodInsn(
-                INVOKEINTERFACE, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
+                INVOKESTATIC,
+                Type.getInternalName(RuntimeIndex.class),
+                "set",
+                descriptor,
+                false);
     }
 
     private void coerceValue(MethodVisitor mv, RuntimeType source, RuntimeType target) {

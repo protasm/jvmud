@@ -47,7 +47,7 @@ final class TelnetSession implements Runnable {
             StringBuilder line = new StringBuilder();
             int value;
             while (session.running && (value = in.read()) != -1) {
-                if (handleTelnetCommand(value, in, rawOut, out)) {
+                if (handleTelnetCommand(session, value, in, rawOut, out)) {
                     continue;
                 }
                 if (value == '\r') {
@@ -129,7 +129,8 @@ final class TelnetSession implements Runnable {
     }
 
     private boolean handleTelnetCommand(
-            int value, BufferedInputStream in, OutputStream rawOut, PrintWriter out) throws IOException {
+            SessionState session, int value, BufferedInputStream in, OutputStream rawOut, PrintWriter out)
+            throws IOException {
         if (value != IAC) {
             return false;
         }
@@ -144,6 +145,11 @@ final class TelnetSession implements Runnable {
         if (command == DO || command == DONT || command == WILL || command == WONT) {
             int option = in.read();
             if (option != -1) {
+                // DO ECHO acknowledges the WILL ECHO sent while JVMud is consuming hidden input.
+                // Rejecting that acknowledgement with WONT immediately re-enables client echo.
+                if (command == DO && option == ECHO && session.noEchoNegotiated) {
+                    return true;
+                }
                 refuseOption(command, option, rawOut, out);
             }
         }

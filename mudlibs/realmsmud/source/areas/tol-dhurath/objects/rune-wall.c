@@ -71,6 +71,140 @@ private mapping colors = ([
 
 private mapping wall = ([]);
 
+private mapping RuneBits = ([
+    "weakness": 1,
+    "strength": 2,
+    "flame": 4,
+    "frost": 8,
+    "negation": 16,
+    "wisdom": 32,
+    "endurance": 64,
+    "resistance": 128,
+    "death": 256,
+    "doom": 512,
+    "fear": 1024,
+    "envy": 2048,
+]);
+
+/////////////////////////////////////////////////////////////////////////////
+public string Name()
+{
+    return "test of obedience rune wall";
+}
+
+/////////////////////////////////////////////////////////////////////////////
+private string *recordedRunes(object player)
+{
+    string *ret = ({});
+    string state = (objectp(player) && function_exists("characterState", player)) ?
+        player->characterState(this_object()) : 0;
+
+    if (stringp(state) && (strstr(state, "placed:") == 0))
+    {
+        string encoded = state[7..];
+        if (strstr(encoded, ",") > -1)
+        {
+            // Read checkpoints written by the initial JVMud compatibility
+            // implementation before it switched to a bounded bit set.
+            ret = explode(encoded, ",");
+        }
+        else
+        {
+            int placed = to_int(encoded);
+            foreach(string rune in m_indices(RuneBits))
+            {
+                if (placed & RuneBits[rune])
+                {
+                    ret += ({ rune });
+                }
+            }
+        }
+    }
+    return ret;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+public int hasRecordedRune(object player, string rune)
+{
+    return objectp(player) && stringp(rune) &&
+        (member(recordedRunes(player), rune) > -1);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+private string encodeRunes(string *runes)
+{
+    int placed = 0;
+    foreach(string rune in runes)
+    {
+        if (member(RuneBits, rune))
+        {
+            placed |= RuneBits[rune];
+        }
+    }
+    return sprintf("placed:%d", placed);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+private object *participatingPlayers()
+{
+    object party = this_player()->getParty();
+    return objectp(party) ? party->members(1) : ({ this_player() });
+}
+
+/////////////////////////////////////////////////////////////////////////////
+private void recordPlacedRune(string rune)
+{
+    foreach(object player in participatingPlayers())
+    {
+        if (objectp(player) && function_exists("characterState", player))
+        {
+            string *placed = recordedRunes(player);
+            if (member(placed, rune) < 0)
+            {
+                placed += ({ rune });
+                player->characterState(this_object(), encodeRunes(placed));
+            }
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+private void restorePlacedRunes(object player)
+{
+    string *placed = recordedRunes(player);
+    object room = environment(this_object());
+    object stateMachine = objectp(room) ? room->stateMachine() : 0;
+    string questState = objectp(stateMachine) ?
+        stateMachine->getCurrentState(player) : 0;
+
+    // Every state from the first test onward is only reachable after the
+    // resistance rune has already been placed. This also repairs older saves
+    // made before the wall recorded its own contents.
+    if (member(({ "first test", "second test", "third test", "fourth test",
+        "fifth test", "sixth test", "seventh test", "poem complete",
+        "quest complete" }), questState) > -1)
+    {
+        placed += ({ "resistance" });
+    }
+
+    foreach(string rune in m_indices(mkmapping(placed)))
+    {
+        if (member(wall, rune) && member(verses, rune))
+        {
+            wall[rune, 0] = verses[rune];
+            wall[rune, 1] = 0;
+        }
+    }
+
+    // The wall checkpoint is written before the quest transition. If the
+    // process stops between those operations, reconcile the lagging quest
+    // when the player next enters instead of leaving a completed wall inert.
+    if ((questState == "seventh test") && allRunesPlaced())
+    {
+        stateMachine->receiveEvent(player, "allRunesPlaced");
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////
 public void resetWall()
 {
@@ -199,6 +333,7 @@ public void create()
 /////////////////////////////////////////////////////////////////////////////
 public void init()
 {
+    restorePlacedRunes(this_player());
     add_action("placeRune", "place");
 }
 
@@ -264,6 +399,7 @@ public int placeRune(string rune)
         {
             wall[whichRune, 0] = verses[whichRune];
             wall[whichRune, 1] = 0;
+            recordPlacedRune(whichRune);
             string msg = "##InitiatorName::capitalize## ##Infinitive::locate## a gap that "
                 "fits and ##Infinitive::place## the rune of %s on the wall.\n";
 

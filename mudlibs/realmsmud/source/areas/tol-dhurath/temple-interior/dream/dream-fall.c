@@ -42,7 +42,7 @@ public void init()
             "The city is ash. A broken talisman lies at your "
             "feet - the last gift from someone you once loved. Xyris's "
             "voice comes one final time.\n\n"
-            "@S@'You have proven your worth. Now I bind you to this place "
+            "'You have proven your worth. Now I bind you to this place "
             "as its eternal guardian. Your flesh shall wither but your "
             "spirit shall endure. This is my final command.'\n\n"
             "The chains of light descend. You may 'submit' to the binding "

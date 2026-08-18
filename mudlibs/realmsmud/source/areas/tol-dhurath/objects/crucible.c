@@ -85,7 +85,8 @@ private int touchCooldown = 0;
 /////////////////////////////////////////////////////////////////////////////
 public int id(string item)
 {
-    return item == "crucible-hidden";
+    return member(({ "crucible-hidden", "braziers", "brazier",
+        "spectral braziers", "flame brazier", "frost brazier" }), item) > -1;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -295,7 +296,7 @@ public int touchBrazier(string str)
     if (stringp(str))
     {
         string element = lower_case(str);
-        element = regreplace(element, " ?(brazier|flame|fire)$", "");
+        element = regreplace(element, " ?brazier$", "");
 
         object user = this_player();
         string colorConfig = (objectp(user) && user->colorConfiguration()) ?

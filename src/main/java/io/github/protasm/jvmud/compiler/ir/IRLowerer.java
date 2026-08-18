@@ -102,6 +102,7 @@ public final class IRLowerer {
                 (astObject.parentName() != null) ? astObject.parentName() : defaultParentInternalName;
         SemanticScope objectScope = semanticModel.objectScope();
         Set<String> primaryParentLineage = primaryParentLineage(semanticModel.compilationUnit(), parentInternalName);
+        Set<String> primaryParentCoverage = primaryParentCoverage(semanticModel.compilationUnit(), parentInternalName);
 
         Map<Symbol, IRField> fieldsBySymbol = new HashMap<>();
         List<IRField> flattenedInheritedFields = new ArrayList<>();
@@ -115,6 +116,7 @@ public final class IRLowerer {
                 objectInternalName,
                 parentInternalName,
                 primaryParentLineage,
+                primaryParentCoverage,
                 problems);
         importSecondaryParentScopeFields(
                 objectScope,
@@ -124,6 +126,7 @@ public final class IRLowerer {
                 objectInternalName,
                 parentInternalName,
                 primaryParentLineage,
+                primaryParentCoverage,
                 problems);
         List<IRField> fields = lowerFields(astObject.fields(), fieldsBySymbol, problems, objectInternalName);
         fields.addAll(0, flattenedInheritedFields);
@@ -136,7 +139,8 @@ public final class IRLowerer {
                 problems,
                 objectInternalName,
                 parentInternalName,
-                primaryParentLineage);
+                primaryParentLineage,
+                primaryParentCoverage);
 
         TypedIR typedIr = new TypedIR(new IRObject(
                 astObject.line(),
@@ -262,6 +266,7 @@ public final class IRLowerer {
             String objectInternalName,
             String parentInternalName,
             Set<String> primaryParentLineage,
+            Set<String> primaryParentCoverage,
             List<CompilationProblem> problems) {
         if (scope == null)
             return;
@@ -280,7 +285,7 @@ public final class IRLowerer {
 
                 RuntimeType type = runtimeType(symbol.lpcType());
                 String ownerInternalName = scopedSymbol.field().ownerName();
-                if (shouldFlattenInheritedField(scope, objectScope, ownerInternalName, primaryParentLineage)) {
+                if (shouldFlattenInheritedField(scope, objectScope, ownerInternalName, primaryParentCoverage)) {
                     IRField flattenedField = new IRField(
                             scopedSymbol.field().line(),
                             objectInternalName,
@@ -299,7 +304,11 @@ public final class IRLowerer {
 
                 IRField inheritedField = new IRField(
                         scopedSymbol.field().line(),
-                        (ownerInternalName != null) ? ownerInternalName : defaultParentInternalName,
+                        inheritedFieldOwner(
+                                ownerInternalName,
+                                parentInternalName,
+                                primaryParentLineage,
+                                primaryParentCoverage),
                         symbol.name(),
                         type,
                         null);
@@ -316,6 +325,7 @@ public final class IRLowerer {
                 objectInternalName,
                 parentInternalName,
                 primaryParentLineage,
+                primaryParentCoverage,
                 problems);
     }
 
@@ -343,12 +353,13 @@ public final class IRLowerer {
             String objectInternalName,
             String parentInternalName,
             Set<String> primaryParentLineage,
+            Set<String> primaryParentCoverage,
             List<CompilationProblem> problems) {
         if (objectScope == null)
             return;
 
         Set<CompilationUnit> secondaryParentUnits =
-                visibleSecondaryParentUnits(objectScope, objectInternalName, primaryParentLineage);
+                visibleSecondaryParentUnits(objectScope, objectInternalName, primaryParentCoverage);
         for (CompilationUnit parentUnit : secondaryParentUnits) {
             for (ASTField field : parentUnit.semanticModel().astObject().fields()) {
                 importVisibleInheritedField(
@@ -359,6 +370,7 @@ public final class IRLowerer {
                         objectInternalName,
                         parentInternalName,
                         primaryParentLineage,
+                        primaryParentCoverage,
                         problems);
             }
 
@@ -376,6 +388,7 @@ public final class IRLowerer {
                             objectInternalName,
                             parentInternalName,
                             primaryParentLineage,
+                            primaryParentCoverage,
                             problems);
                 }
             }
@@ -395,6 +408,7 @@ public final class IRLowerer {
             String objectInternalName,
             String parentInternalName,
             Set<String> primaryParentLineage,
+            Set<String> primaryParentCoverage,
             List<CompilationProblem> problems) {
         if (field == null)
             return;
@@ -405,7 +419,7 @@ public final class IRLowerer {
 
         RuntimeType type = runtimeType(symbol.lpcType());
         String ownerInternalName = field.ownerName();
-        if (ownerInternalName != null && !primaryParentLineage.contains(ownerInternalName)) {
+        if (ownerInternalName != null && !primaryParentCoverage.contains(ownerInternalName)) {
             IRField mapped = fieldsBySymbol.get(symbol);
             if (mapped != null && Objects.equals(mapped.ownerInternalName(), objectInternalName))
                 return;
@@ -431,7 +445,11 @@ public final class IRLowerer {
 
         IRField existing = findField(
                 fieldsBySymbol,
-                (ownerInternalName != null) ? ownerInternalName : defaultParentInternalName,
+                inheritedFieldOwner(
+                        ownerInternalName,
+                        parentInternalName,
+                        primaryParentLineage,
+                        primaryParentCoverage),
                 symbol.name());
         if (existing != null) {
             fieldsBySymbol.put(symbol, existing);
@@ -442,7 +460,11 @@ public final class IRLowerer {
                 symbol,
                 new IRField(
                         field.line(),
-                        (ownerInternalName != null) ? ownerInternalName : defaultParentInternalName,
+                        inheritedFieldOwner(
+                                ownerInternalName,
+                                parentInternalName,
+                                primaryParentLineage,
+                                primaryParentCoverage),
                         symbol.name(),
                         type,
                         null));
@@ -485,6 +507,19 @@ public final class IRLowerer {
         return lineage;
     }
 
+    /**
+     * Returns every LPC program whose state and methods are already represented by the generated
+     * primary-parent class. Unlike the actual JVM superclass lineage, this includes secondary LPC
+     * ancestors that were flattened while that parent was compiled.
+     */
+    private Set<String> primaryParentCoverage(CompilationUnit unit, String parentInternalName) {
+        Set<String> coverage = new HashSet<>();
+        collectVisibleParentNames(primaryParentUnit(unit), coverage);
+        if (parentInternalName != null)
+            coverage.add(parentInternalName);
+        return coverage;
+    }
+
     private CompilationUnit primaryParentUnit(CompilationUnit unit) {
         if (unit == null)
             return null;
@@ -506,6 +541,38 @@ public final class IRLowerer {
         collectLineageNames(primaryParentUnit(unit), lineage);
     }
 
+    private void collectVisibleParentNames(CompilationUnit unit, Set<String> names) {
+        if (unit == null || unit.semanticModel() == null)
+            return;
+
+        String name = unit.semanticModel().astObject().name();
+        if (!names.add(name))
+            return;
+
+        for (CompilationUnit parentUnit : unit.directParentUnits())
+            collectVisibleParentNames(parentUnit, names);
+    }
+
+    /**
+     * Selects the generated Java class that physically owns inherited LPC field storage. A
+     * secondary ancestor represented by the primary parent was flattened onto that immediate Java
+     * superclass, even though semantic analysis retains the original LPC owner name.
+     */
+    private String inheritedFieldOwner(
+            String sourceOwnerInternalName,
+            String parentInternalName,
+            Set<String> primaryParentLineage,
+            Set<String> primaryParentCoverage) {
+        if (sourceOwnerInternalName == null)
+            return defaultParentInternalName;
+
+        if (primaryParentCoverage.contains(sourceOwnerInternalName)
+                && !primaryParentLineage.contains(sourceOwnerInternalName))
+            return parentInternalName;
+
+        return sourceOwnerInternalName;
+    }
+
     private void collectVisibleParentUnits(CompilationUnit unit, Set<CompilationUnit> units) {
         if (unit == null || unit.semanticModel() == null || !units.add(unit))
             return;
@@ -522,6 +589,7 @@ public final class IRLowerer {
             String objectInternalName,
             String parentInternalName,
             Set<String> primaryParentLineage,
+            Set<String> primaryParentCoverage,
             List<CompilationProblem> problems) {
         Symbol symbol = scopedSymbol.symbol();
         if (declaredFieldSymbols.contains(symbol))
@@ -529,7 +597,7 @@ public final class IRLowerer {
 
         RuntimeType type = runtimeType(symbol.lpcType());
         String ownerInternalName = scopedSymbol.field().ownerName();
-        if (ownerInternalName != null && !primaryParentLineage.contains(ownerInternalName)) {
+        if (ownerInternalName != null && !primaryParentCoverage.contains(ownerInternalName)) {
             IRField mapped = fieldsBySymbol.get(symbol);
             if (mapped != null && Objects.equals(mapped.ownerInternalName(), objectInternalName))
                 return;
@@ -560,7 +628,11 @@ public final class IRLowerer {
 
         IRField existing = findField(
                 fieldsBySymbol,
-                (ownerInternalName != null) ? ownerInternalName : defaultParentInternalName,
+                inheritedFieldOwner(
+                        ownerInternalName,
+                        parentInternalName,
+                        primaryParentLineage,
+                        primaryParentCoverage),
                 symbol.name());
         if (existing != null) {
             fieldsBySymbol.put(symbol, existing);
@@ -571,7 +643,11 @@ public final class IRLowerer {
                 symbol,
                 new IRField(
                         scopedSymbol.field().line(),
-                        (ownerInternalName != null) ? ownerInternalName : defaultParentInternalName,
+                        inheritedFieldOwner(
+                                ownerInternalName,
+                                parentInternalName,
+                                primaryParentLineage,
+                                primaryParentCoverage),
                         symbol.name(),
                         type,
                         null));
@@ -593,7 +669,8 @@ public final class IRLowerer {
             List<CompilationProblem> problems,
             String objectInternalName,
             String parentInternalName,
-            Set<String> primaryParentLineage) {
+            Set<String> primaryParentLineage,
+            Set<String> primaryParentCoverage) {
         List<IRMethod> methods = new ArrayList<>();
         Set<MethodKey> declaredMethodKeys = declaredMethodKeys(astObject);
         Set<MethodKey> primaryInheritedMethodKeys = inheritedMethodKeys(objectScope != null ? objectScope.parent() : null);
@@ -607,7 +684,8 @@ public final class IRLowerer {
                 problems,
                 objectInternalName,
                 parentInternalName,
-                primaryParentLineage);
+                primaryParentLineage,
+                primaryParentCoverage);
 
         for (ASTMethod method : astObject.methods()) {
             if (!method.isDefined())
@@ -667,7 +745,8 @@ public final class IRLowerer {
             List<CompilationProblem> problems,
             String objectInternalName,
             String parentInternalName,
-            Set<String> primaryParentLineage) {
+            Set<String> primaryParentLineage,
+            Set<String> primaryParentCoverage) {
         if (objectScope == null)
             return;
 
@@ -687,10 +766,10 @@ public final class IRLowerer {
                 qualifiedMethodsToFlatten,
                 objectInternalName,
                 parentInternalName,
-                primaryParentLineage);
+                primaryParentCoverage);
 
         for (CompilationUnit parentUnit :
-                visibleSecondaryParentUnits(objectScope, objectInternalName, primaryParentLineage)) {
+                visibleSecondaryParentUnits(objectScope, objectInternalName, primaryParentCoverage)) {
             collectSecondaryInheritedMethods(
                     parentUnit.semanticModel().objectScope().symbols().values(),
                     fieldsBySymbol,
@@ -703,7 +782,7 @@ public final class IRLowerer {
                     qualifiedMethodsToFlatten,
                     objectInternalName,
                     parentInternalName,
-                    primaryParentLineage);
+                    primaryParentCoverage);
         }
 
         for (ASTMethod method : methodsToFlatten) {
@@ -1474,9 +1553,18 @@ public final class IRLowerer {
             RuntimeType targetType = runtimeType(arrayStore.target().lpcType());
             if (targetType != null && targetType.kind() == RuntimeValueKind.MAPPING) {
                 IRExpression key = lowerExpression(arrayStore.index(), context, problems);
+                IRExpression valueIndex = arrayStore.valueIndex() == null
+                        ? null
+                        : coerceIfNeeded(
+                                lowerExpression(arrayStore.valueIndex(), context, problems), RuntimeTypes.INT);
                 IRExpression value = lowerExpression(arrayStore.value(), context, problems);
                 return new IRMappingSet(
-                        arrayStore.line(), target, key, coerceIfNeeded(value, RuntimeTypes.MIXED), value.type());
+                        arrayStore.line(),
+                        target,
+                        key,
+                        valueIndex,
+                        coerceIfNeeded(value, RuntimeTypes.MIXED),
+                        value.type());
             }
 
             IRExpression rawIndex = lowerExpression(arrayStore.index(), context, problems);
@@ -1524,8 +1612,10 @@ public final class IRLowerer {
             IRExpression target = lowerExpression(mutation.target(), context, problems);
             RuntimeType targetType = runtimeType(mutation.target().lpcType());
             IRExpression rawIndex = lowerExpression(mutation.index(), context, problems);
-            IRExpression index = targetType != null && targetType.kind() == RuntimeValueKind.MAPPING
-                    ? rawIndex
+            IRExpression index = targetType != null
+                            && (targetType.kind() == RuntimeValueKind.MAPPING
+                                    || targetType.kind() == RuntimeValueKind.MIXED)
+                    ? coerceIfNeeded(rawIndex, RuntimeTypes.MIXED)
                     : indexExpression(rawIndex);
             return new IRArrayMutation(
                     mutation.line(), target, index, mutation.delta(), mutation.isPrefix(), RuntimeTypes.MIXED);
@@ -1932,7 +2022,9 @@ public final class IRLowerer {
                     maxClosureArgumentIndex(access.valueIndex()));
         if (expression instanceof ASTExprArrayStore store)
             return Math.max(
-                    Math.max(maxClosureArgumentIndex(store.target()), maxClosureArgumentIndex(store.index())),
+                    Math.max(
+                            Math.max(maxClosureArgumentIndex(store.target()), maxClosureArgumentIndex(store.index())),
+                            maxClosureArgumentIndex(store.valueIndex())),
                     maxClosureArgumentIndex(store.value()));
         if (expression instanceof ASTExprArrayMutation mutation)
             return Math.max(maxClosureArgumentIndex(mutation.target()), maxClosureArgumentIndex(mutation.index()));

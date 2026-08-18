@@ -26,7 +26,8 @@ private int puzzleSolved = 0;
 /////////////////////////////////////////////////////////////////////////////
 public int id(string item)
 {
-    return item == "dream-hidden";
+    return member(({ "dream-hidden", "pool", "dream pool", "liquid",
+        "water", "surface", "shimmering pool" }), item) > -1;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -180,7 +181,7 @@ public int touchPool(string str)
 
     object dreamEntry = 
         load_object("/areas/tol-dhurath/temple-interior/dream/dream-entry.c");
-    dreamEntry->setReturnPool(this_object());
+    dreamEntry->setReturnPool(this_player(), this_object());
     move_object(this_player(), dreamEntry);
     return 1;
 }

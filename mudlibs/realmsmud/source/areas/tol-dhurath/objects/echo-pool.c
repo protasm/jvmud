@@ -165,6 +165,12 @@ private string *displayOrder = ({ "M", "R", "Q", "W", "K", "P" });
 private int puzzleSolved = 0;
 
 /////////////////////////////////////////////////////////////////////////////
+public void restoreSolvedState()
+{
+    puzzleSolved = 1;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 public int id(string item)
 {
     return item == "pool-hidden";
@@ -320,6 +326,14 @@ private void applyExperience()
 /////////////////////////////////////////////////////////////////////////////
 public void finishOrder()
 {
+    // Several order commands can queue callbacks before the first one runs.
+    // Once one callback completes the puzzle, the remaining callbacks must not
+    // grant the reward or advance the quest again.
+    if (puzzleSolved)
+    {
+        return;
+    }
+
     tell_room(environment(this_player()),
         sprintf("The surface of the pool ripples and the echoes "
             "shift:%s", displayEchoes()));

@@ -11,7 +11,6 @@ public void Setup()
     addFeature("/lib/environment/features/water/brook.c", "south");
     addFeature("/lib/environment/features/water/canyon-dry-bed.c", "north");
 
-    addExit("north", "/areas/tol-dhurath/entry17x1.c");
+    addExit("north", "/areas/tol-dhurath/entry/17x1.c");
     addFeature("/lib/environment/features/paths/path.c", "north");
 }
-

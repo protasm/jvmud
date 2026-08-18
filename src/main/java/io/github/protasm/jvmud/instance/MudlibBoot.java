@@ -219,6 +219,8 @@ public final class MudlibBoot {
         configBoundary.compatibilityGlobalObjectSourcePath()
                 .or(() -> objectBoundary.compatibilityGlobalObjectSourcePath())
                 .ifPresent(builder::compatibilityGlobalObjectSourcePath);
+        objectBoundary.compatibilityGlobalOverrides().forEach(builder::compatibilityGlobalOverride);
+        configBoundary.compatibilityGlobalOverrides().forEach(builder::compatibilityGlobalOverride);
         configBoundary.playerObjectPath().ifPresent(builder::playerObjectPath);
         configBoundary.playerPrompt()
                 .or(() -> objectBoundary.playerPrompt())
@@ -380,6 +382,7 @@ public final class MudlibBoot {
             }
             progress.preloadFinished(kind, sourcePath, true);
         } else {
+            result.error().ifPresent(error -> progress.preloadFailed(kind, sourcePath, error));
             skippedPreloads.add(sourcePath);
             if (preloadManifestSkippedPreloads != null) {
                 preloadManifestSkippedPreloads.add(sourcePath);

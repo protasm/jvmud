@@ -4,6 +4,17 @@
 //*****************************************************************************
 inherit "/lib/environment/environment.c";
 
+private string RestoredState = "";
+private mapping PassageTests = ([
+    "first test": "endurance",
+    "second test": "flame",
+    "third test": "frost",
+    "fourth test": "envy",
+    "fifth test": "weakness",
+    "sixth test": "strength",
+    "poem complete": "stealth",
+]);
+
 /////////////////////////////////////////////////////////////////////////////
 public void Setup()
 {
@@ -14,9 +25,9 @@ public void Setup()
     addFeature("/areas/tol-dhurath/features/purple-liquid.c");
     addFeature("/areas/tol-dhurath/features/pedestal.c");
 
-    addExit("north", "/areas/tol-dhurath/temple-interior/entry-to-pedestal.c",
+    addExit("north", "/areas/tol-dhurath/temple-interior/pedestal-0x1.c",
         "entered room");
-    addExit("north", "/areas/tol-dhurath/temple-interior/entry-to-pedestal.c",
+    addExit("north", "/areas/tol-dhurath/temple-interior/pedestal-0x1.c",
         "uhrdalen left");
 
     addObject("/areas/tol-dhurath/objects/rune-wall.c");
@@ -215,10 +226,60 @@ public void init()
         add_action("resetEverything", "resetEverything");
         add_action("updateState", "updateState");
 
-        if (StateMachine && member(({ "second test", "third test",
+        string state = currentState();
+        if ((state != RestoredState) && (state == "first test"))
+        {
+            RestoredState = state;
+            startFirstTest(0, this_player());
+        }
+        else if ((state != RestoredState) && (state == "second test"))
+        {
+            RestoredState = state;
+            startSecondTest(0, this_player());
+        }
+        else if ((state != RestoredState) && (state == "third test"))
+        {
+            RestoredState = state;
+            startThirdTest(0, this_player());
+        }
+        else if ((state != RestoredState) && (state == "fourth test"))
+        {
+            RestoredState = state;
+            startFourthTest(0, this_player());
+        }
+        else if ((state != RestoredState) && (state == "fifth test"))
+        {
+            RestoredState = state;
+            startFifthTest(0, this_player());
+        }
+        else if ((state != RestoredState) && (state == "sixth test"))
+        {
+            RestoredState = state;
+            startSixthTest(0, this_player());
+        }
+        else if ((state != RestoredState) && (state == "seventh test"))
+        {
+            RestoredState = state;
+            startSeventhTest(0, this_player());
+        }
+        else if ((state != RestoredState) && (state == "poem complete"))
+        {
+            RestoredState = state;
+            startFinalPassage(0, this_player());
+        }
+        else if ((state != RestoredState) && (state == "quest complete"))
+        {
+            RestoredState = state;
+            startEighthTest(0, this_player());
+        }
+
+        int passageRestored = pedestal() && member(PassageTests, state) &&
+            pedestal()->restoreOpenedPassage(this_player(), PassageTests[state]);
+
+        if (!passageRestored && StateMachine && member(({ "second test", "third test",
             "fourth test", "fifth test", "sixth test",
             "seventh test" }),
-            currentState()) > -1)
+            state) > -1)
         {
             StateMachine->placeUhrdalenForConversation(this_player());
         }

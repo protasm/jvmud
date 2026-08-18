@@ -236,6 +236,24 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void compatibilityFunctionPredefinesDriveConditionalDirectives() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .compatibilityFunctionPredefine("__EFUN_DEFINED__", "set_heart_beat", "1")
+                .build());
+
+        LPCObjectHandle object = runtime.loadSource("smoke/conditional_probe.c", """
+                #if ! __EFUN_DEFINED__(set_heart_beat)
+                int selected() { return 0; }
+                #else
+                int selected() { return 1; }
+                #endif
+                """);
+
+        assertEquals(1, object.invoke("selected"));
+    }
+
+    @Test
     void mudlibGlobalFunctionsCanComeFromInheritedGlobalObjectDeclarations() throws IOException {
         Path secure = tempDir.resolve("secure");
         Path simulatedEfuns = secure.resolve("simulated-efuns");
@@ -726,6 +744,24 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimePreservesOrFallbackValuesWhenBothOperandsAreMixed() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mixed_or_fallback.c", """
+                mapping data = ([ "short": "The corpse of Guest01" ]);
+
+                mixed query(string key) {
+                    return data[key];
+                }
+
+                mixed description() {
+                    return query("long") || query("short");
+                }
+                """);
+
+        assertEquals("The corpse of Guest01", object.invoke("description"));
+    }
+
+    @Test
     void runtimeCoercesMixedValuesInStringContexts() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/mixed_string_context.c", """
@@ -1022,12 +1058,20 @@ final class CompilerSmokeTest {
                     items -= ({ 0 });
                     return sizeof(items);
                 }
+
+                void restore_weakness() {
+                    wall["weakness", 0] = "I am weak";
+                    wall["weakness", 1] = 0;
+                }
                 """);
 
         assertEquals("<missing>", object.invoke("default_value"));
         assertEquals(1, object.invoke("secondary_value"));
         assertEquals(0, object.invoke("missing_secondary"));
         assertEquals(2, object.invoke("active_count"));
+        object.invoke("restore_weakness");
+        assertEquals("I am weak", object.invoke("default_value"));
+        assertEquals(1, object.invoke("active_count"));
     }
 
     @Test
@@ -1815,6 +1859,31 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void runtimeComparesAndMutatesNumericValuesInNestedMappings() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/nested_mapping_number.c", """
+                mapping stock = ([ "potion": ([ "quantity": 12 ]) ]);
+
+                mixed quantity() {
+                    return stock["potion"]["quantity"];
+                }
+
+                int positive() {
+                    return stock["potion"]["quantity"] > 0;
+                }
+
+                mixed decrement() {
+                    stock["potion"]["quantity"]--;
+                    return stock["potion"]["quantity"];
+                }
+                """);
+
+        assertEquals(12, object.invoke("quantity"));
+        assertEquals(1, object.invoke("positive"));
+        assertEquals(11, object.invoke("decrement"));
+    }
+
+    @Test
     void unsupportedQualifiedCallsReportSemanticProblem() {
         CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
                 mixed value() {
@@ -2345,6 +2414,52 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(List.of("a", "b", "c"), object.invoke("value"));
+    }
+
+    @Test
+    void runtimeSortsMappingKeysBeforeFormattingMixedNumericValues() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .engineFunction("jvmud_mapping_keys", "m_indices")
+                .engineFunction("jvmud_sort_array", "sort_array")
+                .engineFunction("jvmud_format_text", "sprintf")
+                .build());
+        LPCObjectHandle object = runtime.loadSource("smoke/mapping_summary.c", """
+                string value(mapping summary) {
+                    string ret = "";
+                    string *keys = sort_array(m_indices(summary), (: $1 > $2 :)) -
+                        ({ "identified", "No data" });
+                    foreach (string key in keys) {
+                        ret += sprintf("%s=%2d", key, summary[key]);
+                    }
+                    return ret;
+                }
+                """);
+
+        assertEquals("Attack= 2", object.invoke(
+                "value", Map.of("identified", 1, "Attack", 2)));
+    }
+
+    @Test
+    void runtimeAnalyzesMixedAdditionNestedInCollectionLiterals() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/nested_mixed_add.c", """
+                mixed array_value() {
+                    mixed left = "field";
+                    mixed right = "value";
+                    return ({ left + right });
+                }
+
+                mixed mapping_value() {
+                    mixed left = "field";
+                    mixed right = "value";
+                    return ([ "summary": left + right ]);
+                }
+                """);
+
+        assertEquals(List.of("fieldvalue"), object.invoke("array_value"));
+        assertEquals(Map.of("summary", "fieldvalue"), object.invoke("mapping_value"));
     }
 
     @Test
@@ -2997,6 +3112,42 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals("this is a   \nvery long   \nsentence    ", object.invoke("wrapped"));
+    }
+
+    @Test
+    void realmsConversationFormattingKeepsCapitalizedPlayerPronounTogether() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/realms_conversation_format.c", """
+                string render() {
+                    string message = "@D@@C@you look at Maiwyn and state, @S@'And here you are. Alive...'";
+                    while (jvmud_size(jvmud_regex_match(({ message }), "@C@", 0))) {
+                        string firstCharacter = jvmud_capitalize_text(
+                            jvmud_regex_replace(message, ".*@C@(.).*", "\\\\1", 0));
+                        message = jvmud_regex_replace(message, "@C@(.)", firstCharacter, 0);
+                    }
+                    message = jvmud_regex_replace(
+                        jvmud_format_text("%=-*s", 78, message), " *$", "", 1);
+                    message = jvmud_regex_replace(message, "@S@([^@\\x1b]*)", "\\\\1", 1);
+                    return jvmud_regex_replace(message, "@D@([^@\\x1b]*)", "\\\\1", 1);
+                }
+                """);
+
+        assertEquals("You look at Maiwyn and state, 'And here you are. Alive...'", object.invoke("render"));
+    }
+
+    @Test
+    void runtimeRegexReplacementMatchesAcrossLineBreaks() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle object = runtime.loadSource("smoke/multiline_regex_replace.c", """
+                string replace_marker() {
+                    return jvmud_regex_replace(
+                        "before\\n##MARK##after\\nend", ".*##MARK##(.*$)", "\\\\1", 1);
+                }
+                """);
+
+        assertEquals("after\nend", object.invoke("replace_marker"));
     }
 
     @Test
@@ -3844,6 +3995,176 @@ final class CompilerSmokeTest {
         LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
 
         assertEquals("You ponder.", caller.invoke("value"));
+    }
+
+    @Test
+    void compatibilityGlobalWrappersPreserveStringFallbacksThroughPrivateHelpers() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/compat.c"), """
+                string regreplace(string input, string pattern, mixed replacement, int flags) {
+                    return jvmud_regex_replace(input, pattern, replacement, flags);
+                }
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                private nomask string plain_selection_label(string choice) {
+                    choice = regreplace(choice || "", "(\\x1b[[0-9;]+m)", "", 1);
+                    choice = regreplace(choice, "[ \\t\\r\\n]+", " ", 1);
+                    choice = regreplace(choice, "^ ", "", 1);
+                    return regreplace(choice, " $", "", 1);
+                }
+
+                private nomask string abbreviated_selection_label(string choice) {
+                    choice = plain_selection_label(choice);
+                    return choice;
+                }
+
+                string selected_label(string selection) {
+                    mapping data = ([ "11": ([ "name": "Human" ]) ]);
+                    return abbreviated_selection_label(data[selection]["name"]);
+                }
+
+                string player_label(mapping data) {
+                    return capitalize(data["name"] || "Player logging in");
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .compatibilityGlobalObjectPath("jvmud/compat")
+                .engineFunction("jvmud_capitalize_text", "capitalize")
+                .build());
+
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+
+        assertEquals("Human", caller.invoke("selected_label", "11"));
+        assertEquals("Guest01", caller.invoke("player_label", Map.of("name", "guest01")));
+    }
+
+    @Test
+    void inheritedRestoreCanInitializeNameThroughThisObject() throws Exception {
+        Files.writeString(tempDir.resolve("material.c"), """
+                private string name = "";
+
+                public varargs string Name(string new_name) {
+                    if (new_name && (!name || !function_exists("isPlayer", this_object()))) {
+                        name = new_name;
+                    }
+                    return name;
+                }
+
+                public string RealName() {
+                    return name;
+                }
+                """);
+        Files.writeString(tempDir.resolve("persistence.c"), """
+                public void restore(string name) {
+                    mapping data = ([ "name": name ]) + ([]);
+                    if (sizeof(data) > 1) {
+                        return;
+                    }
+                    this_object()->Name(name);
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                virtual inherit "/material.c";
+                virtual inherit "/persistence.c";
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .engineFunction("jvmud_method_exists", "function_exists")
+                .engineFunction("jvmud_current_lpc_object", "this_object")
+                .engineFunction("jvmud_size", "sizeof")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+        player.invoke("restore", "codexcheck");
+
+        assertEquals("codexcheck", player.invoke("RealName"));
+    }
+
+    @Test
+    void primaryParentDoesNotReflattenItsSecondaryAncestorIntoChild() throws Exception {
+        Files.writeString(tempDir.resolve("root.c"), "");
+        Files.writeString(tempDir.resolve("material.c"), """
+                virtual inherit "root.c";
+
+                protected string name = "";
+
+                public string Name(string new_name) {
+                    name = new_name;
+                    return name;
+                }
+
+                public string RealName() {
+                    return name;
+                }
+                """);
+        Files.writeString(tempDir.resolve("living.c"), """
+                virtual inherit "root.c";
+                virtual inherit "material.c";
+                """);
+        Files.writeString(tempDir.resolve("persistence.c"), """
+                virtual inherit "root.c";
+
+                public void restore(string name) {
+                    this_object()->Name(name);
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                virtual inherit "living.c";
+                virtual inherit "persistence.c";
+
+                public string current_name() {
+                    return name;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .engineFunction("jvmud_current_lpc_object", "this_object")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+        player.invoke("restore", "codexcheck");
+
+        assertEquals("codexcheck", player.invoke("RealName"));
+        assertEquals("codexcheck", player.invoke("current_name"));
+        assertFalse(java.util.Arrays.stream(player.objectClass().getDeclaredFields())
+                .anyMatch(field -> field.getName().equals("name")));
+    }
+
+    @Test
+    void declaredCompatibilityGlobalOverridesMudlibGlobalSelectively() throws Exception {
+        Files.createDirectories(tempDir.resolve("secure"));
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("secure/simul_efun.c"), """
+                string players() { return "mudlib players"; }
+                string policy() { return "mudlib policy"; }
+                """);
+        Files.writeString(tempDir.resolve("jvmud/compat.c"), """
+                string players() { return "compat players"; }
+                string policy() { return "compat policy"; }
+                """);
+        Files.writeString(tempDir.resolve("caller.c"), """
+                string player_source() { return players(); }
+                string policy_source() { return policy(); }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mudlibGlobalObjectPath("secure/simul_efun")
+                .compatibilityGlobalObjectPath("jvmud/compat")
+                .compatibilityGlobalOverride("players")
+                .build());
+
+        LPCObjectHandle caller = runtime.load(tempDir.resolve("caller.c"));
+
+        assertEquals("compat players", caller.invoke("player_source"));
+        assertEquals("mudlib policy", caller.invoke("policy_source"));
     }
 
     @Test
@@ -5229,6 +5550,53 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void connectedActorMovementImmediatelyInvokesTheDestinationLifecycle() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void move_object(mixed ob, mixed destination) {
+                    jvmud_move_entity(ob, destination);
+                }
+
+                object this_object() {
+                    return jvmud_current_lpc_object();
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                void move_to_next() {
+                    move_object(this_object(), "room/next");
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/next.c"), """
+                int arrivals;
+
+                void init() {
+                    arrivals += 1;
+                }
+
+                int query_arrivals() {
+                    return arrivals;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
+                .build());
+
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+        LPCObjectHandle next = runtime.load(tempDir.resolve("room/next.c"));
+        runtime.bindSession("arrival-player", player.instance(), "127.0.0.1", ignored -> {});
+
+        player.invoke("move_to_next");
+
+        assertEquals(next.instance(), runtime.environment(player.instance()));
+        assertEquals(1, next.invoke("query_arrivals"));
+    }
+
+    @Test
     void commandDispatchSupportsPrefixActions() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.createDirectories(tempDir.resolve("room"));
@@ -5274,6 +5642,43 @@ final class CompilerSmokeTest {
 
         assertEquals(1, runtime.dispatchCommand(player.instance(), "examine book"));
         assertEquals("examined book\n", runtime.outputTranscript());
+    }
+
+    @Test
+    void commandDispatchPadsOmittedActionParameters() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/mfuns.c"), """
+                void add_action(string method, string verb) {
+                    jvmud_add_action(method, verb);
+                }
+
+                void write(mixed value) {
+                    jvmud_write(value);
+                }
+                """);
+        Files.writeString(tempDir.resolve("player.c"), """
+                void init() {
+                    add_action("release", "release");
+                }
+
+                int release(string item, int silently) {
+                    write(item + ":" + silently + "\n");
+                    return !silently;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .mfunObjectPath("jvmud/mfuns")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "init")
+                .build());
+        LPCObjectHandle player = runtime.load(tempDir.resolve("player.c"));
+
+        runtime.refreshCommandActions(player.instance());
+
+        assertEquals(1, runtime.dispatchCommand(player.instance(), "release sword"));
+        assertEquals("sword:0\n", runtime.outputTranscript());
     }
 
     @Test
@@ -6005,6 +6410,32 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void childFieldShadowsPrivateInheritedFieldWithoutChangingParentMethods() throws Exception {
+        Files.writeString(tempDir.resolve("base.c"), """
+                private string value = "parent";
+
+                string base_value() {
+                    return value;
+                }
+                """);
+        Files.writeString(tempDir.resolve("child.c"), """
+                inherit "base.c";
+
+                protected string value = "child";
+
+                string child_value() {
+                    return value;
+                }
+                """);
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle child = runtime.load(tempDir.resolve("child.c"));
+
+        assertEquals("child", child.invoke("child_value"));
+        assertEquals("parent", child.invoke("base_value"));
+    }
+
+    @Test
     void compilerResolvesMultipleDirectInheritsAndPreservesChildOverride() throws Exception {
         Files.writeString(tempDir.resolve("base_one.c"), """
                 int value() {
@@ -6567,6 +6998,23 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void sscanfAcceptsAnUnmatchedSuffixAfterTheFormat() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/sscanf_prefix.c", """
+                int parse(string value) {
+                    int amount;
+                    if (jvmud_sscanf(value, "%d every ", amount) != 1)
+                        return -1;
+                    return amount;
+                }
+                """);
+
+        assertEquals(1, object.invoke("parse", "1 every level"));
+    }
+
+    @Test
     void sscanfAssignsCapturesWithDynamicFormatString() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
@@ -6944,6 +7392,63 @@ final class CompilerSmokeTest {
         scheduler.advanceTo(2);
 
         assertEquals(7, object.invoke("query_value"));
+    }
+
+    @Test
+    void deferredCallbacksToTheSameMethodRemainIndependent() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle object = runtime.loadSource("smoke/repeated_callout.c", """
+                int *values = ({});
+
+                void start() {
+                    call_out("finish", 3, 3);
+                    call_out("finish", 1, 1);
+                    call_out("finish", 2, 2);
+                }
+
+                void finish(int value) {
+                    values += ({ value });
+                }
+
+                int *query_values() {
+                    return values;
+                }
+                """);
+
+        object.invoke("start");
+        scheduler.advanceTo(3);
+
+        assertEquals(List.of(1, 2, 3), object.invoke("query_values"));
+    }
+
+    @Test
+    void deferredCallbackPreservesTheSchedulingCommandActor() {
+        WorldScheduler scheduler = new WorldScheduler();
+        LPCRuntime runtime = temporalRuntime(scheduler, 1);
+
+        LPCObjectHandle actor = runtime.loadSource("smoke/callout_actor.c", "");
+        LPCObjectHandle callback = runtime.loadSource("smoke/callout_actor_observer.c", """
+                object observed;
+
+                void start() {
+                    call_out("finish", 1);
+                }
+
+                void finish() {
+                    observed = jvmud_current_agent();
+                }
+
+                object query_observed() {
+                    return observed;
+                }
+                """);
+
+        runtime.withCommandActor(actor.instance(), () -> callback.invoke("start"));
+        scheduler.advanceTo(1);
+
+        assertEquals(actor.instance(), callback.invoke("query_observed"));
     }
 
     @Test
@@ -7327,7 +7832,7 @@ final class CompilerSmokeTest {
     void runtimeMovesObjectsThroughEnvironmentAndInventory() throws Exception {
         Files.writeString(tempDir.resolve("thing.c"), """
                 int id(mixed str, mixed lvl) {
-                    if (str == "thing")
+                    if (jvmud_lowercase_text(str) == "thing")
                         return 1;
                     return 0;
                 }

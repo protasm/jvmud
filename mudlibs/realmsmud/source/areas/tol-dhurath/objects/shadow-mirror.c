@@ -77,7 +77,8 @@ private string *ignoreMessages = ({
 /////////////////////////////////////////////////////////////////////////////
 public int id(string item)
 {
-    return item == "mirror-hidden";
+    return member(({ "mirror-hidden", "mirror", "shadow", "reflection",
+        "dark mirror", "shadow mirror", "living shadow" }), item) > -1;
 }
 
 /////////////////////////////////////////////////////////////////////////////

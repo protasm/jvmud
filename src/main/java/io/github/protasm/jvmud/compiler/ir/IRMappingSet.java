@@ -7,13 +7,26 @@ public final class IRMappingSet implements IRExpression {
     private final int line;
     private final IRExpression mapping;
     private final IRExpression key;
+    private final IRExpression valueIndex;
     private final IRExpression value;
     private final RuntimeType type;
 
     public IRMappingSet(int line, IRExpression mapping, IRExpression key, IRExpression value, RuntimeType type) {
+        this(line, mapping, key, null, value, type);
+    }
+
+    /** Creates a mapping assignment, optionally targeting one LDMud multi-value slot. */
+    public IRMappingSet(
+            int line,
+            IRExpression mapping,
+            IRExpression key,
+            IRExpression valueIndex,
+            IRExpression value,
+            RuntimeType type) {
         this.line = line;
         this.mapping = Objects.requireNonNull(mapping, "mapping");
         this.key = Objects.requireNonNull(key, "key");
+        this.valueIndex = valueIndex;
         this.value = Objects.requireNonNull(value, "value");
         this.type = Objects.requireNonNull(type, "type");
     }
@@ -29,6 +42,10 @@ public final class IRMappingSet implements IRExpression {
 
     public IRExpression key() {
         return key;
+    }
+
+    public IRExpression valueIndex() {
+        return valueIndex;
     }
 
     public IRExpression value() {

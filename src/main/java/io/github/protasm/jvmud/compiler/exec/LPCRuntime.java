@@ -388,9 +388,12 @@ public final class LPCRuntime {
         return runtimeContext.environment(object);
     }
 
-    /** Resolves an object by identifier in a container, using current-context defaults when needed. */
+    /**
+     * Resolves an object by identifier in a container, running any mudlib-defined identifier
+     * callback with this runtime installed as the generated-code context.
+     */
     public Object present(Object identifier, Object container) {
-        return runtimeContext.present(identifier, container);
+        return withRuntimeContext(() -> runtimeContext.present(identifier, container));
     }
 
     /** Returns the first object contained by a runtime object. */
@@ -1397,6 +1400,9 @@ public final class LPCRuntime {
     }
 
     private void notifyTimedRuntimeError(Object target, String context, String operation, Throwable error) {
+        String detail = error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName();
+        System.err.println("Mudlib runtime error during " + context + ": " + detail);
+
         String boundaryObjectPath = mudlibBoundary.boundaryObjectPath().orElse(null);
         if (boundaryObjectPath == null || notifyingTimedRuntimeError) {
             return;
@@ -1405,7 +1411,6 @@ public final class LPCRuntime {
         notifyingTimedRuntimeError = true;
         try {
             Object handler = loadOrGetObject(boundaryObjectPath);
-            String detail = error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName();
             String objectId = runtimeContext.objectId(target);
             if (objectId == null) {
                 objectId = String.valueOf(target);

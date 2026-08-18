@@ -973,7 +973,9 @@ public final class Preprocessor {
 
   /* ========================= #if expression ========================== */
 
-  private boolean evalIfExpr(List<PPToken> expr) {
+  private boolean evalIfExpr(List<PPToken> rawExpression) {
+    List<PPToken> expr = expandIfExpression(rawExpression);
+
     // Recursive-descent over ||, &&, !, parentheses, NUMBER, defined(IDENT)
     class P {
       int i = 0;
@@ -1067,6 +1069,36 @@ public final class Preprocessor {
     }
 
     return new P().parseOr();
+  }
+
+  /** Expands conditional-expression macros while preserving operands of {@code defined}. */
+  private List<PPToken> expandIfExpression(List<PPToken> expression) {
+    List<PPToken> expanded = new ArrayList<>();
+    List<PPToken> ordinary = new ArrayList<>();
+
+    for (int i = 0; i < expression.size(); i++) {
+      PPToken token = expression.get(i);
+      if (token.kind != PPToken.Kind.IDENT || !"defined".equals(token.lexeme)) {
+        ordinary.add(token);
+        continue;
+      }
+
+      expanded.addAll(expandMacros(ordinary, Set.of()));
+      ordinary.clear();
+      expanded.add(token);
+
+      if (++i >= expression.size()) break;
+      PPToken operand = expression.get(i);
+      expanded.add(operand);
+      if (!"(".equals(operand.lexeme)) continue;
+
+      if (++i < expression.size()) expanded.add(expression.get(i));
+      if (++i < expression.size()) expanded.add(expression.get(i));
+    }
+
+    expanded.addAll(expandMacros(ordinary, Set.of()));
+    expanded.removeIf(token -> token.lexeme.isBlank());
+    return expanded;
   }
 
   /* ========================= utils ========================== */

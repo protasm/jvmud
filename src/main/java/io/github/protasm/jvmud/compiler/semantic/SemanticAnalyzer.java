@@ -435,6 +435,7 @@ public final class SemanticAnalyzer {
         if (expression instanceof ASTExprArrayStore store)
             return referencesLocal(store.target(), local)
                     || referencesLocal(store.index(), local)
+                    || referencesLocal(store.valueIndex(), local)
                     || referencesLocal(store.value(), local);
 
         if (expression instanceof ASTExprArrayMutation mutation)
@@ -1004,15 +1005,21 @@ public final class SemanticAnalyzer {
             if (expression instanceof ASTExprArrayStore store) {
                 ASTExpression resolvedTarget = resolveExpression(store.target(), context);
                 ASTExpression resolvedIndex = resolveExpression(store.index(), context);
+                ASTExpression resolvedValueIndex = store.valueIndex() == null
+                        ? null
+                        : resolveExpression(store.valueIndex(), context);
                 ASTExpression resolvedValue = resolveExpression(store.value(), context);
-                ASTExpression value = buildIndexStoreValue(store, resolvedTarget, resolvedIndex, resolvedValue);
+                ASTExpression value = buildIndexStoreValue(
+                        store, resolvedTarget, resolvedIndex, resolvedValueIndex, resolvedValue);
 
                 if (resolvedTarget == store.target()
                         && resolvedIndex == store.index()
+                        && resolvedValueIndex == store.valueIndex()
                         && value == store.value())
                     return store;
 
-                return new ASTExprArrayStore(store.line(), resolvedTarget, resolvedIndex, AssignOpType.SET, value);
+                return new ASTExprArrayStore(
+                        store.line(), resolvedTarget, resolvedIndex, resolvedValueIndex, AssignOpType.SET, value);
             }
 
             if (expression instanceof ASTExprArrayMutation mutation) {
@@ -1526,6 +1533,7 @@ public final class SemanticAnalyzer {
                 ASTExprArrayStore store,
                 ASTExpression resolvedTarget,
                 ASTExpression resolvedIndex,
+                ASTExpression resolvedValueIndex,
                 ASTExpression resolvedValue) {
             BinaryOpType compoundOp = compoundAssignmentOperator(store.operator());
             if (compoundOp == null)
@@ -1533,7 +1541,7 @@ public final class SemanticAnalyzer {
 
             return new ASTExprOpBinary(
                     store.line(),
-                    new ASTExprArrayAccess(store.line(), resolvedTarget, resolvedIndex),
+                    new ASTExprArrayAccess(store.line(), resolvedTarget, resolvedIndex, resolvedValueIndex),
                     resolvedValue,
                     compoundOp);
         }
@@ -1588,8 +1596,24 @@ public final class SemanticAnalyzer {
             if (objectScope == null)
                 return null;
 
-            return objectScope.resolveAll(name).stream()
+            List<ScopedSymbol> fields = objectScope.resolveAll(name).stream()
                     .filter(symbol -> symbol.field() != null)
+                    .toList();
+
+            // The current object's declaration shadows every inherited declaration. Parent
+            // scopes can appear both as imported symbols and through the lexical parent chain,
+            // so relying on list position can otherwise select an inherited field twice removed.
+            ScopedSymbol localField = fields.stream()
+                    .filter(symbol -> Objects.equals(symbol.field().ownerName(), currentObjectName))
+                    .findFirst()
+                    .orElse(null);
+            if (localField != null)
+                return localField;
+
+            // Parent methods are analyzed in their own compilation unit and can still access
+            // their private fields. A child method must not resolve those private declarations.
+            return fields.stream()
+                    .filter(symbol -> !symbol.field().modifiers().isPrivate())
                     .reduce((first, second) -> second)
                     .orElse(null);
         }

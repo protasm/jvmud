@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -19,7 +20,8 @@ import java.util.Objects;
  * legacy driver names. Mudlib compatibility objects can translate spellings like {@code db_exec}
  * onto these methods while JVMud owns only the generic runtime contract: handles identify open
  * connections, one result cursor is retained per handle, SQL errors are queryable, and fetched rows
- * are returned as LPC arrays.</p>
+ * are returned as LPC arrays. JDBC binary text values are decoded as UTF-8 LPC strings rather than
+ * exposing Java byte-array identities to mudlib code.</p>
  */
 public final class RuntimeDatabaseService {
     private String jdbcUrl;
@@ -138,12 +140,16 @@ public final class RuntimeDatabaseService {
         return value.replace("\\", "\\\\").replace("'", "\\'");
     }
 
-    private static Object toLpcValue(Object value) {
+    /** Converts a JDBC cell into the content-neutral value representation exposed to LPC code. */
+    static Object toLpcValue(Object value) {
         if (value == null) {
             return 0;
         }
         if (value instanceof Boolean booleanValue) {
             return booleanValue ? 1 : 0;
+        }
+        if (value instanceof byte[] bytes) {
+            return new String(bytes, StandardCharsets.UTF_8);
         }
         return value;
     }

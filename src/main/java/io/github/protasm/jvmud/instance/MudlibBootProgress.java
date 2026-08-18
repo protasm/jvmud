@@ -30,6 +30,15 @@ public interface MudlibBootProgress {
      */
     default void preloadFinished(PreloadKind kind, String sourcePath, boolean loaded) {}
 
+    /**
+     * Called when a preload object could not be compiled or initialized.
+     *
+     * @param kind origin of the preload request
+     * @param sourcePath mudlib source path without a trailing {@code .c}
+     * @param error failure reported by the compiler or mudlib initialization
+     */
+    default void preloadFailed(PreloadKind kind, String sourcePath, Throwable error) {}
+
     /** Identifies which startup declaration requested a preload. */
     enum PreloadKind {
         /** A direct {@code preload_objects} entry from the JVMud mudlib configuration. */

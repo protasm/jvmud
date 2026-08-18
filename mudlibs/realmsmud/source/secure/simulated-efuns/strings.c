@@ -165,7 +165,7 @@ public nomask varargs string format(string data, int length)
 
 /////////////////////////////////////////////////////////////////////////////
 public nomask varargs string regreplace(string inputString, string search,
-    string replace, int flags)
+    mixed replace, int flags)
 {
     if (!stringp(inputString) || !stringp(search))
     {

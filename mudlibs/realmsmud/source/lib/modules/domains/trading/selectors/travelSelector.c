@@ -7,12 +7,19 @@ inherit "/lib/core/baseSelector.c";
 
 private object SubselectorObj;
 private string selectedDestination;
+private string requestedDestination;
 private object Port;
 
 /////////////////////////////////////////////////////////////////////////////
 public void setPort(object port)
 {
     Port = port;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+public void setDestination(string destination)
+{
+    requestedDestination = destination;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -30,7 +37,7 @@ protected nomask void setUpUserForSelection()
 {
     object environment = environment(User);
     
-    mapping routes = Port->getTradeRoutes();
+    mapping routes = objectp(Port) ? Port->getTradeRoutes() : ([]);
     
     Data = ([]);
     int counter = 1;
@@ -47,8 +54,15 @@ protected nomask void setUpUserForSelection()
     else 
     {
         string *destinations = m_indices(routes);
+        int matchedDestination = 0;
         foreach(string dest in destinations) 
         {
+            if (requestedDestination &&
+                (lower_case(dest) != lower_case(requestedDestination)))
+            {
+                continue;
+            }
+            matchedDestination = 1;
             mapping route = routes[dest];
 
             // Calculate travel cost based on distance
@@ -89,6 +103,15 @@ protected nomask void setUpUserForSelection()
                                      capitalize(dest), route["type"], route["days"], 
                                      route["danger"], baseCost),
                 "canShow": (User->getCash() >= baseCost)
+            ]);
+        }
+        if (requestedDestination && !matchedDestination)
+        {
+            Data[to_string(counter++)] = ([
+                "name": sprintf("No route to %s", capitalize(requestedDestination)),
+                "type": "empty",
+                "description": "That destination is not available from this port.",
+                "canShow": 0
             ]);
         }
     }

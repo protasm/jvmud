@@ -40,6 +40,19 @@ public nomask string *states()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+private nomask string appendDescriptionFragment(string message, string fragment)
+{
+    string separator = "";
+    if (sizeof(message) && sizeof(fragment) &&
+        !sizeof(regexp(({ message }), "[ \\t\\r\\n]$")) &&
+        !sizeof(regexp(({ fragment }), "^[ \\t\\r\\n,.;:!?)]")))
+    {
+        separator = " ";
+    }
+    return message + separator + fragment;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 private nomask string parseSeasonDescription(string message, mapping data,
     int illuminationLevel)
 {
@@ -47,7 +60,8 @@ private nomask string parseSeasonDescription(string message, mapping data,
     string season = getService("environment")->season();
     if (member(data, season) && (illuminationLevel >= 7))
     {
-        ret += data[season][random(sizeof(data[season]))];
+        ret = appendDescriptionFragment(ret,
+            data[season][random(sizeof(data[season]))]);
     }
     return ret;
 }
@@ -60,7 +74,8 @@ private nomask string parseTimeOfDayDetails(string message, mapping data)
     string timeOfDay = getService("environment")->timeOfDay();
     if (member(data, timeOfDay) && member(data[timeOfDay], season))
     {
-        ret += data[timeOfDay][season][random(sizeof(data[timeOfDay][season]))];
+        ret = appendDescriptionFragment(ret,
+            data[timeOfDay][season][random(sizeof(data[timeOfDay][season]))]);
     }
     return ret;
 }

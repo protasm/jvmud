@@ -10,6 +10,18 @@ private string HoldingRoom =
 private string UhrdalenShownForState = "";
 
 /////////////////////////////////////////////////////////////////////////////
+private object ensureUhrdalen()
+{
+    if (!objectp(Uhrdalen))
+    {
+        Uhrdalen = clone_object("/areas/tol-dhurath/characters/uhrdalen/uhrdalen.c");
+        registerStateActor(Uhrdalen);
+        move_object(Uhrdalen, load_object(HoldingRoom));
+    }
+    return Uhrdalen;
+}
+
+/////////////////////////////////////////////////////////////////////////////
 private void registerEventHandlers()
 {
     registerEventHandler("spawnUhrdalen");
@@ -133,8 +145,7 @@ private mapping testEvents = ([
 /////////////////////////////////////////////////////////////////////////////
 void spawnUhrdalen(object player)
 {
-    Uhrdalen = clone_object("/areas/tol-dhurath/characters/uhrdalen/uhrdalen.c");
-    registerStateActor(Uhrdalen);
+    ensureUhrdalen();
 
     if (objectp(player) && environment(player))
     {
@@ -150,7 +161,7 @@ void spawnUhrdalen(object player)
 /////////////////////////////////////////////////////////////////////////////
 void hideUhrdalen(object player)
 {
-    if (objectp(Uhrdalen))
+    if (objectp(ensureUhrdalen()))
     {
         move_object(Uhrdalen, load_object(HoldingRoom));
     }
@@ -159,6 +170,8 @@ void hideUhrdalen(object player)
 /////////////////////////////////////////////////////////////////////////////
 void showUhrdalenBetweenTests(object player)
 {
+    ensureUhrdalen();
+
     if (member(testEvents, CurrentState))
     {
         notify(testEvents[CurrentState], player);
@@ -168,7 +181,9 @@ void showUhrdalenBetweenTests(object player)
 /////////////////////////////////////////////////////////////////////////////
 public void placeUhrdalenForConversation(object player)
 {
-    if (!objectp(Uhrdalen) || !objectp(player) ||
+    ensureUhrdalen();
+
+    if (!objectp(player) ||
         UhrdalenShownForState == CurrentState)
     {
         return;
@@ -187,9 +202,19 @@ public void placeUhrdalenForConversation(object player)
 void showUhrdalenForFinalTest(object player)
 {
     notify("startSeventhTest", player);
+    ensureUhrdalen();
 
-    if (!objectp(Uhrdalen) || !objectp(player))
+    if (!objectp(player))
     {
+        return;
+    }
+
+    object runeWall = load_object(
+        "/areas/tol-dhurath/objects/rune-wall.c");
+    if (present("rune of envy", player) ||
+        runeWall->hasRecordedRune(player, "envy"))
+    {
+        move_object(Uhrdalen, load_object(HoldingRoom));
         return;
     }
 

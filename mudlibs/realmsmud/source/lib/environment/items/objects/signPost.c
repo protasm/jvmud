@@ -10,4 +10,10 @@ public void Setup()
     Name("signpost");
 
     addDescriptionTemplate("a signpost");
+
+    addItemTemplate(
+        "the signpost is a weathered wooden post set beside the road. Several "
+        "directional arms point toward nearby settlements, their carved "
+        "lettering darkened by age and exposure to the weather"
+    );
 }

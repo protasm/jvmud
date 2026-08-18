@@ -66,6 +66,20 @@ int clonep(mixed ob) {
     return objectp(ob) && (strstr(object_name(ob), "#") > -1);
 }
 
+// Realms persists object_name() values and expects LDMud's numeric clone suffix.
+// Keep JVMud's #cloneN identity internal and translate only at this mudlib boundary.
+string object_name(mixed ob) {
+    string ret = jvmud_lpc_object_id(ob);
+    return regreplace(ret || "", "#clone([0-9]+)$", "#\\1", 1);
+}
+
+// Accept inventory rows written by JVMud before object_name() gained the boundary
+// translation above, while keeping that historical spelling out of the engine API.
+object clone_object(string path) {
+    string blueprint = regreplace(path || "", "#clone[0-9]+$", ".c", 1);
+    return jvmud_clone_lpc_object(blueprint);
+}
+
 void configureCharset(object player, string charset) {
 }
 
@@ -154,7 +168,16 @@ object getService(string service) {
 }
 
 object getModule(string service) {
-    return getService(service);
+    object target = jvmud_current_lpc_object();
+
+    // Realms modules are inherited facets of the calling object, not global services.
+    if (target && jvmud_invoke_lpc_object(target, "has", service)) {
+        return target;
+    }
+    if (target && jvmud_method_exists("isRealizationOf", target)) {
+        return jvmud_invoke_lpc_object(target, "isRealizationOf", service);
+    }
+    return 0;
 }
 
 string getuid() {
@@ -248,7 +271,16 @@ string program_name(mixed ob) {
 }
 
 object *players() {
-    return load_object("/secure/simul_efun.c")->players();
+    object *ret = ({ });
+
+    // Realms keeps a name-to-player cache whose entries outlive a dropped socket.
+    // Keep that mudlib concern out of JVMud's session registry and expose only active personas.
+    foreach(object player in load_object("/secure/simul_efun.c")->players()) {
+        if (jvmud_interactive(player)) {
+            ret += ({ player });
+        }
+    }
+    return ret;
 }
 
 void printf(string format) {
@@ -290,7 +322,15 @@ int mkdir(string path) {
 }
 
 object *wizards() {
-    return load_object("/secure/simul_efun.c")->wizards();
+    object *ret = ({ });
+
+    // Match players(): cached mudlib identities are not necessarily active JVMud sessions.
+    foreach(object wizard in load_object("/secure/simul_efun.c")->wizards()) {
+        if (jvmud_interactive(wizard)) {
+            ret += ({ wizard });
+        }
+    }
+    return ret;
 }
 
 object present_clone(string blueprint) {
@@ -327,7 +367,7 @@ int *rusage() {
 }
 
 void say(mixed message) {
-    jvmud_emit_perceivable_except(this_object(), message, this_object());
+    jvmud_emit_perceivable_except(this_object(), message, this_player());
 }
 
 int set_heart_beat(int enabled) {

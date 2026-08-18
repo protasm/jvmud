@@ -1861,6 +1861,13 @@ public nomask varargs int hit(int damage, string damageType, object foe)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+private nomask int combatTargetIsGone(object foe)
+{
+    return !foe || !objectp(foe) ||
+        (function_exists("isDead", foe) && foe->isDead());
+}
+
+/////////////////////////////////////////////////////////////////////////////
 protected nomask void doOneAttack(object foe, object weapon)
 {
     int toHit = calculateAttack(foe, weapon);
@@ -1895,6 +1902,10 @@ protected nomask void doOneAttack(object foe, object weapon)
                 {
                     foreach(string damageType in extraDmg)
                     {
+                        if (combatTargetIsGone(foe))
+                        {
+                            break;
+                        }
                         damage = calculateDamage(weapon, damageType);
 
                         // foe can die / be destructed at any time - need to verify that it
@@ -1931,7 +1942,7 @@ protected nomask void doOneAttack(object foe, object weapon)
 
             // foe can die / be destructed at any time - need to verify that it
             // still exists
-            if(foe && objectp(foe))
+            if(!combatTargetIsGone(foe))
             {
                 {
                     float landedMult = applyPerHitLandedEffect();
@@ -1944,7 +1955,7 @@ protected nomask void doOneAttack(object foe, object weapon)
             }
         }
 
-        if(foe && objectp(foe))
+        if(!combatTargetIsGone(foe))
         {
             getService("combatChatter")->displayCombatChatter(damageInflicted, 
                 this_object(), foe);
@@ -2019,6 +2030,10 @@ public nomask int attack(object foe)
         ret = 1;
         foreach(mapping attack in getAttacks())
         {
+            if (combatTargetIsGone(foe))
+            {
+                break;
+            }
             if(attackObject()->isWeaponAttack(attack))
             {
                 object inventory = getModule("inventory");

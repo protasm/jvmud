@@ -173,7 +173,9 @@ public final class IRPrettyPrinter {
             return expression(get.mapping()) + "[" + expression(get.key()) + "]:" + type(get.type());
         }
         if (expression instanceof IRMappingSet set) {
-            return expression(set.mapping()) + "[" + expression(set.key()) + "] = " + expression(set.value())
+            String valueIndex = set.valueIndex() == null ? "" : ", " + expression(set.valueIndex());
+            return expression(set.mapping()) + "[" + expression(set.key()) + valueIndex + "] = "
+                    + expression(set.value())
                     + ":" + type(set.type());
         }
         if (expression instanceof IREfunCall call) {

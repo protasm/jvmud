@@ -73,6 +73,7 @@ public final class MudlibBoundaryConfigReader {
         addString(builder::compatibilityGlobalObjectPath, compatibilityObject);
         objectSourcePath(configFile, mudlibRoot, compatibilityObject)
                 .ifPresent(builder::compatibilityGlobalObjectSourcePath);
+        addCompatibilityGlobalOverrides(builder, allValues(values, "compatibility_overrides"));
         addString(builder::playerObjectPath, firstValue(values, "persona_object", "player_object"));
         String playerPrompt = firstValue(values, "player_prompt");
         if (playerPrompt == null) {
@@ -314,6 +315,15 @@ public final class MudlibBoundaryConfigReader {
         for (String object : declaredObjects) {
             if (!object.isBlank()) {
                 builder.preloadObjectPath(object);
+            }
+        }
+    }
+
+    private static void addCompatibilityGlobalOverrides(
+            MudlibBoundary.Builder builder, List<String> declaredFunctions) {
+        for (String function : declaredFunctions) {
+            if (!function.isBlank()) {
+                builder.compatibilityGlobalOverride(function);
             }
         }
     }

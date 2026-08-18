@@ -38,6 +38,8 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLiteralTrue;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalMutation;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprLocalStore;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingEntry;
+import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprError;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpBinary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprOpUnary;
@@ -48,7 +50,6 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSliceStore;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprSymbolLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTernary;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprTypedFunctionLiteral;
-import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBlock;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtBreak;
 import io.github.protasm.jvmud.compiler.parser.ast.stmt.ASTStmtContinue;
@@ -230,10 +231,19 @@ public final class SemanticTypeChecker {
             return LPCType.LPCSTATUS;
         if (expression instanceof ASTExprError)
             return LPCType.LPCERROR;
-        if (expression instanceof ASTExprArrayLiteral)
+        if (expression instanceof ASTExprArrayLiteral arrayLiteral) {
+            for (ASTExpression element : arrayLiteral.elements())
+                inferExpressionType(element, context);
             return LPCType.LPCARRAY;
-        if (expression instanceof ASTExprMappingLiteral)
+        }
+        if (expression instanceof ASTExprMappingLiteral mappingLiteral) {
+            for (ASTExprMappingEntry entry : mappingLiteral.entries()) {
+                inferExpressionType(entry.key(), context);
+                for (ASTExpression value : entry.values())
+                    inferExpressionType(value, context);
+            }
             return LPCType.LPCMAPPING;
+        }
         if (expression instanceof ASTExprClosureArgument)
             return LPCType.LPCMIXED;
         if (expression instanceof ASTExprInlineCallable inlineCallable) {
@@ -536,6 +546,13 @@ public final class SemanticTypeChecker {
                 expr.setInferredType(expectedType);
                 return expectedType;
             }
+            LPCType inferredFallbackType = op == BinaryOpType.BOP_OR
+                    ? inferReferenceFallbackType(expr, leftType, rightType)
+                    : null;
+            if (inferredFallbackType != null) {
+                expr.setInferredType(inferredFallbackType);
+                return inferredFallbackType;
+            }
             return LPCType.LPCSTATUS;
         }
         case BOP_GT, BOP_GE, BOP_LT, BOP_LE -> {
@@ -592,7 +609,8 @@ public final class SemanticTypeChecker {
         return expectedType == LPCType.LPCSTRING
                 || expectedType == LPCType.LPCARRAY
                 || expectedType == LPCType.LPCMAPPING
-                || expectedType == LPCType.LPCOBJECT;
+                || expectedType == LPCType.LPCOBJECT
+                || expectedType == LPCType.LPCMIXED;
     }
 
     /**
@@ -604,6 +622,24 @@ public final class SemanticTypeChecker {
                 || type == LPCType.LPCMIXED
                 || type == LPCType.LPCERROR
                 || isFalseSentinel(expression, type);
+    }
+
+    /**
+     * Infers an unambiguous reference fallback even when the surrounding call target has no
+     * statically visible signature, as with mudlib compatibility-global dispatch.
+     */
+    private LPCType inferReferenceFallbackType(ASTExprOpBinary expression, LPCType leftType, LPCType rightType) {
+        if (isFallbackExpectedType(leftType) && leftType == rightType)
+            return leftType;
+        if (isFallbackExpectedType(leftType) && (rightType == LPCType.LPCMIXED || rightType == LPCType.LPCERROR))
+            return leftType;
+        if (isFallbackExpectedType(rightType) && (leftType == LPCType.LPCMIXED || leftType == LPCType.LPCERROR))
+            return rightType;
+        if (isFallbackExpectedType(leftType) && isFalseSentinel(expression.right(), rightType))
+            return leftType;
+        if (isFallbackExpectedType(rightType) && isFalseSentinel(expression.left(), leftType))
+            return rightType;
+        return null;
     }
 
     /** Returns whether an expression is the LPC false sentinel in a reference-like context. */
@@ -860,14 +896,25 @@ public final class SemanticTypeChecker {
         LPCType targetType = inferExpressionType(store.target(), context);
         LPCType valueType = inferExpressionType(store.value(), context);
         LPCType indexType = inferExpressionType(store.index(), context);
+        LPCType valueIndexType = store.valueIndex() == null
+                ? null
+                : inferExpressionType(store.valueIndex(), context);
 
         if (targetType == LPCType.LPCARRAY) {
+            if (store.valueIndex() != null) {
+                problems.add(new CompilationProblem(
+                        CompilationStage.ANALYZE, "Array index expects a single bound", store.line()));
+            }
             ensureAssignable(LPCType.LPCINT, indexType, store.line(), "Array index expects integer");
             return valueType;
         }
 
         if (targetType == LPCType.LPCMAPPING) {
             ensureMappingKey(indexType, store.line());
+            if (store.valueIndex() != null) {
+                ensureAssignable(
+                        LPCType.LPCINT, valueIndexType, store.line(), "Mapping value index expects integer");
+            }
             return valueType;
         }
 
@@ -877,6 +924,10 @@ public final class SemanticTypeChecker {
         }
 
         if (targetType == LPCType.LPCSTRING) {
+            if (store.valueIndex() != null) {
+                problems.add(new CompilationProblem(
+                        CompilationStage.ANALYZE, "String index expects a single bound", store.line()));
+            }
             ensureAssignable(LPCType.LPCINT, indexType, store.line(), "String index expects integer");
             return valueType;
         }

@@ -51,7 +51,7 @@ public void init()
             "A figure of terrible beauty stands before you - "
             "Xyris, the Lord of Shadows, as he appeared in life. His voice "
             "is honey and venom.\n\n"
-            "@S@'You are gifted, young one. I see in you the potential for "
+            "'You are gifted, young one. I see in you the potential for "
             "greatness beyond the petty ambitions of your peers. Serve me "
             "and I shall grant you knowledge that others would kill for. "
             "All I ask is a small oath of loyalty.'\n\n"

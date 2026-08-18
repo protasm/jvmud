@@ -1173,7 +1173,7 @@ BEGIN
 END;
 ##
 CREATE PROCEDURE `saveQuest` (p_playerid int, p_quest varchar(200), p_name varchar(45), 
-p_state varchar(45), p_statesCompleted varchar(45), p_active int, p_completed int)
+p_state varchar(45), p_statesCompleted varchar(256), p_active int, p_completed int)
 BEGIN
     declare questId int;
  

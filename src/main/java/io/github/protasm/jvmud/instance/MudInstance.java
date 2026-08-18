@@ -266,6 +266,7 @@ public final class MudInstance implements InstanceHost {
             out.print(text);
             out.flush();
         }, projection);
+        runtime.refreshCommandActions(suspended.actor());
         runtime.clearOutputTranscript();
         runtime.invokeOptionalObject(suspended.actor(), "return_from_exhibit");
         runtime.clearOutputTranscript();
@@ -331,6 +332,7 @@ public final class MudInstance implements InstanceHost {
             out.print(text);
             out.flush();
         }, projection);
+        runtime.refreshCommandActions(actor);
         runtime.clearOutputTranscript();
         runtime.invokeObject(
                 actor,
@@ -377,6 +379,7 @@ public final class MudInstance implements InstanceHost {
                 out.print(text);
                 out.flush();
             }, projection);
+            runtime.refreshCommandActions(actor);
             runtime.clearOutputTranscript();
             if (announceConnection) {
                 writeToPlayerForSession(sessionId, CONNECTED_BANNER);
@@ -477,7 +480,7 @@ public final class MudInstance implements InstanceHost {
 
         if (runtime.hasCapturedSessionInput(persona.actor())) {
             runtime.clearOutputTranscript();
-            Object result = runtime.deliverCapturedSessionInput(persona.actor(), commandLine);
+            runtime.deliverCapturedSessionInput(persona.actor(), commandLine);
             runtime.clearOutputTranscript();
             runDueScheduledWork();
             if (!isAttached(persona)) {
@@ -485,7 +488,9 @@ public final class MudInstance implements InstanceHost {
                 return 1;
             }
             refreshBoundActor(persona);
-            return result;
+            // The input was consumed by the registered callback regardless of its application-level
+            // return value, so transport command handling must report success.
+            return 1;
         }
 
         if (isRealmsHereCommand(commandLine)) {
@@ -494,7 +499,6 @@ public final class MudInstance implements InstanceHost {
         }
 
         runtime.clearOutputTranscript();
-        runtime.refreshCommandActions(persona.actor());
         Object result = runtime.dispatchCommand(persona.actor(), commandLine);
         runDueScheduledWork();
         refreshBoundActor(persona);
@@ -525,6 +529,8 @@ public final class MudInstance implements InstanceHost {
                 removeWorldEntity(persona);
                 persona.replaceActor(objectId, boundActor);
                 invokePlayerSessionPostRebind(boundActor);
+                runtime.refreshCommandActions(boundActor);
+                runDueScheduledWork();
             }
         });
     }
@@ -542,14 +548,21 @@ public final class MudInstance implements InstanceHost {
             String context,
             String operation,
             Throwable error) {
+        reportRuntimeError(context, error);
         runtime.clearOutputTranscript();
         if (runtimeErrorMethod != null && invokeRuntimeErrorHandler(persona, context, operation, error)) {
             return 1;
         }
         out.println("Something goes wrong.");
-        System.err.println("Unhandled mudlib runtime error during " + context + " '" + operation + "': "
-                + error.getMessage());
         return 1;
+    }
+
+    /**
+     * Emits an operator-facing diagnostic without including the command or captured input, which
+     * may contain authentication material. Mudlib hooks remain responsible for player-facing text.
+     */
+    private void reportRuntimeError(String context, Throwable error) {
+        System.err.println("Mudlib runtime error during " + context + ": " + error.getMessage());
     }
 
     private boolean invokeRuntimeErrorHandler(

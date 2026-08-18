@@ -220,7 +220,6 @@ protected nomask int processSelection(string selection)
                 }
 
                 setUpUserForSelection();
-                tell_object(User, displayMessage());
                 result = -1;
                 break;
             }
@@ -228,7 +227,6 @@ protected nomask int processSelection(string selection)
             {
                 SelectedCategory = Data[selection]["category"];
                 setUpUserForSelection();
-                tell_object(User, displayMessage());
                 result = -1;
                 break;
             }
@@ -236,7 +234,6 @@ protected nomask int processSelection(string selection)
             {
                 SelectedItem = Data[selection]["itemPath"];
                 setUpUserForSelection();
-                tell_object(User, displayMessage());
                 result = -1;
                 break;
             }

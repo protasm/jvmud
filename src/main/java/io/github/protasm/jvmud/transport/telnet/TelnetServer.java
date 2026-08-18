@@ -272,6 +272,12 @@ public final class TelnetServer implements AutoCloseable {
                 String outcome = loaded ? "compiled." : "skipped.";
                 System.out.println(preloadLabel(kind) + " " + sourcePath + ": " + outcome);
             }
+
+            @Override
+            public void preloadFailed(PreloadKind kind, String sourcePath, Throwable error) {
+                System.err.println(preloadLabel(kind) + " " + sourcePath + " failed: "
+                        + error.getMessage());
+            }
         };
     }
 

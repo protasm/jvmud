@@ -4,8 +4,8 @@
 //*****************************************************************************
 inherit "/lib/environment/environment.c";
 
-private object returnPool = 0;
-private int choicesMade = 0;
+private mapping returnPools = ([]);
+private mapping choicesMade = ([]);
 
 private mapping dreamColors = ([
     "vision":([
@@ -31,15 +31,20 @@ public mapping getDreamColors()
 }
 
 /////////////////////////////////////////////////////////////////////////////
-public void setReturnPool(object pool)
+public void setReturnPool(object player, object pool)
 {
-    returnPool = pool;
+    if (objectp(player) && objectp(pool))
+    {
+        returnPools[player] = pool;
+        choicesMade[player] = 0;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
-public object getReturnPool()
+public object getReturnPool(object player)
 {
-    return returnPool;
+    return (objectp(player) && member(returnPools, player)) ?
+        returnPools[player] : 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -78,7 +83,7 @@ public void init()
 /////////////////////////////////////////////////////////////////////////////
 public void resetDream(object player)
 {
-    choicesMade = 0;
+    choicesMade[player] = 0;
 
     string colorConfig = (objectp(player) && player->colorConfiguration()) ?
         player->colorConfiguration() : "none";
@@ -105,20 +110,26 @@ public void completeDream(object player)
         "weight of Uhrdalen's centuries of regret settle into your bones "
         "before fading. Understanding lingers." + closing + "\n");
 
-    object pool = returnPool;
+    object pool = getReturnPool(player);
     object returnRoom = pool ? environment(pool) : 0;
     if (returnRoom)
     {
         move_object(player, returnRoom);
         pool->dreamCompleted(player);
+        m_delete(returnPools, player);
+        m_delete(choicesMade, player);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////
 public void advanceDream(object player, string choice)
 {
-    choicesMade++;
-    if (choicesMade >= 3)
+    if (!member(choicesMade, player))
+    {
+        choicesMade[player] = 0;
+    }
+    choicesMade[player]++;
+    if (choicesMade[player] >= 3)
     {
         completeDream(player);
     }

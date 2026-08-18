@@ -44,3 +44,15 @@ public int moveToIsAllowed(object user, object toLocation)
     }
     return ret;
 }
+
+/////////////////////////////////////////////////////////////////////////////
+public void init()
+{
+    environment::init();
+
+    if (present(this_player()) && (currentState() == "third test") &&
+        echoPool())
+    {
+        echoPool()->restoreSolvedState();
+    }
+}

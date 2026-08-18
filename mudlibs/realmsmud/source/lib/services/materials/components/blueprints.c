@@ -106,6 +106,18 @@ private nomask mixed getBlueprintData(object item, string type)
     {
         ret = armorBlueprints[itemType][type];
     }
+    else if ((member(inherit_list(item), "/lib/items/food.c") > -1) &&
+        isValidFoodBlueprint(itemType) &&
+        member(food[itemType], type))
+    {
+        ret = food[itemType][type];
+    }
+    else if ((member(inherit_list(item), "/lib/items/drink.c") > -1) &&
+        isValidDrinkBlueprint(itemType) &&
+        member(drinks[itemType], type))
+    {
+        ret = drinks[itemType][type];
+    }
     else if (isValidMaterial(itemType) &&
         member(materials[itemType], type))
     {
