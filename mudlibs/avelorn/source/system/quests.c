@@ -11,6 +11,9 @@ string title(string quest_id) {
   if (quest_id == "silent-patrol-bell") {
     return "The Silent Patrol Bell";
   }
+  if (quest_id == "beneath-blackstone") {
+    return "Beneath Blackstone";
+  }
   return "Unknown assignment";
 }
 
@@ -23,6 +26,9 @@ string description(string quest_id) {
   }
   if (quest_id == "silent-patrol-bell") {
     return "Watch-Captain Ilyra asks you to restore the abandoned north-road patrol post by defeating the bell wraith silencing its alarm.";
+  }
+  if (quest_id == "beneath-blackstone") {
+    return "Royal Surveyor Maelin asks you to defeat the flooded and ashbound guardians beneath Blackstone, then renew the central wardstone.";
   }
   return "No description is available.";
 }
@@ -37,6 +43,9 @@ int recommended_level(string quest_id) {
   if (quest_id == "silent-patrol-bell") {
     return 4;
   }
+  if (quest_id == "beneath-blackstone") {
+    return 5;
+  }
   return 1;
 }
 
@@ -49,6 +58,9 @@ int required_count(string quest_id) {
   }
   if (quest_id == "silent-patrol-bell") {
     return 1;
+  }
+  if (quest_id == "beneath-blackstone") {
+    return 3;
   }
   return 1;
 }
@@ -63,6 +75,9 @@ int experience_reward(string quest_id) {
   if (quest_id == "silent-patrol-bell") {
     return 300;
   }
+  if (quest_id == "beneath-blackstone") {
+    return 600;
+  }
   return 0;
 }
 
@@ -76,6 +91,9 @@ int copper_reward(string quest_id) {
   if (quest_id == "silent-patrol-bell") {
     return 150;
   }
+  if (quest_id == "beneath-blackstone") {
+    return 300;
+  }
   return 0;
 }
 
@@ -86,6 +104,9 @@ string quest_for_defeat_tag(string tag) {
   if (tag == "bell-wraith") {
     return "silent-patrol-bell";
   }
+  if (tag == "blackstone-water-guardian" || tag == "blackstone-ash-guardian") {
+    return "beneath-blackstone";
+  }
   return "";
 }
 
@@ -94,5 +115,12 @@ string quest_for_action_tag(string tag) {
       || tag == "greyhaven-west-lantern") {
     return "light-for-the-road";
   }
+  if (tag == "blackstone-wardstone") {
+    return "beneath-blackstone";
+  }
   return "";
+}
+
+int repeatable_defeat_tag(string tag) {
+  return tag == "granary-rat";
 }

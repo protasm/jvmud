@@ -60,6 +60,8 @@ issued only during the transition from `2` to `3`.
 Repeated objectives use counters. Distinct exploration or interaction
 objectives additionally store stable completion tags, preventing one Place or
 interaction from satisfying a multi-location assignment more than once.
+Combat objectives use the same protection unless a quest definition explicitly
+marks its defeat tag repeatable, as the introductory granary clearance does.
 
 ## Combat contract
 

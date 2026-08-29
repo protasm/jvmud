@@ -723,6 +723,8 @@ int offer_quest(string quest_id) {
 
 void record_quest_defeat(string quest_tag) {
   string quest_id;
+  string flag_id;
+  mapping flags;
   int required;
   int count;
 
@@ -733,6 +735,19 @@ void record_quest_defeat(string quest_tag) {
   quest_id = jvmud_invoke_lpc_object("system/quests", "quest_for_defeat_tag", quest_tag);
   if (!quest_id || quest_stage(quest_id) != 1) {
     return;
+  }
+  if (!jvmud_invoke_lpc_object("system/quests", "repeatable_defeat_tag", quest_tag)) {
+    if (jvmud_member(quest_flags, quest_id)) {
+      flags = quest_flags[quest_id];
+    } else {
+      flags = ([ ]);
+    }
+    flag_id = "defeat:" + quest_tag;
+    if (jvmud_member(flags, flag_id)) {
+      return;
+    }
+    flags[flag_id] = 1;
+    quest_flags[quest_id] = flags;
   }
   count = quest_count(quest_id) + 1;
   required = jvmud_invoke_lpc_object("system/quests", "required_count", quest_id);
@@ -757,7 +772,7 @@ int record_quest_action(string action_tag) {
 
   materialize_quests();
   quest_id = jvmud_invoke_lpc_object("system/quests", "quest_for_action_tag", action_tag);
-  if (!quest_id || quest_stage(quest_id) != 1) {
+  if (!quest_id || quest_stage(quest_id) == 0 || quest_stage(quest_id) == 3) {
     jvmud_write("You make a careful inspection, but no current Company assignment concerns it.\n");
     return 1;
   }
@@ -768,6 +783,10 @@ int record_quest_action(string action_tag) {
   }
   if (jvmud_member(flags, action_tag)) {
     jvmud_write("You have already recorded this objective.\n");
+    return 1;
+  }
+  if (quest_stage(quest_id) != 1) {
+    jvmud_write("That assignment is already ready to report.\n");
     return 1;
   }
   flags[action_tag] = 1;

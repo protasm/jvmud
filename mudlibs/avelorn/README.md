@@ -20,9 +20,9 @@ Lantern beneath Ashenwatch Keep.
 
 ## Current playable slice
 
-The world currently provides thirty-eight connected Places spanning
-Brindleford, the maintained Lantern Road, Greyhaven's civic center, and the
-northern patrol road.
+The world currently provides fifty-two connected Places spanning Brindleford,
+the maintained Lantern Road, Greyhaven's civic center, the northern patrol
+road, Merewatch, and the Blackstone wardworks.
 Characters can train, trade, rest, explore, evaluate hostile combatants, and
 fight cooperatively.
 Fighters, Rangers, Mages, and Clerics each have a distinct resource-powered
@@ -45,6 +45,10 @@ The third assignment, *The Silent Patrol Bell*, begins with Greyhaven's Crown
 watch and confronts a level-four bell wraith at an intact but magically
 silenced road post. It demonstrates a higher-risk soft gate, class techniques,
 recoverable combat, and a timed enemy reset.
+
+The fourth assignment, *Beneath Blackstone*, combines two distinct guardian
+victories with restoration of an ancient wardstone. Unique objective tags
+prevent repeated reset kills from substituting for the other required work.
 
 Character identity, progression, coin, inventory, and equipment persist as
 host-filesystem snapshots beneath `accounts/`. Avelorn declares no database

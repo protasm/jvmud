@@ -255,7 +255,7 @@ class AvelornMudlibTest {
             }
         }
 
-        assertEquals(38, links.size());
+        assertEquals(52, links.size());
         Set<String> reached = new HashSet<>();
         ArrayDeque<String> frontier = new ArrayDeque<>();
         frontier.add("place/brindleford/village_green");
@@ -479,6 +479,87 @@ class AvelornMudlibTest {
         assertTrue(transcript.contains("Coin: 3 gold"), transcript);
     }
 
+    @Test
+    void completesTheThreeDistinctBlackstoneWardworkObjectives() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+
+        createCharacter(mud, persona, writer, "blackstone", "Alden Pike", "male", "fighter");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "train");
+        dispatch(mud, persona, writer, "south");
+        for (int eastward = 0; eastward < 13; eastward++) {
+            dispatch(mud, persona, writer, "east");
+        }
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "look maelin");
+        dispatch(mud, persona, writer, "work");
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "down");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "consider guardian");
+        useTechniquesThenAttack(mud, persona, writer, "guardian", 6, 2);
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "up");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "rest");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "down");
+        dispatch(mud, persona, writer, "west");
+        useTechniquesThenAttack(mud, persona, writer, "guardian", 6, 2);
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "restore");
+        dispatch(mud, persona, writer, "restore");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "up");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "report");
+        dispatch(mud, persona, writer, "report");
+        dispatch(mud, persona, writer, "quests");
+        dispatch(mud, persona, writer, "score");
+
+        String transcript = output.toString();
+        assertTrue(transcript.contains("Royal Surveyor Maelin Dorr is the surveyor"), transcript);
+        assertTrue(transcript.contains("Beneath Blackstone (recommended level 5)"), transcript);
+        assertTrue(transcript.contains("beyond your current training"), transcript);
+        assertTrue(transcript.contains("far beyond your present training"), transcript);
+        assertTrue(transcript.contains("drowned stone guardian is defeated"), transcript);
+        assertTrue(transcript.contains("ashbound iron guardian is defeated"), transcript);
+        assertTrue(transcript.contains("Beneath Blackstone: 3/3."), transcript);
+        assertTrue(transcript.contains("You have already recorded this objective."), transcript);
+        assertEquals(1, occurrences(transcript, "You complete Beneath Blackstone."));
+        assertTrue(transcript.contains("Beneath Blackstone — complete"), transcript);
+        assertTrue(transcript.contains("level 5 fighter"), transcript);
+        assertTrue(transcript.contains("Experience 300/500"), transcript);
+        assertTrue(transcript.contains("Coin: 5 gold, 1 silver"), transcript);
+    }
+
     private void dispatch(
             MudInstance mud,
             InstancePersona persona,
@@ -510,6 +591,21 @@ class AvelornMudlibTest {
             PrintWriter writer) {
         for (int attack = 0; attack < 6; attack++) {
             dispatch(mud, persona, writer, "attack rat");
+        }
+    }
+
+    private void useTechniquesThenAttack(
+            MudInstance mud,
+            InstancePersona persona,
+            PrintWriter writer,
+            String target,
+            int techniques,
+            int attacks) {
+        for (int strike = 0; strike < techniques; strike++) {
+            dispatch(mud, persona, writer, "ability " + target);
+        }
+        for (int strike = 0; strike < attacks; strike++) {
+            dispatch(mud, persona, writer, "attack " + target);
         }
     }
 
