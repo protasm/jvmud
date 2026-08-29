@@ -804,6 +804,7 @@ int record_quest_action(string action_tag) {
 }
 
 int turn_in_quest(string quest_id) {
+  object reward_item;
   int stage;
   int xp;
   int coins;
@@ -831,6 +832,20 @@ int turn_in_quest(string quest_id) {
   jvmud_write("The Company awards "
       + jvmud_invoke_lpc_object("system/economy", "format_money", coins) + ".\n");
   gain_experience(xp);
+  if (jvmud_size(jvmud_invoke_lpc_object("system/quests", "item_reward", quest_id)) > 0) {
+    reward_item = jvmud_invoke_lpc_object(
+        "system/items",
+        "create",
+        jvmud_invoke_lpc_object("system/quests", "item_reward", quest_id));
+    if (reward_item) {
+      jvmud_move_entity(reward_item, jvmud_current_lpc_object());
+      jvmud_write("You receive " + jvmud_invoke_lpc_object(reward_item, "short") + ".\n");
+    }
+  }
+  if (quest_id == "rekindle-western-lantern") {
+    jvmud_write("Blue fire runs from Ashenwatch through every western wardstone. ");
+    jvmud_write("The Lantern Crown shines whole above a safe and grateful kingdom.\n");
+  }
   save_character();
   return 1;
 }

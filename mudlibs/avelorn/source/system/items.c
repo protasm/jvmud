@@ -103,6 +103,20 @@ object create(string blueprint_id) {
         "none",
         0,
         5);
+  } else if (blueprint_id == "trinket/lantern-crown-medal") {
+    configure_item(
+        item,
+        blueprint_id,
+        "Medal of the Western Lantern",
+        "medal",
+        "A blue-enamel Crown medal awarded for restoring the western Lantern beneath Ashenwatch.",
+        "charm",
+        1,
+        0,
+        10,
+        "charisma",
+        14,
+        0);
   } else {
     jvmud_destroy_lpc_object(item);
     return 0;

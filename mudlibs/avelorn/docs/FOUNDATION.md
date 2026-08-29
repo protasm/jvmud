@@ -63,6 +63,12 @@ interaction from satisfying a multi-location assignment more than once.
 Combat objectives use the same protection unless a quest definition explicitly
 marks its defeat tag repeatable, as the introductory granary clearance does.
 
+The five launch assignments award enough combined training, objective, combat,
+and turn-in experience to carry a fresh character from level one to the level-
+ten cap without unrelated grinding. The Ashenwatch capstone grants the Medal of
+the Western Lantern by stable item blueprint id; the level-ten and Charisma
+recommendations affect presentation and effectiveness, never ownership.
+
 ## Combat contract
 
 Combatants publish level and health so players can evaluate risk before

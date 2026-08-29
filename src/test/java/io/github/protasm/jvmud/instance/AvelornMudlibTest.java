@@ -255,7 +255,7 @@ class AvelornMudlibTest {
             }
         }
 
-        assertEquals(52, links.size());
+        assertEquals(65, links.size());
         Set<String> reached = new HashSet<>();
         ArrayDeque<String> frontier = new ArrayDeque<>();
         frontier.add("place/brindleford/village_green");
@@ -480,7 +480,7 @@ class AvelornMudlibTest {
     }
 
     @Test
-    void completesTheThreeDistinctBlackstoneWardworkObjectives() throws Exception {
+    void completesBlackstoneAndTheAshenwatchCapstone() throws Exception {
         Path mudlib = copyAvelornFixture();
         MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
         StringWriter output = new StringWriter();
@@ -558,6 +558,73 @@ class AvelornMudlibTest {
         assertTrue(transcript.contains("level 5 fighter"), transcript);
         assertTrue(transcript.contains("Experience 300/500"), transcript);
         assertTrue(transcript.contains("Coin: 5 gold, 1 silver"), transcript);
+
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "look serin");
+        dispatch(mud, persona, writer, "work");
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "west");
+        useTechniquesThenAttack(mud, persona, writer, "hound", 6, 1);
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "rest");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "west");
+        useTechniquesThenAttack(mud, persona, writer, "knight", 6, 1);
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "align");
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "rest");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "down");
+        dispatch(mud, persona, writer, "east");
+        useTechniquesThenAttack(mud, persona, writer, "warden", 8, 1);
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "rekindle");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "up");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "report");
+        dispatch(mud, persona, writer, "report");
+        dispatch(mud, persona, writer, "quests");
+        dispatch(mud, persona, writer, "inventory");
+        dispatch(mud, persona, writer, "look medal");
+        dispatch(mud, persona, writer, "equip medal");
+        dispatch(mud, persona, writer, "score");
+
+        transcript = output.toString();
+        assertTrue(transcript.contains("Marshal Serin Vale is the Crown marshal"), transcript);
+        assertTrue(transcript.contains("Rekindle the Western Lantern (recommended level 7)"), transcript);
+        assertTrue(transcript.contains("Lantern-ash hound is defeated"), transcript);
+        assertTrue(transcript.contains("ember-bound tower knight is defeated"), transcript);
+        assertTrue(transcript.contains("soot-crowned Lantern warden is defeated"), transcript);
+        assertTrue(transcript.contains("Rekindle the Western Lantern: 5/5."), transcript);
+        assertEquals(1, occurrences(transcript, "You complete Rekindle the Western Lantern."));
+        assertTrue(transcript.contains("The Lantern Crown shines whole"), transcript);
+        assertTrue(transcript.contains("Medal of the Western Lantern"), transcript);
+        assertTrue(transcript.contains("Recommended level: 10."), transcript);
+        assertTrue(transcript.contains("You equip Medal of the Western Lantern"), transcript);
+        assertTrue(transcript.contains("charisma is below the recommended 14"), transcript);
+        assertTrue(transcript.contains("Rekindle the Western Lantern — complete"), transcript);
+        assertTrue(transcript.contains("level 9 fighter"), transcript);
+        assertTrue(transcript.contains("Experience 200/900"), transcript);
+        assertTrue(transcript.contains("Coin: 13 gold, 6 silver"), transcript);
     }
 
     private void dispatch(

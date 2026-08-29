@@ -20,9 +20,9 @@ Lantern beneath Ashenwatch Keep.
 
 ## Current playable slice
 
-The world currently provides fifty-two connected Places spanning Brindleford,
-the maintained Lantern Road, Greyhaven's civic center, the northern patrol
-road, Merewatch, and the Blackstone wardworks.
+The world provides sixty-five connected Places spanning Brindleford, the
+maintained Lantern Road, Greyhaven's civic center, the northern patrol road,
+Merewatch, the Blackstone wardworks, and Ashenwatch Keep.
 Characters can train, trade, rest, explore, evaluate hostile combatants, and
 fight cooperatively.
 Fighters, Rangers, Mages, and Clerics each have a distinct resource-powered
@@ -49,6 +49,11 @@ recoverable combat, and a timed enemy reset.
 The fourth assignment, *Beneath Blackstone*, combines two distinct guardian
 victories with restoration of an ancient wardstone. Unique objective tags
 prevent repeated reset kills from substituting for the other required work.
+
+The fifth assignment, *Rekindle the Western Lantern*, is a five-part capstone
+across Ashenwatch Keep. Three escalating ward combatants and two restoration
+objectives deliver the campaign's level-ten XP budget. Completion restores the
+Lantern Crown and grants a persistent, softly gated Crown medal.
 
 Character identity, progression, coin, inventory, and equipment persist as
 host-filesystem snapshots beneath `accounts/`. Avelorn declares no database

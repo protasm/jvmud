@@ -14,6 +14,9 @@ string title(string quest_id) {
   if (quest_id == "beneath-blackstone") {
     return "Beneath Blackstone";
   }
+  if (quest_id == "rekindle-western-lantern") {
+    return "Rekindle the Western Lantern";
+  }
   return "Unknown assignment";
 }
 
@@ -29,6 +32,9 @@ string description(string quest_id) {
   }
   if (quest_id == "beneath-blackstone") {
     return "Royal Surveyor Maelin asks you to defeat the flooded and ashbound guardians beneath Blackstone, then renew the central wardstone.";
+  }
+  if (quest_id == "rekindle-western-lantern") {
+    return "Marshal Serin asks you to clear Ashenwatch's ash hound, ember knight, and Crown warden; align the eastern mirror; and rekindle the western Crown Lantern.";
   }
   return "No description is available.";
 }
@@ -46,6 +52,9 @@ int recommended_level(string quest_id) {
   if (quest_id == "beneath-blackstone") {
     return 5;
   }
+  if (quest_id == "rekindle-western-lantern") {
+    return 7;
+  }
   return 1;
 }
 
@@ -61,6 +70,9 @@ int required_count(string quest_id) {
   }
   if (quest_id == "beneath-blackstone") {
     return 3;
+  }
+  if (quest_id == "rekindle-western-lantern") {
+    return 5;
   }
   return 1;
 }
@@ -78,6 +90,9 @@ int experience_reward(string quest_id) {
   if (quest_id == "beneath-blackstone") {
     return 600;
   }
+  if (quest_id == "rekindle-western-lantern") {
+    return 1200;
+  }
   return 0;
 }
 
@@ -94,6 +109,9 @@ int copper_reward(string quest_id) {
   if (quest_id == "beneath-blackstone") {
     return 300;
   }
+  if (quest_id == "rekindle-western-lantern") {
+    return 600;
+  }
   return 0;
 }
 
@@ -107,6 +125,10 @@ string quest_for_defeat_tag(string tag) {
   if (tag == "blackstone-water-guardian" || tag == "blackstone-ash-guardian") {
     return "beneath-blackstone";
   }
+  if (tag == "ashenwatch-hound" || tag == "ashenwatch-knight"
+      || tag == "ashenwatch-warden") {
+    return "rekindle-western-lantern";
+  }
   return "";
 }
 
@@ -118,9 +140,19 @@ string quest_for_action_tag(string tag) {
   if (tag == "blackstone-wardstone") {
     return "beneath-blackstone";
   }
+  if (tag == "ashenwatch-mirror" || tag == "ashenwatch-crown-lantern") {
+    return "rekindle-western-lantern";
+  }
   return "";
 }
 
 int repeatable_defeat_tag(string tag) {
   return tag == "granary-rat";
+}
+
+string item_reward(string quest_id) {
+  if (quest_id == "rekindle-western-lantern") {
+    return "trinket/lantern-crown-medal";
+  }
+  return "";
 }
