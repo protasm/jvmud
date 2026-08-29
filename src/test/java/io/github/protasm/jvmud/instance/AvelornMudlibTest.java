@@ -88,6 +88,61 @@ class AvelornMudlibTest {
     }
 
     @Test
+    void listsOnlineAdventurersAndSupportsRoomAndPrivateSpeech() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter linnetOutput = new StringWriter();
+        PrintWriter linnetWriter = new PrintWriter(linnetOutput, true);
+        InstancePersona linnet = mud.attachPersona(linnetWriter, "127.0.0.1");
+        createCharacter(mud, linnet, linnetWriter, "linnet", "Linnet Grey", "female", "ranger");
+
+        StringWriter ardenOutput = new StringWriter();
+        PrintWriter ardenWriter = new PrintWriter(ardenOutput, true);
+        InstancePersona arden = mud.attachPersona(ardenWriter, "127.0.0.2");
+        createCharacter(mud, arden, ardenWriter, "arden", "Arden Vale", "non-binary", "cleric");
+
+        StringWriter berenOutput = new StringWriter();
+        PrintWriter berenWriter = new PrintWriter(berenOutput, true);
+        InstancePersona beren = mud.attachPersona(berenWriter, "127.0.0.3");
+        createCharacter(mud, beren, berenWriter, "beren", "Beren Holt", "male", "fighter");
+
+        linnetOutput.getBuffer().setLength(0);
+        ardenOutput.getBuffer().setLength(0);
+        berenOutput.getBuffer().setLength(0);
+        dispatch(mud, linnet, linnetWriter, "who");
+
+        String roster = linnetOutput.toString();
+        assertTrue(roster.contains("Adventurers of the Lantern (3 online):"), roster);
+        assertTrue(roster.contains("Linnet grey - level 1 ranger (she/her)"), roster);
+        assertTrue(roster.contains("Arden vale - level 1 cleric (they/them)"), roster);
+        assertTrue(roster.contains("Beren holt - level 1 fighter (he/him)"), roster);
+
+        linnetOutput.getBuffer().setLength(0);
+        dispatch(mud, linnet, linnetWriter, "say The lamps are lit.");
+        assertTrue(linnetOutput.toString().contains("You say, \"The lamps are lit.\""), linnetOutput.toString());
+        assertTrue(ardenOutput.toString().contains("Linnet grey says, \"The lamps are lit.\""),
+                ardenOutput.toString());
+        assertTrue(berenOutput.toString().contains("Linnet grey says, \"The lamps are lit.\""),
+                berenOutput.toString());
+
+        ardenOutput.getBuffer().setLength(0);
+        berenOutput.getBuffer().setLength(0);
+        dispatch(mud, linnet, linnetWriter, "tell Arden Vale Hold the eastern road.");
+        assertTrue(linnetOutput.toString().contains("You tell Arden vale, \"Hold the eastern road.\""),
+                linnetOutput.toString());
+        assertTrue(ardenOutput.toString().contains("Linnet grey tells you, \"Hold the eastern road.\""),
+                ardenOutput.toString());
+        assertFalse(berenOutput.toString().contains("Hold the eastern road."), berenOutput.toString());
+
+        dispatch(mud, linnet, linnetWriter, "say");
+        dispatch(mud, linnet, linnetWriter, "tell");
+        dispatch(mud, linnet, linnetWriter, "tell Missing Person Hello");
+        assertTrue(linnetOutput.toString().contains("Say what?"), linnetOutput.toString());
+        assertTrue(linnetOutput.toString().contains("Tell whom what?"), linnetOutput.toString());
+        assertTrue(linnetOutput.toString().contains("No adventurer by that name"), linnetOutput.toString());
+    }
+
+    @Test
     void createsPersistsAndRestoresANonBinaryRanger() throws Exception {
         Path mudlib = copyAvelornFixture();
         MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");

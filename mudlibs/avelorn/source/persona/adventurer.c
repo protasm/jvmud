@@ -282,6 +282,9 @@ void offer_interactions() {
   jvmud_add_action("money", "money");
   jvmud_add_action("improve", "improve");
   jvmud_add_action("pronouns_command", "pronouns");
+  jvmud_add_action("who", "who");
+  jvmud_add_action("say", "say");
+  jvmud_add_action("tell", "tell");
   jvmud_add_action("help", "help");
   jvmud_add_action("save_command", "save");
   jvmud_add_action("quit", "quit");
@@ -1004,9 +1007,137 @@ int pronouns_command(mixed ignored) {
   return 1;
 }
 
+int who(mixed ignored) {
+  object *connected;
+  object persona;
+  string name;
+  int index;
+  int online;
+
+  connected = jvmud_users();
+  index = 0;
+  while (index < jvmud_size(connected)) {
+    if (is_online_adventurer(connected[index])) {
+      online += 1;
+    }
+    index += 1;
+  }
+
+  write("Adventurers of the Lantern (" + online + " online):\n");
+  index = 0;
+  while (index < jvmud_size(connected)) {
+    persona = connected[index];
+    if (is_online_adventurer(persona)) {
+      name = jvmud_invoke_lpc_object(persona, "query_name");
+      write("  " + name + " - level ");
+      write(jvmud_invoke_lpc_object(persona, "query_level") + " ");
+      write(jvmud_invoke_lpc_object(persona, "query_class") + " (");
+      write(jvmud_invoke_lpc_object(persona, "pronoun", "subject") + "/");
+      write(jvmud_invoke_lpc_object(persona, "pronoun", "object_form") + ")\n");
+    }
+    index += 1;
+  }
+  return 1;
+}
+
+int say(mixed value) {
+  string message;
+
+  if (!value || jvmud_size(value) == 0) {
+    write("Say what?\n");
+    return 1;
+  }
+  message = jvmud_to_string(value);
+  write("You say, \"" + message + "\"\n");
+  avelorn_emit_except(
+      jvmud_current_lpc_object(),
+      character_name + " says, \"" + message + "\"\n",
+      jvmud_current_lpc_object());
+  return 1;
+}
+
+int tell(mixed value) {
+  object *connected;
+  object persona;
+  object target;
+  string input;
+  string lowered_input;
+  string message;
+  string name;
+  string lowered_name;
+  int index;
+  int name_length;
+  int target_name_length;
+
+  if (!value || jvmud_size(value) == 0) {
+    write("Tell whom what?\n");
+    return 1;
+  }
+
+  input = jvmud_to_string(value);
+  lowered_input = jvmud_lowercase_text(input);
+  connected = jvmud_users();
+  index = 0;
+  while (index < jvmud_size(connected)) {
+    persona = connected[index];
+    if (is_online_adventurer(persona)) {
+      name = jvmud_invoke_lpc_object(persona, "query_name");
+      lowered_name = jvmud_lowercase_text(name);
+      name_length = jvmud_size(name);
+      if (lowered_input == lowered_name
+          || (jvmud_size(input) > name_length
+              && jvmud_extract_text(lowered_input, 0, name_length - 1) == lowered_name
+              && lowered_input[name_length] == ' ')) {
+        if (!target || name_length > target_name_length) {
+          target = persona;
+          target_name_length = name_length;
+          if (jvmud_size(input) > name_length) {
+            message = jvmud_extract_text(input, name_length + 1);
+          } else {
+            message = "";
+          }
+        }
+      }
+    }
+    index += 1;
+  }
+
+  if (!target) {
+    write("No adventurer by that name is presently in Avelorn.\n");
+    return 1;
+  }
+  name = jvmud_invoke_lpc_object(target, "query_name");
+  if (jvmud_size(message) == 0) {
+    write("Tell " + name + " what?\n");
+    return 1;
+  }
+  if (target == jvmud_current_lpc_object()) {
+    write("You consider telling yourself, then think better of it.\n");
+    return 1;
+  }
+
+  write("You tell " + name + ", \"" + message + "\"\n");
+  avelorn_write_to(
+      target,
+      character_name + " tells you, \"" + message + "\"\n");
+  return 1;
+}
+
+int is_online_adventurer(object persona) {
+  if (!persona
+      || !jvmud_method_exists("query_name", persona)
+      || !jvmud_method_exists("query_class", persona)
+      || !jvmud_method_exists("query_level", persona)) {
+    return 0;
+  }
+  return jvmud_size(jvmud_invoke_lpc_object(persona, "query_name")) > 0
+      && jvmud_size(jvmud_invoke_lpc_object(persona, "query_class")) > 0;
+}
+
 int help(mixed ignored) {
   write("Avelorn commands:\n");
-  write("  look, north/east/south/west, score, pronouns\n");
+  write("  look, north/east/south/west, score, pronouns, who\n");
+  write("  say <message>, tell <character> <message>\n");
   write("  inventory, equipment, get, drop, equip, unequip, use\n");
   write("  attack, ability, consider, quests, money, list, buy, sell\n");
   write("  train, improve, emotes, save, quit, help\n");
