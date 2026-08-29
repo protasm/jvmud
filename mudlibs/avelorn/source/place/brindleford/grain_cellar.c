@@ -1,4 +1,13 @@
 void initialize(mixed first_load) {
+  spawn_rat();
+  jvmud_schedule_recurring_tick(1, 20);
+}
+
+void scheduled_update() {
+  spawn_rat();
+}
+
+void spawn_rat() {
   object rat;
 
   if (!jvmud_find_entity("rat", jvmud_current_lpc_object())) {
@@ -17,6 +26,7 @@ void initialize(mixed first_load) {
         8);
     jvmud_invoke_lpc_object(rat, "add_identity", "rat");
     jvmud_invoke_lpc_object(rat, "add_identity", "granary rat");
+    jvmud_invoke_lpc_object(rat, "set_quest_defeat_tag", "granary-rat");
     jvmud_move_entity(rat, jvmud_current_lpc_object());
   }
 }

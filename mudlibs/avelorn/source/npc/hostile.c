@@ -10,6 +10,7 @@ int minimum_damage;
 int maximum_damage;
 int experience_reward;
 int copper_reward;
+string quest_defeat_tag;
 
 void initialize(mixed first_load) {
   if (!display_name) {
@@ -26,6 +27,9 @@ void initialize(mixed first_load) {
   }
   if (!contributors) {
     contributors = ({ });
+  }
+  if (!quest_defeat_tag) {
+    quest_defeat_tag = "";
   }
   jvmud_bind_entity_alias(jvmud_current_lpc_object(), "entity", "creature");
 }
@@ -59,6 +63,10 @@ void configure(
 void add_identity(string identity) {
   identities += ({ identity });
   jvmud_bind_entity_alias(jvmud_current_lpc_object(), "entity", identity);
+}
+
+void set_quest_defeat_tag(string tag) {
+  quest_defeat_tag = tag;
 }
 
 int query_hostile() {
@@ -168,6 +176,10 @@ void defeat(object place) {
           experience_reward,
           copper_reward,
           display_name);
+      jvmud_invoke_lpc_object(
+          contributor,
+          "record_quest_defeat",
+          quest_defeat_tag);
     }
     index += 1;
   }

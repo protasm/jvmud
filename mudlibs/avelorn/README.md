@@ -28,6 +28,11 @@ Every contributor still present at a victory receives credit. Equipment and
 enemy recommendations are warnings and effectiveness adjustments rather than
 hard locks.
 
+The first complete assignment, *Miller's Unwelcome Guests*, can be accepted
+from Miller Enid in the mill yard. Its three credited cellar clearances use a
+timed hostile respawn, persist in the Company journal, and grant their turn-in
+reward only once.
+
 Character identity, progression, coin, inventory, and equipment persist as
 host-filesystem snapshots beneath `accounts/`. Avelorn declares no database
 capability and uses no database service.

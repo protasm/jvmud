@@ -1,4 +1,19 @@
 void initialize(mixed first_load) {
+  object miller;
+
+  if (!jvmud_find_entity("enid", jvmud_current_lpc_object())) {
+    miller = jvmud_clone_lpc_object("npc/quest_giver");
+    jvmud_invoke_lpc_object(
+        miller,
+        "configure",
+        "Miller Enid Halward",
+        "female",
+        "holder of Brindleford's chartered mill",
+        "millers-unwelcome-guests");
+    jvmud_invoke_lpc_object(miller, "add_identity", "enid");
+    jvmud_invoke_lpc_object(miller, "add_identity", "miller");
+    jvmud_move_entity(miller, jvmud_current_lpc_object());
+  }
 }
 
 void offer_interactions() {
@@ -17,6 +32,7 @@ void describe(object viewer) {
   jvmud_write("A broad waterwheel turns beside a well-kept granary and millhouse. ");
   jvmud_write("Chalked delivery tallies show grain due to village households, the ");
   jvmud_write("Crown reserve, and the winter poor-box. A cellar door stands open.\n\n");
+  jvmud_write("Miller Enid Halward waits beside the delivery ledger.\n");
   jvmud_write("Mill Road is south. Stone steps lead down into the mill cellar.\n");
 }
 

@@ -271,6 +271,69 @@ class AvelornMudlibTest {
         assertTrue(secondTranscript.contains("Experience 35/100"), secondTranscript);
     }
 
+    @Test
+    void completesPersistsAndDoesNotDuplicateTheFirstQuestReward() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+
+        createCharacter(mud, persona, writer, "quest_one", "Elian Reed", "female", "fighter");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "look enid");
+        dispatch(mud, persona, writer, "work");
+        dispatch(mud, persona, writer, "quests");
+        dispatch(mud, persona, writer, "down");
+        dispatch(mud, persona, writer, "east");
+
+        defeatRat(mud, persona, writer);
+        for (int tick = 0; tick < 19; tick++) {
+            mud.advanceWorldTick();
+        }
+        dispatch(mud, persona, writer, "attack rat");
+        mud.advanceWorldTick();
+        defeatRat(mud, persona, writer);
+        for (int tick = 0; tick < 20; tick++) {
+            mud.advanceWorldTick();
+        }
+        defeatRat(mud, persona, writer);
+
+        dispatch(mud, persona, writer, "west");
+        dispatch(mud, persona, writer, "up");
+        dispatch(mud, persona, writer, "report");
+        dispatch(mud, persona, writer, "report");
+        dispatch(mud, persona, writer, "quests");
+        dispatch(mud, persona, writer, "score");
+        dispatch(mud, persona, writer, "save");
+
+        String transcript = output.toString();
+        assertTrue(transcript.contains("Miller Enid Halward is the holder"), transcript);
+        assertTrue(transcript.contains("Miller's Unwelcome Guests (recommended level 1)"), transcript);
+        assertTrue(transcript.contains("Miller's Unwelcome Guests: 3/3."), transcript);
+        assertTrue(transcript.contains("The assignment is ready to report."), transcript);
+        assertEquals(1, occurrences(transcript, "You complete Miller's Unwelcome Guests."));
+        assertTrue(transcript.contains("already been reported and rewarded"), transcript);
+        assertTrue(transcript.contains("Miller's Unwelcome Guests — complete"), transcript);
+        assertTrue(transcript.contains("level 2 fighter"), transcript);
+        assertTrue(transcript.contains("Experience 80/200"), transcript);
+        assertTrue(transcript.contains("Coin: 1 gold, 8 silver, 4 copper"), transcript);
+        assertTrue(Files.readString(mudlib.resolve("accounts/quest_one.o"))
+                .contains("quest_state"));
+
+        mud.detachPersona(persona);
+        StringWriter restoredOutput = new StringWriter();
+        PrintWriter restoredWriter = new PrintWriter(restoredOutput, true);
+        InstancePersona restored = mud.attachPersona(restoredWriter, "127.0.0.2");
+        dispatch(mud, restored, restoredWriter, "quest_one");
+        dispatch(mud, restored, restoredWriter, "Avelorn1!");
+        dispatch(mud, restored, restoredWriter, "quests");
+        String restoredTranscript = restoredOutput.toString();
+        assertTrue(restoredTranscript.contains("Miller's Unwelcome Guests — complete"), restoredTranscript);
+    }
+
     private void dispatch(
             MudInstance mud,
             InstancePersona persona,
@@ -294,6 +357,25 @@ class AvelornMudlibTest {
         dispatch(mud, persona, writer, name);
         dispatch(mud, persona, writer, gender);
         dispatch(mud, persona, writer, characterClass);
+    }
+
+    private void defeatRat(
+            MudInstance mud,
+            InstancePersona persona,
+            PrintWriter writer) {
+        for (int attack = 0; attack < 6; attack++) {
+            dispatch(mud, persona, writer, "attack rat");
+        }
+    }
+
+    private int occurrences(String value, String needle) {
+        int count = 0;
+        int offset = 0;
+        while ((offset = value.indexOf(needle, offset)) >= 0) {
+            count++;
+            offset += needle.length();
+        }
+        return count;
     }
 
     private Path copyAvelornFixture() throws IOException {

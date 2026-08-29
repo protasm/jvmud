@@ -23,6 +23,10 @@ int attribute_points;
 int introductory_drill_completed;
 string inventory_state;
 int inventory_materialized;
+string quest_state;
+mapping quest_stages;
+mapping quest_counts;
+int quests_materialized;
 
 void initialize(mixed first_load) {
   if (!account_id) {
@@ -52,6 +56,9 @@ void initialize(mixed first_load) {
   if (!inventory_state) {
     inventory_state = "";
   }
+  if (!quest_state) {
+    quest_state = "";
+  }
   if (!account_created && !copper) {
     copper = 120;
   }
@@ -79,6 +86,7 @@ void receive_account_id(mixed value) {
     account_id = requested;
     pending_password = "";
     inventory_materialized = 0;
+    quests_materialized = 0;
     jvmud_write("Password: ");
     jvmud_capture_session_input("receive_login_password", 1);
     return;
@@ -189,6 +197,9 @@ void receive_class(mixed value) {
   configure_starting_attributes();
   account_created = 1;
   inventory_materialized = 1;
+  quests_materialized = 1;
+  quest_stages = ([ ]);
+  quest_counts = ([ ]);
   grant_starter_kit();
   recalculate_resources(1);
   save_character();
@@ -198,6 +209,7 @@ void receive_class(mixed value) {
 void enter_avelorn(int returning) {
   jvmud_enable_commands();
   materialize_inventory();
+  materialize_quests();
   recalculate_resources(0);
   jvmud_bind_entity_alias(
       jvmud_current_lpc_object(),
@@ -230,6 +242,9 @@ void save_character() {
     if (inventory_materialized) {
       snapshot_inventory();
     }
+    if (quests_materialized) {
+      snapshot_quests();
+    }
     saved = jvmud_save_lpc_object_state("accounts/" + account_id);
     if (!saved) {
       jvmud_write("Warning: Avelorn could not write your character snapshot to the host filesystem.\n");
@@ -254,6 +269,8 @@ void offer_interactions() {
   jvmud_add_action("attack", "attack");
   jvmud_add_action("attack", "fight");
   jvmud_add_action("consider", "consider");
+  jvmud_add_action("quests", "quests");
+  jvmud_add_action("quests", "journal");
   jvmud_add_action("money", "money");
   jvmud_add_action("improve", "improve");
   jvmud_add_action("pronouns_command", "pronouns");
@@ -624,6 +641,121 @@ void award_victory(int xp, int coins, string opponent_name) {
   save_character();
 }
 
+int offer_quest(string quest_id) {
+  int stage;
+  int recommended_level;
+
+  materialize_quests();
+  stage = quest_stage(quest_id);
+  if (stage == 3) {
+    jvmud_write("You have already completed " + quest_title(quest_id) + ".\n");
+    return 1;
+  }
+  if (stage > 0) {
+    jvmud_write("That assignment is already recorded in your journal.\n");
+    return 1;
+  }
+  recommended_level = jvmud_invoke_lpc_object("system/quests", "recommended_level", quest_id);
+  jvmud_write(quest_title(quest_id) + " (recommended level " + recommended_level + ")\n");
+  jvmud_write(jvmud_invoke_lpc_object("system/quests", "description", quest_id) + "\n");
+  if (level < recommended_level) {
+    jvmud_write("This is beyond your current training, but the Company will not forbid the attempt.\n");
+  }
+  quest_stages[quest_id] = 1;
+  quest_counts[quest_id] = 0;
+  jvmud_write("You accept the assignment.\n");
+  save_character();
+  return 1;
+}
+
+void record_quest_defeat(string quest_tag) {
+  string quest_id;
+  int required;
+  int count;
+
+  if (!quest_tag || jvmud_size(quest_tag) == 0) {
+    return;
+  }
+  materialize_quests();
+  quest_id = jvmud_invoke_lpc_object("system/quests", "quest_for_defeat_tag", quest_tag);
+  if (!quest_id || quest_stage(quest_id) != 1) {
+    return;
+  }
+  count = quest_count(quest_id) + 1;
+  required = jvmud_invoke_lpc_object("system/quests", "required_count", quest_id);
+  quest_counts[quest_id] = count;
+  jvmud_write_to_lpc_object(
+      jvmud_current_lpc_object(),
+      quest_title(quest_id) + ": " + count + "/" + required + ".\n");
+  if (count >= required) {
+    quest_stages[quest_id] = 2;
+    jvmud_write_to_lpc_object(
+        jvmud_current_lpc_object(),
+        "The assignment is ready to report.\n");
+  }
+  save_character();
+}
+
+int turn_in_quest(string quest_id) {
+  int stage;
+  int xp;
+  int coins;
+
+  materialize_quests();
+  stage = quest_stage(quest_id);
+  if (stage == 0) {
+    jvmud_write("You have not accepted that assignment. Ask for work first.\n");
+    return 1;
+  }
+  if (stage == 1) {
+    jvmud_write("The assignment is not yet complete.\n");
+    return 1;
+  }
+  if (stage == 3) {
+    jvmud_write("That assignment has already been reported and rewarded.\n");
+    return 1;
+  }
+
+  quest_stages[quest_id] = 3;
+  xp = jvmud_invoke_lpc_object("system/quests", "experience_reward", quest_id);
+  coins = jvmud_invoke_lpc_object("system/quests", "copper_reward", quest_id);
+  copper += coins;
+  jvmud_write("You complete " + quest_title(quest_id) + ".\n");
+  jvmud_write("The Company awards "
+      + jvmud_invoke_lpc_object("system/economy", "format_money", coins) + ".\n");
+  gain_experience(xp);
+  save_character();
+  return 1;
+}
+
+int quests(mixed ignored) {
+  mixed *ids;
+  int index;
+  int stage;
+  string quest_id;
+
+  materialize_quests();
+  ids = jvmud_mapping_keys(quest_stages);
+  if (jvmud_size(ids) == 0) {
+    jvmud_write("Your Company journal contains no assignments.\n");
+    return 1;
+  }
+  jvmud_write("Company assignments:\n");
+  index = 0;
+  while (index < jvmud_size(ids)) {
+    quest_id = ids[index];
+    stage = quest_stage(quest_id);
+    jvmud_write("  " + quest_title(quest_id) + " — " + quest_stage_text(stage));
+    if (stage == 1 || stage == 2) {
+      jvmud_write(" (" + quest_count(quest_id) + "/");
+      jvmud_write(jvmud_invoke_lpc_object("system/quests", "required_count", quest_id) + ")");
+    }
+    jvmud_write("\n");
+    index += 1;
+  }
+  return 1;
+}
+
 int purchase_blueprint(string blueprint) {
   object item;
   int price;
@@ -752,7 +884,7 @@ int help(mixed ignored) {
   jvmud_write("Avelorn commands:\n");
   jvmud_write("  look, north/east/south/west, score, pronouns\n");
   jvmud_write("  inventory, equipment, get, drop, equip, unequip, use\n");
-  jvmud_write("  attack, consider, money, list, buy, sell, train, improve, save, help\n");
+  jvmud_write("  attack, consider, quests, money, list, buy, sell, train, improve, save, help\n");
   return 1;
 }
 
@@ -869,6 +1001,73 @@ void clear_materialized_inventory() {
     item = jvmud_first_entity_at(jvmud_current_lpc_object());
   }
   inventory_materialized = 0;
+}
+
+void snapshot_quests() {
+  mapping state;
+
+  state = ([
+    "stages": quest_stages,
+    "counts": quest_counts
+  ]);
+  quest_state = jvmud_serialize_lpc_value(state);
+}
+
+void materialize_quests() {
+  mixed decoded;
+  mapping state;
+
+  if (quests_materialized) {
+    return;
+  }
+  quests_materialized = 1;
+  quest_stages = ([ ]);
+  quest_counts = ([ ]);
+  if (!quest_state || jvmud_size(quest_state) == 0) {
+    return;
+  }
+  decoded = jvmud_deserialize_lpc_value(quest_state);
+  if (!jvmud_is_mapping(decoded)) {
+    return;
+  }
+  state = decoded;
+  if (jvmud_is_mapping(state["stages"])) {
+    quest_stages = state["stages"];
+  }
+  if (jvmud_is_mapping(state["counts"])) {
+    quest_counts = state["counts"];
+  }
+}
+
+int quest_stage(string quest_id) {
+  if (!jvmud_member(quest_stages, quest_id)) {
+    return 0;
+  }
+  return quest_stages[quest_id];
+}
+
+int quest_count(string quest_id) {
+  if (!jvmud_member(quest_counts, quest_id)) {
+    return 0;
+  }
+  return quest_counts[quest_id];
+}
+
+string quest_title(string quest_id) {
+  return jvmud_invoke_lpc_object("system/quests", "title", quest_id);
+}
+
+string quest_stage_text(int stage) {
+  if (stage == 1) {
+    return "active";
+  }
+  if (stage == 2) {
+    return "ready to report";
+  }
+  if (stage == 3) {
+    return "complete";
+  }
+  return "unknown";
 }
 
 int is_item(object candidate) {

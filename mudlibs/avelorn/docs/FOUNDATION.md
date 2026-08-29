@@ -48,8 +48,14 @@ The durable fields are:
 The current vertical slice writes identity, gender, class, level, experience,
 base attributes, resources, currency, inventory blueprint ids, and equipment
 assignments. It reconstructs live item Entities after login rather than saving
-object references. Later milestones add quest and discovery state. A future
+object references. Quest state uses the same scalar-safe serialization pattern;
+later milestones add discovery state. A future
 incompatible shape increments the version and migrates explicitly on restore.
+
+Quest progress is serialized as stable quest ids, integer stages, and counters
+inside the character snapshot. The runtime mapping is reconstructed at login.
+Stage `1` is active, `2` is ready to report, and `3` is complete; rewards are
+issued only during the transition from `2` to `3`.
 
 ## Combat contract
 
