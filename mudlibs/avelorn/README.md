@@ -24,6 +24,8 @@ The world currently provides twenty-three connected Places spanning
 Brindleford, the maintained Lantern Road, and Greyhaven's western gate.
 Characters can train, trade, rest, explore, evaluate hostile combatants, and
 fight cooperatively.
+Fighters, Rangers, Mages, and Clerics each have a distinct resource-powered
+combat technique in addition to ordinary weapon attacks.
 Every contributor still present at a victory receives credit. Equipment and
 enemy recommendations are warnings and effectiveness adjustments rather than
 hard locks.

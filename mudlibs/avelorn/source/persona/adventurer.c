@@ -271,6 +271,8 @@ void offer_interactions() {
   jvmud_add_action("attack", "attack");
   jvmud_add_action("attack", "fight");
   jvmud_add_action("consider", "consider");
+  jvmud_add_action("class_ability", "ability");
+  jvmud_add_action("class_ability", "technique");
   jvmud_add_action("quests", "quests");
   jvmud_add_action("quests", "journal");
   jvmud_add_action("money", "money");
@@ -592,6 +594,55 @@ int consider(mixed target) {
     jvmud_write(" an appropriate challenge for your present training.\n");
   }
   return 1;
+}
+
+int class_ability(mixed target) {
+  object place;
+  object opponent;
+  int cost;
+  int damage;
+  string technique;
+
+  if (!target) {
+    jvmud_write("Use your technique against what?\n");
+    return 1;
+  }
+  place = jvmud_entity_location(jvmud_current_lpc_object());
+  opponent = jvmud_find_entity(target, place);
+  if (!opponent || !jvmud_method_exists("query_hostile", opponent)
+      || !jvmud_invoke_lpc_object(opponent, "query_hostile")) {
+    jvmud_write("That is not a hostile combatant.\n");
+    return 1;
+  }
+  if (character_class == "fighter") {
+    technique = "a disciplined mighty blow";
+    cost = 8;
+    damage = attack_damage() + level + strength / 2;
+  } else if (character_class == "ranger") {
+    technique = "a carefully aimed shot";
+    cost = 8;
+    damage = attack_damage() + level + dexterity / 2;
+  } else if (character_class == "mage") {
+    technique = "a bolt of blue-white arcane fire";
+    cost = 10;
+    damage = attack_damage() + level + intelligence / 2;
+  } else {
+    technique = "a radiant Lantern smite";
+    cost = 10;
+    damage = attack_damage() + level + wisdom / 2;
+  }
+  if (resource < cost) {
+    jvmud_write("You need " + cost + " " + jvmud_lowercase_text(resource_name()));
+    jvmud_write(" for that technique. Rest at a shrine to recover.\n");
+    return 1;
+  }
+  resource -= cost;
+  jvmud_write("You unleash " + technique + ".\n");
+  return jvmud_invoke_lpc_object(
+      opponent,
+      "receive_attack",
+      jvmud_current_lpc_object(),
+      damage);
 }
 
 int receive_damage(int amount, string attacker_name) {
@@ -921,7 +972,7 @@ int help(mixed ignored) {
   jvmud_write("Avelorn commands:\n");
   jvmud_write("  look, north/east/south/west, score, pronouns\n");
   jvmud_write("  inventory, equipment, get, drop, equip, unequip, use\n");
-  jvmud_write("  attack, consider, quests, money, list, buy, sell, train, improve, save, help\n");
+  jvmud_write("  attack, ability, consider, quests, money, list, buy, sell, train, improve, save, help\n");
   return 1;
 }
 

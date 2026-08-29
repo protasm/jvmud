@@ -188,6 +188,44 @@ class AvelornMudlibTest {
         }
     }
 
+    @ParameterizedTest
+    @CsvSource({
+        "fighter, disciplined mighty blow, Stamina 41/49",
+        "ranger, carefully aimed shot, Stamina 46/54",
+        "mage, bolt of blue-white arcane fire, Mana 56/66",
+        "cleric, radiant Lantern smite, Faith 56/66"
+    })
+    void givesEveryClassAResourcePoweredCombatTechnique(
+            String characterClass,
+            String technique,
+            String remainingResource) throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+
+        createCharacter(
+                mud,
+                persona,
+                writer,
+                "ability_" + characterClass,
+                "Celyn Ward",
+                "female",
+                characterClass);
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "down");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "ability rat");
+        dispatch(mud, persona, writer, "score");
+
+        String transcript = output.toString();
+        assertTrue(transcript.contains("You unleash a " + technique + "."), transcript);
+        assertTrue(transcript.contains(remainingResource), transcript);
+    }
+
     @Test
     void exposesOneConnectedAvelornWorldWithNoDanglingPlaceLinks() throws Exception {
         Path sourceRoot = Path.of("mudlibs/avelorn/source").toAbsolutePath().normalize();

@@ -71,6 +71,11 @@ opponent falls receives victory credit. Defeat is recoverable: Crown wardens
 return the character to the Brindleford shrine, restore resources, and assess a
 small coin loss.
 
+Each class has an initial resource-powered technique: a Fighter's mighty blow,
+a Ranger's aimed shot, a Mage's arcane bolt, or a Cleric's Lantern smite.
+Techniques use the class's primary attribute and the same soft equipment
+effectiveness rules as ordinary attacks. Class resources recover at shrines.
+
 Plaintext passwords must never reach durable fields. Runtime-only pending input
 is cleared before every save.
 
