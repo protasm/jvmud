@@ -20,8 +20,9 @@ Lantern beneath Ashenwatch Keep.
 
 ## Current playable slice
 
-The world currently provides twenty-three connected Places spanning
-Brindleford, the maintained Lantern Road, and Greyhaven's western gate.
+The world currently provides thirty-eight connected Places spanning
+Brindleford, the maintained Lantern Road, Greyhaven's civic center, and the
+northern patrol road.
 Characters can train, trade, rest, explore, evaluate hostile combatants, and
 fight cooperatively.
 Fighters, Rangers, Mages, and Clerics each have a distinct resource-powered
@@ -39,6 +40,11 @@ The second assignment, *Light for the Road*, sends a level-two Companion to
 service three distinct ward lanterns between Brindleford and Greyhaven. Each
 objective is credited once, demonstrating non-combat quest objectives and
 soft-gated travel progression.
+
+The third assignment, *The Silent Patrol Bell*, begins with Greyhaven's Crown
+watch and confronts a level-four bell wraith at an intact but magically
+silenced road post. It demonstrates a higher-risk soft gate, class techniques,
+recoverable combat, and a timed enemy reset.
 
 Character identity, progression, coin, inventory, and equipment persist as
 host-filesystem snapshots beneath `accounts/`. Avelorn declares no database

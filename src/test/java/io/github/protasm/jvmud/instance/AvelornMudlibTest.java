@@ -255,7 +255,7 @@ class AvelornMudlibTest {
             }
         }
 
-        assertEquals(23, links.size());
+        assertEquals(38, links.size());
         Set<String> reached = new HashSet<>();
         ArrayDeque<String> frontier = new ArrayDeque<>();
         frontier.add("place/brindleford/village_green");
@@ -424,6 +424,59 @@ class AvelornMudlibTest {
         assertTrue(transcript.contains("Light for the Road — complete"), transcript);
         assertTrue(transcript.contains("Experience 150/200"), transcript);
         assertTrue(transcript.contains("Coin: 1 gold, 9 silver, 5 copper"), transcript);
+    }
+
+    @Test
+    void softGatesAndCompletesTheSilentPatrolBellAssignment() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+
+        createCharacter(mud, persona, writer, "patrol_bell", "Tarin Holt", "male", "fighter");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "train");
+        dispatch(mud, persona, writer, "south");
+        for (int eastward = 0; eastward < 13; eastward++) {
+            dispatch(mud, persona, writer, "east");
+        }
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "look ilyra");
+        dispatch(mud, persona, writer, "work");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "look wraith");
+        dispatch(mud, persona, writer, "consider wraith");
+        for (int strike = 0; strike < 5; strike++) {
+            dispatch(mud, persona, writer, "ability wraith");
+        }
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "report");
+        dispatch(mud, persona, writer, "report");
+        dispatch(mud, persona, writer, "quests");
+        dispatch(mud, persona, writer, "score");
+
+        String transcript = output.toString();
+        assertTrue(transcript.contains("Watch-Captain Ilyra Venn is the captain"), transcript);
+        assertTrue(transcript.contains("They have posted a measured request"), transcript);
+        assertTrue(transcript.contains("The Silent Patrol Bell (recommended level 4)"), transcript);
+        assertTrue(transcript.contains("beyond your current training"), transcript);
+        assertTrue(transcript.contains("They are a level 4 combatant"), transcript);
+        assertTrue(transcript.contains("dangerous challenge"), transcript);
+        assertTrue(transcript.contains("hollow bell wraith is defeated"), transcript);
+        assertTrue(transcript.contains("The Silent Patrol Bell: 1/1."), transcript);
+        assertEquals(1, occurrences(transcript, "You complete The Silent Patrol Bell."));
+        assertTrue(transcript.contains("The Silent Patrol Bell — complete"), transcript);
+        assertTrue(transcript.contains("level 3 fighter"), transcript);
+        assertTrue(transcript.contains("Experience 240/300"), transcript);
+        assertTrue(transcript.contains("Coin: 3 gold"), transcript);
     }
 
     private void dispatch(

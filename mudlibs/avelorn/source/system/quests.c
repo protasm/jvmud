@@ -8,6 +8,9 @@ string title(string quest_id) {
   if (quest_id == "light-for-the-road") {
     return "Light for the Road";
   }
+  if (quest_id == "silent-patrol-bell") {
+    return "The Silent Patrol Bell";
+  }
   return "Unknown assignment";
 }
 
@@ -17,6 +20,9 @@ string description(string quest_id) {
   }
   if (quest_id == "light-for-the-road") {
     return "Sister Elara asks you to tend the ward lanterns at Old Brindle Bridge, the Crown shelter, and Greyhaven's western approach.";
+  }
+  if (quest_id == "silent-patrol-bell") {
+    return "Watch-Captain Ilyra asks you to restore the abandoned north-road patrol post by defeating the bell wraith silencing its alarm.";
   }
   return "No description is available.";
 }
@@ -28,6 +34,9 @@ int recommended_level(string quest_id) {
   if (quest_id == "light-for-the-road") {
     return 2;
   }
+  if (quest_id == "silent-patrol-bell") {
+    return 4;
+  }
   return 1;
 }
 
@@ -37,6 +46,9 @@ int required_count(string quest_id) {
   }
   if (quest_id == "light-for-the-road") {
     return 3;
+  }
+  if (quest_id == "silent-patrol-bell") {
+    return 1;
   }
   return 1;
 }
@@ -48,6 +60,9 @@ int experience_reward(string quest_id) {
   if (quest_id == "light-for-the-road") {
     return 150;
   }
+  if (quest_id == "silent-patrol-bell") {
+    return 300;
+  }
   return 0;
 }
 
@@ -58,12 +73,18 @@ int copper_reward(string quest_id) {
   if (quest_id == "light-for-the-road") {
     return 75;
   }
+  if (quest_id == "silent-patrol-bell") {
+    return 150;
+  }
   return 0;
 }
 
 string quest_for_defeat_tag(string tag) {
   if (tag == "granary-rat") {
     return "millers-unwelcome-guests";
+  }
+  if (tag == "bell-wraith") {
+    return "silent-patrol-bell";
   }
   return "";
 }
