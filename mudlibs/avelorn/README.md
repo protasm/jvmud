@@ -18,16 +18,34 @@ Lantern beneath Ashenwatch Keep.
 - `accounts/` contains ignored runtime character snapshots.
 - `docs/FOUNDATION.md` fixes the initial identifiers and persistence contract.
 
-## Current playable slice
+## Current world
 
-The world provides sixty-five connected Places spanning Brindleford, the
-maintained Lantern Road, Greyhaven's civic center, the northern patrol road,
-Merewatch, the Blackstone wardworks, and Ashenwatch Keep.
+The world provides exactly 100,000 connected, traversable Places. The original
+sixty-five authored Places span Brindleford, the maintained Lantern Road,
+Greyhaven, Merewatch, Blackstone, and Ashenwatch. Rekindling the Western Crown
+Lantern opens the greater realm: 99,935 deterministic Places arranged into 220
+regions, generated lazily from stable object ids rather than compiled at boot.
+Major destinations include the many wards, streets, canals, sewers, courts,
+and castle levels of Crownspire; the cities of Irongate and Saltmere; the
+Elderwild and Dawn Coast; the twelve-part abandoned Gloamhold complex; and the
+six physical and political depths of the Deep Concord. See
+`docs/WORLD.md` for geography and content rules.
+
+Every generated room has a unique name within its region, stable exits,
+examinable terrain, a point of interest, route detail, and weather detail.
+Use `look <thing>`, `examine <thing>`, or `exa <thing>`. Portable objects and
+occupants are materialized entities rather than prose scenery. Character
+location now persists with the rest of the account snapshot. Type `atlas` for
+the in-game world overview.
+
 Characters can train, trade, rest, explore, evaluate hostile combatants, and
 fight cooperatively.
 Player-facing prose is assembled and wrapped by Avelorn's mudlib presentation
 service at 80 columns. Every room view places the kingdom's supplied ruler
 between its title and description.
+The `brief` command toggles compact movement views that retain the room title
+and list occupants, items, and abbreviated exits while leaving explicit
+`look` commands fully descriptive.
 Fighters, Rangers, Mages, and Clerics each have a distinct resource-powered
 combat technique in addition to ordinary weapon attacks.
 Every contributor still present at a victory receives credit. Equipment and

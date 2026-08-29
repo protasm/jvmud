@@ -24,6 +24,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 /** Native boundary and first character-flow coverage for the Avelorn exemplar mudlib. */
 class AvelornMudlibTest {
+    private static final int AUTHORED_PLACE_COUNT = 65;
+    private static final int GENERATED_PLACE_COUNT = 99_935;
     private static final Pattern PLACE_DESTINATION =
             Pattern.compile("\\\"(place/[a-z_/]+)\\\"");
 
@@ -39,6 +41,7 @@ class AvelornMudlibTest {
         InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
 
         createCharacter(mud, persona, writer, "socials", "Linnet Grey", "female", "ranger");
+        dispatch(mud, persona, writer, "look at lantern standard");
         StringWriter observerOutput = new StringWriter();
         PrintWriter observerWriter = new PrintWriter(observerOutput, true);
         InstancePersona observer = mud.attachPersona(observerWriter, "127.0.0.2");
@@ -54,6 +57,7 @@ class AvelornMudlibTest {
         String ruler = "+=========".repeat(8);
         assertTrue(transcript.contains("Brindleford Village Green\n" + ruler + "\nA broad green"), transcript);
         assertTrue(transcript.contains("Avelorn emotes (100):"), transcript);
+        assertTrue(transcript.contains("Lantern standard\nThe lantern standard belongs to Brindleford's"), transcript);
         assertTrue(transcript.contains("  acknowledge"), transcript);
         assertTrue(transcript.contains("welcome zoom"), transcript);
         assertTrue(transcript.contains("You grin."), transcript);
@@ -69,6 +73,60 @@ class AvelornMudlibTest {
         for (String line : gameplay.split("\\n", -1)) {
             assertTrue(line.codePointCount(0, line.length()) <= 80, line);
         }
+    }
+
+    @Test
+    void togglesBriefMovementViewsWithCompactOccupantsItemsAndExits() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+        createCharacter(mud, persona, writer, "brief_view", "Beren Holt", "male", "fighter");
+
+        StringWriter observerOutput = new StringWriter();
+        PrintWriter observerWriter = new PrintWriter(observerOutput, true);
+        InstancePersona observer = mud.attachPersona(observerWriter, "127.0.0.2");
+        createCharacter(
+                mud,
+                observer,
+                observerWriter,
+                "brief_observer",
+                "Arden Vale",
+                "non-binary",
+                "cleric");
+
+        dispatch(mud, persona, writer, "drop draught");
+        dispatch(mud, persona, writer, "brief");
+        output.getBuffer().setLength(0);
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "south");
+
+        String briefTranscript = output.toString();
+        assertTrue(briefTranscript.contains("Brindleford Lantern House"), briefTranscript);
+        assertFalse(briefTranscript.contains("Oak beams and pale riverstone"), briefTranscript);
+        assertTrue(briefTranscript.contains("Occupants: none"), briefTranscript);
+        assertTrue(briefTranscript.contains("Items: none"), briefTranscript);
+        assertTrue(briefTranscript.contains("Exits: s"), briefTranscript);
+        assertTrue(briefTranscript.contains("Occupants:"), briefTranscript);
+        assertTrue(briefTranscript.contains("Oren Halward"), briefTranscript);
+        assertTrue(briefTranscript.contains("Sister Elara"), briefTranscript);
+        assertTrue(briefTranscript.contains("Rowan Mere"), briefTranscript);
+        assertTrue(briefTranscript.contains("Arden vale"), briefTranscript);
+        assertTrue(briefTranscript.contains("Items: minor healing draught"), briefTranscript);
+        assertTrue(briefTranscript.contains("Exits: n e s w"), briefTranscript);
+        assertFalse(briefTranscript.contains("A broad green lies"), briefTranscript);
+
+        output.getBuffer().setLength(0);
+        dispatch(mud, persona, writer, "look");
+        assertTrue(output.toString().contains("A broad green lies"), output.toString());
+
+        dispatch(mud, persona, writer, "brief");
+        output.getBuffer().setLength(0);
+        dispatch(mud, persona, writer, "north");
+
+        String fullTranscript = output.toString();
+        assertTrue(fullTranscript.contains("Oak beams and pale riverstone"), fullTranscript);
     }
 
     @Test
@@ -341,7 +399,7 @@ class AvelornMudlibTest {
     }
 
     @Test
-    void exposesOneConnectedAvelornWorldWithNoDanglingPlaceLinks() throws Exception {
+    void exposesOneConnectedAuthoredChapterAndExactlyOneHundredThousandTotalPlaces() throws Exception {
         Path sourceRoot = Path.of("mudlibs/avelorn/source").toAbsolutePath().normalize();
         Path places = sourceRoot.resolve("place");
         Map<String, Set<String>> links = new HashMap<>();
@@ -369,7 +427,8 @@ class AvelornMudlibTest {
             }
         }
 
-        assertEquals(65, links.size());
+        assertEquals(AUTHORED_PLACE_COUNT, links.size());
+        assertEquals(100_000, links.size() + GENERATED_PLACE_COUNT);
         Set<String> reached = new HashSet<>();
         ArrayDeque<String> frontier = new ArrayDeque<>();
         frontier.add("place/brindleford/village_green");
@@ -380,6 +439,53 @@ class AvelornMudlibTest {
             }
         }
         assertEquals(links.keySet(), reached);
+    }
+
+    @Test
+    void entersGeneratedRealmAndExaminesSceneryWithoutMaterializingOneHundredThousandFiles()
+            throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+        createCharacter(mud, persona, writer, "wide_world", "Tamsin Reed", "non-binary", "ranger");
+
+        repeatCommand(mud, persona, writer, "east", 13);
+        commands(mud, persona, writer, "east", "north", "east");
+        repeatCommand(mud, persona, writer, "north", 10);
+        commands(mud, persona, writer, "west", "west", "west", "west", "north", "north", "down", "east", "north");
+        output.getBuffer().setLength(0);
+        commands(mud, persona, writer, "north", "exa waystone", "atlas", "east", "west", "save");
+
+        String transcript = output.toString();
+        assertTrue(transcript.contains("Amber March"), transcript);
+        assertTrue(transcript.contains("The waystone predates the newest roadwork"), transcript);
+        assertTrue(transcript.contains("100,000 traversable places"), transcript);
+        assertTrue(transcript.contains("Aster Fen is here"), transcript);
+        assertTrue(transcript.contains("minor healing draught is here"), transcript);
+
+        String saved = Files.readString(mudlib.resolve("accounts/wide_world.o"));
+        assertTrue(saved.contains("place/world/r00000"), saved);
+        assertFalse(Files.exists(mudlib.resolve("source/place/world/r00000.c")));
+
+        mud.detachPersona(persona);
+        Files.writeString(
+                mudlib.resolve("accounts/wide_world.o"),
+                saved.replace("place/world/r00000", "place/world/r99934"));
+        MudInstance restarted = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter restoredOutput = new StringWriter();
+        PrintWriter restoredWriter = new PrintWriter(restoredOutput, true);
+        InstancePersona restored = restarted.attachPersona(restoredWriter, "127.0.0.2");
+        dispatch(restarted, restored, restoredWriter, "wide_world");
+        dispatch(restarted, restored, restoredWriter, "Avelorn1!");
+        dispatch(restarted, restored, restoredWriter, "brief");
+        dispatch(restarted, restored, restoredWriter, "north");
+
+        String restoredTranscript = restoredOutput.toString();
+        assertTrue(restoredTranscript.contains("Kings Border - Yew-shaded hill fort"), restoredTranscript);
+        assertTrue(restoredTranscript.contains("Passages lead north west."), restoredTranscript);
+        assertTrue(restoredTranscript.contains("Exits: n s w"), restoredTranscript);
     }
 
     @Test

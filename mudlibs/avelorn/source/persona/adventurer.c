@@ -29,6 +29,8 @@ mapping quest_counts;
 mapping quest_flags;
 int quests_materialized;
 object combat_target;
+int brief_mode;
+string saved_place;
 
 void initialize(mixed first_load) {
   if (!account_id) {
@@ -60,6 +62,9 @@ void initialize(mixed first_load) {
   }
   if (!quest_state) {
     quest_state = "";
+  }
+  if (!saved_place) {
+    saved_place = "";
   }
   if (!account_created && !copper) {
     copper = 120;
@@ -228,6 +233,10 @@ void enter_avelorn(int returning) {
       "living",
       jvmud_lowercase_text(character_name));
 
+  if (returning && jvmud_size(saved_place) > 0) {
+    jvmud_move_entity(jvmud_current_lpc_object(), saved_place);
+  }
+
   if (returning) {
     write("\nWelcome back, " + character_name + ".\n\n");
   } else {
@@ -245,9 +254,14 @@ void end_session() {
 
 void save_character() {
   int saved;
+  object place;
 
   if (account_created && jvmud_size(account_id) > 0 && jvmud_size(password_hash) > 0) {
     pending_password = "";
+    place = jvmud_entity_location(jvmud_current_lpc_object());
+    if (place) {
+      saved_place = jvmud_lpc_object_id(place);
+    }
     if (inventory_materialized) {
       snapshot_inventory();
     }
@@ -264,6 +278,11 @@ void save_character() {
 void offer_interactions() {
   jvmud_add_action("look", "look");
   jvmud_add_action("look", "l");
+  jvmud_add_action("look", "examine");
+  jvmud_add_action("look", "exa");
+  jvmud_add_action("world_map", "atlas");
+  jvmud_add_action("world_map", "worldmap");
+  jvmud_add_action("brief", "brief");
   jvmud_add_action("score", "score");
   jvmud_add_action("inventory", "inventory");
   jvmud_add_action("inventory", "i");
@@ -297,6 +316,7 @@ void offer_interactions() {
 int look(mixed target) {
   object place;
   object entity;
+  string normalized_target;
 
   place = jvmud_entity_location(jvmud_current_lpc_object());
   if (!place) {
@@ -304,11 +324,23 @@ int look(mixed target) {
     return 1;
   }
   if (target) {
-    entity = jvmud_find_entity(target, place);
+    normalized_target = jvmud_to_string(target);
+    if (jvmud_size(normalized_target) > 3
+        && jvmud_lowercase_text(jvmud_extract_text(normalized_target, 0, 2)) == "at ") {
+      normalized_target = jvmud_extract_text(normalized_target, 3);
+    }
+    entity = jvmud_find_entity(normalized_target, place);
     if (!entity) {
-      entity = jvmud_find_entity(target, jvmud_current_lpc_object());
+      entity = jvmud_find_entity(normalized_target, jvmud_current_lpc_object());
     }
     if (!entity) {
+      if (jvmud_method_exists("examine_detail", place)
+          && jvmud_invoke_lpc_object(place, "examine_detail", normalized_target)) {
+        return 1;
+      }
+      if (jvmud_invoke_lpc_object("system/scenery", "describe", place, normalized_target)) {
+        return 1;
+      }
       write("You do not see that here.\n");
       return 1;
     }
@@ -316,6 +348,11 @@ int look(mixed target) {
     return 1;
   }
   jvmud_invoke_lpc_object(place, "describe", jvmud_current_lpc_object());
+  return 1;
+}
+
+int world_map(mixed ignored) {
+  jvmud_invoke_lpc_object("system/atlas", "show", 0);
   return 1;
 }
 
@@ -336,8 +373,103 @@ int travel_to(string direction, string destination) {
       jvmud_current_lpc_object(),
       character_name + " arrives.\n",
       jvmud_current_lpc_object());
-  jvmud_invoke_lpc_object(new_place, "describe", jvmud_current_lpc_object());
+  if (brief_mode) {
+    describe_briefly(new_place);
+  } else {
+    jvmud_invoke_lpc_object(new_place, "describe", jvmud_current_lpc_object());
+  }
   return 1;
+}
+
+int brief(mixed ignored) {
+  brief_mode = !brief_mode;
+  if (brief_mode) {
+    write("Brief mode is on.\n");
+  } else {
+    write("Brief mode is off.\n");
+  }
+  save_character();
+  return 1;
+}
+
+void describe_briefly(object place) {
+  object actor;
+  object entity;
+  string occupants;
+  string items;
+
+  actor = jvmud_current_lpc_object();
+  occupants = "";
+  items = "";
+  write(jvmud_invoke_lpc_object(place, "short") + "\n");
+  entity = jvmud_first_entity_at(place);
+  while (entity) {
+    if (entity != actor) {
+      if (jvmud_method_exists("query_blueprint", entity)
+          && jvmud_method_exists("short", entity)) {
+        items = append_brief_entry(
+            items,
+            jvmud_invoke_lpc_object(entity, "short"));
+      } else if (jvmud_method_exists("query_name", entity)) {
+        occupants = append_brief_entry(
+            occupants,
+            jvmud_invoke_lpc_object(entity, "query_name"));
+      }
+    }
+    entity = jvmud_next_entity_at(entity);
+  }
+  write("Occupants: " + brief_value_or_none(occupants) + "\n");
+  write("Items: " + brief_value_or_none(items) + "\n");
+  write("Exits: " + brief_value_or_none(brief_exits(place)) + "\n");
+}
+
+string brief_exits(object place) {
+  string exits;
+
+  if (jvmud_method_exists("query_brief_exits", place)) {
+    return jvmud_invoke_lpc_object(place, "query_brief_exits");
+  }
+  exits = "";
+  if (jvmud_method_exists("north", place)) {
+    exits = append_brief_token(exits, "n");
+  }
+  if (jvmud_method_exists("east", place)) {
+    exits = append_brief_token(exits, "e");
+  }
+  if (jvmud_method_exists("south", place)) {
+    exits = append_brief_token(exits, "s");
+  }
+  if (jvmud_method_exists("west", place)) {
+    exits = append_brief_token(exits, "w");
+  }
+  if (jvmud_method_exists("up", place)) {
+    exits = append_brief_token(exits, "u");
+  }
+  if (jvmud_method_exists("down", place)) {
+    exits = append_brief_token(exits, "d");
+  }
+  return exits;
+}
+
+string append_brief_entry(string entries, string entry) {
+  if (jvmud_size(entries) == 0) {
+    return entry;
+  }
+  return entries + ", " + entry;
+}
+
+string append_brief_token(string entries, string entry) {
+  if (jvmud_size(entries) == 0) {
+    return entry;
+  }
+  return entries + " " + entry;
+}
+
+string brief_value_or_none(string value) {
+  if (jvmud_size(value) == 0) {
+    return "none";
+  }
+  return value;
 }
 
 int score(mixed ignored) {
@@ -1181,7 +1313,7 @@ int is_online_adventurer(object persona) {
 
 int help(mixed ignored) {
   write("Avelorn commands:\n");
-  write("  look, north/east/south/west, score, pronouns, who\n");
+  write("  look/examine, north/east/south/west, brief, atlas, score, pronouns, who\n");
   write("  say <message>, tell <character> <message>\n");
   write("  inventory, equipment, get, drop, equip, unequip, use\n");
   write("  attack <target> begins timed combat; ability uses a technique\n");
