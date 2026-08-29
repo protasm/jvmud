@@ -113,7 +113,7 @@ engine and mudlib compatibility layer.
 
 Development should start from `docs/PRINCIPLES.md`, then make compiler, runtime, CLI,
 and compatibility choices fit that model. The mudlib is content for JVMud, not a
-constraint that forces the engine to recreate every legacy legacy LPC engine behavior.
+constraint that forces the engine to recreate every legacy LPC engine behavior.
 At the same time, the vanilla mudlib source is upstream material and should not
 be rewritten merely to compensate for JVMud gaps.
 
@@ -172,17 +172,25 @@ scripts/jvmud-start [mudlib-config-file]
 The config argument is optional. By default it serves native JVMud LPMuseum from
 `mudlibs/lpmuseum/jvmud/lpmuseum.config` on `localhost:4000`. Telnet
 connections arrive in the LPMuseum concourse through the museum's own Persona
-object, command grammar, Places, and Entities. LPMuseum includes stub portal
-mount points for future exhibit mudlibs, but it does not need any exhibit
-content to boot or play. To boot LP245 directly for compatibility testing, pass
-`mudlibs/lp245/jvmud/lp245.config`.
+object, command grammar, Places, and Entities. LPMuseum declares its LP245
+exhibit as an explicit mounted-world config; mount discovery is not tied to a
+particular game ID or sibling-directory convention. To boot LP245 directly for
+compatibility testing, pass `mudlibs/lp245/jvmud/lp245.config`.
 
-Player/world input is routed through LPC `init`, `add_action`, and `add_verb`
-registrations on nearby or carried objects. Telnet slash commands are limited
-to session controls such as `/help` and `/quit`; admin inspection and object
+Player/world input is routed through the lifecycle and engine-function mappings
+declared by the active profile. Telnet controls use a configurable escaped
+prefix (`//help` and `//quit` in the bundled profiles), so ordinary slash-prefixed
+mudlib commands remain available to LPC. Admin inspection and object
 mutation stay in the admin CLI. This is still an early development listener:
 session-to-session messaging, output isolation between participants, and
 production networking policy belong to later instance and transport slices.
+
+Mudlib boot is manifest-driven and fail-fast. A profile must name its initial
+place and any boundary, preload, include-search, syntax-feature, capability, or
+mounted-world requirements explicitly. Optional syntax is selected with
+`language_features`; filesystem, database, session-control, and host-control
+efuns require the corresponding `engine_capabilities` grant. Secrets should be
+referenced with `database.password_env`, never committed as manifest values.
 
 To run the startup smoke test that launches `jvmud-start`, connects over TCP,
 verifies that the configured `obj/player` mudlib player object attaches, drives

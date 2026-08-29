@@ -21,6 +21,7 @@ import static io.github.protasm.jvmud.compiler.token.TokenType.T_SLASH_EQUAL;
 import static io.github.protasm.jvmud.compiler.token.TokenType.T_STAR_EQUAL;
 
 import io.github.protasm.jvmud.compiler.parser.Parser;
+import io.github.protasm.jvmud.engine.mudlib.LanguageFeature;
 import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayAccess;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprArrayMutation;
@@ -48,6 +49,10 @@ public class InfixIndex implements InfixParselet {
         }
 
         if (parser.tokens().match(T_COMMA)) {
+            if (!parser.supports(LanguageFeature.MULTI_VALUE_MAPPINGS))
+                throw new io.github.protasm.jvmud.compiler.parser.ParseException(
+                        "The active language profile does not enable multi-value mapping indices.",
+                        parser.tokens().previous());
             valueIndex = indexBound(parser);
         }
 

@@ -43,6 +43,15 @@ mixed *caller_stack() {
     return ({ });
 }
 
+mixed driver_info(int key) {
+    return jvmud_runtime_info(key);
+}
+
+void set_driver_hook(int hook, mixed value) {
+    if (hook == 9)
+        jvmud_configure_command_aliases(value);
+}
+
 string capitalizeAllWords(string stringToCapitalize) {
     string *words = explode(stringToCapitalize || "", " ");
     int size = sizeof(words);

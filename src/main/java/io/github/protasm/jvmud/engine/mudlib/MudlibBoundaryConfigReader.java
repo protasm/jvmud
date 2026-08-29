@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * Reads JVMud-native mudlib boundary declarations from a simple manifest file.
@@ -36,6 +37,45 @@ import java.util.Objects;
  * the value remains the mudlib's method name.</p>
  */
 public final class MudlibBoundaryConfigReader {
+    private static final java.util.Set<String> EXACT_KEYS = java.util.Set.of(
+            "game_id",
+            "game_name",
+            "mudlib_root",
+            "mudlib_object",
+            "mfun_object",
+            "compatibility_object",
+            "compatibility_overrides",
+            "persona_object",
+            "player_object",
+            "session_policy",
+            "player_prompt",
+            "command_prompt",
+            "presentation.connected_banner",
+            "transport.control_prefix",
+            "diagnostics.location_command",
+            "max_line_length",
+            "show_ruler",
+            "initial_place",
+            "preload_file",
+            "preload_objects",
+            "include_paths",
+            "database.url",
+            "database.jdbc_url",
+            "database.user",
+            "database.password",
+            "database.password_env",
+            "language_features",
+            "engine_capabilities",
+            "handled_lifecycle_events",
+            "temporal_tick_method",
+            "temporal_tick_interval");
+    private static final java.util.List<String> KEY_PREFIXES = java.util.List.of(
+            "lifecycle.",
+            "engine_function.",
+            "mount.",
+            "compatibility.predefine.",
+            "compatibility.function_predefine.");
+
     private MudlibBoundaryConfigReader() {}
 
     /**
@@ -54,11 +94,27 @@ public final class MudlibBoundaryConfigReader {
      * @throws NullPointerException if either argument is {@code null}
      */
     public static MudlibBoundary read(Path mudlibRoot, String configPath) throws IOException {
+        return read(mudlibRoot, configPath, System::getenv);
+    }
+
+    /**
+     * Reads boundary configuration using an explicit environment lookup for secret references.
+     *
+     * @param mudlibRoot fallback mudlib root directory
+     * @param configPath manifest path relative to {@code mudlibRoot}
+     * @param environment environment-variable lookup used by {@code database.password_env}
+     * @return immutable boundary metadata
+     * @throws IOException if the manifest cannot be read
+     */
+    public static MudlibBoundary read(
+            Path mudlibRoot, String configPath, Function<String, String> environment) throws IOException {
         Objects.requireNonNull(mudlibRoot, "mudlibRoot");
         Objects.requireNonNull(configPath, "configPath");
+        Objects.requireNonNull(environment, "environment");
 
         Path configFile = mudlibRoot.resolve(configPath).toAbsolutePath().normalize();
         Map<String, List<String>> values = readConfigValues(configFile);
+        validateKeys(values);
         MudlibBoundary.Builder builder = MudlibBoundary.builder();
 
         addString(builder::gameId, firstValue(values, "game_id"));
@@ -75,22 +131,44 @@ public final class MudlibBoundaryConfigReader {
                 .ifPresent(builder::compatibilityGlobalObjectSourcePath);
         addCompatibilityGlobalOverrides(builder, allValues(values, "compatibility_overrides"));
         addString(builder::playerObjectPath, firstValue(values, "persona_object", "player_object"));
+        addString(builder::sessionPolicy, firstValue(values, "session_policy"));
         String playerPrompt = firstValue(values, "player_prompt");
         if (playerPrompt == null) {
             playerPrompt = firstValue(values, "command_prompt");
         }
         addString(builder::playerPrompt, playerPrompt);
+        addString(builder::connectedBanner, firstValue(values, "presentation.connected_banner"));
+        addString(builder::transportControlPrefix, firstValue(values, "transport.control_prefix"));
+        addString(builder::locationDiagnosticCommand, firstValue(values, "diagnostics.location_command"));
         addBoundedInt(builder::maxLineLength, firstValue(values, "max_line_length"));
         addBoolean(builder::showRuler, firstValue(values, "show_ruler"));
         addString(builder::initialPlacePath, firstValue(values, "initial_place"));
         addString(builder::preloadFilePath, firstValue(values, "preload_file"));
         addPreloadObjects(builder, allValues(values, "preload_objects"));
+        allValues(values, "include_paths").forEach(builder::includePath);
         addString(builder::databaseJdbcUrl, firstValue(values, "database.url", "database.jdbc_url"));
         addString(builder::databaseUser, firstValue(values, "database.user"));
-        addString(builder::databasePassword, firstValue(values, "database.password"));
+        String databasePassword = firstValue(values, "database.password");
+        String databasePasswordEnvironment = firstValue(values, "database.password_env");
+        if (databasePassword != null && databasePasswordEnvironment != null) {
+            throw new IllegalArgumentException(
+                    "Declare only one of database.password or database.password_env.");
+        }
+        if (databasePasswordEnvironment != null) {
+            databasePassword = environment.apply(databasePasswordEnvironment);
+            if (databasePassword == null || databasePassword.isBlank()) {
+                throw new IllegalArgumentException(
+                        "Required database password environment variable is not set: "
+                                + databasePasswordEnvironment);
+            }
+        }
+        addString(builder::databasePassword, databasePassword);
+        addLanguageFeatures(builder, allValues(values, "language_features"));
+        addEngineCapabilities(builder, allValues(values, "engine_capabilities"));
         addEngineFunctions(builder, values);
-        addLdmudCompatibilityPredefines(builder, values);
-        addLdmudCompatibilityFunctionPredefines(builder, values);
+        addMountedMudlibs(builder, values);
+        addCompatibilityPredefines(builder, values);
+        addCompatibilityFunctionPredefines(builder, values);
         addLifecycleEvents(builder, allValues(values, "handled_lifecycle_events"));
         addLifecycleMethods(builder, values);
         addString(builder::temporalTickMethod, firstValue(values, "temporal_tick_method"));
@@ -145,7 +223,11 @@ public final class MudlibBoundaryConfigReader {
 
             String key = trimmed.substring(0, separator).trim();
             String rawValue = stripInlineComment(trimmed.substring(separator + 1)).trim();
-            if (key.isEmpty() || rawValue.isEmpty()) {
+            if (key.isEmpty()) {
+                throw new IllegalArgumentException("Mudlib config key cannot be blank: " + line);
+            }
+            validateKey(key);
+            if (rawValue.isEmpty()) {
                 continue;
             }
 
@@ -187,8 +269,23 @@ public final class MudlibBoundaryConfigReader {
 
     private static boolean shouldPreserveReplacementText(String key) {
         String trimmed = key.trim();
-        return trimmed.startsWith("ldmud_compat_predefine.")
-                || trimmed.startsWith("ldmud_compat_function_predefine.");
+        return trimmed.startsWith("compatibility.predefine.")
+                || trimmed.startsWith("compatibility.function_predefine.");
+    }
+
+    private static void validateKeys(Map<String, List<String>> values) {
+        for (String key : values.keySet()) {
+            validateKey(key);
+        }
+    }
+
+    private static void validateKey(String key) {
+        if (EXACT_KEYS.contains(key)
+                || KEY_PREFIXES.stream().anyMatch(prefix -> key.startsWith(prefix)
+                        && key.length() > prefix.length())) {
+            return;
+        }
+        throw new IllegalArgumentException("Unknown mudlib config key: " + key);
     }
 
     private static String firstValue(Map<String, List<String>> values, String... keys) {
@@ -280,6 +377,34 @@ public final class MudlibBoundaryConfigReader {
         if (!parsed.isZero()) {
             setter.accept(parsed);
         }
+    }
+
+    private static void addLanguageFeatures(MudlibBoundary.Builder builder, List<String> values) {
+        for (String value : values) {
+            builder.languageFeature(LanguageFeature.valueOf(normalizeEnumName(value)));
+        }
+    }
+
+    private static void addMountedMudlibs(MudlibBoundary.Builder builder, Map<String, List<String>> values) {
+        values.forEach((key, declaredValues) -> {
+            if (!key.startsWith("mount.")) {
+                return;
+            }
+            String gameId = key.substring("mount.".length()).trim();
+            for (String configPath : declaredValues) {
+                builder.mountedMudlib(gameId, configPath);
+            }
+        });
+    }
+
+    private static void addEngineCapabilities(MudlibBoundary.Builder builder, List<String> values) {
+        for (String value : values) {
+            builder.engineCapability(EngineCapability.valueOf(normalizeEnumName(value)));
+        }
+    }
+
+    private static String normalizeEnumName(String value) {
+        return value.trim().replace('-', '_').replace(' ', '_').toUpperCase(java.util.Locale.ROOT);
     }
 
     private static Duration parseDuration(String value) {
@@ -374,15 +499,15 @@ public final class MudlibBoundaryConfigReader {
         }
     }
 
-    private static void addLdmudCompatibilityPredefines(
+    private static void addCompatibilityPredefines(
             MudlibBoundary.Builder builder, Map<String, List<String>> values) {
         for (Map.Entry<String, List<String>> entry : values.entrySet()) {
             String key = entry.getKey().trim();
-            if (!key.startsWith("ldmud_compat_predefine.")) {
+            if (!key.startsWith("compatibility.predefine.")) {
                 continue;
             }
 
-            String macroName = key.substring("ldmud_compat_predefine.".length());
+            String macroName = key.substring("compatibility.predefine.".length());
             if (macroName.isBlank() || entry.getValue().isEmpty()) {
                 continue;
             }
@@ -394,15 +519,15 @@ public final class MudlibBoundaryConfigReader {
         }
     }
 
-    private static void addLdmudCompatibilityFunctionPredefines(
+    private static void addCompatibilityFunctionPredefines(
             MudlibBoundary.Builder builder, Map<String, List<String>> values) {
         for (Map.Entry<String, List<String>> entry : values.entrySet()) {
             String key = entry.getKey().trim();
-            if (!key.startsWith("ldmud_compat_function_predefine.")) {
+            if (!key.startsWith("compatibility.function_predefine.")) {
                 continue;
             }
 
-            String spec = key.substring("ldmud_compat_function_predefine.".length());
+            String spec = key.substring("compatibility.function_predefine.".length());
             int separator = spec.lastIndexOf('.');
             if (separator <= 0 || separator == spec.length() - 1 || entry.getValue().isEmpty()) {
                 continue;

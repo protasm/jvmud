@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundaryConfigReader;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.engine.mudlib.EngineCapability;
+import io.github.protasm.jvmud.engine.mudlib.LanguageFeature;
 import io.github.protasm.jvmud.engine.world.World;
 import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import java.io.IOException;
@@ -111,6 +113,9 @@ final class MudlibBoundaryTest {
                 initial_place = room/village/vill_green
                 preload_file = init_file
                 preload_objects = obj/torch, obj/money.c
+                include_paths = obj, sys
+                language_features = protected_evaluation, varargs
+                engine_capabilities = mudlib_files, session_control
                 database.url = jdbc:mysql://127.0.0.1:3306/RealmsLib
                 database.user = realmslib
                 database.password = realmsdev
@@ -127,9 +132,9 @@ final class MudlibBoundaryTest {
                 lifecycle.scheduled_tick_error = heart_beat_error
                 lifecycle.server_shutdown = notify_shutdown
                 engine_function.jvmud_size = sizeof
-                ldmud_compat_predefine.__VERSION__ = "JVMud LDMud compatibility"
-                ldmud_compat_predefine.__VERSION_MAJOR__ = 3
-                ldmud_compat_function_predefine.PROBE.text_width = 0
+                compatibility.predefine.__VERSION__ = "JVMud LDMud compatibility"
+                compatibility.predefine.__VERSION_MAJOR__ = 3
+                compatibility.function_predefine.PROBE.text_width = 0
                 temporal_tick_method = heart_beat
                 temporal_tick_interval = 0.25
                 """);
@@ -149,6 +154,13 @@ final class MudlibBoundaryTest {
         assertEquals("init_file", boundary.preloadFilePath().orElseThrow());
         assertTrue(boundary.preloadObjectPaths().contains("obj/torch"));
         assertTrue(boundary.preloadObjectPaths().contains("obj/money"));
+        assertEquals(java.util.Set.of("obj", "sys"), boundary.includePaths());
+        assertEquals(
+                java.util.Set.of(LanguageFeature.PROTECTED_EVALUATION, LanguageFeature.VARARGS),
+                boundary.languageFeatures());
+        assertEquals(
+                java.util.Set.of(EngineCapability.MUDLIB_FILES, EngineCapability.SESSION_CONTROL),
+                boundary.engineCapabilities());
         assertEquals("jdbc:mysql://127.0.0.1:3306/RealmsLib", boundary.databaseJdbcUrl().orElseThrow());
         assertEquals("realmslib", boundary.databaseUser().orElseThrow());
         assertEquals("realmsdev", boundary.databasePassword().orElseThrow());
@@ -177,6 +189,62 @@ final class MudlibBoundaryTest {
         assertEquals("heart_beat", boundary.temporalTickMethod().orElseThrow());
         assertEquals(Duration.ofMillis(250), boundary.temporalTickInterval());
         assertEquals(0, boundary.temporalTickIntervalSeconds());
+    }
+
+    @Test
+    void configReaderResolvesDatabasePasswordFromEnvironmentReference() throws IOException {
+        Path config = tempDir.resolve("jvmud").resolve("database.config");
+        Files.createDirectories(config.getParent());
+        Files.writeString(config, "database.password_env = JVMUD_TEST_DATABASE_PASSWORD\n");
+
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(
+                tempDir,
+                "jvmud/database.config",
+                name -> "JVMUD_TEST_DATABASE_PASSWORD".equals(name) ? "secret-from-host" : null);
+
+        assertEquals("secret-from-host", boundary.databasePassword().orElseThrow());
+    }
+
+    @Test
+    void configReaderRejectsMissingDatabasePasswordEnvironmentReference() throws IOException {
+        Path config = tempDir.resolve("jvmud/test.config");
+        Files.createDirectories(config.getParent());
+        Files.writeString(config, "database.password_env = JVMUD_MISSING_TEST_PASSWORD\n");
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> MudlibBoundaryConfigReader.read(tempDir, "jvmud/test.config", ignored -> null));
+
+        assertTrue(error.getMessage().contains("JVMUD_MISSING_TEST_PASSWORD"));
+    }
+
+    @Test
+    void configReaderRejectsUnknownKeys() throws IOException {
+        Path config = tempDir.resolve("jvmud").resolve("invalid.config");
+        Files.createDirectories(config.getParent());
+        Files.writeString(config, "initial_room = room/typo\n");
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> MudlibBoundaryConfigReader.read(tempDir, "jvmud/invalid.config"));
+
+        assertTrue(error.getMessage().contains("initial_room"));
+    }
+
+    @Test
+    void configReaderRejectsUnknownEmptyKeysAndEmptyDynamicKeySuffixes() throws IOException {
+        Path config = tempDir.resolve("jvmud").resolve("invalid-empty.config");
+        Files.createDirectories(config.getParent());
+        Files.writeString(config, "initial_room =\n");
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> MudlibBoundaryConfigReader.read(tempDir, "jvmud/invalid-empty.config"));
+
+        Files.writeString(config, "mount. = somewhere.config\n");
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> MudlibBoundaryConfigReader.read(tempDir, "jvmud/invalid-empty.config"));
     }
 
     @Test

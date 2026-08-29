@@ -86,8 +86,9 @@ final class TelnetSession implements Runnable {
             return;
         }
 
-        if (commandLine.startsWith("/")) {
-            executeSlashCommand(session, out, commandLine.substring(1).trim());
+        String controlPrefix = mud.transportControlPrefix();
+        if (!controlPrefix.isEmpty() && commandLine.startsWith(controlPrefix)) {
+            executeTransportCommand(session, out, commandLine.substring(controlPrefix.length()).trim());
         } else {
             executePlayerCommand(session, out, commandLine);
         }
@@ -101,18 +102,18 @@ final class TelnetSession implements Runnable {
         updateEchoMode(session, rawOut, out);
     }
 
-    private void executeSlashCommand(SessionState session, PrintWriter out, String commandLine) {
+    private void executeTransportCommand(SessionState session, PrintWriter out, String commandLine) {
         switch (commandLine) {
         case "help", "h" -> {
             out.println("Telnet commands:");
-            out.println("  /help  Show this command reference.");
-            out.println("  /quit  Disconnect this session.");
+            out.println("  " + mud.transportControlPrefix() + "help  Show this command reference.");
+            out.println("  " + mud.transportControlPrefix() + "quit  Disconnect this session.");
         }
         case "quit", "exit", "q" -> {
             session.detach(mud);
             session.running = false;
         }
-        default -> out.println("Unknown telnet command: /" + commandLine);
+        default -> out.println("Unknown telnet command: " + mud.transportControlPrefix() + commandLine);
         }
     }
 

@@ -5,8 +5,8 @@ usage() {
     cat <<'USAGE'
 Usage: scripts/install-realms-database.sh [--delete] [--mysql PATH]
 
-Runs RealmsMUD's own installDatabase.pl script and synchronizes the generated
-realmslib password into mudlibs/realmsmud/jvmud/realmsmud.config.
+Runs RealmsMUD's own installDatabase.pl script and stores the generated
+realmslib password in an ignored, owner-readable environment file.
 
 Options:
   --delete      Tell the Realms installer to delete/recreate an existing RealmsLib database.
@@ -47,7 +47,7 @@ done
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 installer="$repo_root/mudlibs/realmsmud/source/secure/simulated-efuns/database/installDatabase.pl"
-config="$repo_root/mudlibs/realmsmud/jvmud/realmsmud.config"
+credential_file="$repo_root/mudlibs/realmsmud/jvmud/realms-database.env"
 
 if [[ ! -f "$installer" ]]; then
     echo "ERROR: Realms installer not found at $installer" >&2
@@ -117,28 +117,14 @@ generated_password="$(
 )"
 
 if [[ -n "$generated_password" ]]; then
-    python3 - "$config" "$generated_password" <<'PY'
-from pathlib import Path
-import sys
-
-config = Path(sys.argv[1])
-password = sys.argv[2]
-text = config.read_text()
-lines = text.splitlines()
-updated = False
-for index, line in enumerate(lines):
-    if line.startswith("database.password"):
-        lines[index] = f"database.password = {password}"
-        updated = True
-        break
-if not updated:
-    lines.append(f"database.password = {password}")
-config.write_text("\n".join(lines) + "\n")
-PY
-    echo "Updated JVMud Realms database password in $config"
+    umask 077
+    printf "export JVMUD_REALMS_DATABASE_PASSWORD='%s'\n" "$generated_password" > "$credential_file"
+    echo "Stored the JVMud Realms database password in $credential_file"
 else
-    echo "Realms installer did not create a new password; leaving $config unchanged."
-    generated_password="$(sed -n 's/^database.password[[:space:]]*=[[:space:]]*//p' "$config" | tail -n 1)"
+    echo "Realms installer did not create a new password."
+    if [[ -f "$credential_file" ]]; then
+        generated_password="$(sed -n "s/^export JVMUD_REALMS_DATABASE_PASSWORD='\(.*\)'$/\1/p" "$credential_file" | tail -n 1)"
+    fi
 fi
 
 if [[ -z "$generated_password" ]]; then

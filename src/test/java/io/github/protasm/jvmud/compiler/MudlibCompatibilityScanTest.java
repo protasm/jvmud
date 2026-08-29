@@ -89,9 +89,11 @@ final class MudlibCompatibilityScanTest {
 
     @Test
     void selectedMudlibFilesProduceCompatibilityReport() throws IOException {
-        RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(MUDLIB_SOURCE_ROOT, List.of()));
-        CoreEfuns.registerCore(context);
         MudlibBoundary boundary = MudlibBoundaryConfigReader.read(MUDLIB_ROOT, CONFIG_PATH);
+        RuntimeContext context = new RuntimeContext(new SearchPathIncludeResolver(
+                MUDLIB_SOURCE_ROOT,
+                boundary.includePaths().stream().map(MUDLIB_SOURCE_ROOT::resolve).toList()));
+        CoreEfuns.registerCore(context, boundary.engineCapabilities());
         context.setMudlibBoundary(boundary);
         CompilationPipeline pipeline = new CompilationPipeline("java/lang/Object", context);
         Map<String, CompilationResult> results = new LinkedHashMap<>();
@@ -102,7 +104,12 @@ final class MudlibCompatibilityScanTest {
             Path sourcePath = MUDLIB_SOURCE_ROOT.resolve(sourceName);
             String source = Files.readString(sourcePath);
             CompilationResult result =
-                    pipeline.run(sourcePath, source, stripExtension(sourceName), "/" + sourceName, ParserOptions.defaults());
+                    pipeline.run(
+                            sourcePath,
+                            source,
+                            stripExtension(sourceName),
+                            "/" + sourceName,
+                            ParserOptions.features(boundary.languageFeatures()));
             results.put(sourceName, result);
         }
 

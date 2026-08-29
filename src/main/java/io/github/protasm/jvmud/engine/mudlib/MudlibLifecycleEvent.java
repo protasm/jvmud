@@ -225,6 +225,16 @@ public enum MudlibLifecycleEvent {
     SCHEDULED_TICK_ERROR,
 
     /**
+     * The host has completed mudlib boot and configured preloading.
+     *
+     * <p>Current delivery: implemented by the instance boot coordinator. JVMud invokes the mapped
+     * no-argument method on the configured boundary object. Mudlibs may use this neutral hook to
+     * perform flavor-specific driver initialization without teaching the host about driver master
+     * objects or applies.</p>
+     */
+    SERVER_STARTED,
+
+    /**
      * The host server is shutting down a mudlib.
      *
      * <p>Current delivery: implemented by the server layer. JVMud invokes the mapped method on the

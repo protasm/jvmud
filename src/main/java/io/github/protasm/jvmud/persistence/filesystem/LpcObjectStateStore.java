@@ -91,7 +91,7 @@ public final class LpcObjectStateStore {
         while (type != null && type != Object.class) {
             for (Field field : type.getDeclaredFields()) {
                 int modifiers = field.getModifiers();
-                if (field.isSynthetic() || Modifier.isStatic(modifiers)) {
+                if (field.isSynthetic() || Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers)) {
                     continue;
                 }
                 action.accept(field);

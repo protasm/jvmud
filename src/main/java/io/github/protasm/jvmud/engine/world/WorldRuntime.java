@@ -16,9 +16,10 @@ import java.util.Set;
  * Owns the core world ontology, place links, and containment rules for one JVMud world.
  *
  * <p>A {@code WorldRuntime} is the engine-level view of one running world. It deliberately models
- * JVMud concepts directly: places are linked locations, entities are contained by exactly one
+ * JVMud concepts directly: places are linked locations, situated entities have exactly one
  * immediate location, and movement is a containment update optionally driven by a place-to-place
- * link. LPC objects can adapt into this model, but legacy LP driver terms are not required here.</p>
+ * link. Detached entities may exist while a host or mudlib is assembling them. LPC objects can
+ * adapt into this model, but legacy LP driver terms are not required here.</p>
  *
  * <p>Instances are identity-oriented. A {@link Place} or {@link Entity} must have been created by
  * this runtime before it can be used as a location, link endpoint, movement target, or inventory
@@ -108,6 +109,23 @@ public final class WorldRuntime {
         entities.put(entity.id(), entity);
         contents.put(entity, new ArrayList<>());
         move(entity, initialLocation);
+        return entity;
+    }
+
+    /**
+     * Creates an entity that is not yet attached to a world location.
+     *
+     * <p>This is primarily useful while adapting opaque mudlib objects: an object may exist before
+     * mudlib policy chooses its first environment. The entity becomes ordinarily located when
+     * {@link #move(Entity, Location)} is called.</p>
+     */
+    public Entity createDetachedEntity(String id, String displayName, Capability... capabilities) {
+        if (places.containsKey(id) || entities.containsKey(id)) {
+            throw new IllegalArgumentException("A location already exists with id: " + id);
+        }
+        Entity entity = new Entity(id, displayName, capabilitySet(capabilities));
+        entities.put(entity.id(), entity);
+        contents.put(entity, new ArrayList<>());
         return entity;
     }
 
@@ -268,6 +286,16 @@ public final class WorldRuntime {
 
         locations.put(entity, destination);
         contents.get(destination).add(entity);
+    }
+
+    /** Removes an entity from its immediate location without removing the entity itself. */
+    public void detach(Entity entity) {
+        Objects.requireNonNull(entity, "entity");
+        ensureKnownEntity(entity);
+        Location oldLocation = locations.remove(entity);
+        if (oldLocation != null) {
+            contents.get(oldLocation).remove(entity);
+        }
     }
 
     private void removeEntity(Entity entity) {

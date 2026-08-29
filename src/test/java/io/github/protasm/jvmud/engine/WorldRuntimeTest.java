@@ -3,16 +3,55 @@ package io.github.protasm.jvmud.engine;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.github.protasm.jvmud.engine.world.Capability;
 import io.github.protasm.jvmud.engine.world.Entity;
 import io.github.protasm.jvmud.engine.world.Link;
+import io.github.protasm.jvmud.engine.world.MudlibWorldProjection;
 import io.github.protasm.jvmud.engine.world.Place;
 import io.github.protasm.jvmud.engine.world.World;
 import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import org.junit.jupiter.api.Test;
 
 final class WorldRuntimeTest {
+    @Test
+    void mudlibProjectionReadsAndWritesTheNativeContainmentGraph() {
+        WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
+        MudlibWorldProjection projection = new MudlibWorldProjection(runtime);
+        Object roomObject = new Object();
+        Object actorObject = new Object();
+        Place place = runtime.createPlace("place/start", "Start");
+        projection.bindPlace(roomObject, place);
+
+        projection.move(actorObject, roomObject);
+        Entity actor = runtime.contentsOf(place).getFirst();
+
+        assertEquals(place, runtime.locationOf(actor));
+        assertEquals(roomObject, projection.environment(actorObject));
+        assertEquals(java.util.List.of(actorObject), projection.inventory(roomObject));
+
+        runtime.detach(actor);
+        assertEquals(null, projection.environment(actorObject));
+        assertTrue(projection.inventory(roomObject).isEmpty());
+    }
+
+    @Test
+    void mudlibProjectionRejectsConflictingBindingsWithoutCorruptingIdentity() {
+        WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
+        MudlibWorldProjection projection = new MudlibWorldProjection(runtime);
+        Object first = new Object();
+        Object second = new Object();
+        Place place = runtime.createPlace("place/start", "Start");
+        projection.bindPlace(first, place);
+
+        assertThrows(IllegalArgumentException.class, () -> projection.bindPlace(second, place));
+        projection.move(new Object(), second);
+
+        assertTrue(projection.inventory(first).isEmpty());
+        assertEquals(1, projection.inventory(second).size());
+    }
+
     @Test
     void createsSituatedEntitiesInPlaces() {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));

@@ -29,4 +29,9 @@ public interface InstanceHost {
     boolean isCapturingNoEchoInput(InstancePersona persona);
 
     boolean isAttached(InstancePersona persona);
+
+    /** Prefix that escapes a line into transport control rather than mudlib command dispatch. */
+    default String transportControlPrefix() {
+        return "//";
+    }
 }

@@ -12,7 +12,7 @@ import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjectionRole;
-import io.github.protasm.jvmud.instance.LegacyPlayerObjectAdapter;
+import io.github.protasm.jvmud.instance.CombinedPlayerPersonaAdapter;
 import io.github.protasm.jvmud.instance.MudInstance;
 import io.github.protasm.jvmud.instance.MudlibBoot;
 import io.github.protasm.jvmud.instance.MudlibBootProgress;
@@ -35,8 +35,39 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 final class TelnetServerTest {
+    private static final String DEFAULT_CONFIG_PATH = "jvmud/lpmuseum.config";
+    private static final String LP245_CONFIG_PATH = "jvmud/lp245.config";
+
     @TempDir
     Path tempDir;
+
+    @Test
+    void bootRequiresAnExplicitExistingManifest() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        assertThrows(
+                IllegalStateException.class,
+                () -> new MudlibBoot(runtime, tempDir, "jvmud/missing.config").boot());
+    }
+
+    @Test
+    void bootDeliversExplicitServerStartedLifecycleHook() throws IOException {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.writeString(tempDir.resolve("jvmud/test.config"), """
+                game_id = lifecycle-test
+                mudlib_object = jvmud/mudlib
+                lifecycle.server_started = server_started
+                """);
+        Files.writeString(tempDir.resolve("jvmud/mudlib.c"), """
+                int started;
+                void server_started() { started = 1; }
+                int query_started() { return started; }
+                """);
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+
+        new MudlibBoot(runtime, tempDir, "jvmud/test.config").boot();
+
+        assertEquals(1, runtime.invokeObject(runtime.loadOrGetObject("jvmud/mudlib"), "query_started"));
+    }
 
     @Test
     void telnetServerLaunchOptionsDefaultToLocalMudlibStart() {
@@ -45,7 +76,7 @@ final class TelnetServerTest {
         assertEquals(repositoryRoot().resolve("mudlibs/lpmuseum"), options.mudlibRoot());
         assertEquals(4000, options.port());
         assertEquals("localhost", options.bindAddress());
-        assertEquals(MudlibBoot.DEFAULT_CONFIG_PATH, options.configObjectPath());
+        assertEquals(DEFAULT_CONFIG_PATH, options.configObjectPath());
         assertFalse(options.help());
         assertFalse(options.traceStartupLoads());
     }
@@ -99,7 +130,7 @@ final class TelnetServerTest {
         Path museum = lpmuseumTestRoot();
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+                "127.0.0.1", 0, museum, DEFAULT_CONFIG_PATH)) {
             server.start();
             assertEquals("preload manifest: none declared.", server.preloadSummary());
 
@@ -261,7 +292,7 @@ final class TelnetServerTest {
                 assertTrue(portal.contains("The portal hums and points toward the Vanilla LPMUD 2.4.5 exhibit."),
                         portal);
                 assertTrue(portal.contains("The portal is quiet."), portal);
-                assertFalse(portal.contains("The exhibit portal opens."), portal);
+                assertFalse(portal.contains("Transferring to"), portal);
 
                 socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -278,7 +309,7 @@ final class TelnetServerTest {
         Path museum = mountedLpmuseumTestRoot();
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+                "127.0.0.1", 0, museum, DEFAULT_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -300,7 +331,7 @@ final class TelnetServerTest {
                 socket.getOutputStream().write("enter portal\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 String lp245Entry = readUntilQuietAfterContains(socket, "> ");
-                assertTrue(lp245Entry.contains("The exhibit portal opens."), lp245Entry);
+                assertTrue(lp245Entry.contains("Transferring to vanilla-lpmud-245."), lp245Entry);
                 assertTrue(lp245Entry.contains("What is your name: protasm"), lp245Entry);
                 assertTrue(lp245Entry.contains("Version: "), lp245Entry);
                 assertFalse(lp245Entry.contains("Password:"), lp245Entry);
@@ -356,7 +387,7 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
                 String returned = readUntilQuietAfterContains(socket, "You step back into LPMuseum as Museum persona.");
                 assertTrue(returned.contains("The museum return portal hums."), returned);
-                assertTrue(returned.contains("The return portal opens."), returned);
+                assertTrue(returned.contains("Returning to the previous world."), returned);
                 assertTrue(returned.contains("You step back into LPMuseum as Museum persona."), returned);
                 assertFalse(returned.contains("Please enter your user ID:"), returned);
 
@@ -378,7 +409,7 @@ final class TelnetServerTest {
         Path lp245 = lp245TestRoot();
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, lp245, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -437,7 +468,7 @@ final class TelnetServerTest {
                 assertFalse(returned.contains("Your sensitive mind notices a wrongness"), returned);
                 assertFalse(returned.contains("You have no heart beat"), returned);
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 readUntilSocketClosed(socket);
             }
@@ -452,7 +483,7 @@ final class TelnetServerTest {
                 .replace("move_object(myself, \"room/church\");", "move_object(myself, \"room/wiz_hall\");"));
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, lp245, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -496,7 +527,7 @@ final class TelnetServerTest {
                 String north = readUntilQuietAfterContains(socket, "A strong magic force stops you.");
                 assertFalse(north.contains("Your sensitive mind notices a wrongness"), north);
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 readUntilSocketClosed(socket);
             }
@@ -509,7 +540,7 @@ final class TelnetServerTest {
         String accountId = uniqueAccountId("returning");
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+                "127.0.0.1", 0, museum, DEFAULT_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -636,7 +667,7 @@ final class TelnetServerTest {
         Path museum = lpmuseumTestRoot();
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+                "127.0.0.1", 0, museum, DEFAULT_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -695,7 +726,7 @@ final class TelnetServerTest {
         Path museum = lpmuseumTestRoot();
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, museum, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+                "127.0.0.1", 0, museum, DEFAULT_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -728,7 +759,7 @@ final class TelnetServerTest {
     @Test
     void lpmuseumSuppressesAmbientMessagesUntilAccountLoginCompletes() throws Exception {
         Path museum = lpmuseumTestRoot();
-        MudInstance mud = MudInstance.boot(museum, MudlibBoot.DEFAULT_CONFIG_PATH);
+        MudInstance mud = MudInstance.boot(museum, DEFAULT_CONFIG_PATH);
         StringWriter output = new StringWriter();
         PrintWriter out = new PrintWriter(output, true);
 
@@ -757,7 +788,7 @@ final class TelnetServerTest {
                 .build());
         CoreEfuns.registerCore(runtime);
 
-        MudlibBootResult result = new MudlibBoot(runtime, museum, MudlibBoot.DEFAULT_CONFIG_PATH, false).boot();
+        MudlibBootResult result = new MudlibBoot(runtime, museum, DEFAULT_CONFIG_PATH, true).boot();
         Object concourse = runtime.loadOrGetObject("place/concourse");
         Object staffer = runtime.present("staffer", concourse);
         Object preloadedStaffer = runtime.loadOrGetObject("entity/staffer");
@@ -784,7 +815,7 @@ final class TelnetServerTest {
                 .build());
         CoreEfuns.registerCore(runtime);
 
-        MudlibBootResult result = new MudlibBoot(runtime, museum, MudlibBoot.DEFAULT_CONFIG_PATH, false).boot();
+        MudlibBootResult result = new MudlibBoot(runtime, museum, DEFAULT_CONFIG_PATH, true).boot();
         Object workshop = runtime.loadOrGetObject("place/workshop");
         Object machine = runtime.present("vending machine", workshop);
 
@@ -808,7 +839,7 @@ final class TelnetServerTest {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room/village"));
-        Files.writeString(tempDir.resolve(MudlibBoot.LP245_CONFIG_PATH), """
+        Files.writeString(tempDir.resolve(LP245_CONFIG_PATH), """
                 mfun_object = jvmud/mfuns
                 initial_place = room/village/vill_green
                 preload_file = init_file
@@ -830,7 +861,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             assertEquals(
@@ -843,7 +874,7 @@ final class TelnetServerTest {
     void legacyPlayerObjectAdapterMarksConfiguredPlayerAsCombinedProjection() {
         Object playerObject = new Object();
 
-        var projection = new LegacyPlayerObjectAdapter("obj/player").combinedProjection(playerObject);
+        var projection = new CombinedPlayerPersonaAdapter("obj/player").combinedProjection(playerObject);
 
         assertEquals("obj/player", projection.sourcePath());
         assertEquals(playerObject, projection.object());
@@ -874,7 +905,7 @@ final class TelnetServerTest {
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -887,7 +918,7 @@ final class TelnetServerTest {
                 String look = readUntilContains(socket, "A test green.");
                 assertTrue(look.contains("A test green."));
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
         }
@@ -916,7 +947,7 @@ final class TelnetServerTest {
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -934,7 +965,7 @@ final class TelnetServerTest {
                 String longCommand = readUntilContains(socket, "west command");
                 assertTrue(longCommand.contains("west command"), longCommand);
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
         }
@@ -963,7 +994,7 @@ final class TelnetServerTest {
         installMinimalMudlibPlayer(mudlibRoot, "room/village/vill_green");
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, mudlibRoot, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+                "127.0.0.1", 0, mudlibRoot, DEFAULT_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -975,7 +1006,7 @@ final class TelnetServerTest {
                 String look = readUntilContains(socket, "A spaced-path green.");
                 assertTrue(look.contains("A spaced-path green."));
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
         }
@@ -987,6 +1018,8 @@ final class TelnetServerTest {
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room/village"));
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mfun_object = jvmud/mfuns
                 player_object = obj/player
                 initial_place = room/village/vill_green
@@ -1020,7 +1053,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1038,6 +1071,8 @@ final class TelnetServerTest {
     void telnetSessionCanAttachConfiguredMudlibPlayerObject() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
                 initial_place = room/village/vill_green
@@ -1120,7 +1155,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1139,7 +1174,7 @@ final class TelnetServerTest {
                 assertFalse(north.contains("mudlib player leaves north."), north);
                 assertFalse(north.contains("mudlib player arrives."), north);
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
         }
@@ -1149,6 +1184,8 @@ final class TelnetServerTest {
     void runtimeErrorsCanBeHandledByMudlibBoundaryObject() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mudlib_object = jvmud/mudlib
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
@@ -1183,7 +1220,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1208,6 +1245,8 @@ final class TelnetServerTest {
     void compileErrorsCanBeLoggedByMudlibBoundaryObject() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mudlib_object = jvmud/mudlib
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
@@ -1253,7 +1292,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1281,6 +1320,8 @@ final class TelnetServerTest {
     void serverShutdownCanNotifyMudlibBoundaryObject() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mudlib_object = jvmud/mudlib
                 mfun_object = jvmud/mfuns
                 initial_place = room/start
@@ -1303,7 +1344,7 @@ final class TelnetServerTest {
                 }
                 """);
 
-        TelnetServer server = new TelnetServer("127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH);
+        TelnetServer server = new TelnetServer("127.0.0.1", 0, tempDir, LP245_CONFIG_PATH);
         server.start();
         server.close();
         server.close();
@@ -1315,6 +1356,8 @@ final class TelnetServerTest {
     void telnetSessionRoutesCapturedInputThroughMfunInputTo() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
                 player_prompt = "> "
@@ -1377,7 +1420,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1395,7 +1438,7 @@ final class TelnetServerTest {
                 String greeting = readUntilContains(socket, "Hello Alice\n> ");
                 assertTrue(greeting.contains("Hello Alice"));
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
         }
@@ -1406,6 +1449,8 @@ final class TelnetServerTest {
         installMfunShim();
         Files.writeString(tempDir.resolve("WELCOME"), "Welcome login.\\n");
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
                 initial_place = room/start
@@ -1464,7 +1509,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1479,7 +1524,7 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
                 assertTrue(readUntilContains(socket, "Hello Alice").contains("Hello Alice"));
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
         }
@@ -1489,6 +1534,8 @@ final class TelnetServerTest {
     void telnetLoginWhoDoesNotExposePendingLoginControllerOrDeadPrompt() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mfun_object = jvmud/mfuns
                 player_object = obj/login
                 initial_place = room/start
@@ -1516,7 +1563,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1540,6 +1587,8 @@ final class TelnetServerTest {
     void telnetSessionInvokesConfiguredPlayerPostRebindLifecycleHook() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mfun_object = jvmud/mfuns
                 player_object = obj/login
                 initial_place = room/start
@@ -1578,7 +1627,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1594,7 +1643,7 @@ final class TelnetServerTest {
                 assertTrue(handled.contains("rebound handled look"), handled);
                 assertFalse(handled.contains("You can't do that."), handled);
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
 
@@ -1605,7 +1654,7 @@ final class TelnetServerTest {
                 assertFalse(nextLogin.contains("Could not attach player"), nextLogin);
                 assertFalse(nextLogin.contains("Attached player 2 in"), nextLogin);
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
         }
@@ -1615,6 +1664,8 @@ final class TelnetServerTest {
     void telnetSessionDoesNotFallbackToHostPersonaWhenConfiguredMudlibPlayerAttachFails() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mfun_object = jvmud/mfuns
                 player_object = obj/login
                 initial_place = room/start
@@ -1634,7 +1685,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1651,6 +1702,8 @@ final class TelnetServerTest {
     void telnetSessionDoesNotCreateHostPersonaWhenMudlibPlayerObjectIsMissing() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mfun_object = jvmud/mfuns
                 initial_place = room/start
                 """);
@@ -1662,7 +1715,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1679,6 +1732,8 @@ final class TelnetServerTest {
     void telnetInputCaptureDeliversExtraCompatibilityArguments() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
                 initial_place = room/start
@@ -1705,7 +1760,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1719,7 +1774,7 @@ final class TelnetServerTest {
                 assertTrue(captured.contains("left:blue:7"), captured);
                 assertFalse(captured.contains("You can't do that."), captured);
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
         }
@@ -1729,6 +1784,8 @@ final class TelnetServerTest {
     void telnetLoginRestoresSavedPlayerInsteadOfCreatingAgain() throws Exception {
         installMfunShim();
         Files.writeString(tempDir.resolve("jvmud/lp245.config"), """
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 mfun_object = jvmud/mfuns
                 player_object = obj/test_player
                 initial_place = room/start
@@ -1825,7 +1882,7 @@ final class TelnetServerTest {
                 """);
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.LP245_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
@@ -1857,7 +1914,7 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
                 assertTrue(readUntilContains(socket, "Welcome new Alice").contains("Welcome new Alice"));
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 socket.shutdownOutput();
                 assertSavedPlayerJsonFile(tempDir.resolve("players/alice.o"));
@@ -1886,7 +1943,7 @@ final class TelnetServerTest {
                 assertFalse(welcomeBack.contains("Email: "), welcomeBack);
                 assertFalse(welcomeBack.contains("Gender: "), welcomeBack);
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
 
@@ -1928,7 +1985,7 @@ final class TelnetServerTest {
                 assertFalse(reattached.contains("Attached player"), reattached);
                 assertTrue(reattached.contains("Name: "), reattached);
 
-                socket.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
             }
         }
@@ -1955,7 +2012,7 @@ final class TelnetServerTest {
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, DEFAULT_CONFIG_PATH)) {
             server.start();
 
             try (Socket first = new Socket("127.0.0.1", server.port())) {
@@ -1974,8 +2031,8 @@ final class TelnetServerTest {
                     second.getOutputStream().flush();
                     assertTrue(readUntilContains(second, "touch 2").contains("touch 2"));
 
-                    first.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
-                    second.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                    first.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
+                    second.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                     first.getOutputStream().flush();
                     second.getOutputStream().flush();
                 }
@@ -2012,7 +2069,7 @@ final class TelnetServerTest {
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
         try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH)) {
+                "127.0.0.1", 0, tempDir, DEFAULT_CONFIG_PATH)) {
             server.start();
 
             try (Socket first = new Socket("127.0.0.1", server.port());
@@ -2032,8 +2089,8 @@ final class TelnetServerTest {
                 assertTrue(readUntilContains(first, "sent").contains("sent"));
                 assertTrue(readUntilContains(second, "poke from 127.0.0.1").contains("poke from 127.0.0.1"));
 
-                first.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
-                second.getOutputStream().write("/quit\n".getBytes(StandardCharsets.UTF_8));
+                first.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
+                second.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
                 first.getOutputStream().flush();
                 second.getOutputStream().flush();
             }
@@ -2046,11 +2103,12 @@ final class TelnetServerTest {
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room"));
         Files.createDirectories(tempDir.resolve("room/village"));
-        Files.writeString(tempDir.resolve(MudlibBoot.DEFAULT_CONFIG_PATH), """
+        Files.writeString(tempDir.resolve(DEFAULT_CONFIG_PATH), """
                 mfun_object = jvmud/mfuns
                 lifecycle.object_loaded = reset
                 lifecycle.interaction_scope_started = init
                 preload_file = init_file
+                initial_place = room/village/vill_green
                 """);
         Files.writeString(tempDir.resolve("init_file"), """
                 # preload one simple object
@@ -2097,13 +2155,11 @@ final class TelnetServerTest {
                 .build());
         CoreEfuns.registerCore(runtime);
 
-        MudlibBootResult result = new MudlibBoot(runtime, tempDir, MudlibBoot.DEFAULT_CONFIG_PATH, false).boot();
+        MudlibBootResult result = new MudlibBoot(runtime, tempDir, DEFAULT_CONFIG_PATH, true).boot();
 
         assertEquals(1, result.preloadedObjects().size());
         assertTrue(result.preloadedObjects().contains("obj/preload"));
-        assertEquals("room/village/vill_green", result.startingRoom());
-        assertEquals(null, result.actorHandle());
-        assertEquals(null, result.actor());
+        assertEquals("room/village/vill_green", result.initialPlacePath());
         assertTrue(result.skippedPreloads().isEmpty());
         assertEquals(List.of("obj/preload"), result.preloadManifestPreloadedObjects());
         assertTrue(result.preloadManifestSkippedPreloads().isEmpty());
@@ -2143,7 +2199,6 @@ final class TelnetServerTest {
                         runtime,
                         tempDir,
                         "config/startup",
-                        false,
                         false,
                         new MudlibBootProgress() {
                             @Override
@@ -2225,7 +2280,7 @@ final class TelnetServerTest {
                 .build());
         CoreEfuns.registerCore(runtime);
 
-        new MudlibBoot(runtime, tempDir, "config/startup", false, false).boot();
+        new MudlibBoot(runtime, tempDir, "config/startup", false).boot();
 
         assertEquals(List.of(
                 "start 0 obj/preload",
@@ -2355,13 +2410,16 @@ final class TelnetServerTest {
                     return ({ "object-initialized", "scheduled tick" });
                 }
                 """);
+        Files.writeString(tempDir.resolve("jvmud/test.config"), """
+                mudlib_object = jvmud/mudlib
+                """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(tempDir)
                 .build());
         CoreEfuns.registerCore(runtime);
 
-        MudlibBootResult result = new MudlibBoot(runtime, tempDir).boot();
+        MudlibBootResult result = new MudlibBoot(runtime, tempDir, "jvmud/test.config").boot();
         MudlibBoundary boundary = result.worldRuntime().mudlibBoundary();
 
         assertEquals("jvmud/mudlib", boundary.boundaryObjectPath().orElseThrow());
@@ -2427,9 +2485,7 @@ final class TelnetServerTest {
         assertEquals("on_scope", boundary.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElseThrow());
         assertTrue(result.preloadedObjects().contains("config/mudlib"));
         assertTrue(result.preloadedObjects().contains("obj/preload"));
-        assertEquals("place/start", result.startingRoom());
-        assertEquals(null, result.actorHandle());
-        assertEquals(null, result.actor());
+        assertEquals("place/start", result.initialPlacePath());
     }
 
     @Test
@@ -2441,9 +2497,9 @@ final class TelnetServerTest {
                 database.user = muduser
                 database.password = mudpass
                 engine_function.jvmud_size = sizeof
-                ldmud_compat_predefine.__VERSION_MAJOR__ = 3
-                ldmud_compat_predefine.__VERSION_MINOR__ = 6
-                ldmud_compat_function_predefine.__EFUN_DEFINED__.text_width = 0
+                compatibility.predefine.__VERSION_MAJOR__ = 3
+                compatibility.predefine.__VERSION_MINOR__ = 6
+                compatibility.function_predefine.__EFUN_DEFINED__.text_width = 0
                 """);
         Files.writeString(tempDir.resolve("config/mudlib.c"), """
                 string player_prompt() {
@@ -2482,6 +2538,9 @@ final class TelnetServerTest {
         Path source = repositoryRoot().resolve("mudlibs/lpmuseum");
         Path target = tempDir.resolve("lpmuseum-" + Long.toString(System.nanoTime(), 36));
         copyMudlibTreeWithoutSavedAccounts(source, target);
+        Path config = target.resolve(DEFAULT_CONFIG_PATH);
+        Files.writeString(config, Files.readString(config).replace(
+                "mount.vanilla-lpmud-245 = ../../lp245/jvmud/lp245.config\n", ""));
         return target;
     }
 
@@ -2667,11 +2726,13 @@ final class TelnetServerTest {
         Files.createDirectories(mudlibRoot.resolve("jvmud"));
         String config = """
                 mfun_object = jvmud/mfuns
+                language_features = protected_evaluation, typed_function_literals, inline_callables, multi_value_mappings, varargs
+                engine_capabilities = mudlib_files, database, session_control, host_control
                 lifecycle.object_loaded = reset
                 lifecycle.interaction_scope_started = init
                 """;
-        Files.writeString(mudlibRoot.resolve(MudlibBoot.DEFAULT_CONFIG_PATH), config);
-        Files.writeString(mudlibRoot.resolve(MudlibBoot.LP245_CONFIG_PATH), config);
+        Files.writeString(mudlibRoot.resolve(DEFAULT_CONFIG_PATH), config);
+        Files.writeString(mudlibRoot.resolve(LP245_CONFIG_PATH), config);
         Files.writeString(mudlibRoot.resolve("jvmud/mudlib.c"), """
                 string mfun_object() {
                     return "jvmud/mfuns";
@@ -2856,11 +2917,11 @@ final class TelnetServerTest {
                 """);
         String playerConfig = "player_object = obj/player\ninitial_place = " + initialPlace + "\n";
         Files.writeString(
-                mudlibRoot.resolve(MudlibBoot.DEFAULT_CONFIG_PATH),
+                mudlibRoot.resolve(DEFAULT_CONFIG_PATH),
                 playerConfig,
                 StandardOpenOption.APPEND);
         Files.writeString(
-                mudlibRoot.resolve(MudlibBoot.LP245_CONFIG_PATH),
+                mudlibRoot.resolve(LP245_CONFIG_PATH),
                 playerConfig,
                 StandardOpenOption.APPEND);
     }

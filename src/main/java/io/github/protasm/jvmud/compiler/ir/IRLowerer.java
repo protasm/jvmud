@@ -218,7 +218,12 @@ public final class IRLowerer {
             IRExpression initializer =
                     lowerFieldInitializer(field.initializer(), fieldType, fieldsBySymbol, problems, ownerInternalName);
             IRField irField = new IRField(
-                    field.line(), ownerInternalName, field.symbol().name(), fieldType, initializer);
+                    field.line(),
+                    ownerInternalName,
+                    field.symbol().name(),
+                    fieldType,
+                    initializer,
+                    !field.modifiers().isNosave());
             fields.add(irField);
             fieldsBySymbol.put(field.symbol(), irField);
         }
@@ -296,7 +301,8 @@ public final class IRLowerer {
                                     type,
                                     fieldsBySymbol,
                                     problems,
-                                    objectInternalName));
+                                    objectInternalName),
+                            !scopedSymbol.field().modifiers().isNosave());
                     fieldsBySymbol.put(symbol, flattenedField);
                     flattenedInheritedFields.add(flattenedField);
                     continue;
@@ -311,7 +317,8 @@ public final class IRLowerer {
                                 primaryParentCoverage),
                         symbol.name(),
                         type,
-                        null);
+                        null,
+                        !scopedSymbol.field().modifiers().isNosave());
                 fieldsBySymbol.put(symbol, inheritedField);
             }
         }
@@ -434,7 +441,8 @@ public final class IRLowerer {
                     objectInternalName,
                     symbol.name(),
                     type,
-                    lowerFieldInitializer(field.initializer(), type, fieldsBySymbol, problems, objectInternalName));
+                    lowerFieldInitializer(field.initializer(), type, fieldsBySymbol, problems, objectInternalName),
+                    !field.modifiers().isNosave());
             fieldsBySymbol.put(symbol, flattenedField);
             flattenedInheritedFields.add(flattenedField);
             return;
@@ -467,7 +475,8 @@ public final class IRLowerer {
                                 primaryParentCoverage),
                         symbol.name(),
                         type,
-                        null));
+                        null,
+                        !field.modifiers().isNosave()));
     }
 
     private Set<CompilationUnit> secondaryParentUnits(
@@ -617,7 +626,8 @@ public final class IRLowerer {
                             type,
                             fieldsBySymbol,
                             problems,
-                            objectInternalName));
+                            objectInternalName),
+                    !scopedSymbol.field().modifiers().isNosave());
             fieldsBySymbol.put(symbol, flattenedField);
             flattenedInheritedFields.add(flattenedField);
             return;
@@ -650,7 +660,8 @@ public final class IRLowerer {
                                 primaryParentCoverage),
                         symbol.name(),
                         type,
-                        null));
+                        null,
+                        !scopedSymbol.field().modifiers().isNosave()));
     }
 
     private IRField findField(Map<Symbol, IRField> fieldsBySymbol, String ownerInternalName, String name) {
@@ -2478,7 +2489,13 @@ public final class IRLowerer {
                 }
                 owner = currentInternalName;
             }
-            IRField synthesized = new IRField(astField.line(), owner, astField.symbol().name(), type, null);
+            IRField synthesized = new IRField(
+                    astField.line(),
+                    owner,
+                    astField.symbol().name(),
+                    type,
+                    null,
+                    !astField.modifiers().isNosave());
             fieldsBySymbol.put(astField.symbol(), synthesized);
             problems.add(
                     new CompilationProblem(

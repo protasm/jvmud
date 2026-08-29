@@ -1345,7 +1345,7 @@ final class RealmsMudCompatibilityScanTest {
         assertEquals("jvmud_regex_replace", boundary.engineFunction("regreplace").orElseThrow());
         assertEquals("jvmud_regex_explode", boundary.engineFunction("regexplode").orElseThrow());
         assertEquals("jvmud_remove_action", boundary.engineFunction("remove_action").orElseThrow());
-        assertEquals("jvmud_driver_info", boundary.engineFunction("driver_info").orElseThrow());
+        assertTrue(boundary.engineFunction("driver_info").isEmpty());
         assertEquals("jvmud_notify_fail", boundary.engineFunction("notify_fail").orElseThrow());
         assertEquals("jvmud_to_int", boundary.engineFunction("to_int").orElseThrow());
         assertEquals("jvmud_to_string", boundary.engineFunction("to_string").orElseThrow());

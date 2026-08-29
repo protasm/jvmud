@@ -28,6 +28,9 @@ import io.github.protasm.jvmud.engine.time.ScheduledTask;
 import io.github.protasm.jvmud.engine.identity.SessionId;
 import io.github.protasm.jvmud.engine.identity.SessionRecord;
 import io.github.protasm.jvmud.engine.time.WorldScheduler;
+import io.github.protasm.jvmud.engine.world.MudlibWorldProjection;
+import io.github.protasm.jvmud.engine.world.World;
+import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import io.github.protasm.jvmud.persistence.jdbc.RuntimeDatabaseService;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -66,8 +69,8 @@ public final class RuntimeContext {
     private final Map<Object, String> objectIds = new IdentityHashMap<>();
     private final Set<Object> destroyedObjects =
             Collections.newSetFromMap(new IdentityHashMap<>());
-    private final Map<Object, Object> environments = new IdentityHashMap<>();
-    private final Map<Object, List<Object>> inventories = new IdentityHashMap<>();
+    private MudlibWorldProjection worldProjection = new MudlibWorldProjection(
+            new WorldRuntime(new World("compiler-runtime", "Compiler Runtime")));
     private final Map<String, Map<String, Object>> entityAliases = new LinkedHashMap<>();
     private final Map<Object, Map<String, String>> aliasesByEntity = new IdentityHashMap<>();
     private final Map<Object, Integer> lightLevels = new IdentityHashMap<>();
@@ -123,6 +126,7 @@ public final class RuntimeContext {
     private String mudlibGlobalObjectPath;
     private String compatibilityGlobalObjectPath;
     private Set<String> compatibilityGlobalOverrides = Set.of();
+    private ParserOptions parserOptions = ParserOptions.defaults();
     private final Map<String, Optional<ASTObject>> globalObjectDeclarations = new LinkedHashMap<>();
     private final Map<String, GlobalObjectSource> inMemoryGlobalObjectSources = new LinkedHashMap<>();
 
@@ -147,11 +151,36 @@ public final class RuntimeContext {
         return efunRegistry;
     }
 
+    /**
+     * Selects the native world projection that owns mudlib containment state.
+     *
+     * <p>Hosted instances set this during boot before loading world objects. Compiler-only runtimes
+     * retain an isolated native world by default.</p>
+     */
+    public void setWorldProjection(MudlibWorldProjection worldProjection) {
+        this.worldProjection = Objects.requireNonNull(worldProjection, "worldProjection");
+    }
+
+    /** Returns the native world projection currently used for LPC containment operations. */
+    public MudlibWorldProjection worldProjection() {
+        return worldProjection;
+    }
+
     public Preprocessor newPreprocessor() {
         return new Preprocessor(
                 includeResolver,
                 mudlibBoundary.compatibilityPredefines(),
                 mudlibBoundary.compatibilityFunctionPredefines());
+    }
+
+    /** Selects the parser profile used for runtime-loaded mudlib source. */
+    public void setParserOptions(ParserOptions parserOptions) {
+        this.parserOptions = Objects.requireNonNull(parserOptions, "parserOptions");
+    }
+
+    /** Returns the parser profile used for runtime-loaded mudlib source. */
+    public ParserOptions parserOptions() {
+        return parserOptions;
     }
 
     public void registerEfun(Efun efun) {
@@ -449,7 +478,7 @@ public final class RuntimeContext {
      * Resolves an engine efun without consulting mudlib compatibility functions.
      *
      * <p>This is used for LPC {@code efun::name(...)} calls, where the source explicitly asks to
-     * bypass mudlib-level shadowing and invoke the driver/engine function directly.
+     * bypass mudlib-level shadowing and invoke the JVMud-native engine function directly.
      */
     public Efun resolveEngineEfun(String name, int arity) {
         return efunRegistry.lookup(name, arity);
@@ -591,7 +620,7 @@ public final class RuntimeContext {
             }
             Scanner scanner = new Scanner(newPreprocessor());
             TokenList tokens = scanner.scan(source.sourcePath(), source.source(), source.displayPath());
-            Parser parser = new Parser(this, ParserOptions.defaults());
+            Parser parser = new Parser(this, parserOptions);
             return Optional.of(parser.parse(objectPath, tokens));
         } catch (IOException e) {
             return Optional.empty();
@@ -869,10 +898,10 @@ public final class RuntimeContext {
             MudlibProjection mudlibProjection) {
         Objects.requireNonNull(persona, "persona");
         SessionId engineSessionId = new SessionId(sessionId);
-        PersonaId personaId = legacyPersonaIdFor(persona);
+        PersonaId personaId = projectionPersonaIdFor(persona);
         Consumer<String> sink = sessionOutputSink != null ? sessionOutputSink : ignored -> {};
         SessionBinding existing = sessions.get(engineSessionId);
-        PlayerId playerId = existing != null ? existing.sessionRecord().playerId() : legacyPlayerIdFor(persona);
+        PlayerId playerId = existing != null ? existing.sessionRecord().playerId() : projectionPlayerIdFor(persona);
         Optional<Object> mudlibProfileProjection = existing != null
                 ? existing.playerRecord().mudlibProfileProjection()
                 : Optional.ofNullable(mudlibProjection);
@@ -921,9 +950,8 @@ public final class RuntimeContext {
     /**
      * Rebinds an existing host session from one LPC object projection to another.
      *
-     * <p>This models legacy driver handoff operations such as RealmsMUD's use of {@code exec}:
-     * the network session, output sink, Player record, and connection metadata stay in place while
-     * the mudlib-facing interactive object changes from a login object to a player object.</p>
+     * <p>The network session, output sink, Player record, and connection metadata stay in place
+     * while the mudlib-facing interactive projection changes.</p>
      */
     public boolean rebindSessionLpcObject(Object newObject, Object oldObject) {
         if (newObject == null || oldObject == null) {
@@ -1330,18 +1358,12 @@ public final class RuntimeContext {
                             + objectIdOrDescription(destination) + " because it would create a containment cycle.");
         }
 
-        if (environments.get(object) == destination) {
+        if (worldProjection.environment(object) == destination) {
             return;
         }
 
-        Object oldEnvironment = environments.remove(object);
-        if (oldEnvironment != null) {
-            inventoryFor(oldEnvironment).remove(object);
-        }
-
+        worldProjection.move(object, destination);
         if (destination != null) {
-            environments.put(object, destination);
-            inventoryFor(destination).add(object);
             invokeArrivalLifecycle(object, destination);
         }
     }
@@ -1397,7 +1419,7 @@ public final class RuntimeContext {
 
     public Object environment(Object object) {
         Object target = (object != null) ? object : currentObject();
-        return (target != null) ? environments.get(target) : null;
+        return (target != null) ? worldProjection.environment(target) : null;
     }
 
     public Object present(Object identifier, Object container) {
@@ -1555,7 +1577,7 @@ public final class RuntimeContext {
         }
 
         moveObject(object, null);
-        inventories.remove(object);
+        worldProjection.remove(object);
         lightLevels.remove(object);
         opaqueEntities.remove(object);
         removeEntityAliases(object);
@@ -1783,7 +1805,7 @@ public final class RuntimeContext {
     }
 
     /**
-     * Installs driver-level command aliases used before LPC action lookup.
+     * Installs host-level command aliases used before LPC action lookup.
      *
      * <p>LDMud mudlibs commonly configure {@code H_MODIFY_COMMAND} with mappings such as
      * {@code ([ "n": "north" ])}. JVMud keeps that compatibility at the runtime command boundary:
@@ -2078,10 +2100,10 @@ public final class RuntimeContext {
 
     private Object outermostEnvironment(Object object) {
         Object root = object;
-        Object current = environments.get(object);
+        Object current = worldProjection.environment(object);
         while (current != null) {
             root = current;
-            current = environments.get(current);
+            current = worldProjection.environment(current);
         }
         return root;
     }
@@ -2102,7 +2124,7 @@ public final class RuntimeContext {
     }
 
     private List<Object> inventoryFor(Object object) {
-        return inventories.computeIfAbsent(object, ignored -> new ArrayList<>());
+        return worldProjection.inventory(object);
     }
 
     private boolean wouldCreateContainmentCycle(Object object, Object destination) {
@@ -2111,7 +2133,7 @@ public final class RuntimeContext {
             if (current == object) {
                 return true;
             }
-            current = environments.get(current);
+            current = worldProjection.environment(current);
         }
         return false;
     }
@@ -2349,20 +2371,20 @@ public final class RuntimeContext {
         return actor != null ? actor : currentObject();
     }
 
-    private PlayerId legacyPlayerIdFor(Object persona) {
-        return new PlayerId("legacy-player/" + objectReference(persona));
+    private PlayerId projectionPlayerIdFor(Object persona) {
+        return new PlayerId("projection-player/" + objectReference(persona));
     }
 
     private PlayerId playerIdForSession(SessionId sessionId) {
         return new PlayerId("session-player/" + sessionId.value());
     }
 
-    private PersonaId legacyPersonaIdFor(Object persona) {
+    private PersonaId projectionPersonaIdFor(Object persona) {
         PersonaId existing = personaIdsByProjection.get(persona);
         if (existing != null) {
             return existing;
         }
-        return new PersonaId("legacy-persona/" + objectReference(persona));
+        return new PersonaId("projection-persona/" + objectReference(persona));
     }
 
     private String objectReference(Object object) {

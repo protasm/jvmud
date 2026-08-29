@@ -4,4 +4,10 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/../../.." && pwd)
 
+DATABASE_ENV="$SCRIPT_DIR/realms-database.env"
+if [ -f "$DATABASE_ENV" ]; then
+    # Created with owner-only permissions by scripts/install-realms-database.sh.
+    . "$DATABASE_ENV"
+fi
+
 exec "$ROOT_DIR/scripts/jvmud-start" --trace-startup-loads "$SCRIPT_DIR/realmsmud.config" "$@"

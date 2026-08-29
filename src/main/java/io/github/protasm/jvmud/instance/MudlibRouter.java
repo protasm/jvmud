@@ -2,7 +2,6 @@ package io.github.protasm.jvmud.instance;
 
 import io.github.protasm.jvmud.compiler.exec.LPCObjectLoadObserver;
 import java.io.PrintWriter;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
@@ -54,19 +53,35 @@ public final class MudlibRouter implements InstanceHost {
             LPCObjectLoadObserver objectLoadObserver) {
         MudInstance defaultMud = MudInstance.boot(defaultMudlibRoot, defaultConfigPath, progress, objectLoadObserver);
         MudlibRouter host = new MudlibRouter(defaultMud);
-        if ("lpmuseum".equals(defaultMud.gameId())) {
-            Path siblingLp245 = defaultMud.mudlibRoot().getParent().resolve("lp245");
-            if (Files.isDirectory(siblingLp245)) {
-                host.register(MudInstance.boot(
-                        siblingLp245, MudlibBoot.LP245_CONFIG_PATH, progress, objectLoadObserver));
+        Path defaultConfigFile = defaultMudlibRoot.resolve(defaultConfigPath).toAbsolutePath().normalize();
+        defaultMud.bootResult().mudlibBoundary().mountedMudlibConfigs().forEach((gameId, declaredConfig) -> {
+            Path mountedConfig = defaultConfigFile.getParent().resolve(declaredConfig).normalize();
+            Path configDirectory = mountedConfig.getParent();
+            if (configDirectory == null) {
+                throw new IllegalStateException("Mounted mudlib config has no parent: " + mountedConfig);
             }
-        }
+            Path mountedRoot = "jvmud".equals(String.valueOf(configDirectory.getFileName()))
+                    ? configDirectory.getParent()
+                    : configDirectory;
+            if (mountedRoot == null) {
+                throw new IllegalStateException("Could not determine mounted mudlib root: " + mountedConfig);
+            }
+            String mountedConfigPath = mountedRoot.relativize(mountedConfig).toString().replace('\\', '/');
+            MudInstance mounted = MudInstance.boot(mountedRoot, mountedConfigPath, progress, objectLoadObserver);
+            if (!gameId.equals(mounted.gameId())) {
+                throw new IllegalStateException(
+                        "Mounted mudlib id " + mounted.gameId() + " does not match manifest key " + gameId + ".");
+            }
+            host.register(mounted);
+        });
         return host;
     }
 
     private void register(MudInstance mud) {
         mud.setTransferHandler(this::requestTransfer);
-        mudsByGameId.put(mud.gameId(), mud);
+        if (mudsByGameId.putIfAbsent(mud.gameId(), mud) != null) {
+            throw new IllegalStateException("Duplicate mounted mudlib game id: " + mud.gameId());
+        }
     }
 
     private int requestTransfer(MudInstance sourceMud, Object actor, String gameId) {
@@ -132,7 +147,7 @@ public final class MudlibRouter implements InstanceHost {
     private void transfer(InstancePersona persona, PrintWriter out, String destinationGameId) {
         MudInstance destinationMud = mudsByGameId.get(destinationGameId);
         if (destinationMud == null) {
-            out.println("The exhibit portal flickers, but no destination answers.");
+            out.println("The transfer destination is unavailable.");
             return;
         }
 
@@ -140,11 +155,11 @@ public final class MudlibRouter implements InstanceHost {
         if (destinationMud == defaultMud && sourceMud != defaultMud) {
             InstancePersona suspended = suspendedDefaultPersonasBySession.remove(persona.sessionId());
             if (suspended == null) {
-                out.println("The return portal flickers, but your museum Persona does not answer.");
+                out.println("The suspended Persona for this session is unavailable.");
                 return;
             }
             sourceMud.detachPersona(persona, true);
-            out.println("The return portal opens.");
+            out.println("Returning to the previous world.");
             persona.replaceWith(defaultMud.resumePersona(suspended, out, persona.remoteAddress()));
             return;
         }
@@ -155,7 +170,7 @@ public final class MudlibRouter implements InstanceHost {
         } else {
             sourceMud.detachPersona(persona, false);
         }
-        out.println("The exhibit portal opens.");
+        out.println("Transferring to " + destinationGameId + ".");
         InstancePersona replacement = destinationMud.attachVisitingPersona(
                 persona.sessionId(),
                 out,
@@ -197,5 +212,10 @@ public final class MudlibRouter implements InstanceHost {
     @Override
     public synchronized boolean isAttached(InstancePersona persona) {
         return persona != null && persona.mud().isAttached(persona);
+    }
+
+    @Override
+    public String transportControlPrefix() {
+        return defaultMud.transportControlPrefix();
     }
 }

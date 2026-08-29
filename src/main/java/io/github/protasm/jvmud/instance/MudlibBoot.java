@@ -3,9 +3,12 @@ package io.github.protasm.jvmud.instance;
 import io.github.protasm.jvmud.compiler.exec.LPCLoadResult;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
+import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundaryConfigReader;
+import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.world.Place;
+import io.github.protasm.jvmud.engine.world.MudlibWorldProjection;
 import io.github.protasm.jvmud.engine.world.World;
 import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import java.io.IOException;
@@ -17,11 +20,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+/** Boots one mudlib from an explicit JVMud manifest into an engine-owned world runtime. */
 public final class MudlibBoot {
-    public static final String DEFAULT_CONFIG_PATH = "jvmud/lpmuseum.config";
-    public static final String LP245_CONFIG_PATH = "jvmud/lp245.config";
-    static final String DEFAULT_BOUNDARY_OBJECT = "jvmud/mudlib";
-    static final String DEFAULT_STARTING_ROOM = "room/village/vill_green";
 
     private final LPCRuntime runtime;
     private final Path mudlibRoot;
@@ -29,73 +29,58 @@ public final class MudlibBoot {
     private final boolean loadInitialPlace;
     private final MudlibBootProgress progress;
 
-    public MudlibBoot(LPCRuntime runtime, Path mudlibRoot) {
-        this(runtime, mudlibRoot, DEFAULT_CONFIG_PATH);
-    }
-
+    /** Creates a coordinator that loads the manifest's initial place. */
     public MudlibBoot(LPCRuntime runtime, Path mudlibRoot, String configPath) {
         this(runtime, mudlibRoot, configPath, true);
     }
 
-    public MudlibBoot(LPCRuntime runtime, Path mudlibRoot, String configPath, boolean createInitialActor) {
-        this(runtime, mudlibRoot, configPath, createInitialActor, true);
+    /** Creates a coordinator with explicit initial-place loading policy. */
+    public MudlibBoot(LPCRuntime runtime, Path mudlibRoot, String configPath, boolean loadInitialPlace) {
+        this(runtime, mudlibRoot, configPath, loadInitialPlace, MudlibBootProgress.none());
     }
 
+    /** Creates a coordinator with explicit initial-place policy and startup progress reporting. */
     public MudlibBoot(
             LPCRuntime runtime,
             Path mudlibRoot,
             String configPath,
-            boolean createInitialActor,
-            boolean loadInitialPlace) {
-        this(runtime, mudlibRoot, configPath, createInitialActor, loadInitialPlace, MudlibBootProgress.none());
-    }
-
-    /**
-     * Creates a mudlib boot coordinator with an optional host-visible progress callback.
-     *
-     * @param runtime LPC runtime used to compile and instantiate mudlib objects
-     * @param mudlibRoot filesystem root of the selected mudlib
-     * @param configPath mudlib-relative JVMud configuration path
-     * @param createInitialActor retained for constructor compatibility; boot no longer creates a host actor
-     * @param loadInitialPlace whether boot should load the configured starting place
-     * @param progress callback for local startup progress events
-     */
-    public MudlibBoot(
-            LPCRuntime runtime,
-            Path mudlibRoot,
-            String configPath,
-            boolean createInitialActor,
             boolean loadInitialPlace,
             MudlibBootProgress progress) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
-        this.configPath = Objects.requireNonNullElse(configPath, DEFAULT_CONFIG_PATH);
+        this.configPath = Objects.requireNonNull(configPath, "configPath");
         this.loadInitialPlace = loadInitialPlace;
         this.progress = Objects.requireNonNullElse(progress, MudlibBootProgress.none());
     }
 
+    /** Boots the configured mudlib or throws when required manifest data cannot be loaded. */
     public MudlibBootResult boot() {
-        WorldRuntime worldRuntime = new WorldRuntime(new World("jvmud", "JVMud"));
-        runtime.setScheduler(worldRuntime.scheduler());
         List<String> preloadedObjects = new ArrayList<>();
         List<String> skippedPreloads = new ArrayList<>();
         List<String> preloadManifestPreloadedObjects = new ArrayList<>();
         List<String> preloadManifestSkippedPreloads = new ArrayList<>();
 
-        MudlibBoundary boundary = discoverMudlibBoundary(worldRuntime, preloadedObjects, skippedPreloads);
+        MudlibBoundary boundary = discoverMudlibBoundary(preloadedObjects, skippedPreloads);
+        String worldId = boundary.gameId().orElseGet(() -> mudlibRoot.getFileName().toString());
+        String worldName = boundary.gameName().orElse(worldId);
+        WorldRuntime worldRuntime = new WorldRuntime(new World(worldId, worldName));
+        runtime.setWorldProjection(new MudlibWorldProjection(worldRuntime));
+        registerBoundary(worldRuntime, boundary);
+        runtime.setScheduler(worldRuntime.scheduler());
         preloadConfiguredObjects(boundary, preloadedObjects, skippedPreloads);
-        inaugurateMasterIfPresent(boundary);
         preloadManifest(boundary, preloadedObjects, skippedPreloads, preloadManifestPreloadedObjects, preloadManifestSkippedPreloads);
+        invokeServerStartedHook(boundary);
 
         String initialPlace = null;
-        String initialPlacePath = boundary.initialPlacePath().orElse(DEFAULT_STARTING_ROOM);
-        if (loadInitialPlace && mudlibFileExists(boundary, initialPlacePath)) {
+        String initialPlacePath = boundary.initialPlacePath().orElse(null);
+        if (loadInitialPlace && initialPlacePath != null) {
             try {
-                runtime.loadOrGetObject(initialPlacePath);
+                Object initialPlaceObject = runtime.loadOrGetObject(initialPlacePath);
                 Place startingPlace = worldRuntime.createPlace(initialPlacePath, initialPlacePath);
+                runtime.worldProjection().bindPlace(initialPlaceObject, startingPlace);
                 initialPlace = initialPlacePath;
             } catch (RuntimeException e) {
-                skippedPreloads.add(initialPlacePath);
+                throw new IllegalStateException("Could not load configured initial place: " + initialPlacePath, e);
             }
         }
 
@@ -106,49 +91,26 @@ public final class MudlibBoot {
                 skippedPreloads,
                 preloadManifestPreloadedObjects,
                 preloadManifestSkippedPreloads,
-                initialPlace,
-                null,
-                null);
+                initialPlace);
     }
 
     private MudlibBoundary discoverMudlibBoundary(
-            WorldRuntime worldRuntime,
             List<String> preloadedObjects,
             List<String> skippedPreloads) {
-        if (mudlibConfigFileExists(configPath)) {
-            try {
-                MudlibBoundary boundary = MudlibBoundaryConfigReader.read(mudlibRoot, configPath);
-                boundary = readConfiguredBoundaryObject(boundary, preloadedObjects, skippedPreloads);
-                registerBoundary(worldRuntime, boundary);
-                return boundary;
-            } catch (IOException | RuntimeException e) {
-                registerBoundary(worldRuntime, MudlibBoundary.empty());
-                skippedPreloads.add(configPath);
-                return MudlibBoundary.empty();
-            }
+        if (!mudlibConfigFileExists(configPath)) {
+            throw new IllegalStateException("Mudlib configuration does not exist: " + configPath);
         }
-
-        if (!mudlibFileExists(MudlibBoundary.empty(), DEFAULT_BOUNDARY_OBJECT)) {
-            registerBoundary(worldRuntime, MudlibBoundary.empty());
-            return MudlibBoundary.empty();
-        }
-
         try {
-            LPCObjectHandle handle = runtime.load(DEFAULT_BOUNDARY_OBJECT);
-            MudlibBoundary boundary = readBoundaryDeclaration(handle.instance());
-            registerBoundary(worldRuntime, boundary);
-            preloadedObjects.add(handle.internalName());
-            return boundary;
-        } catch (RuntimeException e) {
-            registerBoundary(worldRuntime, MudlibBoundary.empty());
-            skippedPreloads.add(DEFAULT_BOUNDARY_OBJECT);
-            return MudlibBoundary.empty();
+            MudlibBoundary boundary = MudlibBoundaryConfigReader.read(mudlibRoot, configPath);
+            runtime.setParserOptions(ParserOptions.features(boundary.languageFeatures()));
+            return readConfiguredBoundaryObject(boundary, preloadedObjects, skippedPreloads);
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalStateException("Invalid mudlib configuration: " + configPath, e);
         }
     }
 
     private MudlibBoundary readBoundaryDeclaration(Object boundaryObject) {
-        MudlibBoundary.Builder builder = MudlibBoundary.builder()
-                .boundaryObjectPath(DEFAULT_BOUNDARY_OBJECT);
+        MudlibBoundary.Builder builder = MudlibBoundary.builder();
 
         Object mfunObject = invokeNoArgIfPresent(boundaryObject, "mfun_object");
         if (mfunObject instanceof String path && !path.isBlank()) {
@@ -180,8 +142,9 @@ public final class MudlibBoot {
         String boundaryObjectPath = configBoundary.boundaryObjectPath().orElseThrow();
         LPCLoadResult result = runtime.tryLoad(boundaryObjectPath);
         if (!result.succeeded()) {
-            skippedPreloads.add(boundaryObjectPath);
-            return configBoundary;
+            throw new IllegalStateException(
+                    "Could not load configured mudlib boundary object: " + boundaryObjectPath,
+                    result.error().orElse(null));
         }
 
         LPCObjectHandle handle = result.handle().orElseThrow();
@@ -222,17 +185,24 @@ public final class MudlibBoot {
         objectBoundary.compatibilityGlobalOverrides().forEach(builder::compatibilityGlobalOverride);
         configBoundary.compatibilityGlobalOverrides().forEach(builder::compatibilityGlobalOverride);
         configBoundary.playerObjectPath().ifPresent(builder::playerObjectPath);
+        configBoundary.sessionPolicy().ifPresent(builder::sessionPolicy);
         configBoundary.playerPrompt()
                 .or(() -> objectBoundary.playerPrompt())
                 .ifPresent(builder::playerPrompt);
+        configBoundary.connectedBanner().ifPresent(builder::connectedBanner);
+        builder.transportControlPrefix(configBoundary.transportControlPrefix());
+        configBoundary.locationDiagnosticCommand().ifPresent(builder::locationDiagnosticCommand);
         builder.maxLineLength(configBoundary.maxLineLength());
         builder.showRuler(configBoundary.showRuler());
         configBoundary.initialPlacePath().ifPresent(builder::initialPlacePath);
         configBoundary.preloadFilePath().ifPresent(builder::preloadFilePath);
         configBoundary.preloadObjectPaths().forEach(builder::preloadObjectPath);
+        configBoundary.includePaths().forEach(builder::includePath);
         configBoundary.databaseJdbcUrl().ifPresent(builder::databaseJdbcUrl);
         configBoundary.databaseUser().ifPresent(builder::databaseUser);
         configBoundary.databasePassword().ifPresent(builder::databasePassword);
+        configBoundary.languageFeatures().forEach(builder::languageFeature);
+        configBoundary.engineCapabilities().forEach(builder::engineCapability);
         configBoundary.temporalTickMethod().ifPresent(builder::temporalTickMethod);
         if (!configBoundary.temporalTickInterval().isZero()) {
             builder.temporalTickInterval(configBoundary.temporalTickInterval());
@@ -245,6 +215,7 @@ public final class MudlibBoot {
                 builder.engineFunction(engineName, mudlibName));
         configBoundary.engineFunctionAliases().forEach((mudlibName, engineName) ->
                 builder.engineFunction(engineName, mudlibName));
+        configBoundary.mountedMudlibConfigs().forEach(builder::mountedMudlib);
         objectBoundary.compatibilityPredefines().forEach(builder::compatibilityPredefine);
         configBoundary.compatibilityPredefines().forEach(builder::compatibilityPredefine);
         objectBoundary.compatibilityFunctionPredefines().forEach((macroName, replacements) ->
@@ -306,18 +277,14 @@ public final class MudlibBoot {
         }
     }
 
-    private void inaugurateMasterIfPresent(MudlibBoundary boundary) {
-        String masterPath = "secure/master";
-        if (!mudlibFileExists(boundary, masterPath)) {
+    private void invokeServerStartedHook(MudlibBoundary boundary) {
+        String methodName = boundary.lifecycleMethod(MudlibLifecycleEvent.SERVER_STARTED).orElse(null);
+        String boundaryPath = boundary.boundaryObjectPath().orElse(null);
+        if (methodName == null || boundaryPath == null) {
             return;
         }
-
-        try {
-            Object master = runtime.loadOrGetObject(masterPath);
-            runtime.invokeOptionalObject(master, "inaugurate_master", 0);
-        } catch (RuntimeException e) {
-            // Keep boot permissive for non-LDMud mudlibs or partial master compatibility.
-        }
+        Object boundaryObject = runtime.loadOrGetObject(boundaryPath);
+        runtime.invokeOptionalObject(boundaryObject, methodName);
     }
 
     private void preloadManifest(
@@ -333,7 +300,7 @@ public final class MudlibBoot {
         String preloadFilePath = boundary.preloadFilePath().orElseThrow();
         Path preloadManifest = activeMudlibRoot(boundary).resolve(preloadFilePath);
         if (!Files.isRegularFile(preloadManifest)) {
-            return;
+            throw new IllegalStateException("Configured preload manifest does not exist: " + preloadFilePath);
         }
 
         try {
@@ -352,8 +319,7 @@ public final class MudlibBoot {
                         preloadManifestSkippedPreloads);
             }
         } catch (IOException e) {
-            skippedPreloads.add(preloadFilePath);
-            preloadManifestSkippedPreloads.add(preloadFilePath);
+            throw new IllegalStateException("Could not read preload manifest: " + preloadFilePath, e);
         }
     }
 

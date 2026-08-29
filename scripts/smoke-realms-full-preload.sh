@@ -6,6 +6,11 @@ ROOT_DIR=$(dirname -- "$SCRIPT_DIR")
 CONFIG_FILE="$ROOT_DIR/mudlibs/realmsmud/jvmud/realmsmud.full.config"
 LOG_FILE="${1:-$ROOT_DIR/target/realms-full-preload.log}"
 TIMEOUT_SECONDS="${JVMUD_REALMS_FULL_PRELOAD_TIMEOUT:-120}"
+DATABASE_ENV="$ROOT_DIR/mudlibs/realmsmud/jvmud/realms-database.env"
+
+if [ -f "$DATABASE_ENV" ]; then
+  . "$DATABASE_ENV"
+fi
 
 "$SCRIPT_DIR/generate-realms-full-init.sh" >/dev/null
 mkdir -p "$(dirname -- "$LOG_FILE")"

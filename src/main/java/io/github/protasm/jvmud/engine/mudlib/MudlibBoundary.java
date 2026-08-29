@@ -44,20 +44,28 @@ public final class MudlibBoundary {
     private final Path compatibilityGlobalObjectSourcePath;
     private final Set<String> compatibilityGlobalOverrides;
     private final String playerObjectPath;
+    private final String sessionPolicy;
     private final String playerPrompt;
+    private final String connectedBanner;
+    private final String transportControlPrefix;
+    private final String locationDiagnosticCommand;
     private final int maxLineLength;
     private final boolean showRuler;
     private final String initialPlacePath;
     private final String preloadFilePath;
     private final Set<String> preloadObjectPaths;
+    private final Set<String> includePaths;
     private final String databaseJdbcUrl;
     private final String databaseUser;
     private final String databasePassword;
+    private final Set<LanguageFeature> languageFeatures;
+    private final Set<EngineCapability> engineCapabilities;
     private final String temporalTickMethod;
     private final Duration temporalTickInterval;
     private final Set<MudlibLifecycleEvent> lifecycleEvents;
     private final Map<MudlibLifecycleEvent, String> lifecycleMethods;
     private final Map<String, String> engineFunctionAliases;
+    private final Map<String, String> mountedMudlibConfigs;
     private final Map<String, String> compatibilityPredefines;
     private final Map<String, Map<String, String>> compatibilityFunctionPredefines;
 
@@ -72,20 +80,28 @@ public final class MudlibBoundary {
         this.compatibilityGlobalObjectSourcePath = normalizeOptionalFilesystemPath(builder.compatibilityGlobalObjectSourcePath);
         this.compatibilityGlobalOverrides = normalizeTextSet(builder.compatibilityGlobalOverrides);
         this.playerObjectPath = normalizeOptionalPath(builder.playerObjectPath);
+        this.sessionPolicy = normalizeOptionalText(builder.sessionPolicy);
         this.playerPrompt = normalizeOptionalPrompt(builder.playerPrompt);
+        this.connectedBanner = normalizeOptionalPrompt(builder.connectedBanner);
+        this.transportControlPrefix = normalizeOptionalPrompt(builder.transportControlPrefix);
+        this.locationDiagnosticCommand = normalizeOptionalText(builder.locationDiagnosticCommand);
         this.maxLineLength = normalizeMaxLineLength(builder.maxLineLength);
         this.showRuler = builder.showRuler;
         this.initialPlacePath = normalizeOptionalPath(builder.initialPlacePath);
         this.preloadFilePath = normalizeOptionalPath(builder.preloadFilePath);
         this.preloadObjectPaths = normalizePathSet(builder.preloadObjectPaths);
+        this.includePaths = normalizePathSet(builder.includePaths);
         this.databaseJdbcUrl = normalizeOptionalText(builder.databaseJdbcUrl);
         this.databaseUser = normalizeOptionalText(builder.databaseUser);
         this.databasePassword = builder.databasePassword != null ? builder.databasePassword : null;
+        this.languageFeatures = Set.copyOf(builder.languageFeatures);
+        this.engineCapabilities = Set.copyOf(builder.engineCapabilities);
         this.temporalTickMethod = normalizeOptionalText(builder.temporalTickMethod);
         this.temporalTickInterval = builder.temporalTickInterval;
         this.lifecycleEvents = immutableCopy(builder.lifecycleEvents);
         this.lifecycleMethods = immutableCopy(builder.lifecycleMethods);
         this.engineFunctionAliases = normalizeTextMap(builder.engineFunctionAliases);
+        this.mountedMudlibConfigs = normalizeTextMap(builder.mountedMudlibConfigs);
         this.compatibilityPredefines = normalizeTextMap(builder.compatibilityPredefines);
         this.compatibilityFunctionPredefines = normalizeNestedTextMap(builder.compatibilityFunctionPredefines);
     }
@@ -171,9 +187,29 @@ public final class MudlibBoundary {
         return Optional.ofNullable(playerObjectPath);
     }
 
+    /** Returns the optional JVMud host session-policy adapter selected by the manifest. */
+    public Optional<String> sessionPolicy() {
+        return Optional.ofNullable(sessionPolicy);
+    }
+
     /** Returns the optional prompt text to display when an interactive player can enter commands. */
     public Optional<String> playerPrompt() {
         return Optional.ofNullable(playerPrompt);
+    }
+
+    /** Returns optional text emitted when a transport session first attaches. */
+    public Optional<String> connectedBanner() {
+        return Optional.ofNullable(connectedBanner);
+    }
+
+    /** Returns the transport command escape prefix, defaulting to {@code //}. */
+    public String transportControlPrefix() {
+        return transportControlPrefix != null ? transportControlPrefix : "//";
+    }
+
+    /** Returns an optional host diagnostic command that prints the native current location id. */
+    public Optional<String> locationDiagnosticCommand() {
+        return Optional.ofNullable(locationDiagnosticCommand);
     }
 
     /** Returns the configured maximum output line length before whitespace wrapping is attempted. */
@@ -201,6 +237,11 @@ public final class MudlibBoundary {
         return preloadObjectPaths;
     }
 
+    /** Returns explicitly configured include search paths relative to the active mudlib root. */
+    public Set<String> includePaths() {
+        return includePaths;
+    }
+
     /** Returns the optional JDBC URL used by JVMud-native database efuns. */
     public Optional<String> databaseJdbcUrl() {
         return Optional.ofNullable(databaseJdbcUrl);
@@ -214,6 +255,16 @@ public final class MudlibBoundary {
     /** Returns the optional JDBC password used by JVMud-native database efuns. */
     public Optional<String> databasePassword() {
         return Optional.ofNullable(databasePassword);
+    }
+
+    /** Returns optional LPC syntax families explicitly selected by this profile. */
+    public Set<LanguageFeature> languageFeatures() {
+        return languageFeatures;
+    }
+
+    /** Returns host-resource capabilities explicitly granted to this mudlib. */
+    public Set<EngineCapability> engineCapabilities() {
+        return engineCapabilities;
     }
 
     /** Returns the optional mudlib method to invoke for deterministic temporal ticks. */
@@ -268,6 +319,11 @@ public final class MudlibBoundary {
      */
     public Map<String, String> engineFunctionAliases() {
         return engineFunctionAliases;
+    }
+
+    /** Returns game-id to config-file declarations for additional worlds mounted by the host. */
+    public Map<String, String> mountedMudlibConfigs() {
+        return mountedMudlibConfigs;
     }
 
     /** Returns the JVMud-native engine function name for a mudlib-visible spelling, if one is declared. */
@@ -340,20 +396,28 @@ public final class MudlibBoundary {
                 || compatibilityGlobalObjectSourcePath != null
                 || !compatibilityGlobalOverrides.isEmpty()
                 || playerObjectPath != null
+                || sessionPolicy != null
                 || playerPrompt != null
+                || connectedBanner != null
+                || transportControlPrefix != null
+                || locationDiagnosticCommand != null
                 || maxLineLength != DEFAULT_MAX_LINE_LENGTH
                 || showRuler
                 || initialPlacePath != null
                 || preloadFilePath != null
                 || !preloadObjectPaths.isEmpty()
+                || !includePaths.isEmpty()
                 || databaseJdbcUrl != null
                 || databaseUser != null
                 || databasePassword != null
+                || !languageFeatures.isEmpty()
+                || !engineCapabilities.isEmpty()
                 || temporalTickMethod != null
                 || !temporalTickInterval.isZero()
                 || !lifecycleEvents.isEmpty()
                 || !lifecycleMethods.isEmpty()
                 || !engineFunctionAliases.isEmpty()
+                || !mountedMudlibConfigs.isEmpty()
                 || !compatibilityPredefines.isEmpty()
                 || !compatibilityFunctionPredefines.isEmpty();
     }
@@ -489,16 +553,23 @@ public final class MudlibBoundary {
         private final java.util.LinkedHashSet<String> compatibilityGlobalOverrides =
                 new java.util.LinkedHashSet<>();
         private String playerObjectPath;
+        private String sessionPolicy;
         private String playerPrompt;
+        private String connectedBanner;
+        private String transportControlPrefix;
+        private String locationDiagnosticCommand;
         private int maxLineLength = DEFAULT_MAX_LINE_LENGTH;
         private boolean showRuler;
         private String initialPlacePath;
         private String preloadFilePath;
         private final java.util.LinkedHashSet<String> preloadObjectPaths =
                 new java.util.LinkedHashSet<>();
+        private final java.util.LinkedHashSet<String> includePaths = new java.util.LinkedHashSet<>();
         private String databaseJdbcUrl;
         private String databaseUser;
         private String databasePassword;
+        private final EnumSet<LanguageFeature> languageFeatures = EnumSet.noneOf(LanguageFeature.class);
+        private final EnumSet<EngineCapability> engineCapabilities = EnumSet.noneOf(EngineCapability.class);
         private String temporalTickMethod;
         private Duration temporalTickInterval = Duration.ZERO;
         private final EnumSet<MudlibLifecycleEvent> lifecycleEvents =
@@ -506,6 +577,8 @@ public final class MudlibBoundary {
         private final EnumMap<MudlibLifecycleEvent, String> lifecycleMethods =
                 new EnumMap<>(MudlibLifecycleEvent.class);
         private final java.util.LinkedHashMap<String, String> engineFunctionAliases =
+                new java.util.LinkedHashMap<>();
+        private final java.util.LinkedHashMap<String, String> mountedMudlibConfigs =
                 new java.util.LinkedHashMap<>();
         private final java.util.LinkedHashMap<String, String> compatibilityPredefines =
                 new java.util.LinkedHashMap<>();
@@ -579,9 +652,33 @@ public final class MudlibBoundary {
             return this;
         }
 
+        /** Selects an explicit host session-policy adapter. */
+        public Builder sessionPolicy(String sessionPolicy) {
+            this.sessionPolicy = sessionPolicy;
+            return this;
+        }
+
         /** Sets the prompt text shown when an interactive player can enter commands. */
         public Builder playerPrompt(String playerPrompt) {
             this.playerPrompt = playerPrompt;
+            return this;
+        }
+
+        /** Sets optional text emitted when a transport session first attaches. */
+        public Builder connectedBanner(String connectedBanner) {
+            this.connectedBanner = connectedBanner;
+            return this;
+        }
+
+        /** Sets the escaped prefix reserved for transport-level commands. */
+        public Builder transportControlPrefix(String transportControlPrefix) {
+            this.transportControlPrefix = transportControlPrefix;
+            return this;
+        }
+
+        /** Sets an optional host diagnostic command for displaying the current location id. */
+        public Builder locationDiagnosticCommand(String locationDiagnosticCommand) {
+            this.locationDiagnosticCommand = locationDiagnosticCommand;
             return this;
         }
 
@@ -615,6 +712,12 @@ public final class MudlibBoundary {
             return this;
         }
 
+        /** Adds an include search path relative to the active mudlib root. */
+        public Builder includePath(String includePath) {
+            includePaths.add(includePath);
+            return this;
+        }
+
         /** Sets the JDBC URL used by JVMud-native database efuns. */
         public Builder databaseJdbcUrl(String databaseJdbcUrl) {
             this.databaseJdbcUrl = databaseJdbcUrl;
@@ -630,6 +733,18 @@ public final class MudlibBoundary {
         /** Sets the JDBC password used by JVMud-native database efuns. */
         public Builder databasePassword(String databasePassword) {
             this.databasePassword = databasePassword;
+            return this;
+        }
+
+        /** Enables an optional LPC syntax family for this mudlib profile. */
+        public Builder languageFeature(LanguageFeature feature) {
+            languageFeatures.add(Objects.requireNonNull(feature, "feature"));
+            return this;
+        }
+
+        /** Grants a host-resource capability to this mudlib profile. */
+        public Builder engineCapability(EngineCapability capability) {
+            engineCapabilities.add(Objects.requireNonNull(capability, "capability"));
             return this;
         }
 
@@ -707,6 +822,14 @@ public final class MudlibBoundary {
             } else {
                 engineFunctionAliases.put(normalizedMudlibName, normalizedEngineName);
             }
+            return this;
+        }
+
+        /** Declares another mudlib configuration to mount under its stable game id. */
+        public Builder mountedMudlib(String gameId, String configPath) {
+            mountedMudlibConfigs.put(
+                    normalizeRequiredText(gameId, "Mounted mudlib game id"),
+                    normalizeRequiredText(configPath, "Mounted mudlib config path"));
             return this;
         }
 

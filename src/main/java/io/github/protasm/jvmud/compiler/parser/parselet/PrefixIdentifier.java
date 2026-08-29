@@ -37,6 +37,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprUnresolvedMutatio
 import io.github.protasm.jvmud.compiler.parser.type.AssignOpType;
 import io.github.protasm.jvmud.compiler.token.Token;
 import io.github.protasm.jvmud.compiler.token.TokenType;
+import io.github.protasm.jvmud.engine.mudlib.LanguageFeature;
 
 public class PrefixIdentifier implements PrefixParselet {
     @Override
@@ -44,10 +45,12 @@ public class PrefixIdentifier implements PrefixParselet {
         int line = parser.currLine();
         String identifier = parser.tokens().previous().lexeme();
 
-        if ("catch".equals(identifier) && parser.tokens().check(T_LEFT_PAREN))
+        if ("catch".equals(identifier) && parser.tokens().check(T_LEFT_PAREN)
+                && parser.supports(LanguageFeature.PROTECTED_EVALUATION))
             return parser.protectedEval(line);
 
-        if ("function".equals(identifier) && parser.tokens().check(T_IDENTIFIER))
+        if ("function".equals(identifier) && parser.tokens().check(T_IDENTIFIER)
+                && parser.supports(LanguageFeature.TYPED_FUNCTION_LITERALS))
             return typedFunctionLiteral(parser, line);
 
         if (parser.tokens().check(T_LEFT_PAREN)) {

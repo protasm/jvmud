@@ -20,6 +20,7 @@ import io.github.protasm.jvmud.engine.identity.PlayerRecord;
 import io.github.protasm.jvmud.engine.identity.SessionId;
 import io.github.protasm.jvmud.engine.identity.SessionRecord;
 import io.github.protasm.jvmud.engine.time.WorldScheduler;
+import io.github.protasm.jvmud.engine.world.MudlibWorldProjection;
 import io.github.protasm.jvmud.persistence.filesystem.LpcObjectStateStore;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -104,6 +105,21 @@ public final class LPCRuntime {
         this.runtimeContext.setObjectDestructionRequestedHandler(this::notifyObjectDestructionRequested);
         this.classLoader = new LPCRuntimeClassLoader(config.parentClassLoader());
         this.pipeline = new CompilationPipeline(config.parentInternalName(), runtimeContext, config.compilationObserver());
+    }
+
+    /** Selects the native world projection that owns LPC containment for this runtime. */
+    public void setWorldProjection(MudlibWorldProjection worldProjection) {
+        runtimeContext.setWorldProjection(worldProjection);
+    }
+
+    /** Returns the native world projection currently backing LPC containment. */
+    public MudlibWorldProjection worldProjection() {
+        return runtimeContext.worldProjection();
+    }
+
+    /** Selects the parser profile used for subsequently loaded LPC source. */
+    public void setParserOptions(ParserOptions parserOptions) {
+        runtimeContext.setParserOptions(parserOptions);
     }
 
     /**
@@ -277,7 +293,7 @@ public final class LPCRuntime {
         String displayPath = "/" + objectId;
         CompilationResult result;
         try {
-            result = pipeline.run(normalized, source, jvmInternalName(objectId), displayPath, ParserOptions.defaults());
+            result = pipeline.run(normalized, source, jvmInternalName(objectId), displayPath, runtimeContext.parserOptions());
         } catch (RuntimeException | Error e) {
             objectLoadObserver.objectCompileFailed(objectId, normalized, e);
             objectLoadObserver.objectCompileFinished(objectId, normalized, false, System.nanoTime() - startedAt);
@@ -317,7 +333,7 @@ public final class LPCRuntime {
         runtimeContext.registerInMemoryObjectSource(objectId, source, displayPath);
 
         CompilationResult result =
-                pipeline.run(null, source, jvmInternalName(objectId), displayPath, ParserOptions.defaults());
+                pipeline.run(null, source, jvmInternalName(objectId), displayPath, runtimeContext.parserOptions());
 
         if (!result.getProblems().isEmpty()) {
             throw compilationFailure(objectId, result.getProblems());
@@ -627,7 +643,12 @@ public final class LPCRuntime {
         runtimeContext.setMudlibBoundary(mudlibBoundary);
         if (useBoundaryMudlibRootForIncludes) {
             mudlibBoundary.mudlibRootPath().ifPresent(root ->
-                    runtimeContext.setIncludeResolver(new SearchPathIncludeResolver(root, includeSearchPaths)));
+                    runtimeContext.setIncludeResolver(new SearchPathIncludeResolver(
+                            root,
+                            java.util.stream.Stream.concat(
+                                            includeSearchPaths.stream(),
+                                            mudlibBoundary.includePaths().stream().map(root::resolve))
+                                    .toList())));
         }
     }
 
@@ -1061,7 +1082,7 @@ public final class LPCRuntime {
         }
 
         CompilationResult result =
-                pipeline.run(sourcePath, source, internalName, "/" + objectId, ParserOptions.defaults());
+                pipeline.run(sourcePath, source, internalName, "/" + objectId, runtimeContext.parserOptions());
         if (!result.getProblems().isEmpty()) {
             throw compilationFailure(objectId, result.getProblems());
         }
@@ -1525,7 +1546,7 @@ public final class LPCRuntime {
         }
 
         CompilationResult result =
-                pipeline.run(unit.sourcePath(), unit.source(), unit.sourceName(), unit.displayPath(), ParserOptions.defaults());
+                pipeline.run(unit.sourcePath(), unit.source(), unit.sourceName(), unit.displayPath(), runtimeContext.parserOptions());
 
         if (!result.getProblems().isEmpty()) {
             throw compilationFailure(internalName, result.getProblems());

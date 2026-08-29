@@ -57,7 +57,7 @@ public final class TelnetServer implements AutoCloseable {
         this.bindAddress = Objects.requireNonNull(bindAddress, "bindAddress");
         this.requestedPort = port;
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
-        this.configObjectPath = Objects.requireNonNullElse(configObjectPath, MudlibBoot.DEFAULT_CONFIG_PATH);
+        this.configObjectPath = Objects.requireNonNull(configObjectPath, "configObjectPath");
         this.bootProgress = Objects.requireNonNullElse(bootProgress, MudlibBootProgress.none());
         this.objectLoadObserver = Objects.requireNonNullElse(objectLoadObserver, LPCObjectLoadObserver.NONE);
         this.sessions = Executors.newCachedThreadPool(new TelnetThreadFactory("jvmud-session"));

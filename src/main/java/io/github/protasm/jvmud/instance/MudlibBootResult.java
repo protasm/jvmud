@@ -4,6 +4,7 @@ import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import java.util.List;
 
+/** Immutable result of booting one explicitly configured mudlib into a native world runtime. */
 public record MudlibBootResult(
         WorldRuntime worldRuntime,
         MudlibBoundary mudlibBoundary,
@@ -11,9 +12,7 @@ public record MudlibBootResult(
         List<String> skippedPreloads,
         List<String> preloadManifestPreloadedObjects,
         List<String> preloadManifestSkippedPreloads,
-        String startingRoom,
-        String actorHandle,
-        Object actor) {
+        String initialPlacePath) {
 
     public MudlibBootResult {
         preloadedObjects = List.copyOf(preloadedObjects);

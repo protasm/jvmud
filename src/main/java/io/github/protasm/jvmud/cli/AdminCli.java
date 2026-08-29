@@ -23,6 +23,8 @@ import io.github.protasm.jvmud.compiler.token.Token;
 import io.github.protasm.jvmud.compiler.token.TokenList;
 import io.github.protasm.jvmud.instance.MudlibBoot;
 import io.github.protasm.jvmud.instance.MudlibBootResult;
+import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
+import io.github.protasm.jvmud.engine.mudlib.MudlibBoundaryConfigReader;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -134,10 +136,6 @@ public final class AdminCli {
         }
     }
 
-    public void boot(Path mudlibRoot) {
-        boot(mudlibRoot, MudlibBoot.DEFAULT_CONFIG_PATH);
-    }
-
     public void bootConfig(Path configFile) {
         Path resolvedConfigFile = resolveConfigFile(configFile);
         Path mudlibRoot = mudlibRootForConfigFile(resolvedConfigFile);
@@ -153,7 +151,12 @@ public final class AdminCli {
                 .baseIncludePath(this.mudlibRoot)
                 .compilationObserver(new CliCompilationObserver())
                 .build());
-        CoreEfuns.registerCore(runtime);
+        try {
+            MudlibBoundary declaredBoundary = MudlibBoundaryConfigReader.read(this.mudlibRoot, configObjectPath);
+            CoreEfuns.registerCore(runtime, declaredBoundary.engineCapabilities());
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalStateException("Could not read mudlib configuration: " + configObjectPath, e);
+        }
         handles.clear();
         objectNames.clear();
         info("Booted runtime with mudlib root " + this.mudlibRoot);
@@ -161,15 +164,15 @@ public final class AdminCli {
         suppressCompilationFailures = true;
         MudlibBootResult bootResult;
         try {
-            bootResult = new MudlibBoot(runtime, this.mudlibRoot, configObjectPath, false, false).boot();
+            bootResult = new MudlibBoot(runtime, this.mudlibRoot, configObjectPath, false).boot();
         } finally {
             suppressCompilationFailures = false;
         }
         for (String objectId : bootResult.preloadedObjects()) {
             remember(objectId, runtime.loadOrGetObject(objectId));
         }
-        if (bootResult.startingRoom() != null) {
-            remember(bootResult.startingRoom(), runtime.loadOrGetObject(bootResult.startingRoom()));
+        if (bootResult.initialPlacePath() != null) {
+            remember(bootResult.initialPlacePath(), runtime.loadOrGetObject(bootResult.initialPlacePath()));
         }
         if (!bootResult.preloadedObjects().isEmpty()) {
             info("Preloaded " + bootResult.preloadedObjects().size() + " startup object(s).");
@@ -579,7 +582,7 @@ public final class AdminCli {
 
     private void ensureBooted() {
         if (runtime == null) {
-            boot(Path.of("mudlibs", "lp245"));
+            bootConfig(DEFAULT_CONFIG_FILE);
         }
     }
 

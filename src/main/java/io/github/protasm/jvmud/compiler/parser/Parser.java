@@ -81,6 +81,7 @@ import io.github.protasm.jvmud.compiler.token.Token;
 import io.github.protasm.jvmud.compiler.token.TokenClassifier;
 import io.github.protasm.jvmud.compiler.token.TokenType;
 import io.github.protasm.jvmud.compiler.token.TokenList;
+import io.github.protasm.jvmud.engine.mudlib.LanguageFeature;
 
 public class Parser {
         private TokenList tokens;
@@ -124,6 +125,11 @@ public class Parser {
 
     public RuntimeContext runtimeContext() {
         return runtimeContext;
+    }
+
+    /** Returns whether the active dialect profile enables an optional syntax family. */
+    public boolean supports(LanguageFeature feature) {
+        return options.supports(feature);
     }
 
     public int currLine() {
@@ -256,6 +262,8 @@ public class Parser {
                 tokens.advance();
             }
             case "varargs" -> {
+                if (!options.supports(LanguageFeature.VARARGS))
+                    return new DeclarationModifiers(visibility, isStatic, isNomask, isVarargs, isNosave, isDeprecated);
                 isVarargs = true;
                 tokens.advance();
             }
@@ -454,6 +462,9 @@ public class Parser {
             boolean parameterVarargs = false;
 
             if ("varargs".equals(firstToken.lexeme())) {
+                if (!options.supports(LanguageFeature.VARARGS))
+                    throw new ParseException(
+                            "The active language profile does not enable varargs parameters.", firstToken);
                 parameterVarargs = true;
                 firstToken = tokens.consume(T_IDENTIFIER, "Expect parameter type after 'varargs'.");
             }

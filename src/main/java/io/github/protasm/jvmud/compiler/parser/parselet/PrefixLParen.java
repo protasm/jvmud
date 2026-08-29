@@ -14,6 +14,7 @@ import io.github.protasm.jvmud.compiler.parser.ast.ASTExpression;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingEntry;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprMappingLiteral;
 import io.github.protasm.jvmud.compiler.parser.ast.expr.ASTExprInlineCallable;
+import io.github.protasm.jvmud.engine.mudlib.LanguageFeature;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,8 +27,12 @@ public class PrefixLParen implements PrefixParselet {
             return mapping;
         }
 
-        if (parser.tokens().match(T_COLON))
+        if (parser.tokens().match(T_COLON)) {
+            if (!parser.supports(LanguageFeature.INLINE_CALLABLES))
+                throw new io.github.protasm.jvmud.compiler.parser.ParseException(
+                        "The active language profile does not enable inline callables.", parser.tokens().previous());
             return parseInlineCallable(parser);
+        }
 
         ASTExpression expr = parser.expression();
 
@@ -65,6 +70,10 @@ public class PrefixLParen implements PrefixParselet {
                 List<ASTExpression> values = new ArrayList<>();
                 values.add(parser.expression());
                 while (parser.tokens().match(T_SEMICOLON)) {
+                    if (!parser.supports(LanguageFeature.MULTI_VALUE_MAPPINGS))
+                        throw new io.github.protasm.jvmud.compiler.parser.ParseException(
+                                "The active language profile does not enable multi-value mappings.",
+                                parser.tokens().previous());
                     values.add(parser.expression());
                 }
                 entries.add(new ASTExprMappingEntry(key, values));

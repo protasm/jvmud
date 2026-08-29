@@ -63,6 +63,8 @@ example:
 mudlib_object = jvmud/mudlib
 mfun_object = secure/simul_efun
 compatibility_object = jvmud/compat
+language_features = protected_evaluation, inline_callables, varargs
+engine_capabilities = mudlib_files, session_control
 lifecycle.object_loaded = reset
 lifecycle.interaction_scope_started = init
 ```
@@ -76,25 +78,36 @@ object. JVMud no longer discovers this object by convention; the manifest names
 it explicitly when the mudlib needs compatibility logic rather than simple
 engine-function name mapping.
 
+`language_features` enables optional syntax families for this profile; JVMud
+does not infer a historical dialect from the mudlib's identity or directory.
+`engine_capabilities` grants access to host resources. Database, mudlib-file,
+session-control, and host-control operations are absent unless explicitly
+granted. Include roots, mounts, initial place, transport controls, and startup
+hooks are likewise manifest data rather than driver conventions.
+
 The currently defined JVMud lifecycle events are:
 
 | Event key | Current status | Target | Arguments | Meaning |
 | --- | --- | --- | --- | --- |
 | `object_loaded` | Implemented, optional mapping | Loaded or cloned object | `mixed first_load` | A mudlib object has been materialized and may initialize object state. Current compatibility passes `0` for `first_load`. |
 | `object_activated` | Reserved | Activated object | none yet | An existing object has been reactivated by an explicit reload, reset, or world maintenance policy. |
-| `object_destroyed` | Reserved | Destroyed object or boundary object | none yet | An object is being removed and may release mudlib-owned state before references are discarded. |
+| `object_source_missing` | Implemented, optional mapping | Boundary object | requested object path | A shared object path has no source; mudlib policy may supply a substitute object. |
+| `object_destruction_requested` | Implemented, optional mapping | Boundary object | target object | An object is about to be removed and mudlib policy may perform pre-destruction cleanup. |
+| `object_destroyed` | Reserved | Destroyed object or boundary object | none yet | Post-destruction notification for future policies that require it. |
 | `entity_arrived_at_place` | Reserved | Arriving entity or destination place | source place, destination place, movement action | An entity has completed movement into a place. |
 | `entity_departed_from_place` | Reserved | Departing entity or source place | source place, destination place, movement action | An entity is leaving a place. |
 | `entity_added_to_entity` | Reserved | Added entity or containing entity | container entity | An entity has entered another entity's containment. |
 | `entity_removed_from_entity` | Reserved | Removed entity or containing entity | previous container entity | An entity has left another entity's containment. |
 | `player_session_connected` | Implemented, optional mapping | Player object | none currently | A Session has connected and JVMud has created a Player endpoint for that Session; compatibility mudlibs may use this to start login input. |
+| `player_session_post_rebind` | Implemented, optional mapping | Newly bound mudlib projection | none currently | A live Session has been rebound to a different mudlib-facing interactive object. |
 | `player_persona_resolved` | Reserved | Boundary object or player object | persona id | Mudlib policy or JVMud fallback has resolved the entity that this Player will use as its in-world perspective. |
 | `player_object_bound` | Reserved | Player object | persona id, session id | JVMud has associated a live compatibility player object with the Player, Session, and Persona relationship. |
 | `player_entered_world` | Reserved | Player object | starting place | JVMud has placed the Persona into the world and interaction can begin. |
-| `player_session_disconnected` | Reserved | Player object or boundary object | persona id, session id | The transport has disconnected and JVMud is about to unbind session-only routing; mudlib policy may save or clean up related state. |
+| `player_session_disconnected` | Implemented, optional mapping | Player object | none currently | The transport has disconnected and mudlib policy may save or clean up related state before session routing is removed. |
 | `interaction_scope_started` | Implemented, optional mapping | Persona, Persona location, carried objects, and nearby objects | none currently | An interactive Persona's local command/perception scope is being refreshed; mudlib objects may register text commands or interaction affordances. |
 | `command_dispatch_started` | Reserved | Persona or boundary object | command text, verb | JVMud is about to dispatch Player text to mudlib behavior. |
 | `command_dispatch_finished` | Reserved | Persona or boundary object | command text, verb, handled status | JVMud has finished dispatching Player text. |
+| `server_started` | Implemented, optional mapping | Boundary object | none | Configured boot and preloading are complete; a mudlib may now perform profile-specific startup. |
 | `scheduled_tick` | Implemented, optional temporal mapping | Scheduled object | none currently | The engine scheduler is delivering deterministic recurring time to an object. The mudlib config chooses the method name and default interval. |
 | `deferred_callback` | Reserved | Scheduled object | callback payload | A previously requested one-shot deferred callback is due. |
 

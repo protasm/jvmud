@@ -5,37 +5,27 @@ import io.github.protasm.jvmud.compiler.exec.LPCObjectLoadObserver;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.engine.world.Capability;
+import io.github.protasm.jvmud.engine.world.Entity;
 import io.github.protasm.jvmud.engine.world.Location;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
+import io.github.protasm.jvmud.engine.mudlib.MudlibBoundaryConfigReader;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
 import io.github.protasm.jvmud.engine.output.OutgoingTextFormatter;
 import io.github.protasm.jvmud.engine.world.Place;
 import io.github.protasm.jvmud.engine.world.WorldRuntime;
-import io.github.protasm.jvmud.persistence.filesystem.LpmuseumAccountFileStore;
 import io.github.protasm.jvmud.persistence.filesystem.LpmuseumAccountFileStore.Account;
 import java.io.PrintWriter;
+import java.io.IOException;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
-import java.security.spec.KeySpec;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
 
 /** Shared runtime state for a persistent Telnet mud process. */
 public final class MudInstance implements InstanceHost {
-    private static final String CONNECTED_BANNER = "JVMud telnet. Type /help for commands or /quit to disconnect.\n";
-    private static final int PASSWORD_ITERATIONS = 210_000;
-    private static final int PASSWORD_SALT_BYTES = 16;
-    private static final int PASSWORD_HASH_BITS = 256;
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-
     private final LPCRuntime runtime;
     private final WorldRuntime worldRuntime;
     private final String gameId;
@@ -43,7 +33,11 @@ public final class MudInstance implements InstanceHost {
     private final String startingPlacePath;
     private final Object startingPlaceObject;
     private final String playerObjectPath;
+    private final String sessionPolicy;
     private final String playerPrompt;
+    private final String connectedBanner;
+    private final String transportControlPrefix;
+    private final String locationDiagnosticCommand;
     private final int maxLineLength;
     private final boolean showRuler;
     private final String playerSessionConnectedMethod;
@@ -51,7 +45,7 @@ public final class MudInstance implements InstanceHost {
     private final String playerSessionDisconnectedMethod;
     private final String runtimeErrorMethod;
     private final MudlibBootResult bootResult;
-    private final LpmuseumAccountFileStore accountStore = new LpmuseumAccountFileStore();
+    private final LpmuseumAccountService lpmuseumAccounts;
     private final Map<Object, String> requestedTransfers = new IdentityHashMap<>();
     private TransferHandler transferHandler = (mud, actor, gameId) -> 0;
     private int nextPersonaId = 1;
@@ -64,7 +58,11 @@ public final class MudInstance implements InstanceHost {
             String startingPlacePath,
             Object startingPlaceObject,
             String playerObjectPath,
+            String sessionPolicy,
             String playerPrompt,
+            String connectedBanner,
+            String transportControlPrefix,
+            String locationDiagnosticCommand,
             int maxLineLength,
             boolean showRuler,
             String playerSessionConnectedMethod,
@@ -76,10 +74,15 @@ public final class MudInstance implements InstanceHost {
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
         this.gameId = Objects.requireNonNull(gameId, "gameId");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
+        this.lpmuseumAccounts = new LpmuseumAccountService(mudlibRoot);
         this.startingPlacePath = Objects.requireNonNull(startingPlacePath, "startingPlacePath");
         this.startingPlaceObject = Objects.requireNonNull(startingPlaceObject, "startingPlaceObject");
         this.playerObjectPath = playerObjectPath;
+        this.sessionPolicy = sessionPolicy;
         this.playerPrompt = playerPrompt;
+        this.connectedBanner = connectedBanner;
+        this.transportControlPrefix = Objects.requireNonNull(transportControlPrefix, "transportControlPrefix");
+        this.locationDiagnosticCommand = locationDiagnosticCommand;
         this.maxLineLength = maxLineLength;
         this.showRuler = showRuler;
         this.playerSessionConnectedMethod = playerSessionConnectedMethod;
@@ -124,15 +127,20 @@ public final class MudInstance implements InstanceHost {
                 .baseIncludePath(normalizedRoot)
                 .objectLoadObserver(objectLoadObserver)
                 .build());
-        CoreEfuns.registerCore(runtime);
+        try {
+            MudlibBoundary declaredBoundary = MudlibBoundaryConfigReader.read(normalizedRoot, configObjectPath);
+            CoreEfuns.registerCore(runtime, declaredBoundary.engineCapabilities());
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalStateException("Could not read mudlib configuration: " + configObjectPath, e);
+        }
 
         MudlibBootResult result =
-                new MudlibBoot(runtime, normalizedRoot, configObjectPath, false, true, progress).boot();
-        if (result.startingRoom() == null) {
+                new MudlibBoot(runtime, normalizedRoot, configObjectPath, true, progress).boot();
+        if (result.initialPlacePath() == null) {
             throw new IllegalStateException("Mudlib boot did not provide a starting place.");
         }
 
-        Object startingPlaceObject = runtime.loadOrGetObject(result.startingRoom());
+        Object startingPlaceObject = runtime.loadOrGetObject(result.initialPlacePath());
         MudlibBoundary boundary = result.mudlibBoundary();
         String gameId = boundary.gameId().orElse(normalizedRoot.getFileName().toString());
         runtime.clearOutputTranscript();
@@ -141,10 +149,17 @@ public final class MudInstance implements InstanceHost {
                 result.worldRuntime(),
                 gameId,
                 normalizedRoot,
-                result.startingRoom(),
+                result.initialPlacePath(),
                 startingPlaceObject,
                 boundary.playerObjectPath().orElse(null),
+                boundary.sessionPolicy().orElse(null),
                 boundary.playerPrompt().orElse(null),
+                boundary.connectedBanner().orElse(
+                        "JVMud telnet. Type " + boundary.transportControlPrefix()
+                                + "help for commands or " + boundary.transportControlPrefix()
+                                + "quit to disconnect."),
+                boundary.transportControlPrefix(),
+                boundary.locationDiagnosticCommand().orElse(null),
                 boundary.maxLineLength(),
                 boundary.showRuler(),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null),
@@ -227,8 +242,11 @@ public final class MudInstance implements InstanceHost {
             PrintWriter out,
             String remoteAddress,
             boolean announceConnection) {
-        if (usesLpmuseumPlayerLogin()) {
-            return attachLpmuseumLoginSession(sessionId, out, remoteAddress, announceConnection);
+        ManagedLoginSession managedLogin =
+                ManagedLoginPolicies.create(sessionPolicy, this, sessionId, remoteAddress);
+        if (managedLogin != null) {
+            return attachManagedLoginSession(
+                    sessionId, out, remoteAddress, announceConnection, managedLogin);
         }
 
         int id = nextPersonaId++;
@@ -260,7 +278,7 @@ public final class MudInstance implements InstanceHost {
     }
 
     synchronized InstancePersona resumePersona(InstancePersona suspended, PrintWriter out, String remoteAddress) {
-        MudlibProjection projection = new LegacyPlayerObjectAdapter(playerObjectPath)
+        MudlibProjection projection = new CombinedPlayerPersonaAdapter(playerObjectPath)
                 .combinedProjection(suspended.actor());
         runtime.bindSession(suspended.sessionId(), suspended.actor(), remoteAddress, text -> {
             out.print(text);
@@ -281,24 +299,20 @@ public final class MudInstance implements InstanceHost {
                 remoteAddress);
     }
 
-    private boolean usesLpmuseumPlayerLogin() {
-        return "lpmuseum".equals(gameId) && "persona/visitor".equals(playerObjectPath);
-    }
-
-    private InstancePersona attachLpmuseumLoginSession(
+    private InstancePersona attachManagedLoginSession(
             String sessionId,
             PrintWriter out,
             String remoteAddress,
-            boolean announceConnection) {
+            boolean announceConnection,
+            ManagedLoginSession login) {
         runtime.bindPlayerSession(sessionId, remoteAddress, text -> {
             out.print(text);
             out.flush();
         });
         runtime.clearOutputTranscript();
         if (announceConnection) {
-            writeToPlayerForSession(sessionId, CONNECTED_BANNER);
+            writeConnectedBanner(sessionId);
         }
-        LpmuseumLoginSession login = new LpmuseumLoginSession(this, sessionId, remoteAddress);
         InstancePersona persona = new InstancePersona(
                 this,
                 sessionId,
@@ -310,7 +324,7 @@ public final class MudInstance implements InstanceHost {
         return persona;
     }
 
-    private InstancePersona attachAuthenticatedLpmuseumPersona(
+    InstancePersona attachAuthenticatedLpmuseumPersona(
             String sessionId,
             PrintWriter out,
             String remoteAddress,
@@ -319,14 +333,14 @@ public final class MudInstance implements InstanceHost {
         Object actor = runtime.cloneObject(playerObjectPath);
         String objectId = Objects.requireNonNullElse(runtime.objectId(actor), playerObjectPath + "#" + id);
         Place startingPlace = placeFor(startingPlacePath);
-        worldRuntime.createEntity(
+        Entity nativeActor = worldRuntime.createEntity(
                 objectId,
                 account.personaName(),
                 startingPlace,
                 Capability.ACTOR,
                 Capability.PERCEPTIVE);
-        runtime.moveObject(actor, startingPlaceObject);
-        MudlibProjection projection = new LegacyPlayerObjectAdapter(playerObjectPath)
+        runtime.worldProjection().bindEntity(actor, nativeActor);
+        MudlibProjection projection = new CombinedPlayerPersonaAdapter(playerObjectPath)
                 .combinedProjection(actor);
         runtime.bindSession(sessionId, actor, remoteAddress, text -> {
             out.print(text);
@@ -366,14 +380,14 @@ public final class MudInstance implements InstanceHost {
             String objectId = Objects.requireNonNullElse(runtime.objectId(actor), playerObjectPath + "#" + id);
             String name = "player " + id;
             Place startingPlace = placeFor(startingPlacePath);
-            worldRuntime.createEntity(
+            Entity nativeActor = worldRuntime.createEntity(
                     objectId,
                     name,
                     startingPlace,
                     Capability.ACTOR,
                     Capability.PERCEPTIVE);
-            runtime.moveObject(actor, startingPlaceObject);
-            MudlibProjection projection = new LegacyPlayerObjectAdapter(playerObjectPath)
+            runtime.worldProjection().bindEntity(actor, nativeActor);
+            MudlibProjection projection = new CombinedPlayerPersonaAdapter(playerObjectPath)
                     .combinedProjection(actor);
             runtime.bindSession(sessionId, actor, remoteAddress, text -> {
                 out.print(text);
@@ -382,7 +396,7 @@ public final class MudInstance implements InstanceHost {
             runtime.refreshCommandActions(actor);
             runtime.clearOutputTranscript();
             if (announceConnection) {
-                writeToPlayerForSession(sessionId, CONNECTED_BANNER);
+                writeConnectedBanner(sessionId);
             }
             if (visitingUserId != null) {
                 runtime.withCommandActor(actor, () ->
@@ -428,7 +442,7 @@ public final class MudInstance implements InstanceHost {
 
     synchronized void detachPersona(InstancePersona persona, boolean invokeDisconnectLifecycle) {
         if (persona != null) {
-            if (persona.actor() instanceof LpmuseumLoginSession) {
+            if (persona.actor() instanceof ManagedLoginSession) {
                 runtime.unbindSession(persona.sessionId());
                 return;
             }
@@ -465,8 +479,8 @@ public final class MudInstance implements InstanceHost {
     }
 
     private Object dispatchUnchecked(InstancePersona persona, PrintWriter out, String commandLine) {
-        if (persona.actor() instanceof LpmuseumLoginSession login) {
-            LpmuseumLoginSession.Result result = login.handle(commandLine, out);
+        if (persona.actor() instanceof ManagedLoginSession login) {
+            ManagedLoginResult result = login.handle(commandLine, out);
             if (result.replacement().isPresent()) {
                 persona.replaceWith(result.replacement().orElseThrow());
                 return 1;
@@ -493,8 +507,8 @@ public final class MudInstance implements InstanceHost {
             return 1;
         }
 
-        if (isRealmsHereCommand(commandLine)) {
-            printCurrentRoomPath(persona, out);
+        if (isLocationDiagnosticCommand(commandLine)) {
+            printCurrentLocationPath(persona, out);
             return 1;
         }
 
@@ -506,14 +520,25 @@ public final class MudInstance implements InstanceHost {
         return result;
     }
 
-    private boolean isRealmsHereCommand(String commandLine) {
-        return "realmsmud".equals(gameId) && "here".equals(commandLine.trim());
+    private boolean isLocationDiagnosticCommand(String commandLine) {
+        return locationDiagnosticCommand != null && locationDiagnosticCommand.equals(commandLine.trim());
     }
 
-    private void printCurrentRoomPath(InstancePersona persona, PrintWriter out) {
+    private void printCurrentLocationPath(InstancePersona persona, PrintWriter out) {
         Object location = runtime.environment(persona.actor());
         String objectId = location != null ? runtime.objectId(location) : null;
-        out.println(objectId != null ? "/" + objectId + ".c" : "No current room.");
+        out.println(objectId != null ? "/" + objectId + ".c" : "No current location.");
+    }
+
+    private void writeConnectedBanner(String sessionId) {
+        if (connectedBanner != null) {
+            writeToPlayerForSession(sessionId, connectedBanner + "\n");
+        }
+    }
+
+    @Override
+    public String transportControlPrefix() {
+        return transportControlPrefix;
     }
 
     private void runDueScheduledWork() {
@@ -604,7 +629,7 @@ public final class MudInstance implements InstanceHost {
 
     @Override
     public synchronized void printPromptIfReady(InstancePersona persona, PrintWriter out) {
-        if (persona.actor() instanceof LpmuseumLoginSession) {
+        if (persona.actor() instanceof ManagedLoginSession) {
             return;
         }
         if (playerPrompt == null || !isAttached(persona) || runtime.hasCapturedSessionInput(persona.actor())) {
@@ -619,7 +644,7 @@ public final class MudInstance implements InstanceHost {
 
     @Override
     public synchronized boolean isCapturingInput(InstancePersona persona) {
-        if (persona != null && persona.actor() instanceof LpmuseumLoginSession) {
+        if (persona != null && persona.actor() instanceof ManagedLoginSession) {
             return true;
         }
         return isAttached(persona) && runtime.hasCapturedSessionInput(persona.actor());
@@ -627,7 +652,7 @@ public final class MudInstance implements InstanceHost {
 
     @Override
     public synchronized boolean isCapturingNoEchoInput(InstancePersona persona) {
-        if (persona != null && persona.actor() instanceof LpmuseumLoginSession login) {
+        if (persona != null && persona.actor() instanceof ManagedLoginSession login) {
             return login.noEcho();
         }
         return isAttached(persona) && runtime.capturedSessionInputNoEcho(persona.actor());
@@ -640,7 +665,7 @@ public final class MudInstance implements InstanceHost {
 
     private void removeWorldEntity(InstancePersona persona) {
         if (persona != null) {
-            worldRuntime.removeEntity(persona.objectId());
+            runtime.worldProjection().remove(persona.actor());
         }
     }
 
@@ -666,51 +691,24 @@ public final class MudInstance implements InstanceHost {
         return worldRuntime.createPlace(path, path);
     }
 
-    private void messageLoginPlayer(String sessionId, String text) {
+    void messageLoginPlayer(String sessionId, String text) {
         writeToPlayerForSession(sessionId, text);
     }
 
-    private Optional<Account> loadLpmuseumAccount(String accountId) {
-        return accountStore.load(mudlibRoot, accountId);
+    Optional<Account> loadLpmuseumAccount(String accountId) {
+        return lpmuseumAccounts.load(accountId);
     }
 
-    private void saveLpmuseumAccount(Account account) {
-        accountStore.save(mudlibRoot, account);
+    void saveLpmuseumAccount(Account account) {
+        lpmuseumAccounts.save(account);
     }
 
-    private String hashPassword(String password) {
-        byte[] salt = new byte[PASSWORD_SALT_BYTES];
-        SECURE_RANDOM.nextBytes(salt);
-        byte[] hash = pbkdf2(password, salt, PASSWORD_ITERATIONS);
-        Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
-        return "pbkdf2-sha256$" + PASSWORD_ITERATIONS + "$"
-                + encoder.encodeToString(salt) + "$"
-                + encoder.encodeToString(hash);
+    String hashPassword(String password) {
+        return lpmuseumAccounts.hashPassword(password);
     }
 
-    private boolean verifyPassword(String password, String encodedHash) {
-        String[] parts = encodedHash.split("\\$");
-        if (parts.length != 4 || !"pbkdf2-sha256".equals(parts[0])) {
-            return false;
-        }
-        try {
-            int iterations = Integer.parseInt(parts[1]);
-            byte[] salt = Base64.getUrlDecoder().decode(parts[2]);
-            byte[] expected = Base64.getUrlDecoder().decode(parts[3]);
-            byte[] actual = pbkdf2(password, salt, iterations);
-            return MessageDigest.isEqual(expected, actual);
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    private byte[] pbkdf2(String password, byte[] salt, int iterations) {
-        try {
-            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, iterations, PASSWORD_HASH_BITS);
-            return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();
-        } catch (Exception e) {
-            throw new IllegalStateException("Could not hash password", e);
-        }
+    boolean verifyPassword(String password, String encodedHash) {
+        return lpmuseumAccounts.verifyPassword(password, encodedHash);
     }
 
     @FunctionalInterface
@@ -718,308 +716,5 @@ public final class MudInstance implements InstanceHost {
         int requestTransfer(MudInstance sourceMud, Object actor, String gameId);
     }
 
-    private static final class LpmuseumLoginSession {
-        private final MudInstance mud;
-        private final String sessionId;
-        private final String remoteAddress;
-        private State state = State.ACCOUNT_ID;
-        private String accountId = "";
-        private String pendingPassword = "";
-        private String email = "";
-        private String personaName = "";
-        private String passwordHash = "";
-        private int passwordAttempts;
-
-        private LpmuseumLoginSession(MudInstance mud, String sessionId, String remoteAddress) {
-            this.mud = mud;
-            this.sessionId = sessionId;
-            this.remoteAddress = remoteAddress;
-        }
-
-        private void start() {
-            message("Please enter your user ID: ");
-        }
-
-        private boolean noEcho() {
-            return state == State.LOGIN_PASSWORD
-                    || state == State.NEW_PASSWORD
-                    || state == State.CONFIRM_PASSWORD;
-        }
-
-        private Result handle(String line, PrintWriter out) {
-            return switch (state) {
-                case ACCOUNT_ID -> handleAccountId(line);
-                case CREATE_CONFIRMATION -> handleCreateConfirmation(line);
-                case LOGIN_PASSWORD -> handleLoginPassword(line, out);
-                case NEW_PASSWORD -> handleNewPassword(line);
-                case CONFIRM_PASSWORD -> handleConfirmPassword(line);
-                case EMAIL -> handleEmail(line);
-                case PERSONA_NAME -> handlePersonaName(line);
-                case GENDER -> handleGender(line, out);
-            };
-        }
-
-        private Result handleAccountId(String line) {
-            String normalized = normalizeAccountId(line);
-            if (!validAccountId(normalized)) {
-                message("Use letters, numbers, underscore, or dash for your user ID.\n");
-                message("Please enter your user ID: ");
-                return Result.continueLogin();
-            }
-
-            accountId = normalized;
-            Optional<Account> account = mud.loadLpmuseumAccount(accountId);
-            if (account.isPresent() && !account.orElseThrow().passwordHash().isEmpty()) {
-                passwordAttempts = 0;
-                passwordHash = account.orElseThrow().passwordHash();
-                personaName = account.orElseThrow().personaName();
-                email = account.orElseThrow().email();
-                message("Password: ");
-                state = State.LOGIN_PASSWORD;
-                return Result.continueLogin();
-            }
-
-            message("No LPMuseum account exists for " + accountId + ". Create it? (yes/no) ");
-            state = State.CREATE_CONFIRMATION;
-            return Result.continueLogin();
-        }
-
-        private Result handleCreateConfirmation(String line) {
-            String answer = line.toLowerCase();
-            if ("yes".equals(answer) || "y".equals(answer)) {
-                message("Password: ");
-                state = State.NEW_PASSWORD;
-                return Result.continueLogin();
-            }
-            if ("no".equals(answer) || "n".equals(answer)) {
-                message("No account was created. Please visit LPMuseum again when you are ready.\n");
-                return Result.disconnectSession();
-            }
-            message("Please answer yes or no: ");
-            return Result.continueLogin();
-        }
-
-        private Result handleLoginPassword(String line, PrintWriter out) {
-            Optional<Account> account = mud.loadLpmuseumAccount(accountId);
-            if (account.isPresent() && mud.verifyPassword(line, account.orElseThrow().passwordHash())) {
-                return enter(out, account.orElseThrow());
-            }
-
-            passwordAttempts++;
-            if (passwordAttempts < 3) {
-                message("That password did not match. Please try again.\n");
-                message("Password: ");
-                return Result.continueLogin();
-            }
-
-            message("That password did not match. Please reconnect when you are ready to try again.\n");
-            return Result.disconnectSession();
-        }
-
-        private Result handleNewPassword(String line) {
-            String problem = passwordProblem(line);
-            if (problem != null) {
-                message(problem + "\n");
-                message("Password: ");
-                return Result.continueLogin();
-            }
-
-            pendingPassword = line;
-            message("Password again: ");
-            state = State.CONFIRM_PASSWORD;
-            return Result.continueLogin();
-        }
-
-        private Result handleConfirmPassword(String line) {
-            if (!line.equals(pendingPassword)) {
-                pendingPassword = "";
-                message("Those passwords did not match.\n");
-                message("Password: ");
-                state = State.NEW_PASSWORD;
-                return Result.continueLogin();
-            }
-
-            passwordHash = mud.hashPassword(line);
-            pendingPassword = "";
-            message("Email address (optional): ");
-            state = State.EMAIL;
-            return Result.continueLogin();
-        }
-
-        private Result handleEmail(String line) {
-            if (line.isEmpty()) {
-                email = "";
-            } else if (!validEmail(line)) {
-                message("That email address does not look valid. Enter one address, or leave it blank.\n");
-                message("Email address (optional): ");
-                return Result.continueLogin();
-            } else {
-                email = line;
-            }
-
-            message("Persona name: ");
-            state = State.PERSONA_NAME;
-            return Result.continueLogin();
-        }
-
-        private Result handlePersonaName(String line) {
-            if (!validPersonaName(line)) {
-                message("Use 2-24 letters, numbers, spaces, apostrophes, or dashes for your Persona name.\n");
-                message("Persona name: ");
-                return Result.continueLogin();
-            }
-
-            personaName = capitalize(line.toLowerCase());
-            message("Gender (female/male/neutral/none/other): ");
-            state = State.GENDER;
-            return Result.continueLogin();
-        }
-
-        private Result handleGender(String line, PrintWriter out) {
-            String normalized = line.toLowerCase();
-            if (!("female".equals(normalized) || "male".equals(normalized) || "neutral".equals(normalized)
-                    || "none".equals(normalized) || "other".equals(normalized))) {
-                message("Please choose female, male, neutral, none, or other: ");
-                return Result.continueLogin();
-            }
-
-            Account account = new Account(accountId, personaName, normalized, email, passwordHash);
-            mud.saveLpmuseumAccount(account);
-            return enter(out, account);
-        }
-
-        private Result enter(PrintWriter out, Account account) {
-            InstancePersona replacement = mud.attachAuthenticatedLpmuseumPersona(
-                    sessionId,
-                    out,
-                    remoteAddress,
-                    account);
-            return Result.replaceWith(replacement);
-        }
-
-        private void message(String text) {
-            mud.messageLoginPlayer(sessionId, text);
-        }
-
-        private static String normalizeAccountId(String value) {
-            return value == null ? "" : value.toLowerCase();
-        }
-
-        private static boolean validAccountId(String value) {
-            if (value.length() < 3 || value.length() > 24) {
-                return false;
-            }
-            for (int i = 0; i < value.length(); i++) {
-                char ch = value.charAt(i);
-                if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-')) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private static String passwordProblem(String value) {
-            if (value.length() < 6) {
-                return "Password must be at least 6 characters.";
-            }
-            if (value.length() > 72) {
-                return "Password must be 72 characters or fewer.";
-            }
-
-            boolean upper = false;
-            boolean lower = false;
-            boolean number = false;
-            boolean special = false;
-            for (int i = 0; i < value.length(); i++) {
-                char ch = value.charAt(i);
-                if (ch >= 'A' && ch <= 'Z') {
-                    upper = true;
-                } else if (ch >= 'a' && ch <= 'z') {
-                    lower = true;
-                } else if (ch >= '0' && ch <= '9') {
-                    number = true;
-                } else if ("!@#$%^&*_.?+-".indexOf(ch) >= 0) {
-                    special = true;
-                } else {
-                    return "Password may use letters, numbers, and ! @ # $ % ^ & * _ . ? + - only.";
-                }
-            }
-            if (!upper) {
-                return "Password must include an uppercase letter.";
-            }
-            if (!lower) {
-                return "Password must include a lowercase letter.";
-            }
-            if (!number) {
-                return "Password must include a number.";
-            }
-            if (!special) {
-                return "Password must include a special character.";
-            }
-            return null;
-        }
-
-        private static boolean validEmail(String value) {
-            int at = value.indexOf('@');
-            int dot = value.lastIndexOf('.');
-            if (at <= 0 || dot <= at + 1 || dot >= value.length() - 1 || value.indexOf('@', at + 1) >= 0) {
-                return false;
-            }
-            for (int i = 0; i < value.length(); i++) {
-                char ch = value.charAt(i);
-                if (!((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
-                        || (ch >= '0' && ch <= '9') || ch == '@' || ch == '.'
-                        || ch == '_' || ch == '%' || ch == '+' || ch == '-')) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private static boolean validPersonaName(String value) {
-            if (value.length() < 2 || value.length() > 24) {
-                return false;
-            }
-            boolean sawLetterOrNumber = false;
-            for (int i = 0; i < value.length(); i++) {
-                char ch = value.charAt(i);
-                if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) {
-                    sawLetterOrNumber = true;
-                } else if (ch != ' ' && ch != '\'' && ch != '-') {
-                    return false;
-                }
-            }
-            return sawLetterOrNumber;
-        }
-
-        private static String capitalize(String value) {
-            return value.isEmpty() ? value : value.substring(0, 1).toUpperCase() + value.substring(1);
-        }
-
-        private enum State {
-            ACCOUNT_ID,
-            CREATE_CONFIRMATION,
-            LOGIN_PASSWORD,
-            NEW_PASSWORD,
-            CONFIRM_PASSWORD,
-            EMAIL,
-            PERSONA_NAME,
-            GENDER
-        }
-
-        private record Result(boolean shouldDisconnect, Optional<InstancePersona> replacement) {
-            private static Result continueLogin() {
-                return new Result(false, Optional.empty());
-            }
-
-            private static Result disconnectSession() {
-                return new Result(true, Optional.empty());
-            }
-
-            private static Result replaceWith(InstancePersona persona) {
-                return new Result(false, Optional.of(persona));
-            }
-        }
-    }
 
 }

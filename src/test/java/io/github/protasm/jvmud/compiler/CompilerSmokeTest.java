@@ -24,6 +24,8 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeFunctionLiteral;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
+import io.github.protasm.jvmud.engine.mudlib.EngineCapability;
+import io.github.protasm.jvmud.engine.mudlib.LanguageFeature;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjectionRole;
@@ -40,6 +42,53 @@ import org.junit.jupiter.api.io.TempDir;
 final class CompilerSmokeTest {
     @TempDir
     Path tempDir;
+
+    @Test
+    void optionalDialectSyntaxRequiresAnExplicitParserProfile() {
+        String source = """
+                mixed callback() {
+                    return function string (string value) { return value; };
+                }
+                """;
+
+        CompilationResult neutral = new CompilationPipeline("java/lang/Object")
+                .run(source, ParserOptions.features(Set.of()));
+        CompilationResult enabled = new CompilationPipeline("java/lang/Object")
+                .run(source, ParserOptions.features(Set.of(LanguageFeature.TYPED_FUNCTION_LITERALS)));
+
+        assertFalse(neutral.getProblems().isEmpty());
+        assertTrue(enabled.getProblems().isEmpty(), () -> problemMessages(enabled));
+    }
+
+    @Test
+    void parserProfilesRemainIsolatedBetweenMudlibRuntimes() {
+        String source = """
+                mixed callback() {
+                    return function string (string value) { return value; };
+                }
+                """;
+        LPCRuntime enabled = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        enabled.setParserOptions(ParserOptions.features(Set.of(LanguageFeature.TYPED_FUNCTION_LITERALS)));
+        LPCRuntime neutral = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        neutral.setParserOptions(ParserOptions.features(Set.of()));
+
+        assertNotNull(enabled.loadSource("profile/enabled.c", source));
+        assertThrows(LPCRuntimeException.class, () -> neutral.loadSource("profile/neutral.c", source));
+    }
+
+    @Test
+    void privilegedEfunsRequireExplicitEngineCapabilities() {
+        RuntimeContext neutral = new RuntimeContext(null);
+        CoreEfuns.registerCore(neutral, Set.of());
+        assertNotNull(neutral.efunRegistry().lookup("jvmud_write", 1));
+        assertNull(neutral.efunRegistry().lookup("jvmud_db_connect", 1));
+        assertNull(neutral.efunRegistry().lookup("jvmud_read_mudlib_text", 1));
+
+        RuntimeContext privileged = new RuntimeContext(null);
+        CoreEfuns.registerCore(privileged, Set.of(EngineCapability.DATABASE, EngineCapability.MUDLIB_FILES));
+        assertNotNull(privileged.efunRegistry().lookup("jvmud_db_connect", 1));
+        assertNotNull(privileged.efunRegistry().lookup("jvmud_read_mudlib_text", 1));
+    }
 
     @Test
     void pipelineCompilesBasicLanguageFeaturesToBytecode() {
@@ -350,7 +399,7 @@ final class CompilerSmokeTest {
         CoreEfuns.registerCore(runtime);
         LPCObjectHandle object = runtime.loadSource("smoke/command_alias.c", """
                 void create() {
-                    jvmud_set_driver_hook(9, ([ "n": "north" ]));
+                    jvmud_configure_command_aliases(([ "n": "north" ]));
                     jvmud_enable_commands();
                     jvmud_add_action("move", "north");
                 }
@@ -3579,7 +3628,7 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void quotedIncludesSearchLegacyMudlibHeaderDirectoriesAfterSourceDirectory() throws Exception {
+    void quotedIncludesSearchExplicitProfileHeaderDirectoriesAfterSourceDirectory() throws Exception {
         Files.createDirectories(tempDir.resolve("obj"));
         Files.createDirectories(tempDir.resolve("room"));
         Files.writeString(tempDir.resolve("obj/living.h"), "#define LIVING_VALUE 7\n");
@@ -3593,7 +3642,10 @@ final class CompilerSmokeTest {
                 }
                 """);
 
-        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
+                .baseIncludePath(tempDir)
+                .includeSearchPaths(List.of(tempDir.resolve("room"), tempDir.resolve("obj")))
+                .build());
         LPCObjectHandle object = runtime.load("obj/playerish");
 
         assertEquals(42, object.invoke("value"));
@@ -3681,6 +3733,33 @@ final class CompilerSmokeTest {
         assertTrue(ast.methods().get("call_out").parameters().get(2).isVarargs());
 
         assertTrue(ast.methods().get("setup").modifiers().isProtected());
+    }
+
+    @Test
+    void nosaveFieldsAreExcludedFromObjectStatePersistence() throws Exception {
+        String source = """
+                string durable = "initial durable";
+                nosave string transient_value = "initial transient";
+
+                void update() {
+                    durable = "saved durable";
+                    transient_value = "saved transient";
+                }
+
+                string durable_value() { return durable; }
+                string transient_value() { return transient_value; }
+                """;
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle saved = runtime.loadSource("state/saved.c", source);
+        saved.invoke("update");
+        assertEquals(1, runtime.saveLPCObjectState("state/player", saved.instance()));
+
+        Object restored = runtime.cloneObject("state/saved");
+        assertEquals(1, runtime.restoreLPCObjectState("state/player", restored));
+
+        assertEquals("saved durable", runtime.invokeObject(restored, "durable_value"));
+        assertEquals("initial transient", runtime.invokeObject(restored, "transient_value"));
     }
 
     @Test
@@ -4751,7 +4830,7 @@ final class CompilerSmokeTest {
                 }
 
                 int driver_info_is_false() {
-                    return jvmud_driver_info(-44) ? 1 : 0;
+                    return jvmud_runtime_info(-44) ? 1 : 0;
                 }
 
                 int preferred_lpc_object_lookup() {

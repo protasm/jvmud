@@ -8,6 +8,7 @@ import io.github.protasm.jvmud.compiler.parser.type.LPCType;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCollectionTransform;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
+import io.github.protasm.jvmud.engine.mudlib.EngineCapability;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeMapping;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeValueCodec;
@@ -29,6 +30,7 @@ import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -78,8 +80,8 @@ import javax.crypto.spec.PBEKeySpec;
  *       for the current action scope, or LPC false when no agent is active.</li>
  *   <li>{@code jvmud_current_verb() : string} returns the verb being dispatched for the current
  *       command.</li>
- *   <li>{@code jvmud_set_driver_hook(int hook, mixed callback) : void} stores supported
- *       compatibility driver hooks such as command alias rewrites.</li>
+ *   <li>{@code jvmud_configure_command_aliases(mixed aliases) : void} installs command alias
+ *       rewrites selected by mudlib policy.</li>
  *   <li>{@code jvmud_notify_fail(mixed message) : int} records failure text for an unhandled
  *       command.</li>
  * </ul>
@@ -200,7 +202,7 @@ import javax.crypto.spec.PBEKeySpec;
  *       the runtime's false/null value when unavailable.</li>
  *   <li>{@code jvmud_query_ip_name(mixed user) : mixed} returns the user's remote host address, or
  *       the runtime's false/null value when unavailable.</li>
- *   <li>{@code jvmud_driver_info(int key) : mixed} returns LPC false for unsupported driver-info
+ *   <li>{@code jvmud_runtime_info(int key) : mixed} returns LPC false for unsupported runtime-info
  *       queries.</li>
  *   <li>{@code jvmud_capture_session_input(string methodName, int flags[, mixed ...args]) : void}
  *       routes the next session input line to a method on the current object, followed by any
@@ -354,6 +356,17 @@ public final class CoreEfuns {
         }
     }
 
+    /** Registers core efuns while excluding host-resource operations not granted by a profile. */
+    public static void registerCore(RuntimeContext context, Set<EngineCapability> capabilities) {
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(capabilities, "capabilities");
+        for (Efun efun : coreEfuns()) {
+            if (isAllowed(efun.signature().name(), capabilities)) {
+                context.registerEfun(efun);
+            }
+        }
+    }
+
     /**
      * Registers the complete core efun set into a host-facing LPC runtime.
      *
@@ -369,6 +382,54 @@ public final class CoreEfuns {
         for (Efun efun : coreEfuns()) {
             runtime.registerEfun(efun);
         }
+    }
+
+    /** Registers core efuns while excluding host-resource operations not granted by a profile. */
+    public static void registerCore(LPCRuntime runtime, Set<EngineCapability> capabilities) {
+        Objects.requireNonNull(runtime, "runtime");
+        Objects.requireNonNull(capabilities, "capabilities");
+        for (Efun efun : coreEfuns()) {
+            if (isAllowed(efun.signature().name(), capabilities)) {
+                runtime.registerEfun(efun);
+            }
+        }
+    }
+
+    private static boolean isAllowed(String name, Set<EngineCapability> capabilities) {
+        if (name.startsWith("jvmud_db_")) {
+            return capabilities.contains(EngineCapability.DATABASE);
+        }
+        if (Set.of(
+                        "jvmud_read_mudlib_text",
+                        "jvmud_append_mudlib_text",
+                        "jvmud_remove_mudlib_text",
+                        "jvmud_copy_mudlib_text",
+                        "jvmud_rename_mudlib_text",
+                        "jvmud_create_mudlib_directory",
+                        "jvmud_remove_mudlib_directory",
+                        "jvmud_list_mudlib_paths",
+                        "jvmud_save_lpc_object_state",
+                        "jvmud_restore_lpc_object_state")
+                .contains(name)) {
+            return capabilities.contains(EngineCapability.MUDLIB_FILES);
+        }
+        if (Set.of(
+                        "jvmud_users",
+                        "jvmud_find_player",
+                        "jvmud_interactive",
+                        "jvmud_interactive_info",
+                        "jvmud_query_idle",
+                        "jvmud_query_ip_number",
+                        "jvmud_query_ip_name",
+                        "jvmud_capture_session_input",
+                        "jvmud_rebind_session_lpc_object")
+                .contains(name)) {
+            return capabilities.contains(EngineCapability.SESSION_CONTROL);
+        }
+        if (Set.of("jvmud_shutdown", "jvmud_transfer_player_to_game").contains(name)) {
+            return capabilities.contains(EngineCapability.HOST_CONTROL);
+        }
+        return true;
     }
 
     private static List<Efun> coreEfuns() {
@@ -405,12 +466,9 @@ public final class CoreEfuns {
                 (runtime, args) -> currentAgent(runtime)));
         efuns.add(efun("jvmud_current_verb", LPCType.LPCSTRING, List.of(),
                 (runtime, args) -> runtime.currentCommandVerb()));
-        efuns.add(efun("jvmud_set_driver_hook", LPCType.LPCVOID, List.of(LPCType.LPCINT, LPCType.LPCMIXED),
+        efuns.add(efun("jvmud_configure_command_aliases", LPCType.LPCVOID, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> {
-                    int hook = ((Number) args[0]).intValue();
-                    if (hook == 9) {
-                        runtime.configureCommandAliases(args[1]);
-                    }
+                    runtime.configureCommandAliases(args[0]);
                     return null;
                 }));
         efuns.add(efun("jvmud_notify_fail", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
@@ -478,7 +536,7 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.queryIpNumber(args[0])));
         efuns.add(efun("jvmud_query_ip_name", LPCType.LPCMIXED, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.queryIpNumber(args[0])));
-        efuns.add(efun("jvmud_driver_info", LPCType.LPCMIXED, List.of(LPCType.LPCINT),
+        efuns.add(efun("jvmud_runtime_info", LPCType.LPCMIXED, List.of(LPCType.LPCINT),
                 (runtime, args) -> 0));
         efuns.add(efun("jvmud_read_mudlib_text", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.readMudlibText(String.valueOf(args[0]))));

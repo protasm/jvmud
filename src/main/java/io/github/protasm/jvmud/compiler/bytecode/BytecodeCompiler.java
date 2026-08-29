@@ -105,7 +105,8 @@ public final class BytecodeCompiler {
         for (IRField field : object.fields()) {
             // Only materialize fields owned by this object. Inheritance is handled by the JVM's
             // class hierarchy so parent storage remains in the parent class.
-            cw.visitField(ACC_PROTECTED, field.name(), descriptor(field.type()), null, null).visitEnd();
+            int access = ACC_PROTECTED | (field.persistent() ? 0 : ACC_TRANSIENT);
+            cw.visitField(access, field.name(), descriptor(field.type()), null, null).visitEnd();
         }
     }
 

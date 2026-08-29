@@ -178,7 +178,7 @@
             <tr><td><code class="efun-signature"><span>void</span><span>jvmud_raise_error</span><span>(mixed message)</span></code></td><td>Raises a runtime exception with the supplied LPC message.</td></tr>
             <tr><td><code class="efun-signature"><span>int</span><span>jvmud_query_idle</span><span>(mixed user)</span></code></td><td>Returns idle time for a runtime session/user target.</td></tr>
             <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_query_ip_number</span><span>(mixed user)</span></code></td><td>Returns the user's remote address, or LPC false when unavailable.</td></tr>
-            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_driver_info</span><span>(int key)</span></code></td><td>Returns LPC false for unsupported driver-info metadata queries.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_runtime_info</span><span>(int key)</span></code></td><td>Returns LPC false for unsupported runtime metadata queries.</td></tr>
             <tr><td><code class="efun-signature"><span>void</span><span>jvmud_capture_session_input</span><span>(string methodName, int noEcho, mixed arg...)</span></code></td><td>Routes the next session input line to a method on the current object; registered for arities 2 through 8.</td></tr>
             <tr><td><code class="efun-signature"><span>status</span><span>jvmud_transfer_player_to_game</span><span>(string gameId)</span></code></td><td>Asks the host to transfer the current player to another registered game.</td></tr>
           </tbody>

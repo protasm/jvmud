@@ -30,29 +30,6 @@ public final class SearchPathIncludeResolver implements IncludeResolver {
       }
     }
 
-    if (this.baseIncludePath != null) {
-      Path includeDir = this.baseIncludePath.resolve("include").normalize();
-
-      if (dedup.add(includeDir)) {
-        roots.add(includeDir);
-      }
-
-      Path objectDir = this.baseIncludePath.resolve("obj").normalize();
-      if (dedup.add(objectDir)) {
-        roots.add(objectDir);
-      }
-
-      Path roomDir = this.baseIncludePath.resolve("room").normalize();
-      if (dedup.add(roomDir)) {
-        roots.add(roomDir);
-      }
-
-      Path sysDir = this.baseIncludePath.resolve("sys").normalize();
-      if (dedup.add(sysDir)) {
-        roots.add(sysDir);
-      }
-    }
-
     // Always search the base include path last to preserve the previous fallback behavior.
     if ((this.baseIncludePath != null) && dedup.add(this.baseIncludePath)) {
       roots.add(this.baseIncludePath);
