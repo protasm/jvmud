@@ -91,8 +91,8 @@ void describe(object viewer) {
 
   subject_word = jvmud_invoke_lpc_object("system/pronouns", "subject", gender);
   have_word = jvmud_invoke_lpc_object("system/pronouns", "have_present", gender);
-  jvmud_write(display_name + " is the " + office + ". ");
-  jvmud_write(jvmud_capitalize_text(subject_word) + " " + have_word);
-  jvmud_write(" posted a measured request for Company assistance.\n");
-  jvmud_write("Type work to accept the assignment or report when it is complete.\n");
+  write(display_name + " is the " + office + ". ");
+  write(jvmud_capitalize_text(subject_word) + " " + have_word);
+  write(" posted a measured request for Company assistance.\n");
+  write("Type work to accept the assignment or report when it is complete.\n");
 }

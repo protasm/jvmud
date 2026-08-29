@@ -13,11 +13,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Lantern Road Toll Meadow\n");
-  jvmud_write("A mown meadow opens beyond Old Brindle Bridge. The toll house is ");
-  jvmud_write("unbarred for licensed Companions, village carts, and pilgrims; commercial ");
-  jvmud_write("caravans pay a posted rate that funds bridges, shelters, and patrols.\n\n");
-  jvmud_write("Old Brindle Bridge is west, and a royal waystone stands east.\n");
+  write("Lantern Road Toll Meadow\n");
+  write("A mown meadow opens beyond Old Brindle Bridge. The toll house is ");
+  write("unbarred for licensed Companions, village carts, and pilgrims; commercial ");
+  write("caravans pay a posted rate that funds bridges, shelters, and patrols.\n\n");
+  write("Old Brindle Bridge is west, and a royal waystone stands east.\n");
 }
 
 int west(mixed ignored) {

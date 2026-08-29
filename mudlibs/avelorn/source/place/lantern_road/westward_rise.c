@@ -13,11 +13,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Westward Rise\n");
-  jvmud_write("The road climbs between old hawthorns. Greyhaven's slate roofs and ");
-  jvmud_write("round western towers appear ahead, while the Brindle valley spreads ");
-  jvmud_write("behind in ordered fields, mills, shrines, and wooded commons.\n\n");
-  jvmud_write("The lamplighter post is west, and Greyhaven's approach is east.\n");
+  write("Westward Rise\n");
+  write("The road climbs between old hawthorns. Greyhaven's slate roofs and ");
+  write("round western towers appear ahead, while the Brindle valley spreads ");
+  write("behind in ordered fields, mills, shrines, and wooded commons.\n\n");
+  write("The lamplighter post is west, and Greyhaven's approach is east.\n");
 }
 
 int west(mixed ignored) {

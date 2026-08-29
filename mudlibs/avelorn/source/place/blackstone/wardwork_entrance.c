@@ -5,11 +5,11 @@ void offer_interactions() {
 }
 string short() { return "Blackstone Wardwork Entrance"; }
 void describe(object viewer) {
-  jvmud_write("Blackstone Wardwork Entrance\n");
-  jvmud_write("A royal survey awning shelters steps descending beneath a split basalt ");
-  jvmud_write("arch. Tools are stacked in order and every worker's slate is accounted ");
-  jvmud_write("for; the danger below interrupted careful work, not a disorderly flight.\n\n");
-  jvmud_write("The standing stones are south, and the wardworks descend below.\n");
+  write("Blackstone Wardwork Entrance\n");
+  write("A royal survey awning shelters steps descending beneath a split basalt ");
+  write("arch. Tools are stacked in order and every worker's slate is accounted ");
+  write("for; the danger below interrupted careful work, not a disorderly flight.\n\n");
+  write("The standing stones are south, and the wardworks descend below.\n");
 }
 int south(mixed ignored) { return travel("south", "place/blackstone/standing_stones"); }
 int down(mixed ignored) { return travel("down", "place/blackstone/wardwork_threshold"); }

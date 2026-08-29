@@ -11,12 +11,12 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Brindleford Reeve's Hall\n");
-  jvmud_write("A slate-roofed hall houses the village rolls, weighing standards, ");
-  jvmud_write("and a small public chamber. Petitions are heard each market day, ");
-  jvmud_write("with a Crown circuit-justice expected every new moon. Nothing here ");
-  jvmud_write("suggests fear of the law; it is treated as a familiar public tool.\n\n");
-  jvmud_write("The village green is east.\n");
+  write("Brindleford Reeve's Hall\n");
+  write("A slate-roofed hall houses the village rolls, weighing standards, ");
+  write("and a small public chamber. Petitions are heard each market day, ");
+  write("with a Crown circuit-justice expected every new moon. Nothing here ");
+  write("suggests fear of the law; it is treated as a familiar public tool.\n\n");
+  write("The village green is east.\n");
 }
 
 int east(mixed ignored) {

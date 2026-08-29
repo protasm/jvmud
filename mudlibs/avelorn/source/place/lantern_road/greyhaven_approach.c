@@ -14,11 +14,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Greyhaven Western Approach\n");
-  jvmud_write("Market gardens give way to a broad, paved approach beneath the town ");
-  jvmud_write("walls. A tall ward lantern guides late caravans toward the open gate, ");
-  jvmud_write("its blue glass clouded by the same strange soot seen near Brindleford.\n\n");
-  jvmud_write("The Westward Rise is west, and Greyhaven's west gate is east.\n");
+  write("Greyhaven Western Approach\n");
+  write("Market gardens give way to a broad, paved approach beneath the town ");
+  write("walls. A tall ward lantern guides late caravans toward the open gate, ");
+  write("its blue glass clouded by the same strange soot seen near Brindleford.\n\n");
+  write("The Westward Rise is west, and Greyhaven's west gate is east.\n");
 }
 
 int west(mixed ignored) {
@@ -30,7 +30,7 @@ int east(mixed ignored) {
 }
 
 int tend_lantern(mixed ignored) {
-  jvmud_write("You clear the soot, renew the wick, and test the approach lantern's ward.\n");
+  write("You clear the soot, renew the wick, and test the approach lantern's ward.\n");
   return jvmud_invoke_lpc_object(
       jvmud_current_actor(),
       "record_quest_action",

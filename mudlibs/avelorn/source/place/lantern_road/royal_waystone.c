@@ -15,11 +15,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Royal Waystone\n");
-  jvmud_write("A granite pillar gives honest distances to Brindleford, Greyhaven, ");
-  jvmud_write("Stonebridge, and Aldwyn. Fresh whitewash fills its carved letters, ");
-  jvmud_write("renewed by roadwardens and the nearest parish in alternating years.\n\n");
-  jvmud_write("The toll meadow is west, the Crown shelter east, and a riverside path south.\n");
+  write("Royal Waystone\n");
+  write("A granite pillar gives honest distances to Brindleford, Greyhaven, ");
+  write("Stonebridge, and Aldwyn. Fresh whitewash fills its carved letters, ");
+  write("renewed by roadwardens and the nearest parish in alternating years.\n\n");
+  write("The toll meadow is west, the Crown shelter east, and a riverside path south.\n");
 }
 
 int west(mixed ignored) {

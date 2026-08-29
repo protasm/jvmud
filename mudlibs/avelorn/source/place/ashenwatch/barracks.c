@@ -14,11 +14,11 @@ void spawn_hound() {
 void offer_interactions() { jvmud_add_action("east", "east"); jvmud_add_action("east", "e"); }
 string short() { return "Ashenwatch Barracks"; }
 void describe(object viewer) {
-  jvmud_write("Ashenwatch Barracks\n");
-  jvmud_write("Bunks, shield pegs, and duty tablets remain in regulation order beneath ");
-  jvmud_write("a century of dust. The ward's corruption animates the ash here, but ");
-  jvmud_write("nothing suggests the keep's final garrison abandoned its discipline.\n\n");
-  if (jvmud_find_entity("hound", jvmud_current_lpc_object())) { jvmud_write("A Lantern-ash hound stalks the center aisle.\n"); }
-  jvmud_write("The outer court is east.\n");
+  write("Ashenwatch Barracks\n");
+  write("Bunks, shield pegs, and duty tablets remain in regulation order beneath ");
+  write("a century of dust. The ward's corruption animates the ash here, but ");
+  write("nothing suggests the keep's final garrison abandoned its discipline.\n\n");
+  if (jvmud_find_entity("hound", jvmud_current_lpc_object())) { write("A Lantern-ash hound stalks the center aisle.\n"); }
+  write("The outer court is east.\n");
 }
 int east(mixed ignored) { return jvmud_invoke_lpc_object(jvmud_current_actor(), "travel_to", "east", "place/ashenwatch/outer_court"); }

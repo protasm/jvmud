@@ -18,18 +18,18 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("The outfitter's oak counter bears the royal scales-and-measures seal. ");
-  jvmud_write("Goods are plainly priced in Crown coin, and a posted charter promises ");
-  jvmud_write("half value for serviceable equipment sold back to the shop.\n");
+  write("The outfitter's oak counter bears the royal scales-and-measures seal. ");
+  write("Goods are plainly priced in Crown coin, and a posted charter promises ");
+  write("half value for serviceable equipment sold back to the shop.\n");
   list_stock(0);
 }
 
 int list_stock(mixed ignored) {
-  jvmud_write("Brindleford Outfitter stock:\n");
-  jvmud_write("  bread     1 silver, 2 copper\n");
-  jvmud_write("  draught   3 silver, 5 copper\n");
-  jvmud_write("  cloak     8 silver\n");
-  jvmud_write("  sword     1 gold, 6 silver  (recommended level 3)\n");
+  write("Brindleford Outfitter stock:\n");
+  write("  bread     1 silver, 2 copper\n");
+  write("  draught   3 silver, 5 copper\n");
+  write("  cloak     8 silver\n");
+  write("  sword     1 gold, 6 silver  (recommended level 3)\n");
   return 1;
 }
 
@@ -38,7 +38,7 @@ int buy(mixed target) {
 
   blueprint = blueprint_for(target);
   if (!blueprint) {
-    jvmud_write("The outfitter does not stock that. Try: list.\n");
+    write("The outfitter does not stock that. Try: list.\n");
     return 1;
   }
   return jvmud_invoke_lpc_object(
@@ -49,7 +49,7 @@ int buy(mixed target) {
 
 int sell(mixed target) {
   if (!target) {
-    jvmud_write("Sell what?\n");
+    write("Sell what?\n");
     return 1;
   }
   return jvmud_invoke_lpc_object(jvmud_current_actor(), "sell_item", target);

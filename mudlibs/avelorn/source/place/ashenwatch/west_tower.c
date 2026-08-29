@@ -14,11 +14,11 @@ void spawn_knight() {
 void offer_interactions() { jvmud_add_action("east", "east"); jvmud_add_action("east", "e"); }
 string short() { return "Ashenwatch West Tower"; }
 void describe(object viewer) {
-  jvmud_write("Ashenwatch West Tower\n");
-  jvmud_write("Arrow loops command the western ridge above a copper signal floor. ");
-  jvmud_write("The tower's last knight remains bound to a corrupted order to guard a ");
-  jvmud_write("flame that can no longer distinguish friend from foe.\n\n");
-  if (jvmud_find_entity("knight", jvmud_current_lpc_object())) { jvmud_write("An ember-bound tower knight bars the signal stair.\n"); }
-  jvmud_write("The great hall is east.\n");
+  write("Ashenwatch West Tower\n");
+  write("Arrow loops command the western ridge above a copper signal floor. ");
+  write("The tower's last knight remains bound to a corrupted order to guard a ");
+  write("flame that can no longer distinguish friend from foe.\n\n");
+  if (jvmud_find_entity("knight", jvmud_current_lpc_object())) { write("An ember-bound tower knight bars the signal stair.\n"); }
+  write("The great hall is east.\n");
 }
 int east(mixed ignored) { return jvmud_invoke_lpc_object(jvmud_current_actor(), "travel_to", "east", "place/ashenwatch/great_hall"); }

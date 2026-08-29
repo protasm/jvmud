@@ -103,9 +103,9 @@ void describe(object viewer) {
   subject_word = pronoun("subject");
   be_word = pronoun("be_present");
   have_word = pronoun("have_present");
-  jvmud_write(display_name + " is the " + office + ". ");
-  jvmud_write(jvmud_capitalize_text(subject_word) + " " + be_word + " plainly dressed, ");
-  jvmud_write("and " + subject_word + " " + have_word + " " + duty + ".\n");
+  write(display_name + " is the " + office + ". ");
+  write(jvmud_capitalize_text(subject_word) + " " + be_word + " plainly dressed, ");
+  write("and " + subject_word + " " + have_word + " " + duty + ".\n");
 }
 
 string pronoun(string form) {

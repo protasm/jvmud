@@ -10,11 +10,11 @@ void offer_interactions() {
 string short() { return "Greyhaven Temple Court"; }
 
 void describe(object viewer) {
-  jvmud_write("Greyhaven Temple Court\n");
-  jvmud_write("Hospice, school, shrine, and almshouse face a quiet cloister planted ");
-  jvmud_write("with rosemary. Several orders share the court under the Concord of Seven ");
-  jvmud_write("Lamps, each keeping its rites while pooling public duties.\n\n");
-  jvmud_write("Heron Fountain is south, and the Lantern Tower is north. You may rest here.\n");
+  write("Greyhaven Temple Court\n");
+  write("Hospice, school, shrine, and almshouse face a quiet cloister planted ");
+  write("with rosemary. Several orders share the court under the Concord of Seven ");
+  write("Lamps, each keeping its rites while pooling public duties.\n\n");
+  write("Heron Fountain is south, and the Lantern Tower is north. You may rest here.\n");
 }
 
 int south(mixed ignored) { return travel("south", "place/greyhaven/heron_fountain"); }

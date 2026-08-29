@@ -14,11 +14,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Crown Road Shelter\n");
-  jvmud_write("A three-sided stone shelter offers dry benches, a rain cistern, and ");
-  jvmud_write("an emergency grain chest sealed by the reeves of Brindleford and ");
-  jvmud_write("Greyhaven. A ward lantern hangs from its tiled eave.\n\n");
-  jvmud_write("The royal waystone is west, and the orchard lane is east.\n");
+  write("Crown Road Shelter\n");
+  write("A three-sided stone shelter offers dry benches, a rain cistern, and ");
+  write("an emergency grain chest sealed by the reeves of Brindleford and ");
+  write("Greyhaven. A ward lantern hangs from its tiled eave.\n\n");
+  write("The royal waystone is west, and the orchard lane is east.\n");
 }
 
 int west(mixed ignored) {
@@ -30,7 +30,7 @@ int east(mixed ignored) {
 }
 
 int tend_lantern(mixed ignored) {
-  jvmud_write("You refill the shelter lantern and reset its small silver ward-ring.\n");
+  write("You refill the shelter lantern and reset its small silver ward-ring.\n");
   return jvmud_invoke_lpc_object(jvmud_current_actor(), "record_quest_action", "shelter-lantern");
 }
 

@@ -11,11 +11,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Brindle Riverside Path\n");
-  jvmud_write("Willow roots hold the bank above clear, quick water. Children have ");
-  jvmud_write("hung painted wooden fish from a boundary rope, marking the village ");
-  jvmud_write("spawning pool where netting is forbidden until midsummer.\n\n");
-  jvmud_write("The royal waystone is north.\n");
+  write("Brindle Riverside Path\n");
+  write("Willow roots hold the bank above clear, quick water. Children have ");
+  write("hung painted wooden fish from a boundary rope, marking the village ");
+  write("spawning pool where netting is forbidden until midsummer.\n\n");
+  write("The royal waystone is north.\n");
 }
 
 int north(mixed ignored) {

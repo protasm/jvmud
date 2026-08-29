@@ -12,12 +12,12 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Shrine of the Seven Lamps\n");
-  jvmud_write("Seven bronze lamps burn beneath a simple timber canopy. The shrine ");
-  jvmud_write("serves equally as sanctuary, schoolroom, and sickroom, maintained by ");
-  jvmud_write("the village and the royal Temple concord. Clean cots stand ready for ");
-  jvmud_write("travelers whom the road has treated poorly.\n\n");
-  jvmud_write("The village green is north. You may rest here in safety.\n");
+  write("Shrine of the Seven Lamps\n");
+  write("Seven bronze lamps burn beneath a simple timber canopy. The shrine ");
+  write("serves equally as sanctuary, schoolroom, and sickroom, maintained by ");
+  write("the village and the royal Temple concord. Clean cots stand ready for ");
+  write("travelers whom the road has treated poorly.\n\n");
+  write("The village green is north. You may rest here in safety.\n");
 }
 
 int north(mixed ignored) {

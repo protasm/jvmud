@@ -7,11 +7,11 @@ void offer_interactions() {
 }
 string short() { return "North Road Patrol Crossing"; }
 void describe(object viewer) {
-  jvmud_write("North Road Patrol Crossing\n");
-  jvmud_write("A paved military spur meets the Merewatch road beside a roofed muster ");
-  jvmud_write("stone. Shepherds leave chalk weather reports for roadwardens, who answer ");
-  jvmud_write("with patrol times and notices of safe crossings.\n\n");
-  jvmud_write("Greyhaven is south, the abandoned patrol post north, and shepherd fields east.\n");
+  write("North Road Patrol Crossing\n");
+  write("A paved military spur meets the Merewatch road beside a roofed muster ");
+  write("stone. Shepherds leave chalk weather reports for roadwardens, who answer ");
+  write("with patrol times and notices of safe crossings.\n\n");
+  write("Greyhaven is south, the abandoned patrol post north, and shepherd fields east.\n");
 }
 int south(mixed ignored) { return travel("south", "place/greyhaven/north_gate"); }
 int north(mixed ignored) { return travel("north", "place/north_road/abandoned_post"); }

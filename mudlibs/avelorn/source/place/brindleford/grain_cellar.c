@@ -44,20 +44,20 @@ void describe(object viewer) {
   object rat;
   string possessive_word;
 
-  jvmud_write("Mill Grain Cellar\n");
-  jvmud_write("Rye and barley sacks rest on raised oak slats beneath a dry brick ");
-  jvmud_write("vault. One storage bin has been clawed open from an old river culvert, ");
-  jvmud_write("turning ordinary mill maintenance into work for a Companion.\n\n");
+  write("Mill Grain Cellar\n");
+  write("Rye and barley sacks rest on raised oak slats beneath a dry brick ");
+  write("vault. One storage bin has been clawed open from an old river culvert, ");
+  write("turning ordinary mill maintenance into work for a Companion.\n\n");
   rat = jvmud_find_entity("rat", jvmud_current_lpc_object());
   if (rat) {
     possessive_word = jvmud_invoke_lpc_object(
         "system/pronouns",
         "possessive_adjective",
         jvmud_invoke_lpc_object(rat, "query_gender"));
-    jvmud_write("A scarred granary rat bares " + possessive_word);
-    jvmud_write(" teeth beside the damaged grain.\n");
+    write("A scarred granary rat bares " + possessive_word);
+    write(" teeth beside the damaged grain.\n");
   }
-  jvmud_write("The cellar landing is west.\n");
+  write("The cellar landing is west.\n");
 }
 
 int west(mixed ignored) {

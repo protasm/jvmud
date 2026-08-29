@@ -11,11 +11,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Mill Pump Room\n");
-  jvmud_write("A brass hand pump feeds a stone cistern used in fire drills and dry ");
-  jvmud_write("summers. The mechanism bears the paired marks of the Millers' Guild ");
-  jvmud_write("and the Crown Water Office, both responsible for its annual inspection.\n\n");
-  jvmud_write("The cellar landing is east.\n");
+  write("Mill Pump Room\n");
+  write("A brass hand pump feeds a stone cistern used in fire drills and dry ");
+  write("summers. The mechanism bears the paired marks of the Millers' Guild ");
+  write("and the Crown Water Office, both responsible for its annual inspection.\n\n");
+  write("The cellar landing is east.\n");
 }
 
 int east(mixed ignored) {

@@ -17,11 +17,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Greyhaven Market Cross\n");
-  jvmud_write("Four paved streets meet beneath a roofed market cross. Guild wardens ");
-  jvmud_write("settle stall positions from a public slate while town clerks collect ");
-  jvmud_write("modest dues for paving, fire cisterns, and night watch wages.\n\n");
-  jvmud_write("Gate Square is west, Heron Fountain north, Guild Row east, and the quay south.\n");
+  write("Greyhaven Market Cross\n");
+  write("Four paved streets meet beneath a roofed market cross. Guild wardens ");
+  write("settle stall positions from a public slate while town clerks collect ");
+  write("modest dues for paving, fire cisterns, and night watch wages.\n\n");
+  write("Gate Square is west, Heron Fountain north, Guild Row east, and the quay south.\n");
 }
 
 int west(mixed ignored) { return travel("west", "place/greyhaven/gate_square"); }

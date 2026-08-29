@@ -28,12 +28,12 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Halward Mill Yard\n");
-  jvmud_write("A broad waterwheel turns beside a well-kept granary and millhouse. ");
-  jvmud_write("Chalked delivery tallies show grain due to village households, the ");
-  jvmud_write("Crown reserve, and the winter poor-box. A cellar door stands open.\n\n");
-  jvmud_write("Miller Enid Halward waits beside the delivery ledger.\n");
-  jvmud_write("Mill Road is south. Stone steps lead down into the mill cellar.\n");
+  write("Halward Mill Yard\n");
+  write("A broad waterwheel turns beside a well-kept granary and millhouse. ");
+  write("Chalked delivery tallies show grain due to village households, the ");
+  write("Crown reserve, and the winter poor-box. A cellar door stands open.\n\n");
+  write("Miller Enid Halward waits beside the delivery ledger.\n");
+  write("Mill Road is south. Stone steps lead down into the mill cellar.\n");
 }
 
 int south(mixed ignored) {

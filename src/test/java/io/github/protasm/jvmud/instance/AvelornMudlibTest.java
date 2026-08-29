@@ -1,6 +1,7 @@
 package io.github.protasm.jvmud.instance;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -28,6 +29,63 @@ class AvelornMudlibTest {
 
     @TempDir
     Path tempDir;
+
+    @Test
+    void presentsRoomsAtEightyColumnsAndOffersOneHundredSocialEmotes() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+
+        createCharacter(mud, persona, writer, "socials", "Linnet Grey", "female", "ranger");
+        StringWriter observerOutput = new StringWriter();
+        PrintWriter observerWriter = new PrintWriter(observerOutput, true);
+        InstancePersona observer = mud.attachPersona(observerWriter, "127.0.0.2");
+        createCharacter(mud, observer, observerWriter, "social_observer", "Arden Vale", "non-binary", "cleric");
+        dispatch(mud, persona, writer, "emotes");
+        dispatch(mud, persona, writer, "grin");
+        dispatch(mud, persona, writer, "smile oren");
+        dispatch(mud, persona, writer, "bow oren");
+        dispatch(mud, persona, writer, "wave oren");
+        dispatch(mud, persona, writer, "laugh oren");
+
+        String transcript = output.toString();
+        String ruler = "+========+========+========+========+========+========+========+========";
+        assertTrue(transcript.contains("Brindleford Village Green\n" + ruler + "\nA broad green"), transcript);
+        assertTrue(transcript.contains("Avelorn emotes (100):"), transcript);
+        assertTrue(transcript.contains("  acknowledge"), transcript);
+        assertTrue(transcript.contains("welcome zoom"), transcript);
+        assertTrue(transcript.contains("You grin."), transcript);
+        assertTrue(transcript.contains("You smile at Oren Halward."), transcript);
+        assertTrue(transcript.contains("You bow to Oren Halward."), transcript);
+        assertTrue(transcript.contains("You wave to Oren Halward."), transcript);
+        assertTrue(transcript.contains("You laugh with Oren Halward."), transcript);
+        assertTrue(observerOutput.toString().contains("Linnet grey grins."), observerOutput.toString());
+        assertTrue(observerOutput.toString().contains("Linnet grey waves to Oren Halward."),
+                observerOutput.toString());
+
+        String gameplay = transcript.substring(transcript.indexOf("Brindleford Village Green"));
+        for (String line : gameplay.split("\\n", -1)) {
+            assertTrue(line.codePointCount(0, line.length()) <= 80, line);
+        }
+    }
+
+    @Test
+    void quitIsAnOrdinaryAvelornCommandThatSavesAndDisconnects() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+
+        createCharacter(mud, persona, writer, "ordinary_quit", "Beren Holt", "male", "fighter");
+        dispatch(mud, persona, writer, "quit");
+
+        assertFalse(mud.isAttached(persona));
+        assertTrue(output.toString().contains("Farewell."), output.toString());
+        assertTrue(Files.isRegularFile(mudlib.resolve("accounts/ordinary_quit.o")));
+    }
 
     @Test
     void createsPersistsAndRestoresANonBinaryRanger() throws Exception {
@@ -466,7 +524,7 @@ class AvelornMudlibTest {
 
         String transcript = output.toString();
         assertTrue(transcript.contains("Watch-Captain Ilyra Venn is the captain"), transcript);
-        assertTrue(transcript.contains("They have posted a measured request"), transcript);
+        assertTrue(singleSpaced(transcript).contains("They have posted a measured request"), transcript);
         assertTrue(transcript.contains("The Silent Patrol Bell (recommended level 4)"), transcript);
         assertTrue(transcript.contains("beyond your current training"), transcript);
         assertTrue(transcript.contains("They are a level 4 combatant"), transcript);
@@ -617,7 +675,7 @@ class AvelornMudlibTest {
         assertTrue(transcript.contains("soot-crowned Lantern warden is defeated"), transcript);
         assertTrue(transcript.contains("Rekindle the Western Lantern: 5/5."), transcript);
         assertEquals(1, occurrences(transcript, "You complete Rekindle the Western Lantern."));
-        assertTrue(transcript.contains("The Lantern Crown shines whole"), transcript);
+        assertTrue(singleSpaced(transcript).contains("The Lantern Crown shines whole"), transcript);
         assertTrue(transcript.contains("Medal of the Western Lantern"), transcript);
         assertTrue(transcript.contains("Recommended level: 10."), transcript);
         assertTrue(transcript.contains("You equip Medal of the Western Lantern"), transcript);
@@ -657,7 +715,7 @@ class AvelornMudlibTest {
         assertTrue(transcript.contains("Beneath Blackstone — complete"), campaignTail(transcript));
         assertTrue(transcript.contains("Rekindle the Western Lantern — complete"), campaignTail(transcript));
         assertTrue(transcript.contains("Medal of the Western Lantern (equipped)"), campaignTail(transcript));
-        assertTrue(transcript.contains("The Lantern Crown shines whole"), campaignTail(transcript));
+        assertTrue(singleSpaced(transcript).contains("The Lantern Crown shines whole"), campaignTail(transcript));
         assertTrue(Files.isRegularFile(mudlib.resolve("accounts/" + account + ".o")));
         assertTrue(!Files.readString(mudlib.resolve("jvmud/avelorn.config")).contains("database"));
 
@@ -790,6 +848,10 @@ class AvelornMudlibTest {
     private String campaignTail(String transcript) {
         int start = Math.max(0, transcript.length() - 6000);
         return transcript.substring(start);
+    }
+
+    private String singleSpaced(String transcript) {
+        return transcript.replaceAll("\\s+", " ");
     }
 
     private void createCharacter(

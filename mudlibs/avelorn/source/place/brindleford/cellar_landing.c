@@ -15,11 +15,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Mill Cellar Landing\n");
-  jvmud_write("Cool air rises from vaulted riverstone chambers beneath the mill. ");
-  jvmud_write("Fresh gnaw marks mar the grain-room door, while the pump room smells ");
-  jvmud_write("of clean water and lamp oil.\n\n");
-  jvmud_write("The mill yard is up, the grain cellar east, and the pump room west.\n");
+  write("Mill Cellar Landing\n");
+  write("Cool air rises from vaulted riverstone chambers beneath the mill. ");
+  write("Fresh gnaw marks mar the grain-room door, while the pump room smells ");
+  write("of clean water and lamp oil.\n\n");
+  write("The mill yard is up, the grain cellar east, and the pump room west.\n");
 }
 
 int up(mixed ignored) {

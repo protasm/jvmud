@@ -15,11 +15,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Greyhaven Orchard Lane\n");
-  jvmud_write("Pear and damson trees cover the southward slope in chartered strips. ");
-  jvmud_write("Small brass plaques name the families who tend each row and the guild ");
-  jvmud_write("press entitled to buy its first harvest share.\n\n");
-  jvmud_write("The Crown shelter is west, the lamplighter post east, and a birch copse north.\n");
+  write("Greyhaven Orchard Lane\n");
+  write("Pear and damson trees cover the southward slope in chartered strips. ");
+  write("Small brass plaques name the families who tend each row and the guild ");
+  write("press entitled to buy its first harvest share.\n\n");
+  write("The Crown shelter is west, the lamplighter post east, and a birch copse north.\n");
 }
 
 int west(mixed ignored) {

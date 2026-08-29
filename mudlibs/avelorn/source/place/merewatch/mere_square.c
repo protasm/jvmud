@@ -7,11 +7,11 @@ void offer_interactions() {
 }
 string short() { return "Merewatch Square"; }
 void describe(object viewer) {
-  jvmud_write("Merewatch Square\n");
-  jvmud_write("Timber galleries overlook a cobbled square built above the spring flood ");
-  jvmud_write("line. Fishers, peat cutters, shepherds, and royal wardens share the same ");
-  jvmud_write("weather board and emergency stores.\n\n");
-  jvmud_write("The south gate is south, upland gate north, lakeside west, and warden hall east.\n");
+  write("Merewatch Square\n");
+  write("Timber galleries overlook a cobbled square built above the spring flood ");
+  write("line. Fishers, peat cutters, shepherds, and royal wardens share the same ");
+  write("weather board and emergency stores.\n\n");
+  write("The south gate is south, upland gate north, lakeside west, and warden hall east.\n");
 }
 int south(mixed ignored) { return travel("south", "place/merewatch/south_gate"); }
 int north(mixed ignored) { return travel("north", "place/merewatch/upland_gate"); }

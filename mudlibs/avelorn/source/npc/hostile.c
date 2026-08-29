@@ -116,10 +116,10 @@ void describe(object viewer) {
 
   subject_word = jvmud_invoke_lpc_object("system/pronouns", "subject", gender);
   be_word = jvmud_invoke_lpc_object("system/pronouns", "be_present", gender);
-  jvmud_write(display_name + "\n");
-  jvmud_write(details + "\n");
-  jvmud_write(jvmud_capitalize_text(subject_word) + " " + be_word + " a level " + level);
-  jvmud_write(" combatant with " + health + "/" + max_health + " health.\n");
+  write(display_name + "\n");
+  write(details + "\n");
+  write(jvmud_capitalize_text(subject_word) + " " + be_word + " a level " + level);
+  write(" combatant with " + health + "/" + max_health + " health.\n");
 }
 
 int receive_attack(object attacker, int damage) {
@@ -132,7 +132,7 @@ int receive_attack(object attacker, int damage) {
   }
   remember_contributor(attacker);
   health -= damage;
-  jvmud_emit_perceivable_at(
+  avelorn_emit_at(
       place,
       jvmud_invoke_lpc_object(attacker, "query_name") + " strikes "
           + display_name + " for " + damage + " damage.\n");
@@ -165,7 +165,7 @@ void defeat(object place) {
   int index;
   object contributor;
 
-  jvmud_emit_perceivable_at(place, display_name + " is defeated.\n");
+  avelorn_emit_at(place, display_name + " is defeated.\n");
   index = 0;
   while (index < jvmud_size(contributors)) {
     contributor = contributors[index];

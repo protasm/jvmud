@@ -25,6 +25,9 @@ maintained Lantern Road, Greyhaven's civic center, the northern patrol road,
 Merewatch, the Blackstone wardworks, and Ashenwatch Keep.
 Characters can train, trade, rest, explore, evaluate hostile combatants, and
 fight cooperatively.
+Player-facing prose is assembled and wrapped by Avelorn's mudlib presentation
+service at 80 columns. Every room view places the kingdom's supplied ruler
+between its title and description.
 Fighters, Rangers, Mages, and Clerics each have a distinct resource-powered
 combat technique in addition to ordinary weapon attacks.
 Every contributor still present at a victory receives credit. Equipment and
@@ -58,6 +61,11 @@ Lantern Crown and grants a persistent, softly gated Crown medal.
 Character identity, progression, coin, inventory, and equipment persist as
 host-filesystem snapshots beneath `accounts/`. Avelorn declares no database
 capability and uses no database service.
+
+Type `emotes` to see the initial collection of 100 social commands. Common
+socials such as `smile`, `grin`, `bow`, `wave`, and `laugh` work on their own;
+many may also name another character or NPC. Type `quit` to save and disconnect
+without using JVMud's transport-control prefix.
 
 JVMud host administration can reload a shared Avelorn service or content object
 by stable object id while players remain connected. The reload operation is a

@@ -7,11 +7,11 @@ void offer_interactions() {
 }
 string short() { return "Ashenwatch Outer Court"; }
 void describe(object viewer) {
-  jvmud_write("Ashenwatch Outer Court\n");
-  jvmud_write("Ash lies across a court built for wagon musters and public refuge. ");
-  jvmud_write("Beneath it, painted lines still assign water, grain, medical, and guard ");
-  jvmud_write("stations—an old plan the modern expedition follows exactly.\n\n");
-  jvmud_write("The lower gate is east, barracks west, great hall north, and chapel south.\n");
+  write("Ashenwatch Outer Court\n");
+  write("Ash lies across a court built for wagon musters and public refuge. ");
+  write("Beneath it, painted lines still assign water, grain, medical, and guard ");
+  write("stations—an old plan the modern expedition follows exactly.\n\n");
+  write("The lower gate is east, barracks west, great hall north, and chapel south.\n");
 }
 int east(mixed ignored) { return travel("east", "place/ashenwatch/lower_gate"); }
 int west(mixed ignored) { return travel("west", "place/ashenwatch/barracks"); }

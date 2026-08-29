@@ -15,11 +15,11 @@ void offer_interactions() {
 }
 string short() { return "Ashenwatch Expedition Camp"; }
 void describe(object viewer) {
-  jvmud_write("Ashenwatch Expedition Camp\n");
-  jvmud_write("Orderly pavilions surround a field shrine and command table. Royal ");
-  jvmud_write("watch officers, village guides, Temple healers, Collegium adepts, and ");
-  jvmud_write("Company adventurers share one roster under Marshal Serin Vale.\n\n");
-  jvmud_write("The ridge approach is east, and Ashenwatch's lower gate is west. You may rest here.\n");
+  write("Ashenwatch Expedition Camp\n");
+  write("Orderly pavilions surround a field shrine and command table. Royal ");
+  write("watch officers, village guides, Temple healers, Collegium adepts, and ");
+  write("Company adventurers share one roster under Marshal Serin Vale.\n\n");
+  write("The ridge approach is east, and Ashenwatch's lower gate is west. You may rest here.\n");
 }
 int east(mixed ignored) { return travel("east", "place/ashenwatch/approach"); }
 int west(mixed ignored) { return travel("west", "place/ashenwatch/lower_gate"); }

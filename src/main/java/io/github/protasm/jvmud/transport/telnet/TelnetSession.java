@@ -86,6 +86,14 @@ final class TelnetSession implements Runnable {
             return;
         }
 
+        // A Telnet client does not echo the Return key while server-side echo suppression is
+        // active. Supply the terminal line ending before the mudlib writes its next hidden-input
+        // prompt so that it begins in column one on every client.
+        if (mud.isCapturingNoEchoInput(session.persona)) {
+            out.print("\r\n");
+            out.flush();
+        }
+
         String controlPrefix = mud.transportControlPrefix();
         if (!controlPrefix.isEmpty() && commandLine.startsWith(controlPrefix)) {
             executeTransportCommand(session, out, commandLine.substring(controlPrefix.length()).trim());

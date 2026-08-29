@@ -14,11 +14,11 @@ void spawn_guardian() {
 void offer_interactions() { jvmud_add_action("west", "west"); jvmud_add_action("west", "w"); }
 string short() { return "Blackstone Flooded Gallery"; }
 void describe(object viewer) {
-  jvmud_write("Blackstone Flooded Gallery\n");
-  jvmud_write("Spring water covers a mosaic of crowned lanterns. A broken sluice has ");
-  jvmud_write("turned the chamber's guardian rite inward, binding old stone to the ");
-  jvmud_write("ward-soot gathering beneath the surface.\n\n");
-  if (jvmud_find_entity("guardian", jvmud_current_lpc_object())) { jvmud_write("A drowned stone guardian blocks the sluice.\n"); }
-  jvmud_write("The wardwork threshold is west.\n");
+  write("Blackstone Flooded Gallery\n");
+  write("Spring water covers a mosaic of crowned lanterns. A broken sluice has ");
+  write("turned the chamber's guardian rite inward, binding old stone to the ");
+  write("ward-soot gathering beneath the surface.\n\n");
+  if (jvmud_find_entity("guardian", jvmud_current_lpc_object())) { write("A drowned stone guardian blocks the sluice.\n"); }
+  write("The wardwork threshold is west.\n");
 }
 int west(mixed ignored) { return jvmud_invoke_lpc_object(jvmud_current_actor(), "travel_to", "west", "place/blackstone/wardwork_threshold"); }

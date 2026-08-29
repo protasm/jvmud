@@ -6,11 +6,11 @@ void offer_interactions() {
 }
 string short() { return "Greyhaven North Gate"; }
 void describe(object viewer) {
-  jvmud_write("Greyhaven North Gate\n");
-  jvmud_write("The northern arch faces Merewatch and the Blackstone uplands. A bell ");
-  jvmud_write("board lists each patrol safely returned—except one road post whose brass ");
-  jvmud_write("marker remains troublingly silent.\n\n");
-  jvmud_write("The watch barracks is south, and the north road begins north.\n");
+  write("Greyhaven North Gate\n");
+  write("The northern arch faces Merewatch and the Blackstone uplands. A bell ");
+  write("board lists each patrol safely returned—except one road post whose brass ");
+  write("marker remains troublingly silent.\n\n");
+  write("The watch barracks is south, and the north road begins north.\n");
 }
 int south(mixed ignored) { return travel("south", "place/greyhaven/watch_barracks"); }
 int north(mixed ignored) { return travel("north", "place/north_road/patrol_crossing"); }

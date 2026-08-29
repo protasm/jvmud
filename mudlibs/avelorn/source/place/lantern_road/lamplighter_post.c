@@ -13,11 +13,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Lamplighter Post\n");
-  jvmud_write("A compact brick depot stores lamp oil, blue glass, ladder hooks, and ");
-  jvmud_write("weather cloaks. Its duty board assigns each road lantern to a named ");
-  jvmud_write("keeper, with the Company covering gaps during storms and emergencies.\n\n");
-  jvmud_write("The orchard lane is west, and the road climbs east.\n");
+  write("Lamplighter Post\n");
+  write("A compact brick depot stores lamp oil, blue glass, ladder hooks, and ");
+  write("weather cloaks. Its duty board assigns each road lantern to a named ");
+  write("keeper, with the Company covering gaps during storms and emergencies.\n\n");
+  write("The orchard lane is west, and the road climbs east.\n");
 }
 
 int west(mixed ignored) {

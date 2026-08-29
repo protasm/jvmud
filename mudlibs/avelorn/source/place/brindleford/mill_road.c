@@ -15,11 +15,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Brindleford Mill Road\n");
-  jvmud_write("A packed-stone lane follows an irrigation channel between clipped ");
-  jvmud_write("hedges. Crown road crews have set blue distance stones at each furlong, ");
-  jvmud_write("and village tenants share the work of keeping the watercourse clear.\n\n");
-  jvmud_write("The market is west, Halward Mill is north, and the east road continues east.\n");
+  write("Brindleford Mill Road\n");
+  write("A packed-stone lane follows an irrigation channel between clipped ");
+  write("hedges. Crown road crews have set blue distance stones at each furlong, ");
+  write("and village tenants share the work of keeping the watercourse clear.\n\n");
+  write("The market is west, Halward Mill is north, and the east road continues east.\n");
 }
 
 int west(mixed ignored) {

@@ -13,11 +13,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Greyhaven Gate Square\n");
-  jvmud_write("A paved square receives wagons beneath guild signs and public notices. ");
-  jvmud_write("Porters, watch clerks, temple guides, and licensed brokers keep arrivals ");
-  jvmud_write("moving toward the right market, lodging, hearing, or storehouse.\n\n");
-  jvmud_write("The west gate is west, and Market Cross is east.\n");
+  write("Greyhaven Gate Square\n");
+  write("A paved square receives wagons beneath guild signs and public notices. ");
+  write("Porters, watch clerks, temple guides, and licensed brokers keep arrivals ");
+  write("moving toward the right market, lodging, hearing, or storehouse.\n\n");
+  write("The west gate is west, and Market Cross is east.\n");
 }
 
 int east(mixed ignored) {

@@ -13,11 +13,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Brindleford East Road\n");
-  jvmud_write("The royal road rises through barley fields toward an old stone bridge. ");
-  jvmud_write("Drainage ditches, mile markers, and a roadside shelter show the quiet ");
-  jvmud_write("coordination of village labor, Crown engineers, and traveling guilds.\n\n");
-  jvmud_write("Mill Road is west, and the old bridge is east.\n");
+  write("Brindleford East Road\n");
+  write("The royal road rises through barley fields toward an old stone bridge. ");
+  write("Drainage ditches, mile markers, and a roadside shelter show the quiet ");
+  write("coordination of village labor, Crown engineers, and traveling guilds.\n\n");
+  write("Mill Road is west, and the old bridge is east.\n");
 }
 
 int west(mixed ignored) {

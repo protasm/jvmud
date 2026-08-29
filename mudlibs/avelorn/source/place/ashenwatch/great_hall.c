@@ -7,11 +7,11 @@ void offer_interactions() {
 }
 string short() { return "Ashenwatch Great Hall"; }
 void describe(object viewer) {
-  jvmud_write("Ashenwatch Great Hall\n");
-  jvmud_write("A long hall displays the arms of every western hundred beneath the ");
-  jvmud_write("Crown lantern. The arrangement gives no settlement pride of place; each ");
-  jvmud_write("shield supports one rib of the painted ward-vault overhead.\n\n");
-  jvmud_write("The outer court is south, west and east towers flank the hall, and stairs descend north.\n");
+  write("Ashenwatch Great Hall\n");
+  write("A long hall displays the arms of every western hundred beneath the ");
+  write("Crown lantern. The arrangement gives no settlement pride of place; each ");
+  write("shield supports one rib of the painted ward-vault overhead.\n\n");
+  write("The outer court is south, west and east towers flank the hall, and stairs descend north.\n");
 }
 int south(mixed ignored) { return travel("south", "place/ashenwatch/outer_court"); }
 int west(mixed ignored) { return travel("west", "place/ashenwatch/west_tower"); }

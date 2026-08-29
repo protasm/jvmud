@@ -14,11 +14,11 @@ void spawn_guardian() {
 void offer_interactions() { jvmud_add_action("east", "east"); jvmud_add_action("east", "e"); }
 string short() { return "Blackstone Old Armory"; }
 void describe(object viewer) {
-  jvmud_write("Blackstone Old Armory\n");
-  jvmud_write("Sealed racks preserve spears and lantern shields from Avelorn's first ");
-  jvmud_write("western watch. Black soot crawls over inventory tablets whose orderly ");
-  jvmud_write("marks still agree with every weapon in place.\n\n");
-  if (jvmud_find_entity("guardian", jvmud_current_lpc_object())) { jvmud_write("An ashbound iron guardian stands before the racks.\n"); }
-  jvmud_write("The wardwork threshold is east.\n");
+  write("Blackstone Old Armory\n");
+  write("Sealed racks preserve spears and lantern shields from Avelorn's first ");
+  write("western watch. Black soot crawls over inventory tablets whose orderly ");
+  write("marks still agree with every weapon in place.\n\n");
+  if (jvmud_find_entity("guardian", jvmud_current_lpc_object())) { write("An ashbound iron guardian stands before the racks.\n"); }
+  write("The wardwork threshold is east.\n");
 }
 int east(mixed ignored) { return jvmud_invoke_lpc_object(jvmud_current_actor(), "travel_to", "east", "place/blackstone/wardwork_threshold"); }

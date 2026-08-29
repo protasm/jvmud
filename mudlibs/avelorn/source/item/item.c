@@ -82,15 +82,15 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write(display_name + "\n");
-  jvmud_write(details + "\n");
-  jvmud_write("Weight: " + weight + ". Value: ");
-  jvmud_write(jvmud_invoke_lpc_object("system/economy", "format_money", copper_value) + ".\n");
+  write(display_name + "\n");
+  write(details + "\n");
+  write("Weight: " + weight + ". Value: ");
+  write(jvmud_invoke_lpc_object("system/economy", "format_money", copper_value) + ".\n");
   if (recommended_level > 1) {
-    jvmud_write("Recommended level: " + recommended_level + ".\n");
+    write("Recommended level: " + recommended_level + ".\n");
   }
   if (minimum_stat > 0) {
-    jvmud_write("Recommended " + governing_stat + ": " + minimum_stat + ".\n");
+    write("Recommended " + governing_stat + ": " + minimum_stat + ".\n");
   }
 }
 

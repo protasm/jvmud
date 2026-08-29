@@ -61,16 +61,16 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Brindleford Village Green\n");
-  jvmud_write("A broad green lies at the heart of a prosperous farming village. ");
-  jvmud_write("Whitewashed cottages face a weathered stone well, while the Crown's ");
-  jvmud_write("blue-and-gold banner hangs beside the reeve's hall. The people move ");
-  jvmud_write("with the unhurried purpose of a community accustomed to good roads, ");
-  jvmud_write("fair measures, and dependable law.\n\n");
-  jvmud_write("Reeve Oren, Sister Elara, and Quartermaster Rowan are here.\n");
-  jvmud_write("The Company of the Lantern maintains a small chapter house to the north.\n");
-  jvmud_write("The village market is east.\n");
-  jvmud_write("The reeve's hall is west, and the village shrine is south.\n");
+  write("Brindleford Village Green\n");
+  write("A broad green lies at the heart of a prosperous farming village. ");
+  write("Whitewashed cottages face a weathered stone well, while the Crown's ");
+  write("blue-and-gold banner hangs beside the reeve's hall. The people move ");
+  write("with the unhurried purpose of a community accustomed to good roads, ");
+  write("fair measures, and dependable law.\n\n");
+  write("Reeve Oren, Sister Elara, and Quartermaster Rowan are here.\n");
+  write("The Company of the Lantern maintains a small chapter house to the north.\n");
+  write("The village market is east.\n");
+  write("The reeve's hall is west, and the village shrine is south.\n");
 }
 
 int north(mixed ignored) {

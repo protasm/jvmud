@@ -17,12 +17,12 @@ void offer_interactions() {
 }
 string short() { return "Ashenwatch Lantern Crypt"; }
 void describe(object viewer) {
-  jvmud_write("Ashenwatch Lantern Crypt\n");
-  jvmud_write("Names of wardens, masons, lamp keepers, and village delegates cover ");
-  jvmud_write("the crypt walls without rank distinction. A final corrupted sentinel ");
-  jvmud_write("stands between their memorial and the Crown Lantern chamber.\n\n");
-  if (jvmud_find_entity("warden", jvmud_current_lpc_object())) { jvmud_write("The soot-crowned Lantern warden waits before the northern stair.\n"); }
-  jvmud_write("The antechamber is west, and the Crown Lantern is north.\n");
+  write("Ashenwatch Lantern Crypt\n");
+  write("Names of wardens, masons, lamp keepers, and village delegates cover ");
+  write("the crypt walls without rank distinction. A final corrupted sentinel ");
+  write("stands between their memorial and the Crown Lantern chamber.\n\n");
+  if (jvmud_find_entity("warden", jvmud_current_lpc_object())) { write("The soot-crowned Lantern warden waits before the northern stair.\n"); }
+  write("The antechamber is west, and the Crown Lantern is north.\n");
 }
 int west(mixed ignored) { return travel("west", "place/ashenwatch/ward_antechamber"); }
 int north(mixed ignored) { return travel("north", "place/ashenwatch/crown_lantern"); }

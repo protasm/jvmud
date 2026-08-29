@@ -5,11 +5,11 @@ void offer_interactions() {
 }
 string short() { return "Ashenwatch Underkeep"; }
 void describe(object viewer) {
-  jvmud_write("Ashenwatch Underkeep\n");
-  jvmud_write("Broad stairs descend beside reliefs showing Crown officers receiving ");
-  jvmud_write("lanterns from guild, temple, village, and city delegates. The old magic ");
-  jvmud_write("was built as a covenant of service, not a sovereign's private weapon.\n\n");
-  jvmud_write("The great hall is south, and the ward vault lies below.\n");
+  write("Ashenwatch Underkeep\n");
+  write("Broad stairs descend beside reliefs showing Crown officers receiving ");
+  write("lanterns from guild, temple, village, and city delegates. The old magic ");
+  write("was built as a covenant of service, not a sovereign's private weapon.\n\n");
+  write("The great hall is south, and the ward vault lies below.\n");
 }
 int south(mixed ignored) { return travel("south", "place/ashenwatch/great_hall"); }
 int down(mixed ignored) { return travel("down", "place/ashenwatch/ward_antechamber"); }

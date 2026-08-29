@@ -34,14 +34,14 @@ void offer_interactions() {
 }
 string short() { return "Abandoned Patrol Post"; }
 void describe(object viewer) {
-  jvmud_write("Abandoned Patrol Post\n");
-  jvmud_write("The post itself remains sound: shutters barred, roster sealed, beacon ");
-  jvmud_write("wood dry. Yet unnatural soot muffles its alarm bell, evidence that the ");
-  jvmud_write("kingdom's failing western ward—not neglect—drove the patrol away.\n\n");
+  write("Abandoned Patrol Post\n");
+  write("The post itself remains sound: shutters barred, roster sealed, beacon ");
+  write("wood dry. Yet unnatural soot muffles its alarm bell, evidence that the ");
+  write("kingdom's failing western ward—not neglect—drove the patrol away.\n\n");
   if (jvmud_find_entity("wraith", jvmud_current_lpc_object())) {
-    jvmud_write("A hollow bell wraith coils around the silent alarm.\n");
+    write("A hollow bell wraith coils around the silent alarm.\n");
   }
-  jvmud_write("The patrol crossing is south, and the Merewatch road continues north.\n");
+  write("The patrol crossing is south, and the Merewatch road continues north.\n");
 }
 int south(mixed ignored) { return travel("south", "place/north_road/patrol_crossing"); }
 int north(mixed ignored) { return travel("north", "place/north_road/merewatch_road"); }

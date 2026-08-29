@@ -5,11 +5,11 @@ void offer_interactions() {
 }
 string short() { return "Ashenwatch Lower Gate"; }
 void describe(object viewer) {
-  jvmud_write("Ashenwatch Lower Gate\n");
-  jvmud_write("The portcullis stands safely braced above an arch engraved with the ");
-  jvmud_write("oaths of the first western wardens. Expedition carpenters have secured ");
-  jvmud_write("the mechanism while preserving every historic stone.\n\n");
-  jvmud_write("The expedition camp is east, and the outer court is west.\n");
+  write("Ashenwatch Lower Gate\n");
+  write("The portcullis stands safely braced above an arch engraved with the ");
+  write("oaths of the first western wardens. Expedition carpenters have secured ");
+  write("the mechanism while preserving every historic stone.\n\n");
+  write("The expedition camp is east, and the outer court is west.\n");
 }
 int east(mixed ignored) { return travel("east", "place/ashenwatch/expedition_camp"); }
 int west(mixed ignored) { return travel("west", "place/ashenwatch/outer_court"); }

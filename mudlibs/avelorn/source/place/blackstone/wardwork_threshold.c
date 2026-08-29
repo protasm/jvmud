@@ -7,11 +7,11 @@ void offer_interactions() {
 }
 string short() { return "Blackstone Wardwork Threshold"; }
 void describe(object viewer) {
-  jvmud_write("Blackstone Wardwork Threshold\n");
-  jvmud_write("Three ancient galleries meet around copper channels that once carried ");
-  jvmud_write("blue ward-fire. Water stains the eastern stones, ash drifts west, and a ");
-  jvmud_write("faint pulse answers from the chamber north.\n\n");
-  jvmud_write("The entrance is up, flooded gallery east, old armory west, and ward chamber north.\n");
+  write("Blackstone Wardwork Threshold\n");
+  write("Three ancient galleries meet around copper channels that once carried ");
+  write("blue ward-fire. Water stains the eastern stones, ash drifts west, and a ");
+  write("faint pulse answers from the chamber north.\n\n");
+  write("The entrance is up, flooded gallery east, old armory west, and ward chamber north.\n");
 }
 int up(mixed ignored) { return travel("up", "place/blackstone/wardwork_entrance"); }
 int east(mixed ignored) { return travel("east", "place/blackstone/flooded_gallery"); }

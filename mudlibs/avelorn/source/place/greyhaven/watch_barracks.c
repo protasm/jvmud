@@ -21,12 +21,12 @@ void offer_interactions() {
 }
 string short() { return "Greyhaven Watch Barracks"; }
 void describe(object viewer) {
-  jvmud_write("Greyhaven Watch Barracks\n");
-  jvmud_write("A clean drill yard adjoins offices for patrol rosters, lost property, ");
-  jvmud_write("and public complaints. Town constables and Crown roadwardens train ");
-  jvmud_write("together here, preserving clear duties without rivalry.\n\n");
-  jvmud_write("Watch-Captain Ilyra Venn studies a silent patrol roster.\n");
-  jvmud_write("Company Hall is south, and the north gate is north.\n");
+  write("Greyhaven Watch Barracks\n");
+  write("A clean drill yard adjoins offices for patrol rosters, lost property, ");
+  write("and public complaints. Town constables and Crown roadwardens train ");
+  write("together here, preserving clear duties without rivalry.\n\n");
+  write("Watch-Captain Ilyra Venn studies a silent patrol roster.\n");
+  write("Company Hall is south, and the north gate is north.\n");
 }
 int south(mixed ignored) { return travel("south", "place/greyhaven/company_hall"); }
 int north(mixed ignored) { return travel("north", "place/greyhaven/north_gate"); }

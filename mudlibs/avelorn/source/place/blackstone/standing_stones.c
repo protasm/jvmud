@@ -6,11 +6,11 @@ void offer_interactions() {
 }
 string short() { return "Blackstone Standing Stones"; }
 void describe(object viewer) {
-  jvmud_write("Blackstone Standing Stones\n");
-  jvmud_write("Seven basalt pillars frame a view toward Ashenwatch. New silver survey ");
-  jvmud_write("pins sit beside ancient lantern runes, evidence that modern craft and ");
-  jvmud_write("old magic are being studied together rather than set at odds.\n\n");
-  jvmud_write("The upland trail is south, the wardwork entrance north, and Ashenwatch west.\n");
+  write("Blackstone Standing Stones\n");
+  write("Seven basalt pillars frame a view toward Ashenwatch. New silver survey ");
+  write("pins sit beside ancient lantern runes, evidence that modern craft and ");
+  write("old magic are being studied together rather than set at odds.\n\n");
+  write("The upland trail is south, the wardwork entrance north, and Ashenwatch west.\n");
 }
 int south(mixed ignored) { return travel("south", "place/blackstone/upland_trail"); }
 int north(mixed ignored) { return travel("north", "place/blackstone/wardwork_entrance"); }

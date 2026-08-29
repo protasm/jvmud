@@ -5,11 +5,11 @@ void offer_interactions() {
 }
 string short() { return "Merewatch Upland Gate"; }
 void describe(object viewer) {
-  jvmud_write("Merewatch Upland Gate\n");
-  jvmud_write("A stout palisade gate faces the Blackstone hills. The gate remains open ");
-  jvmud_write("by day, with posted guidance asking travelers to carry ward lanterns and ");
-  jvmud_write("report any soot-touched stone rather than concealing delays.\n\n");
-  jvmud_write("Merewatch Square is south, and the upland trail is north.\n");
+  write("Merewatch Upland Gate\n");
+  write("A stout palisade gate faces the Blackstone hills. The gate remains open ");
+  write("by day, with posted guidance asking travelers to carry ward lanterns and ");
+  write("report any soot-touched stone rather than concealing delays.\n\n");
+  write("Merewatch Square is south, and the upland trail is north.\n");
 }
 int south(mixed ignored) { return travel("south", "place/merewatch/mere_square"); }
 int north(mixed ignored) { return travel("north", "place/blackstone/upland_trail"); }

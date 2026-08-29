@@ -11,11 +11,11 @@ void offer_interactions() {
 string short() { return "Greyhaven Heron Fountain"; }
 
 void describe(object viewer) {
-  jvmud_write("Greyhaven Heron Fountain\n");
-  jvmud_write("Clear water spills from a silver-grey heron into a broad public basin. ");
-  jvmud_write("The fountain commemorates the town's first aqueduct, jointly endowed ");
-  jvmud_write("by the Crown, the masons, and six surrounding farming hundreds.\n\n");
-  jvmud_write("Market Cross is south, Temple Court north, Archive Court west, and Company Hall east.\n");
+  write("Greyhaven Heron Fountain\n");
+  write("Clear water spills from a silver-grey heron into a broad public basin. ");
+  write("The fountain commemorates the town's first aqueduct, jointly endowed ");
+  write("by the Crown, the masons, and six surrounding farming hundreds.\n\n");
+  write("Market Cross is south, Temple Court north, Archive Court west, and Company Hall east.\n");
 }
 
 int south(mixed ignored) { return travel("south", "place/greyhaven/market_cross"); }

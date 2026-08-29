@@ -13,11 +13,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Greyhaven West Gate\n");
-  jvmud_write("Two round towers guard an open arch painted with the Crown lantern and ");
-  jvmud_write("Greyhaven's silver heron. Watch officers greet known farmers by name, ");
-  jvmud_write("check caravan seals, and direct newcomers without needless ceremony.\n\n");
-  jvmud_write("The western approach is west, and Gate Square lies east.\n");
+  write("Greyhaven West Gate\n");
+  write("Two round towers guard an open arch painted with the Crown lantern and ");
+  write("Greyhaven's silver heron. Watch officers greet known farmers by name, ");
+  write("check caravan seals, and direct newcomers without needless ceremony.\n\n");
+  write("The western approach is west, and Gate Square lies east.\n");
 }
 
 int west(mixed ignored) {

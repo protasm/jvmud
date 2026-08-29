@@ -11,11 +11,11 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Roadside Birch Copse\n");
-  jvmud_write("White trunks encircle a spring dedicated to travelers of every temple. ");
-  jvmud_write("Ribbons name safe arrivals, reconciled families, and apprenticeships ");
-  jvmud_write("completed in distant towns of the same kingdom.\n\n");
-  jvmud_write("The orchard lane is south.\n");
+  write("Roadside Birch Copse\n");
+  write("White trunks encircle a spring dedicated to travelers of every temple. ");
+  write("Ribbons name safe arrivals, reconciled families, and apprenticeships ");
+  write("completed in distant towns of the same kingdom.\n\n");
+  write("The orchard lane is south.\n");
 }
 
 int south(mixed ignored) {

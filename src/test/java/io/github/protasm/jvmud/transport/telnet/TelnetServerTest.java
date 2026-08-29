@@ -37,6 +37,7 @@ import org.junit.jupiter.api.io.TempDir;
 final class TelnetServerTest {
     private static final String DEFAULT_CONFIG_PATH = "jvmud/lpmuseum.config";
     private static final String LP245_CONFIG_PATH = "jvmud/lp245.config";
+    private static final String AVELORN_CONFIG_PATH = "jvmud/avelorn.config";
 
     @TempDir
     Path tempDir;
@@ -717,6 +718,45 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
                 assertTrue(readUntilQuietAfterContains(socket, "Hi, Policy persona! Welcome to LPMuseum.")
                         .contains("Hi, Policy persona! Welcome to LPMuseum."));
+            }
+        }
+    }
+
+    @Test
+    void avelornHiddenPasswordRepliesReturnToColumnOne() throws Exception {
+        Path avelorn = avelornTestRoot();
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, avelorn, AVELORN_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+
+                socket.getOutputStream().write("line_endings\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Create it? (yes/no) ").contains("Create it?"));
+
+                socket.getOutputStream().write("yes\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Choose a password: ")
+                        .contains("Choose a password: "));
+
+                socket.getOutputStream().write("short\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String rejected = readUntilQuietAfterContains(socket, "Choose a password: ");
+                assertTrue(rejected.startsWith("\r\n"), printable(rejected));
+                assertTrue(rejected.contains("at least 8 characters"), printable(rejected));
+
+                socket.getOutputStream().write("Avelorn1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String confirmation = readUntilQuietAfterContains(socket, "Password again: ");
+                assertTrue(confirmation.startsWith("\r\n"), printable(confirmation));
+
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                readUntilSocketClosed(socket);
             }
         }
     }
@@ -2551,6 +2591,13 @@ final class TelnetServerTest {
         return target;
     }
 
+    private Path avelornTestRoot() throws IOException {
+        Path source = repositoryRoot().resolve("mudlibs/avelorn");
+        Path target = tempDir.resolve("avelorn-" + Long.toString(System.nanoTime(), 36));
+        copyMudlibTreeWithoutSavedAccounts(source, target);
+        return target;
+    }
+
     private Path mountedLpmuseumTestRoot() throws IOException {
         Path sourceRoot = repositoryRoot().resolve("mudlibs");
         Path targetRoot = tempDir.resolve("mounted-" + Long.toString(System.nanoTime(), 36));
@@ -2642,6 +2689,10 @@ final class TelnetServerTest {
 
     private boolean containsTelnetCommand(String text, int command, int option) {
         return text.indexOf("" + (char) 255 + (char) command + (char) option) >= 0;
+    }
+
+    private String printable(String text) {
+        return text.replace("\r", "\\r").replace("\n", "\\n");
     }
 
     private String readUntilContains(Socket socket, String expected) throws Exception {

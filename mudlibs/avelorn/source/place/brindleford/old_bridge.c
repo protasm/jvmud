@@ -14,13 +14,13 @@ string short() {
 }
 
 void describe(object viewer) {
-  jvmud_write("Old Brindle Bridge\n");
-  jvmud_write("Three low arches carry the royal road over the bright River Brindle. ");
-  jvmud_write("The masons' date-stone honors both Queen Meriel and the local hundred ");
-  jvmud_write("whose levy rebuilt the bridge, a compact between realm and community ");
-  jvmud_write("that has endured for eighty peaceful years.\n\n");
-  jvmud_write("A blue-glass ward lantern stands beside the eastern parapet.\n");
-  jvmud_write("The road returns west and crosses the toll meadow east.\n");
+  write("Old Brindle Bridge\n");
+  write("Three low arches carry the royal road over the bright River Brindle. ");
+  write("The masons' date-stone honors both Queen Meriel and the local hundred ");
+  write("whose levy rebuilt the bridge, a compact between realm and community ");
+  write("that has endured for eighty peaceful years.\n\n");
+  write("A blue-glass ward lantern stands beside the eastern parapet.\n");
+  write("The road returns west and crosses the toll meadow east.\n");
 }
 
 int east(mixed ignored) {
@@ -32,7 +32,7 @@ int east(mixed ignored) {
 }
 
 int tend_lantern(mixed ignored) {
-  jvmud_write("You trim the bridge lantern, polish its blue glass, and mark the service seal.\n");
+  write("You trim the bridge lantern, polish its blue glass, and mark the service seal.\n");
   return jvmud_invoke_lpc_object(jvmud_current_actor(), "record_quest_action", "bridge-lantern");
 }
 
