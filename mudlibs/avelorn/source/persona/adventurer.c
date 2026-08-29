@@ -28,6 +28,7 @@ mapping quest_stages;
 mapping quest_counts;
 mapping quest_flags;
 int quests_materialized;
+object combat_target;
 
 void initialize(mixed first_load) {
   if (!account_id) {
@@ -63,6 +64,7 @@ void initialize(mixed first_load) {
   if (!account_created && !copper) {
     copper = 120;
   }
+  jvmud_schedule_recurring_tick(1, 1);
 }
 
 void begin_session() {
@@ -236,6 +238,7 @@ void enter_avelorn(int returning) {
 }
 
 void end_session() {
+  combat_target = 0;
   save_character();
   clear_materialized_inventory();
 }
@@ -319,6 +322,10 @@ int look(mixed target) {
 int travel_to(string direction, string destination) {
   object new_place;
 
+  if (combat_target) {
+    write("You break away from combat and flee " + direction + ".\n");
+    combat_target = 0;
+  }
   avelorn_emit_except(
       jvmud_current_lpc_object(),
       character_name + " leaves " + direction + ".\n",
@@ -539,7 +546,6 @@ int money(mixed ignored) {
 int attack(mixed target) {
   object place;
   object opponent;
-  int damage;
 
   if (!target) {
     write("Attack what?\n");
@@ -552,12 +558,46 @@ int attack(mixed target) {
     write("That is not a hostile combatant.\n");
     return 1;
   }
-  damage = attack_damage();
-  return jvmud_invoke_lpc_object(
+  if (combat_target == opponent) {
+    write("You are already fighting "
+        + jvmud_invoke_lpc_object(opponent, "query_name") + ".\n");
+    return 1;
+  }
+  combat_target = opponent;
+  write("You engage " + jvmud_invoke_lpc_object(opponent, "query_name")
+      + " in combat.\n");
+  perform_combat_round();
+  return 1;
+}
+
+void scheduled_update() {
+  if (combat_target) {
+    perform_combat_round();
+  }
+}
+
+void perform_combat_round() {
+  object place;
+  object opponent;
+
+  opponent = combat_target;
+  if (!opponent) {
+    return;
+  }
+  place = jvmud_entity_location(jvmud_current_lpc_object());
+  if (!place
+      || jvmud_entity_location(opponent) != place
+      || !jvmud_method_exists("query_hostile", opponent)
+      || !jvmud_invoke_lpc_object(opponent, "query_hostile")) {
+    combat_target = 0;
+    write("Your opponent is no longer within reach.\n");
+    return;
+  }
+  jvmud_invoke_lpc_object(
       opponent,
       "receive_attack",
       jvmud_current_lpc_object(),
-      damage);
+      attack_damage());
 }
 
 int consider(mixed target) {
@@ -644,6 +684,7 @@ int class_ability(mixed target) {
     return 1;
   }
   resource -= cost;
+  combat_target = opponent;
   write("You unleash " + technique + ".\n");
   return jvmud_invoke_lpc_object(
       opponent,
@@ -669,6 +710,7 @@ int receive_damage(int amount, string attacker_name) {
       jvmud_current_lpc_object(),
       character_name + " is overcome and carried to Sister Elara's care.\n",
       jvmud_current_lpc_object());
+  combat_target = 0;
   lost_copper = copper / 10;
   copper -= lost_copper;
   recalculate_resources(1);
@@ -684,7 +726,10 @@ int receive_damage(int amount, string attacker_name) {
   return 0;
 }
 
-void award_victory(int xp, int coins, string opponent_name) {
+void award_victory(int xp, int coins, string opponent_name, object opponent) {
+  if (combat_target == opponent) {
+    combat_target = 0;
+  }
   avelorn_write_to(
       jvmud_current_lpc_object(),
       "You help defeat " + opponent_name + ".\n");
@@ -1139,12 +1184,14 @@ int help(mixed ignored) {
   write("  look, north/east/south/west, score, pronouns, who\n");
   write("  say <message>, tell <character> <message>\n");
   write("  inventory, equipment, get, drop, equip, unequip, use\n");
-  write("  attack, ability, consider, quests, money, list, buy, sell\n");
+  write("  attack <target> begins timed combat; ability uses a technique\n");
+  write("  consider, quests, money, list, buy, sell\n");
   write("  train, improve, emotes, save, quit, help\n");
   return 1;
 }
 
 int quit(mixed ignored) {
+  combat_target = 0;
   save_character();
   write("You leave the road in the Company's keeping. Farewell.\n");
   clear_materialized_inventory();

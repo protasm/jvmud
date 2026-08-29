@@ -175,7 +175,8 @@ void defeat(object place) {
           "award_victory",
           experience_reward,
           copper_reward,
-          display_name);
+          display_name,
+          jvmud_current_lpc_object());
       jvmud_invoke_lpc_object(
           contributor,
           "record_quest_defeat",

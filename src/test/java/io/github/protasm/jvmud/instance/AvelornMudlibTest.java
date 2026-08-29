@@ -407,11 +407,19 @@ class AvelornMudlibTest {
         dispatch(mud, first, firstWriter, "consider rat");
         dispatch(mud, first, firstWriter, "attack rat");
         dispatch(mud, second, secondWriter, "attack rat");
+        int strikesBeforeTick = occurrences(firstOutput.toString(), "Alden pike strikes scarred granary rat");
         dispatch(mud, first, firstWriter, "attack rat");
-        dispatch(mud, second, secondWriter, "attack rat");
+        assertEquals(strikesBeforeTick,
+                occurrences(firstOutput.toString(), "Alden pike strikes scarred granary rat"),
+                firstOutput.toString());
+        assertTrue(firstOutput.toString().contains("You are already fighting scarred granary rat."),
+                firstOutput.toString());
+        mud.advanceWorldTick();
+        assertTrue(occurrences(firstOutput.toString(), "Alden pike strikes scarred granary rat")
+                > strikesBeforeTick, firstOutput.toString());
         for (int attempt = 0; attempt < 4
                 && !firstOutput.toString().contains("scarred granary rat is defeated."); attempt++) {
-            dispatch(mud, first, firstWriter, "attack rat");
+            mud.advanceWorldTick();
         }
         dispatch(mud, first, firstWriter, "score");
         dispatch(mud, second, secondWriter, "score");
@@ -425,6 +433,28 @@ class AvelornMudlibTest {
         assertTrue(secondTranscript.contains("You help defeat scarred granary rat."), secondTranscript);
         assertTrue(firstTranscript.contains("Experience 35/100"), firstTranscript);
         assertTrue(secondTranscript.contains("Experience 35/100"), secondTranscript);
+    }
+
+    @Test
+    void leavingAnEncounterStopsTimedCombat() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+
+        createCharacter(mud, persona, writer, "combat_flee", "Tamsin Reed", "female", "ranger");
+        commands(mud, persona, writer, "east", "east", "north", "down", "east");
+        dispatch(mud, persona, writer, "attack rat");
+        dispatch(mud, persona, writer, "west");
+        int strikesAfterFleeing = occurrences(output.toString(), "Tamsin reed strikes scarred granary rat");
+        mud.advanceWorldTick();
+        mud.advanceWorldTick();
+
+        String transcript = output.toString();
+        assertTrue(transcript.contains("You break away from combat and flee west."), transcript);
+        assertEquals(strikesAfterFleeing,
+                occurrences(transcript, "Tamsin reed strikes scarred granary rat"), transcript);
     }
 
     @Test
@@ -930,9 +960,8 @@ class AvelornMudlibTest {
             MudInstance mud,
             InstancePersona persona,
             PrintWriter writer) {
-        for (int attack = 0; attack < 6; attack++) {
-            dispatch(mud, persona, writer, "attack rat");
-        }
+        dispatch(mud, persona, writer, "attack rat");
+        advanceTicks(mud, 8);
     }
 
     private void useTechniquesThenAttack(
