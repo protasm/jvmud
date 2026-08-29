@@ -26,6 +26,7 @@ void initialize(mixed first_load) {
         "charge of Brindleford's sickroom, schoolroom, and roadside lamps");
     jvmud_invoke_lpc_object(citizen, "add_identity", "elara");
     jvmud_invoke_lpc_object(citizen, "add_identity", "sister");
+    jvmud_invoke_lpc_object(citizen, "set_quest", "light-for-the-road");
     jvmud_move_entity(citizen, jvmud_current_lpc_object());
   }
 

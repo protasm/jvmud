@@ -22,8 +22,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 /** Native boundary and first character-flow coverage for the Avelorn exemplar mudlib. */
 class AvelornMudlibTest {
-    private static final Pattern BRINDLEFORD_DESTINATION =
-            Pattern.compile("\\\"(place/brindleford/[a-z_]+)\\\"");
+    private static final Pattern PLACE_DESTINATION =
+            Pattern.compile("\\\"(place/[a-z_/]+)\\\"");
 
     @TempDir
     Path tempDir;
@@ -189,16 +189,20 @@ class AvelornMudlibTest {
     }
 
     @Test
-    void exposesAConnectedBrindlefordWithNoDanglingPlaceLinks() throws Exception {
+    void exposesOneConnectedAvelornWorldWithNoDanglingPlaceLinks() throws Exception {
         Path sourceRoot = Path.of("mudlibs/avelorn/source").toAbsolutePath().normalize();
-        Path places = sourceRoot.resolve("place/brindleford");
+        Path places = sourceRoot.resolve("place");
         Map<String, Set<String>> links = new HashMap<>();
 
-        try (var paths = Files.list(places)) {
-            for (Path path : paths.filter(candidate -> candidate.toString().endsWith(".c")).toList()) {
-                String place = "place/brindleford/"
-                        + path.getFileName().toString().replaceFirst("\\.c$", "");
-                Matcher matcher = BRINDLEFORD_DESTINATION.matcher(Files.readString(path));
+        try (var paths = Files.walk(places)) {
+            for (Path path : paths
+                    .filter(Files::isRegularFile)
+                    .filter(candidate -> candidate.toString().endsWith(".c"))
+                    .toList()) {
+                String place = sourceRoot.relativize(path).toString()
+                        .replace('\\', '/')
+                        .replaceFirst("\\.c$", "");
+                Matcher matcher = PLACE_DESTINATION.matcher(Files.readString(path));
                 Set<String> destinations = new HashSet<>();
                 while (matcher.find()) {
                     String destination = matcher.group(1);
@@ -213,7 +217,7 @@ class AvelornMudlibTest {
             }
         }
 
-        assertEquals(12, links.size());
+        assertEquals(23, links.size());
         Set<String> reached = new HashSet<>();
         ArrayDeque<String> frontier = new ArrayDeque<>();
         frontier.add("place/brindleford/village_green");
@@ -332,6 +336,56 @@ class AvelornMudlibTest {
         dispatch(mud, restored, restoredWriter, "quests");
         String restoredTranscript = restoredOutput.toString();
         assertTrue(restoredTranscript.contains("Miller's Unwelcome Guests — complete"), restoredTranscript);
+    }
+
+    @Test
+    void completesTheThreeDistinctLanternObjectivesOnTheRoadToGreyhaven() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+
+        createCharacter(mud, persona, writer, "lantern_road", "Mara Fen", "non-binary", "mage");
+        dispatch(mud, persona, writer, "north");
+        dispatch(mud, persona, writer, "train");
+        dispatch(mud, persona, writer, "south");
+        dispatch(mud, persona, writer, "work");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "tend");
+        dispatch(mud, persona, writer, "tend");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "tend");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "east");
+        dispatch(mud, persona, writer, "tend");
+        dispatch(mud, persona, writer, "quests");
+        for (int westward = 0; westward < 11; westward++) {
+            dispatch(mud, persona, writer, "west");
+        }
+        dispatch(mud, persona, writer, "report");
+        dispatch(mud, persona, writer, "report");
+        dispatch(mud, persona, writer, "quests");
+        dispatch(mud, persona, writer, "score");
+
+        String transcript = output.toString();
+        assertTrue(transcript.contains("Light for the Road (recommended level 2)"), transcript);
+        assertTrue(transcript.contains("Old Brindle Bridge"), transcript);
+        assertTrue(transcript.contains("Crown Road Shelter"), transcript);
+        assertTrue(transcript.contains("Greyhaven Western Approach"), transcript);
+        assertTrue(transcript.contains("You have already recorded this objective."), transcript);
+        assertTrue(transcript.contains("Light for the Road: 3/3."), transcript);
+        assertEquals(1, occurrences(transcript, "You complete Light for the Road."));
+        assertTrue(transcript.contains("Light for the Road — complete"), transcript);
+        assertTrue(transcript.contains("Experience 150/200"), transcript);
+        assertTrue(transcript.contains("Coin: 1 gold, 9 silver, 5 copper"), transcript);
     }
 
     private void dispatch(

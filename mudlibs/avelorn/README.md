@@ -20,10 +20,10 @@ Lantern beneath Ashenwatch Keep.
 
 ## Current playable slice
 
-Brindleford currently provides twelve connected Places: its civic green,
-Lantern chapter house, market, reeve's hall, Shrine of the Seven Lamps, the
-east-road approach, and Halward Mill's yard and cellars. Characters can train,
-trade, rest, explore, evaluate hostile combatants, and fight cooperatively.
+The world currently provides twenty-three connected Places spanning
+Brindleford, the maintained Lantern Road, and Greyhaven's western gate.
+Characters can train, trade, rest, explore, evaluate hostile combatants, and
+fight cooperatively.
 Every contributor still present at a victory receives credit. Equipment and
 enemy recommendations are warnings and effectiveness adjustments rather than
 hard locks.
@@ -32,6 +32,11 @@ The first complete assignment, *Miller's Unwelcome Guests*, can be accepted
 from Miller Enid in the mill yard. Its three credited cellar clearances use a
 timed hostile respawn, persist in the Company journal, and grant their turn-in
 reward only once.
+
+The second assignment, *Light for the Road*, sends a level-two Companion to
+service three distinct ward lanterns between Brindleford and Greyhaven. Each
+objective is credited once, demonstrating non-combat quest objectives and
+soft-gated travel progression.
 
 Character identity, progression, coin, inventory, and equipment persist as
 host-filesystem snapshots beneath `accounts/`. Avelorn declares no database

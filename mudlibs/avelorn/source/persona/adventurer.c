@@ -26,6 +26,7 @@ int inventory_materialized;
 string quest_state;
 mapping quest_stages;
 mapping quest_counts;
+mapping quest_flags;
 int quests_materialized;
 
 void initialize(mixed first_load) {
@@ -200,6 +201,7 @@ void receive_class(mixed value) {
   quests_materialized = 1;
   quest_stages = ([ ]);
   quest_counts = ([ ]);
+  quest_flags = ([ ]);
   grant_starter_kit();
   recalculate_resources(1);
   save_character();
@@ -696,6 +698,41 @@ void record_quest_defeat(string quest_tag) {
   save_character();
 }
 
+int record_quest_action(string action_tag) {
+  string quest_id;
+  mapping flags;
+  int count;
+  int required;
+
+  materialize_quests();
+  quest_id = jvmud_invoke_lpc_object("system/quests", "quest_for_action_tag", action_tag);
+  if (!quest_id || quest_stage(quest_id) != 1) {
+    jvmud_write("You make a careful inspection, but no current Company assignment concerns it.\n");
+    return 1;
+  }
+  if (jvmud_member(quest_flags, quest_id)) {
+    flags = quest_flags[quest_id];
+  } else {
+    flags = ([ ]);
+  }
+  if (jvmud_member(flags, action_tag)) {
+    jvmud_write("You have already recorded this objective.\n");
+    return 1;
+  }
+  flags[action_tag] = 1;
+  quest_flags[quest_id] = flags;
+  count = quest_count(quest_id) + 1;
+  quest_counts[quest_id] = count;
+  required = jvmud_invoke_lpc_object("system/quests", "required_count", quest_id);
+  jvmud_write(quest_title(quest_id) + ": " + count + "/" + required + ".\n");
+  if (count >= required) {
+    quest_stages[quest_id] = 2;
+    jvmud_write("The assignment is ready to report.\n");
+  }
+  save_character();
+  return 1;
+}
+
 int turn_in_quest(string quest_id) {
   int stage;
   int xp;
@@ -1008,7 +1045,8 @@ void snapshot_quests() {
 
   state = ([
     "stages": quest_stages,
-    "counts": quest_counts
+    "counts": quest_counts,
+    "flags": quest_flags
   ]);
   quest_state = jvmud_serialize_lpc_value(state);
 }
@@ -1023,6 +1061,7 @@ void materialize_quests() {
   quests_materialized = 1;
   quest_stages = ([ ]);
   quest_counts = ([ ]);
+  quest_flags = ([ ]);
   if (!quest_state || jvmud_size(quest_state) == 0) {
     return;
   }
@@ -1036,6 +1075,9 @@ void materialize_quests() {
   }
   if (jvmud_is_mapping(state["counts"])) {
     quest_counts = state["counts"];
+  }
+  if (jvmud_is_mapping(state["flags"])) {
+    quest_flags = state["flags"];
   }
 }
 

@@ -57,6 +57,10 @@ inside the character snapshot. The runtime mapping is reconstructed at login.
 Stage `1` is active, `2` is ready to report, and `3` is complete; rewards are
 issued only during the transition from `2` to `3`.
 
+Repeated objectives use counters. Distinct exploration or interaction
+objectives additionally store stable completion tags, preventing one Place or
+interaction from satisfying a multi-location assignment more than once.
+
 ## Combat contract
 
 Combatants publish level and health so players can evaluate risk before
