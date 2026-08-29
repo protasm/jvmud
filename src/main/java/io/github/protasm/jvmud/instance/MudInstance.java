@@ -2,6 +2,7 @@ package io.github.protasm.jvmud.instance;
 
 import io.github.protasm.jvmud.compiler.efun.builtin.CoreEfuns;
 import io.github.protasm.jvmud.compiler.exec.LPCObjectLoadObserver;
+import io.github.protasm.jvmud.compiler.exec.LPCObjectHandle;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.engine.world.Capability;
@@ -207,6 +208,42 @@ public final class MudInstance implements InstanceHost {
     public synchronized void advanceWorldTick() {
         worldRuntime.scheduler().advanceBy(1);
         runtime.clearOutputTranscript();
+    }
+
+    /**
+     * Recompiles and replaces one shared mudlib object while this instance remains online.
+     *
+     * <p>The path is an LPC object id relative to the selected mudlib's active source root, such
+     * as {@code system/quests}. Existing callers resolve the replacement through the same stable
+     * object id. Host administration code should use this operation only for shared service or
+     * content objects whose own reload policy is safe; it is intentionally not exposed as an
+     * unauthenticated player transport command.</p>
+     *
+     * @param objectPath mudlib-relative LPC object id, with or without a {@code .c} suffix
+     * @return handle for the newly compiled shared object
+     * @throws IllegalArgumentException if the path is blank or escapes the active mudlib root
+     */
+    public synchronized LPCObjectHandle reloadMudlibObject(String objectPath) {
+        Objects.requireNonNull(objectPath, "objectPath");
+        String normalizedObjectPath = objectPath.trim();
+        if (normalizedObjectPath.endsWith(".c")) {
+            normalizedObjectPath = normalizedObjectPath.substring(0, normalizedObjectPath.length() - 2);
+        }
+        while (normalizedObjectPath.startsWith("/")) {
+            normalizedObjectPath = normalizedObjectPath.substring(1);
+        }
+        if (normalizedObjectPath.isBlank()) {
+            throw new IllegalArgumentException("objectPath cannot be blank.");
+        }
+
+        Path activeRoot = bootResult.mudlibBoundary().mudlibRootPath().orElse(mudlibRoot)
+                .toAbsolutePath()
+                .normalize();
+        Path sourcePath = activeRoot.resolve(normalizedObjectPath + ".c").normalize();
+        if (!sourcePath.startsWith(activeRoot)) {
+            throw new IllegalArgumentException("objectPath must remain inside the active mudlib root.");
+        }
+        return runtime.reload(sourcePath);
     }
 
     @Override

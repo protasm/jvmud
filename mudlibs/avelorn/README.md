@@ -59,6 +59,11 @@ Character identity, progression, coin, inventory, and equipment persist as
 host-filesystem snapshots beneath `accounts/`. Avelorn declares no database
 capability and uses no database service.
 
+JVMud host administration can reload a shared Avelorn service or content object
+by stable object id while players remain connected. The reload operation is a
+host API, not an unauthenticated player command; the acceptance suite verifies
+that a connected journal immediately observes a reloaded quest definition.
+
 Run the game from the repository root with:
 
 ```text

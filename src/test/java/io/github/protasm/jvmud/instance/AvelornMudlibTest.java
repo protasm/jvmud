@@ -1,6 +1,7 @@
 package io.github.protasm.jvmud.instance;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -627,12 +628,168 @@ class AvelornMudlibTest {
         assertTrue(transcript.contains("Coin: 13 gold, 6 silver"), transcript);
     }
 
+    @ParameterizedTest
+    @CsvSource({
+        "fighter, male, campaign_fighter",
+        "ranger, female, campaign_ranger",
+        "mage, non-binary, campaign_mage",
+        "cleric, female, campaign_cleric"
+    })
+    void eachClassCompletesTheFullCampaignAndSurvivesAMudRestart(
+            String characterClass,
+            String gender,
+            String account) throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance firstMud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = firstMud.attachPersona(writer, "127.0.0.1");
+
+        createCharacter(firstMud, persona, writer, account, "Celyn Ward", gender, characterClass);
+        completeCampaign(firstMud, persona, writer);
+
+        String transcript = output.toString();
+        assertTrue(transcript.contains("level 10 " + characterClass), campaignTail(transcript));
+        assertTrue(transcript.contains("Experience: level cap reached"), campaignTail(transcript));
+        assertTrue(transcript.contains("Miller's Unwelcome Guests — complete"), campaignTail(transcript));
+        assertTrue(transcript.contains("Light for the Road — complete"), campaignTail(transcript));
+        assertTrue(transcript.contains("The Silent Patrol Bell — complete"), campaignTail(transcript));
+        assertTrue(transcript.contains("Beneath Blackstone — complete"), campaignTail(transcript));
+        assertTrue(transcript.contains("Rekindle the Western Lantern — complete"), campaignTail(transcript));
+        assertTrue(transcript.contains("Medal of the Western Lantern (equipped)"), campaignTail(transcript));
+        assertTrue(transcript.contains("The Lantern Crown shines whole"), campaignTail(transcript));
+        assertTrue(Files.isRegularFile(mudlib.resolve("accounts/" + account + ".o")));
+        assertTrue(!Files.readString(mudlib.resolve("jvmud/avelorn.config")).contains("database"));
+
+        firstMud.detachPersona(persona);
+        MudInstance restartedMud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter restoredOutput = new StringWriter();
+        PrintWriter restoredWriter = new PrintWriter(restoredOutput, true);
+        InstancePersona restored = restartedMud.attachPersona(restoredWriter, "127.0.0.2");
+        dispatch(restartedMud, restored, restoredWriter, account);
+        dispatch(restartedMud, restored, restoredWriter, "Avelorn1!");
+        dispatch(restartedMud, restored, restoredWriter, "quests");
+        dispatch(restartedMud, restored, restoredWriter, "equipment");
+        dispatch(restartedMud, restored, restoredWriter, "score");
+
+        String restartTranscript = restoredOutput.toString();
+        assertTrue(restartTranscript.contains("Welcome back, Celyn ward."), restartTranscript);
+        assertTrue(restartTranscript.contains("level 10 " + characterClass), restartTranscript);
+        assertTrue(restartTranscript.contains("Rekindle the Western Lantern — complete"), restartTranscript);
+        assertTrue(restartTranscript.contains("charm: Medal of the Western Lantern (equipped)"), restartTranscript);
+    }
+
+    @Test
+    void reloadsSharedAvelornQuestContentWhileAPlayerRemainsConnected() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter output = new StringWriter();
+        PrintWriter writer = new PrintWriter(output, true);
+        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
+
+        createCharacter(mud, persona, writer, "reload_content", "Rowan Fen", "non-binary", "ranger");
+        dispatch(mud, persona, writer, "work");
+        assertTrue(output.toString().contains("Light for the Road"), output.toString());
+
+        Path questSource = mudlib.resolve("source/system/quests.c");
+        String revisedSource = Files.readString(questSource)
+                .replace("return \"Light for the Road\";", "return \"Road Lantern Audit\";");
+        Files.writeString(questSource, revisedSource);
+        assertThrows(IllegalArgumentException.class, () -> mud.reloadMudlibObject("../outside"));
+        mud.reloadMudlibObject("system/quests");
+        dispatch(mud, persona, writer, "quests");
+
+        String transcript = output.toString();
+        assertTrue(transcript.contains("Road Lantern Audit — active"), transcript);
+    }
+
     private void dispatch(
             MudInstance mud,
             InstancePersona persona,
             PrintWriter writer,
             String command) {
         mud.dispatch(persona, writer, command);
+    }
+
+    private void completeCampaign(
+            MudInstance mud,
+            InstancePersona persona,
+            PrintWriter writer) {
+        commands(mud, persona, writer, "north", "train", "south");
+
+        commands(mud, persona, writer, "east", "east", "north", "work", "down", "east");
+        defeatRat(mud, persona, writer);
+        advanceTicks(mud, 20);
+        defeatRat(mud, persona, writer);
+        advanceTicks(mud, 20);
+        defeatRat(mud, persona, writer);
+        commands(mud, persona, writer, "west", "up", "report", "south", "west", "west");
+
+        commands(mud, persona, writer, "work", "east", "east", "east", "east", "tend");
+        commands(mud, persona, writer, "east", "east", "east", "tend");
+        commands(mud, persona, writer, "east", "east", "east", "east", "tend");
+        repeatCommand(mud, persona, writer, "west", 11);
+        dispatch(mud, persona, writer, "report");
+
+        repeatCommand(mud, persona, writer, "east", 13);
+        commands(mud, persona, writer, "east", "north", "east", "north", "work");
+        commands(mud, persona, writer, "north", "north", "north");
+        useTechniquesThenAttack(mud, persona, writer, "wraith", 5, 1);
+        commands(mud, persona, writer, "south", "south", "south", "report");
+
+        repeatCommand(mud, persona, writer, "north", 6);
+        commands(mud, persona, writer, "east", "work", "west");
+        commands(mud, persona, writer, "north", "north", "north", "north", "down", "east");
+        useTechniquesThenAttack(mud, persona, writer, "guardian", 6, 1);
+        commands(mud, persona, writer, "west", "up", "south", "south", "west", "rest");
+        commands(mud, persona, writer, "east", "north", "north", "down", "west");
+        useTechniquesThenAttack(mud, persona, writer, "guardian", 6, 1);
+        commands(mud, persona, writer, "east", "north", "restore", "south", "up");
+        commands(mud, persona, writer, "south", "south", "south", "south", "east", "report");
+
+        commands(mud, persona, writer, "west", "north", "north", "north", "west", "west", "work");
+        commands(mud, persona, writer, "west", "west", "west");
+        useTechniquesThenAttack(mud, persona, writer, "hound", 5, 1);
+        commands(mud, persona, writer, "east", "south", "rest", "north", "north", "west");
+        useTechniquesThenAttack(mud, persona, writer, "knight", 6, 1);
+        commands(mud, persona, writer, "east", "east", "align", "west", "south", "south", "rest");
+        commands(mud, persona, writer, "north", "north", "north", "down", "east");
+        useTechniquesThenAttack(mud, persona, writer, "warden", 7, 1);
+        commands(mud, persona, writer, "north", "rekindle", "south", "west", "up");
+        commands(mud, persona, writer, "south", "south", "east", "east", "report");
+        commands(mud, persona, writer, "quests", "inventory", "equip medal", "equipment", "score", "save");
+    }
+
+    private void commands(
+            MudInstance mud,
+            InstancePersona persona,
+            PrintWriter writer,
+            String... commands) {
+        for (String command : commands) {
+            dispatch(mud, persona, writer, command);
+        }
+    }
+
+    private void repeatCommand(
+            MudInstance mud,
+            InstancePersona persona,
+            PrintWriter writer,
+            String command,
+            int count) {
+        for (int index = 0; index < count; index++) {
+            dispatch(mud, persona, writer, command);
+        }
+    }
+
+    private void advanceTicks(MudInstance mud, int count) {
+        for (int tick = 0; tick < count; tick++) {
+            mud.advanceWorldTick();
+        }
+    }
+
+    private String campaignTail(String transcript) {
+        int start = Math.max(0, transcript.length() - 6000);
+        return transcript.substring(start);
     }
 
     private void createCharacter(
