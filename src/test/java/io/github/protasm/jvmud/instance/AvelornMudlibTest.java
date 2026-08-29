@@ -51,7 +51,7 @@ class AvelornMudlibTest {
         dispatch(mud, persona, writer, "laugh oren");
 
         String transcript = output.toString();
-        String ruler = "+========+========+========+========+========+========+========+========";
+        String ruler = "+=========".repeat(8);
         assertTrue(transcript.contains("Brindleford Village Green\n" + ruler + "\nA broad green"), transcript);
         assertTrue(transcript.contains("Avelorn emotes (100):"), transcript);
         assertTrue(transcript.contains("  acknowledge"), transcript);

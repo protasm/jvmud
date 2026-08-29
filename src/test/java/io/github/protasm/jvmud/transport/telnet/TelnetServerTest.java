@@ -732,6 +732,7 @@ final class TelnetServerTest {
         try (TelnetServer server = new TelnetServer(
                 "127.0.0.1", 0, avelorn, AVELORN_CONFIG_PATH)) {
             server.start();
+            String ruler = "+=========".repeat(8);
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
@@ -781,12 +782,9 @@ final class TelnetServerTest {
 
                 socket.getOutputStream().write("mage\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String firstLook = readUntilQuietAfterContains(
-                        socket, "+========+========+========+========+========+========+========+========");
+                String firstLook = readUntilQuietAfterContains(socket, ruler);
                 assertTrue(firstLook.contains("Brindleford Village Green"), printable(firstLook));
-                assertTrue(firstLook.contains(
-                        "+========+========+========+========+========+========+========+========"),
-                        printable(firstLook));
+                assertTrue(firstLook.contains(ruler), printable(firstLook));
                 assertNoBareLineFeeds(firstLook);
 
                 socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
@@ -815,8 +813,7 @@ final class TelnetServerTest {
 
                 socket.getOutputStream().write("Avelorn1!\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String returningLook = readUntilQuietAfterContains(
-                        socket, "+========+========+========+========+========+========+========+========");
+                String returningLook = readUntilQuietAfterContains(socket, ruler);
                 assertTrue(returningLook.contains("Welcome back, Mira valewood."), printable(returningLook));
                 assertTrue(returningLook.contains("Brindleford Village Green"), printable(returningLook));
                 assertNoBareLineFeeds(returningLook);

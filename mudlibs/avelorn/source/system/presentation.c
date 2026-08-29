@@ -90,8 +90,23 @@ void write_complete_line(string line) {
     }
   }
   if (is_room_heading(line)) {
-    jvmud_write("+========+========+========+========+========+========+========+========\n");
+    jvmud_write(room_ruler() + "\n");
   }
+}
+
+string room_ruler() {
+  string ruler;
+  string segment;
+  int repeats;
+
+  segment = "+=========";
+  ruler = "";
+  repeats = 0;
+  while (repeats < 8) {
+    ruler += segment;
+    repeats += 1;
+  }
+  return ruler;
 }
 
 int is_room_heading(string line) {
