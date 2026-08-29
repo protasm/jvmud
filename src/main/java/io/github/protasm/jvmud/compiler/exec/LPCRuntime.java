@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -795,6 +796,21 @@ public final class LPCRuntime {
      */
     public boolean rebindSessionLpcObject(Object newObject, Object oldObject) {
         return runtimeContext.rebindSessionLpcObject(newObject, oldObject);
+    }
+
+    /** Installs the host transport sink for negotiated out-of-band client messages. */
+    public void bindSessionProtocolSink(Object persona, BiConsumer<String, String> protocolOutputSink) {
+        runtimeContext.bindSessionProtocolSink(persona, protocolOutputSink);
+    }
+
+    /** Records whether a client protocol is active for an interactive persona. */
+    public void setSessionProtocolEnabled(Object persona, String protocol, boolean enabled) {
+        runtimeContext.setSessionProtocolEnabled(persona, protocol, enabled);
+    }
+
+    /** Returns whether a client protocol is active for an interactive persona. */
+    public boolean isSessionProtocolEnabled(Object persona, String protocol) {
+        return runtimeContext.isSessionProtocolEnabled(persona, protocol);
     }
 
     /** Removes a host session binding. */

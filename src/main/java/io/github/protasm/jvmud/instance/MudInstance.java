@@ -13,6 +13,8 @@ import io.github.protasm.jvmud.engine.mudlib.MudlibBoundaryConfigReader;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
 import io.github.protasm.jvmud.engine.output.OutgoingTextFormatter;
+import io.github.protasm.jvmud.engine.protocol.GmcpCodec;
+import io.github.protasm.jvmud.engine.protocol.GmcpMessage;
 import io.github.protasm.jvmud.engine.world.Place;
 import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import io.github.protasm.jvmud.persistence.filesystem.LpmuseumAccountFileStore.Account;
@@ -24,6 +26,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 
 /** Shared runtime state for a persistent Telnet mud process. */
 public final class MudInstance implements InstanceHost {
@@ -272,6 +275,43 @@ public final class MudInstance implements InstanceHost {
     @Override
     public synchronized InstancePersona attachPersona(PrintWriter out, String remoteAddress) {
         return attachPersona("telnet/" + nextPersonaId++, out, remoteAddress, true);
+    }
+
+    @Override
+    public synchronized void bindClientProtocolSink(
+            InstancePersona persona, BiConsumer<String, String> protocolOutputSink) {
+        if (persona != null && isAttached(persona)) {
+            runtime.bindSessionProtocolSink(persona.actor(), protocolOutputSink);
+        }
+    }
+
+    @Override
+    public synchronized void setClientProtocolEnabled(
+            InstancePersona persona, String protocol, boolean enabled) {
+        if (persona == null || !isAttached(persona)) {
+            return;
+        }
+        runtime.setSessionProtocolEnabled(persona.actor(), protocol, enabled);
+        runtime.withCommandActor(persona.actor(), () -> runtime.invokeOptionalObject(
+                persona.actor(), "client_protocol_changed", protocol, enabled ? 1 : 0));
+        runtime.clearOutputTranscript();
+    }
+
+    @Override
+    public synchronized void receiveClientProtocolMessage(
+            InstancePersona persona, String protocol, String message) {
+        if (persona == null || !isAttached(persona) || !"GMCP".equalsIgnoreCase(protocol)) {
+            return;
+        }
+        GmcpMessage decoded;
+        try {
+            decoded = GmcpCodec.decode(message);
+        } catch (IllegalArgumentException ignored) {
+            return;
+        }
+        runtime.withCommandActor(persona.actor(), () -> runtime.invokeOptionalObject(
+                persona.actor(), "receive_gmcp", decoded.packageName(), decoded.payload()));
+        runtime.clearOutputTranscript();
     }
 
     synchronized InstancePersona attachPersona(

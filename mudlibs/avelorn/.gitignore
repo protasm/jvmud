@@ -1,4 +1,0 @@
-/accounts/*.o
-!/accounts/.gitkeep
-/log/*
-!/log/.gitkeep

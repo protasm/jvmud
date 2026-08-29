@@ -37,7 +37,6 @@ import org.junit.jupiter.api.io.TempDir;
 final class TelnetServerTest {
     private static final String DEFAULT_CONFIG_PATH = "jvmud/lpmuseum.config";
     private static final String LP245_CONFIG_PATH = "jvmud/lp245.config";
-    private static final String AVELORN_CONFIG_PATH = "jvmud/avelorn.config";
 
     @TempDir
     Path tempDir;
@@ -726,107 +725,6 @@ final class TelnetServerTest {
     }
 
     @Test
-    void avelornOutputUsesTelnetLineEndingsThroughoutAccountAndGameplayFlow() throws Exception {
-        Path avelorn = avelornTestRoot();
-
-        try (TelnetServer server = new TelnetServer(
-                "127.0.0.1", 0, avelorn, AVELORN_CONFIG_PATH)) {
-            server.start();
-            String ruler = "+=========".repeat(8);
-
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
-                socket.setSoTimeout(5000);
-                String greeting = readUntilQuietAfterContains(socket, "Account ID: ");
-                assertTrue(greeting.contains("Account ID: "));
-                assertNoBareLineFeeds(greeting);
-
-                socket.getOutputStream().write("line_endings\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String createPrompt = readUntilQuietAfterContains(socket, "Create it? (yes/no) ");
-                assertTrue(createPrompt.contains("Create it?"));
-                assertNoBareLineFeeds(createPrompt);
-
-                socket.getOutputStream().write("yes\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String passwordPrompt = readUntilQuietAfterContains(socket, "Choose a password: ");
-                assertTrue(passwordPrompt.contains("Choose a password: "));
-                assertNoBareLineFeeds(passwordPrompt);
-
-                socket.getOutputStream().write("short\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String rejected = readUntilQuietAfterContains(socket, "Choose a password: ");
-                assertTrue(rejected.startsWith("\r\n"), printable(rejected));
-                assertTrue(rejected.contains("at least 8 characters"), printable(rejected));
-                assertNoBareLineFeeds(rejected);
-
-                socket.getOutputStream().write("Avelorn1!\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String confirmation = readUntilQuietAfterContains(socket, "Password again: ");
-                assertTrue(confirmation.startsWith("\r\n"), printable(confirmation));
-                assertNoBareLineFeeds(confirmation);
-
-                socket.getOutputStream().write("Avelorn1!\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String characterPrompt = readUntilQuietAfterContains(socket, "Character name: ");
-                assertNoBareLineFeeds(characterPrompt);
-
-                socket.getOutputStream().write("Mira Valewood\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String genderPrompt = readUntilQuietAfterContains(socket, "Gender (male/female/non-binary): ");
-                assertNoBareLineFeeds(genderPrompt);
-
-                socket.getOutputStream().write("non-binary\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String classPrompt = readUntilQuietAfterContains(socket, "Class (fighter/ranger/mage/cleric): ");
-                assertNoBareLineFeeds(classPrompt);
-
-                socket.getOutputStream().write("mage\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String firstLook = readUntilQuietAfterContains(socket, ruler);
-                assertTrue(firstLook.contains("Brindleford Village Green"), printable(firstLook));
-                assertTrue(firstLook.contains(ruler), printable(firstLook));
-                assertNoBareLineFeeds(firstLook);
-
-                socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String farewell = readUntilSocketClosed(socket);
-                assertTrue(farewell.contains("Farewell."), printable(farewell));
-                assertNoBareLineFeeds(farewell);
-            }
-
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
-                socket.setSoTimeout(5000);
-                String greeting = readUntilQuietAfterContains(socket, "Account ID: ");
-                assertNoBareLineFeeds(greeting);
-
-                socket.getOutputStream().write("line_endings\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String loginPrompt = readUntilQuietAfterContains(socket, "Password: ");
-                assertNoBareLineFeeds(loginPrompt);
-
-                socket.getOutputStream().write("Wrong1!\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String rejected = readUntilQuietAfterContains(socket, "Password: ");
-                assertTrue(rejected.startsWith("\r\n"), printable(rejected));
-                assertTrue(rejected.contains("That password did not match."), printable(rejected));
-                assertNoBareLineFeeds(rejected);
-
-                socket.getOutputStream().write("Avelorn1!\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String returningLook = readUntilQuietAfterContains(socket, ruler);
-                assertTrue(returningLook.contains("Welcome back, Mira valewood."), printable(returningLook));
-                assertTrue(returningLook.contains("Brindleford Village Green"), printable(returningLook));
-                assertNoBareLineFeeds(returningLook);
-
-                socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
-                socket.getOutputStream().flush();
-                String farewell = readUntilSocketClosed(socket);
-                assertNoBareLineFeeds(farewell);
-            }
-        }
-    }
-
-    @Test
     void lpmuseumPasswordPromptsNegotiateNoEcho() throws Exception {
         Path museum = lpmuseumTestRoot();
 
@@ -857,6 +755,67 @@ final class TelnetServerTest {
                 String emailPrompt = readUntilQuietAfterContains(socket, "Email address (optional): ");
                 assertTrue(containsTelnetCommand(emailPrompt, 252, 1), emailPrompt);
                 assertFalse(emailPrompt.contains("> "), emailPrompt);
+            }
+        }
+    }
+
+    @Test
+    void telnetNegotiatesGmcpAndBridgesJsonMessagesToMudlibCode() throws Exception {
+        Files.createDirectories(tempDir.resolve("jvmud"));
+        Files.createDirectories(tempDir.resolve("obj"));
+        Files.createDirectories(tempDir.resolve("room"));
+        Files.writeString(tempDir.resolve("jvmud/test.config"), """
+                engine_capabilities = session_control
+                player_object = obj/player
+                initial_place = room/start
+                lifecycle.object_loaded = initialize
+                lifecycle.interaction_scope_started = offer_interactions
+                """);
+        Files.writeString(tempDir.resolve("obj/player.c"), """
+                void initialize(mixed first_load) {}
+                void offer_interactions() {
+                  jvmud_enable_commands();
+                  jvmud_add_action("noop", "noop");
+                }
+                int noop(mixed ignored) { return 1; }
+                void client_protocol_changed(string protocol, int enabled) {
+                  if (protocol == "GMCP" && enabled) {
+                    jvmud_send_gmcp("Test.Hello", ([ "name": "JVMud", "version": 1 ]));
+                  }
+                }
+                void receive_gmcp(string package_name, mixed payload) {
+                  if (package_name == "Core.Ping") {
+                    jvmud_send_gmcp("Core.Ping");
+                  } else if (package_name == "Client.Test") {
+                    jvmud_write("gmcp client=" + payload["client"] + "\n");
+                  }
+                }
+                """);
+        Files.writeString(tempDir.resolve("room/start.c"), """
+                void initialize(mixed first_load) {}
+                void offer_interactions() {}
+                """);
+
+        try (TelnetServer server = new TelnetServer("127.0.0.1", 0, tempDir, "jvmud/test.config")) {
+            server.start();
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                String initial = readUntilQuietAfterContains(socket, "Attached player 1");
+                assertTrue(containsTelnetCommand(initial, 251, 201), printable(initial));
+
+                socket.getOutputStream().write(new byte[] {(byte) 255, (byte) 253, (byte) 201});
+                socket.getOutputStream().flush();
+                String hello = readUntilQuietAfterContains(socket, "Test.Hello");
+                assertTrue(hello.contains("{\"name\":\"JVMud\",\"version\":1}"), printable(hello));
+                assertTrue(containsGmcpFrame(hello, "Test.Hello"), printable(hello));
+
+                writeGmcpFrame(socket, "Client.Test {\"client\":\"Mudlet\"}");
+                assertTrue(readUntilQuietAfterContains(socket, "gmcp client=Mudlet")
+                        .contains("gmcp client=Mudlet"));
+
+                writeGmcpFrame(socket, "Core.Ping");
+                String ping = readUntilQuietAfterContains(socket, "Core.Ping");
+                assertTrue(containsGmcpFrame(ping, "Core.Ping"), printable(ping));
             }
         }
     }
@@ -2656,13 +2615,6 @@ final class TelnetServerTest {
         return target;
     }
 
-    private Path avelornTestRoot() throws IOException {
-        Path source = repositoryRoot().resolve("mudlibs/avelorn");
-        Path target = tempDir.resolve("avelorn-" + Long.toString(System.nanoTime(), 36));
-        copyMudlibTreeWithoutSavedAccounts(source, target);
-        return target;
-    }
-
     private Path mountedLpmuseumTestRoot() throws IOException {
         Path sourceRoot = repositoryRoot().resolve("mudlibs");
         Path targetRoot = tempDir.resolve("mounted-" + Long.toString(System.nanoTime(), 36));
@@ -2754,6 +2706,25 @@ final class TelnetServerTest {
 
     private boolean containsTelnetCommand(String text, int command, int option) {
         return text.indexOf("" + (char) 255 + (char) command + (char) option) >= 0;
+    }
+
+    private boolean containsGmcpFrame(String text, String messagePrefix) {
+        return text.contains("" + (char) 255 + (char) 250 + (char) 201 + messagePrefix)
+                && text.contains("" + (char) 255 + (char) 240);
+    }
+
+    private void writeGmcpFrame(Socket socket, String message) throws IOException {
+        ByteArrayOutputStream frame = new ByteArrayOutputStream();
+        frame.write(new byte[] {(byte) 255, (byte) 250, (byte) 201});
+        for (byte value : message.getBytes(StandardCharsets.UTF_8)) {
+            frame.write(value);
+            if (Byte.toUnsignedInt(value) == 255) {
+                frame.write(value);
+            }
+        }
+        frame.write(new byte[] {(byte) 255, (byte) 240});
+        socket.getOutputStream().write(frame.toByteArray());
+        socket.getOutputStream().flush();
     }
 
     private String printable(String text) {

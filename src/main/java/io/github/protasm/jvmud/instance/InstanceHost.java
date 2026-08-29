@@ -3,6 +3,7 @@ package io.github.protasm.jvmud.instance;
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.function.BiConsumer;
 
 /** Interactive host behind one telnet listener. */
 public interface InstanceHost {
@@ -17,6 +18,16 @@ public interface InstanceHost {
     void shutdown(Object reason);
 
     InstancePersona attachPersona(PrintWriter out, String remoteAddress);
+
+    /** Binds the transport callback used for negotiated out-of-band protocol messages. */
+    default void bindClientProtocolSink(
+            InstancePersona persona, BiConsumer<String, String> protocolOutputSink) {}
+
+    /** Notifies the hosted runtime that a client protocol has been enabled or disabled. */
+    default void setClientProtocolEnabled(InstancePersona persona, String protocol, boolean enabled) {}
+
+    /** Delivers one decoded-text message received over a negotiated client protocol. */
+    default void receiveClientProtocolMessage(InstancePersona persona, String protocol, String message) {}
 
     void detachPersona(InstancePersona persona);
 

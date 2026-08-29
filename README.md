@@ -180,7 +180,9 @@ compatibility testing, pass `mudlibs/lp245/jvmud/lp245.config`.
 Player/world input is routed through the lifecycle and engine-function mappings
 declared by the active profile. Telnet controls use a configurable escaped
 prefix (`//help` and `//quit` in the bundled profiles), so ordinary slash-prefixed
-mudlib commands remain available to LPC. Admin inspection and object
+mudlib commands remain available to LPC. The listener also negotiates GMCP
+Telnet option 201. Session-enabled mudlibs can send JSON-backed packages through
+`jvmud_send_gmcp` and receive decoded packages in `receive_gmcp`. Admin inspection and object
 mutation stay in the admin CLI. This is still an early development listener:
 session-to-session messaging, output isolation between participants, and
 production networking policy belong to later instance and transport slices.

@@ -51,6 +51,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -881,7 +882,8 @@ public final class RuntimeContext {
                 sessionRecord,
                 playerRecord,
                 Optional.empty(),
-                sink);
+                sink,
+                existing != null ? existing.protocolState() : new SessionProtocolState());
         players.put(playerId, playerRecord);
         sessions.put(engineSessionId, binding);
     }
@@ -938,7 +940,8 @@ public final class RuntimeContext {
                 sessionRecord,
                 playerRecord,
                 Optional.of(personaRecord),
-                sink);
+                sink,
+                existing != null ? existing.protocolState() : new SessionProtocolState());
         players.put(playerId, playerRecord);
         personas.put(personaId, personaRecord);
         sessions.put(engineSessionId, binding);
@@ -970,6 +973,55 @@ public final class RuntimeContext {
                         Objects.requireNonNullElse(objectId(newObject), objectReference(newObject)),
                         newObject));
         return true;
+    }
+
+    /** Installs the host transport sink used for out-of-band messages to an interactive persona. */
+    public void bindSessionProtocolSink(Object persona, BiConsumer<String, String> protocolOutputSink) {
+        SessionBinding binding = sessionsByPersona.get(persona);
+        if (binding != null) {
+            binding.protocolState().outputSink = protocolOutputSink != null
+                    ? protocolOutputSink
+                    : (ignoredProtocol, ignoredMessage) -> {};
+        }
+    }
+
+    /** Records whether a negotiated client protocol is active for an interactive persona. */
+    public void setSessionProtocolEnabled(Object persona, String protocol, boolean enabled) {
+        SessionBinding binding = sessionsByPersona.get(persona);
+        if (binding == null) {
+            return;
+        }
+        String normalized = normalizeProtocolName(protocol);
+        if (enabled) {
+            binding.protocolState().enabledProtocols.add(normalized);
+        } else {
+            binding.protocolState().enabledProtocols.remove(normalized);
+        }
+    }
+
+    /** Returns whether a client protocol has been negotiated for an interactive persona. */
+    public boolean isSessionProtocolEnabled(Object persona, String protocol) {
+        SessionBinding binding = sessionsByPersona.get(persona);
+        return binding != null
+                && binding.protocolState().enabledProtocols.contains(normalizeProtocolName(protocol));
+    }
+
+    /** Sends one already encoded out-of-band message through a negotiated client protocol. */
+    public boolean sendSessionProtocolMessage(Object persona, String protocol, String message) {
+        SessionBinding binding = sessionsByPersona.get(persona);
+        String normalized = normalizeProtocolName(protocol);
+        if (binding == null || !binding.protocolState().enabledProtocols.contains(normalized)) {
+            return false;
+        }
+        binding.protocolState().outputSink.accept(normalized, Objects.requireNonNull(message, "message"));
+        return true;
+    }
+
+    private String normalizeProtocolName(String protocol) {
+        if (protocol == null || protocol.isBlank()) {
+            throw new IllegalArgumentException("Client protocol name must not be blank.");
+        }
+        return protocol.trim().toUpperCase(java.util.Locale.ROOT);
     }
 
     public void unbindSession(String sessionId) {
@@ -2595,7 +2647,8 @@ public final class RuntimeContext {
             SessionRecord sessionRecord,
             PlayerRecord playerRecord,
             Optional<PersonaRecord> personaRecord,
-            Consumer<String> outputSink) {
+            Consumer<String> outputSink,
+            SessionProtocolState protocolState) {
         private Object personaProjection() {
             return personaRecord
                     .flatMap(PersonaRecord::mudlibBehaviorProjection)
@@ -2613,7 +2666,12 @@ public final class RuntimeContext {
                     sessionRecord.connectedAt(),
                     now,
                     sessionRecord.attachedPersonaId());
-            return new SessionBinding(touchedSession, playerRecord, personaRecord, outputSink);
+            return new SessionBinding(touchedSession, playerRecord, personaRecord, outputSink, protocolState);
         }
+    }
+
+    private static final class SessionProtocolState {
+        private final Set<String> enabledProtocols = new HashSet<>();
+        private BiConsumer<String, String> outputSink = (ignoredProtocol, ignoredMessage) -> {};
     }
 }

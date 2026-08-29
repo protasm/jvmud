@@ -9,6 +9,7 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCollectionTransform;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.engine.mudlib.EngineCapability;
+import io.github.protasm.jvmud.engine.protocol.GmcpCodec;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeMapping;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeValueCodec;
@@ -207,6 +208,10 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_capture_session_input(string methodName, int flags[, mixed ...args]) : void}
  *       routes the next session input line to a method on the current object, followed by any
  *       captured compatibility arguments.</li>
+ *   <li>{@code jvmud_gmcp_enabled([mixed user]) : status} reports whether GMCP option 201 has
+ *       been negotiated for the current or supplied interactive object.</li>
+ *   <li>{@code jvmud_send_gmcp(string package[, mixed payload]) : status} JSON-encodes and sends
+ *       a GMCP message to the current interactive object.</li>
  *   <li>{@code jvmud_transfer_player_to_game(string gameId) : status} asks the host to transfer
  *       the current player to another registered game.</li>
  *   <li>{@code jvmud_save_lpc_object_state(string path) : status} persists the current object's LPC
@@ -422,6 +427,8 @@ public final class CoreEfuns {
                         "jvmud_query_ip_number",
                         "jvmud_query_ip_name",
                         "jvmud_capture_session_input",
+                        "jvmud_gmcp_enabled",
+                        "jvmud_send_gmcp",
                         "jvmud_rebind_session_lpc_object")
                 .contains(name)) {
             return capabilities.contains(EngineCapability.SESSION_CONTROL);
@@ -447,6 +454,21 @@ public final class CoreEfuns {
         efuns.add(efun("jvmud_rebind_session_lpc_object", LPCType.LPCSTATUS,
                 List.of(LPCType.LPCOBJECT, LPCType.LPCOBJECT),
                 (runtime, args) -> runtime.rebindSessionLpcObject(args[0], args[1]) ? 1 : 0));
+        efuns.add(efun("jvmud_gmcp_enabled", LPCType.LPCSTATUS, List.of(),
+                (runtime, args) -> runtime.isSessionProtocolEnabled(currentInteractive(runtime), "GMCP") ? 1 : 0));
+        efuns.add(efun("jvmud_gmcp_enabled", LPCType.LPCSTATUS, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> runtime.isSessionProtocolEnabled(args[0], "GMCP") ? 1 : 0));
+        efuns.add(efun("jvmud_send_gmcp", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.sendSessionProtocolMessage(
+                        currentInteractive(runtime),
+                        "GMCP",
+                        GmcpCodec.encode(String.valueOf(args[0]), null, false)) ? 1 : 0));
+        efuns.add(efun("jvmud_send_gmcp", LPCType.LPCSTATUS,
+                List.of(LPCType.LPCSTRING, LPCType.LPCMIXED),
+                (runtime, args) -> runtime.sendSessionProtocolMessage(
+                        currentInteractive(runtime),
+                        "GMCP",
+                        GmcpCodec.encode(String.valueOf(args[0]), args[1], true)) ? 1 : 0));
         efuns.add(efun("jvmud_emit_perceivable", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> emitPerceivable(runtime, args[0], args[1])));
         efuns.add(efun("jvmud_emit_perceivable_except", LPCType.LPCVOID,
@@ -1070,6 +1092,11 @@ public final class CoreEfuns {
     private static Object currentAgent(RuntimeContext runtime) {
         Object agent = runtime.currentCommandActor();
         return agent != null ? agent : 0;
+    }
+
+    private static Object currentInteractive(RuntimeContext runtime) {
+        Object actor = runtime.currentCommandActor();
+        return actor != null ? actor : runtime.currentObject();
     }
 
     private static int random(int max) {

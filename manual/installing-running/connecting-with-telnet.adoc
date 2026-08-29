@@ -1,3 +1,19 @@
 === Connecting With Telnet
 
-Content to be written.
+JVMud's Telnet listener supports ordinary line-oriented clients and negotiates
+the Generic Mud Communication Protocol (GMCP) as Telnet option 201. The server
+offers GMCP with `IAC WILL GMCP`; clients that accept it can exchange UTF-8 GMCP
+subnegotiations without affecting the visible text stream.
+
+Mudlibs with the `session_control` engine capability can use:
+
+* `jvmud_gmcp_enabled()` or `jvmud_gmcp_enabled(user)` to test negotiation state.
+* `jvmud_send_gmcp(package)` for a package without a payload.
+* `jvmud_send_gmcp(package, payload)` to JSON-encode LPC strings, numbers,
+  arrays, and string-keyed mappings.
+
+An interactive LPC object may implement
+`client_protocol_changed(string protocol, int enabled)` to react to negotiation
+and `receive_gmcp(string package, mixed payload)` to receive decoded client
+messages. JVMud owns Telnet framing and JSON conversion; mudlib code owns the
+meaning of packages such as `Room.Info` and `Char.Vitals`.

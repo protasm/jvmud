@@ -3,11 +3,13 @@ package io.github.protasm.jvmud.transport.telnet;
 import io.github.protasm.jvmud.instance.InstanceHost;
 import io.github.protasm.jvmud.instance.InstancePersona;
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.io.UncheckedIOException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -15,11 +17,14 @@ import java.util.Objects;
 /** One line-oriented telnet connection backed by an interactive JVMud session. */
 final class TelnetSession implements Runnable {
     private static final int IAC = 255;
+    private static final int SE = 240;
+    private static final int SB = 250;
     private static final int WILL = 251;
     private static final int WONT = 252;
     private static final int DO = 253;
     private static final int DONT = 254;
     private static final int ECHO = 1;
+    private static final int GMCP = 201;
 
     private final Socket socket;
     private final InstanceHost mud;
@@ -36,13 +41,26 @@ final class TelnetSession implements Runnable {
                 BufferedInputStream in = new BufferedInputStream(socket.getInputStream());
                 OutputStream rawOut = socket.getOutputStream();
                 PrintWriter out = new PrintWriter(
-                        new TelnetLineEndingWriter(new OutputStreamWriter(rawOut, StandardCharsets.UTF_8)), true)) {
+                        new TelnetLineEndingWriter(
+                                new OutputStreamWriter(rawOut, StandardCharsets.UTF_8), rawOut), true)) {
             try {
                 session = new SessionState(mud.attachPersona(out, socket.getInetAddress().getHostAddress()));
             } catch (RuntimeException e) {
                 out.println("Could not attach player: " + e.getMessage());
                 return;
             }
+            mud.bindClientProtocolSink(session.persona, (protocol, message) -> {
+                if (!"GMCP".equalsIgnoreCase(protocol)) {
+                    return;
+                }
+                try {
+                    writeGmcp(rawOut, out, message);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+            writeTelnetCommand(rawOut, out, WILL, GMCP);
+            session.gmcpOffered = true;
             mud.printPromptIfReady(session.persona, out);
             updateEchoMode(session, rawOut, out);
 
@@ -153,6 +171,10 @@ final class TelnetSession implements Runnable {
         if (command == IAC) {
             return false;
         }
+        if (command == SB) {
+            readSubnegotiation(session, in);
+            return true;
+        }
         if (command == DO || command == DONT || command == WILL || command == WONT) {
             int option = in.read();
             if (option != -1) {
@@ -161,19 +183,68 @@ final class TelnetSession implements Runnable {
                 if (command == DO && option == ECHO && session.noEchoNegotiated) {
                     return true;
                 }
+                if (option == GMCP && command == DO && session.gmcpOffered) {
+                    if (!session.gmcpNegotiated) {
+                        session.gmcpNegotiated = true;
+                        mud.setClientProtocolEnabled(session.persona, "GMCP", true);
+                    }
+                    return true;
+                }
+                if (option == GMCP && command == DONT) {
+                    if (session.gmcpNegotiated) {
+                        session.gmcpNegotiated = false;
+                        mud.setClientProtocolEnabled(session.persona, "GMCP", false);
+                    }
+                    return true;
+                }
                 refuseOption(command, option, rawOut, out);
             }
         }
         return true;
     }
 
+    private void readSubnegotiation(SessionState session, BufferedInputStream in) throws IOException {
+        int option = in.read();
+        if (option == -1) {
+            return;
+        }
+        ByteArrayOutputStream payload = new ByteArrayOutputStream();
+        while (true) {
+            int value = in.read();
+            if (value == -1) {
+                return;
+            }
+            if (value != IAC) {
+                payload.write(value);
+                continue;
+            }
+            int command = in.read();
+            if (command == -1) {
+                return;
+            }
+            if (command == IAC) {
+                payload.write(IAC);
+                continue;
+            }
+            if (command == SE) {
+                break;
+            }
+        }
+        if (option == GMCP && session.gmcpNegotiated) {
+            mud.receiveClientProtocolMessage(
+                    session.persona, "GMCP", payload.toString(StandardCharsets.UTF_8));
+        }
+    }
+
     private void refuseOption(int command, int option, OutputStream rawOut, PrintWriter out) throws IOException {
         int response = (command == DO || command == DONT) ? WONT : DONT;
         out.flush();
-        rawOut.write(IAC);
-        rawOut.write(response);
-        rawOut.write(option);
-        rawOut.flush();
+        synchronized (rawOut) {
+            rawOut.write(IAC);
+            rawOut.write(response);
+            rawOut.write(option);
+            rawOut.flush();
+        }
     }
 
     private void updateEchoMode(SessionState session, OutputStream rawOut, PrintWriter out) throws IOException {
@@ -195,10 +266,32 @@ final class TelnetSession implements Runnable {
 
     private void writeTelnetCommand(OutputStream rawOut, PrintWriter out, int command, int option) throws IOException {
         out.flush();
-        rawOut.write(IAC);
-        rawOut.write(command);
-        rawOut.write(option);
-        rawOut.flush();
+        synchronized (rawOut) {
+            rawOut.write(IAC);
+            rawOut.write(command);
+            rawOut.write(option);
+            rawOut.flush();
+        }
+    }
+
+    private void writeGmcp(OutputStream rawOut, PrintWriter out, String message) throws IOException {
+        byte[] payload = message.getBytes(StandardCharsets.UTF_8);
+        out.flush();
+        synchronized (rawOut) {
+            rawOut.write(IAC);
+            rawOut.write(SB);
+            rawOut.write(GMCP);
+            for (byte value : payload) {
+                int unsigned = Byte.toUnsignedInt(value);
+                rawOut.write(unsigned);
+                if (unsigned == IAC) {
+                    rawOut.write(IAC);
+                }
+            }
+            rawOut.write(IAC);
+            rawOut.write(SE);
+            rawOut.flush();
+        }
     }
 
     private static final class SessionState {
@@ -206,6 +299,8 @@ final class TelnetSession implements Runnable {
         private boolean running = true;
         private boolean detached;
         private boolean noEchoNegotiated;
+        private boolean gmcpOffered;
+        private boolean gmcpNegotiated;
 
         private SessionState(InstancePersona persona) {
             this.persona = persona;
@@ -215,6 +310,10 @@ final class TelnetSession implements Runnable {
             if (detached) {
                 return;
             }
+            if (gmcpNegotiated) {
+                mud.setClientProtocolEnabled(persona, "GMCP", false);
+                gmcpNegotiated = false;
+            }
             mud.detachPersona(persona);
             detached = true;
         }
@@ -222,32 +321,40 @@ final class TelnetSession implements Runnable {
 
     private static final class TelnetLineEndingWriter extends Writer {
         private final Writer delegate;
+        private final Object lock;
         private boolean previousWasCarriageReturn;
 
-        private TelnetLineEndingWriter(Writer delegate) {
+        private TelnetLineEndingWriter(Writer delegate, Object lock) {
             this.delegate = Objects.requireNonNull(delegate, "delegate");
+            this.lock = Objects.requireNonNull(lock, "lock");
         }
 
         @Override
         public void write(char[] characters, int offset, int length) throws IOException {
-            for (int index = offset; index < offset + length; index++) {
-                char character = characters[index];
-                if (character == '\n' && !previousWasCarriageReturn) {
-                    delegate.write('\r');
+            synchronized (lock) {
+                for (int index = offset; index < offset + length; index++) {
+                    char character = characters[index];
+                    if (character == '\n' && !previousWasCarriageReturn) {
+                        delegate.write('\r');
+                    }
+                    delegate.write(character);
+                    previousWasCarriageReturn = character == '\r';
                 }
-                delegate.write(character);
-                previousWasCarriageReturn = character == '\r';
             }
         }
 
         @Override
         public void flush() throws IOException {
-            delegate.flush();
+            synchronized (lock) {
+                delegate.flush();
+            }
         }
 
         @Override
         public void close() throws IOException {
-            delegate.close();
+            synchronized (lock) {
+                delegate.close();
+            }
         }
     }
 }

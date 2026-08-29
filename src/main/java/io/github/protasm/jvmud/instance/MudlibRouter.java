@@ -5,14 +5,19 @@ import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.BiConsumer;
 
 /** Routes one hosted entrypoint across mounted mudlib worlds. */
 public final class MudlibRouter implements InstanceHost {
     private final Map<String, MudInstance> mudsByGameId = new LinkedHashMap<>();
     private final Map<String, InstancePersona> suspendedDefaultPersonasBySession = new HashMap<>();
+    private final Map<String, BiConsumer<String, String>> protocolSinksBySession = new HashMap<>();
+    private final Map<String, Set<String>> enabledProtocolsBySession = new HashMap<>();
     private final MudInstance defaultMud;
     private int nextSessionId = 1;
 
@@ -127,9 +132,43 @@ public final class MudlibRouter implements InstanceHost {
     }
 
     @Override
+    public synchronized void bindClientProtocolSink(
+            InstancePersona persona, BiConsumer<String, String> protocolOutputSink) {
+        if (persona != null) {
+            protocolSinksBySession.put(persona.sessionId(), protocolOutputSink);
+            persona.mud().bindClientProtocolSink(persona, protocolOutputSink);
+        }
+    }
+
+    @Override
+    public synchronized void setClientProtocolEnabled(
+            InstancePersona persona, String protocol, boolean enabled) {
+        if (persona != null) {
+            Set<String> enabledProtocols = enabledProtocolsBySession.computeIfAbsent(
+                    persona.sessionId(), ignored -> new HashSet<>());
+            if (enabled) {
+                enabledProtocols.add(protocol);
+            } else {
+                enabledProtocols.remove(protocol);
+            }
+            persona.mud().setClientProtocolEnabled(persona, protocol, enabled);
+        }
+    }
+
+    @Override
+    public synchronized void receiveClientProtocolMessage(
+            InstancePersona persona, String protocol, String message) {
+        if (persona != null) {
+            persona.mud().receiveClientProtocolMessage(persona, protocol, message);
+        }
+    }
+
+    @Override
     public synchronized void detachPersona(InstancePersona persona) {
         if (persona != null) {
             persona.mud().detachPersona(persona);
+            protocolSinksBySession.remove(persona.sessionId());
+            enabledProtocolsBySession.remove(persona.sessionId());
         }
     }
 
@@ -161,6 +200,7 @@ public final class MudlibRouter implements InstanceHost {
             sourceMud.detachPersona(persona, true);
             out.println("Returning to the previous world.");
             persona.replaceWith(defaultMud.resumePersona(suspended, out, persona.remoteAddress()));
+            restoreClientProtocols(persona);
             return;
         }
 
@@ -178,6 +218,17 @@ public final class MudlibRouter implements InstanceHost {
                 persona.userId(),
                 persona.gender());
         persona.replaceWith(replacement);
+        restoreClientProtocols(persona);
+    }
+
+    private void restoreClientProtocols(InstancePersona persona) {
+        BiConsumer<String, String> sink = protocolSinksBySession.get(persona.sessionId());
+        if (sink != null) {
+            persona.mud().bindClientProtocolSink(persona, sink);
+        }
+        for (String protocol : enabledProtocolsBySession.getOrDefault(persona.sessionId(), Set.of())) {
+            persona.mud().setClientProtocolEnabled(persona, protocol, true);
+        }
     }
 
     private InstancePersona snapshot(InstancePersona persona) {
