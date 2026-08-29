@@ -159,9 +159,9 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
                 String concourse = readUntilQuietAfterContains(socket, "directory and a docent");
                 assertTrue(concourse.contains("Grand Concourse of LPMuseum"), concourse);
-                assertTrue(concourse.contains("mudlib is required.\n\nNorth leads"), concourse);
-                assertTrue(concourse.contains("the Archive.\n\nMuseum Security Staffer"), concourse);
-                assertTrue(concourse.contains("Solfeggio is here.\n\nA directory and a docent are here."), concourse);
+                assertTrue(concourse.contains("mudlib is required.\r\n\r\nNorth leads"), concourse);
+                assertTrue(concourse.contains("the Archive.\r\n\r\nMuseum Security Staffer"), concourse);
+                assertTrue(concourse.contains("Solfeggio is here.\r\n\r\nA directory and a docent are here."), concourse);
                 assertTrue(concourse.contains("Museum Security Staffer"), concourse);
                 assertFalse(concourse.contains("soft blue jacket"), concourse);
                 assertFalse(concourse.contains("gentle patrol is driven"), concourse);
@@ -244,8 +244,11 @@ final class TelnetServerTest {
                 socket.getOutputStream().write("look\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 String workshopWithCurio = readUntilQuietAfterContains(socket, "vended curio #1");
-                assertTrue(workshopWithCurio.contains("Try demo time, demo users, demo inventory, demo dispatch, or demo signal.\n\nThe concourse is west."), workshopWithCurio);
-                assertTrue(workshopWithCurio.contains("Entity Vending Machine\nvended curio #1"), workshopWithCurio);
+                assertTrue(workshopWithCurio.contains(
+                        "Try demo time, demo users, demo inventory, demo dispatch, or demo signal.\r\n\r\n"
+                                + "The concourse is west."),
+                        workshopWithCurio);
+                assertTrue(workshopWithCurio.contains("Entity Vending Machine\r\nvended curio #1"), workshopWithCurio);
 
                 socket.getOutputStream().write("take curio\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -723,7 +726,7 @@ final class TelnetServerTest {
     }
 
     @Test
-    void avelornHiddenPasswordRepliesReturnToColumnOne() throws Exception {
+    void avelornOutputUsesTelnetLineEndingsThroughoutAccountAndGameplayFlow() throws Exception {
         Path avelorn = avelornTestRoot();
 
         try (TelnetServer server = new TelnetServer(
@@ -732,31 +735,96 @@ final class TelnetServerTest {
 
             try (Socket socket = new Socket("127.0.0.1", server.port())) {
                 socket.setSoTimeout(5000);
-                assertTrue(readUntilQuietAfterContains(socket, "Account ID: ").contains("Account ID: "));
+                String greeting = readUntilQuietAfterContains(socket, "Account ID: ");
+                assertTrue(greeting.contains("Account ID: "));
+                assertNoBareLineFeeds(greeting);
 
                 socket.getOutputStream().write("line_endings\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilQuietAfterContains(socket, "Create it? (yes/no) ").contains("Create it?"));
+                String createPrompt = readUntilQuietAfterContains(socket, "Create it? (yes/no) ");
+                assertTrue(createPrompt.contains("Create it?"));
+                assertNoBareLineFeeds(createPrompt);
 
                 socket.getOutputStream().write("yes\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                assertTrue(readUntilQuietAfterContains(socket, "Choose a password: ")
-                        .contains("Choose a password: "));
+                String passwordPrompt = readUntilQuietAfterContains(socket, "Choose a password: ");
+                assertTrue(passwordPrompt.contains("Choose a password: "));
+                assertNoBareLineFeeds(passwordPrompt);
 
                 socket.getOutputStream().write("short\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 String rejected = readUntilQuietAfterContains(socket, "Choose a password: ");
                 assertTrue(rejected.startsWith("\r\n"), printable(rejected));
                 assertTrue(rejected.contains("at least 8 characters"), printable(rejected));
+                assertNoBareLineFeeds(rejected);
 
                 socket.getOutputStream().write("Avelorn1!\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
                 String confirmation = readUntilQuietAfterContains(socket, "Password again: ");
                 assertTrue(confirmation.startsWith("\r\n"), printable(confirmation));
+                assertNoBareLineFeeds(confirmation);
 
-                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write("Avelorn1!\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                readUntilSocketClosed(socket);
+                String characterPrompt = readUntilQuietAfterContains(socket, "Character name: ");
+                assertNoBareLineFeeds(characterPrompt);
+
+                socket.getOutputStream().write("Mira Valewood\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String genderPrompt = readUntilQuietAfterContains(socket, "Gender (male/female/non-binary): ");
+                assertNoBareLineFeeds(genderPrompt);
+
+                socket.getOutputStream().write("non-binary\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String classPrompt = readUntilQuietAfterContains(socket, "Class (fighter/ranger/mage/cleric): ");
+                assertNoBareLineFeeds(classPrompt);
+
+                socket.getOutputStream().write("mage\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String firstLook = readUntilQuietAfterContains(
+                        socket, "+========+========+========+========+========+========+========+========");
+                assertTrue(firstLook.contains("Brindleford Village Green"), printable(firstLook));
+                assertTrue(firstLook.contains(
+                        "+========+========+========+========+========+========+========+========"),
+                        printable(firstLook));
+                assertNoBareLineFeeds(firstLook);
+
+                socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String farewell = readUntilSocketClosed(socket);
+                assertTrue(farewell.contains("Farewell."), printable(farewell));
+                assertNoBareLineFeeds(farewell);
+            }
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                String greeting = readUntilQuietAfterContains(socket, "Account ID: ");
+                assertNoBareLineFeeds(greeting);
+
+                socket.getOutputStream().write("line_endings\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String loginPrompt = readUntilQuietAfterContains(socket, "Password: ");
+                assertNoBareLineFeeds(loginPrompt);
+
+                socket.getOutputStream().write("Wrong1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String rejected = readUntilQuietAfterContains(socket, "Password: ");
+                assertTrue(rejected.startsWith("\r\n"), printable(rejected));
+                assertTrue(rejected.contains("That password did not match."), printable(rejected));
+                assertNoBareLineFeeds(rejected);
+
+                socket.getOutputStream().write("Avelorn1!\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String returningLook = readUntilQuietAfterContains(
+                        socket, "+========+========+========+========+========+========+========+========");
+                assertTrue(returningLook.contains("Welcome back, Mira valewood."), printable(returningLook));
+                assertTrue(returningLook.contains("Brindleford Village Green"), printable(returningLook));
+                assertNoBareLineFeeds(returningLook);
+
+                socket.getOutputStream().write("quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String farewell = readUntilSocketClosed(socket);
+                assertNoBareLineFeeds(farewell);
             }
         }
     }
@@ -1475,7 +1543,7 @@ final class TelnetServerTest {
 
                 socket.getOutputStream().write("Alice\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String greeting = readUntilContains(socket, "Hello Alice\n> ");
+                String greeting = readUntilContains(socket, "Hello Alice\r\n> ");
                 assertTrue(greeting.contains("Hello Alice"));
 
                 socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
@@ -2693,6 +2761,14 @@ final class TelnetServerTest {
 
     private String printable(String text) {
         return text.replace("\r", "\\r").replace("\n", "\\n");
+    }
+
+    private void assertNoBareLineFeeds(String text) {
+        for (int index = 0; index < text.length(); index++) {
+            if (text.charAt(index) == '\n') {
+                assertTrue(index > 0 && text.charAt(index - 1) == '\r', printable(text));
+            }
+        }
     }
 
     private String readUntilContains(Socket socket, String expected) throws Exception {

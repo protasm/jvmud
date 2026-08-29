@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -34,7 +35,8 @@ final class TelnetSession implements Runnable {
         try (socket;
                 BufferedInputStream in = new BufferedInputStream(socket.getInputStream());
                 OutputStream rawOut = socket.getOutputStream();
-                PrintWriter out = new PrintWriter(new OutputStreamWriter(rawOut, StandardCharsets.UTF_8), true)) {
+                PrintWriter out = new PrintWriter(
+                        new TelnetLineEndingWriter(new OutputStreamWriter(rawOut, StandardCharsets.UTF_8)), true)) {
             try {
                 session = new SessionState(mud.attachPersona(out, socket.getInetAddress().getHostAddress()));
             } catch (RuntimeException e) {
@@ -215,6 +217,37 @@ final class TelnetSession implements Runnable {
             }
             mud.detachPersona(persona);
             detached = true;
+        }
+    }
+
+    private static final class TelnetLineEndingWriter extends Writer {
+        private final Writer delegate;
+        private boolean previousWasCarriageReturn;
+
+        private TelnetLineEndingWriter(Writer delegate) {
+            this.delegate = Objects.requireNonNull(delegate, "delegate");
+        }
+
+        @Override
+        public void write(char[] characters, int offset, int length) throws IOException {
+            for (int index = offset; index < offset + length; index++) {
+                char character = characters[index];
+                if (character == '\n' && !previousWasCarriageReturn) {
+                    delegate.write('\r');
+                }
+                delegate.write(character);
+                previousWasCarriageReturn = character == '\r';
+            }
+        }
+
+        @Override
+        public void flush() throws IOException {
+            delegate.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            delegate.close();
         }
     }
 }
