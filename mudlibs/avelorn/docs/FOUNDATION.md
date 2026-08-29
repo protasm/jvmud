@@ -45,10 +45,21 @@ The durable fields are:
 - quest stages and counters;
 - discovered Place ids and last safe Place id.
 
-The initial vertical slice writes the identity, gender, class, level, and base
-attributes. Later milestones add the remaining version-1 fields without saving
-live LPC object references. A future incompatible shape increments the version
-and migrates explicitly on restore.
+The current vertical slice writes identity, gender, class, level, experience,
+base attributes, resources, currency, inventory blueprint ids, and equipment
+assignments. It reconstructs live item Entities after login rather than saving
+object references. Later milestones add quest and discovery state. A future
+incompatible shape increments the version and migrates explicitly on restore.
+
+## Combat contract
+
+Combatants publish level and health so players can evaluate risk before
+engaging. Level and equipment recommendations are soft gates: they alter
+warnings and effectiveness but never prohibit an attempt. Hostile combatants
+remember distinct contributors, and every contributor still present when the
+opponent falls receives victory credit. Defeat is recoverable: Crown wardens
+return the character to the Brindleford shrine, restore resources, and assess a
+small coin loss.
 
 Plaintext passwords must never reach durable fields. Runtime-only pending input
 is cleared before every save.

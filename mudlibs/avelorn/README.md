@@ -18,6 +18,20 @@ Lantern beneath Ashenwatch Keep.
 - `accounts/` contains ignored runtime character snapshots.
 - `docs/FOUNDATION.md` fixes the initial identifiers and persistence contract.
 
+## Current playable slice
+
+Brindleford currently provides twelve connected Places: its civic green,
+Lantern chapter house, market, reeve's hall, Shrine of the Seven Lamps, the
+east-road approach, and Halward Mill's yard and cellars. Characters can train,
+trade, rest, explore, evaluate hostile combatants, and fight cooperatively.
+Every contributor still present at a victory receives credit. Equipment and
+enemy recommendations are warnings and effectiveness adjustments rather than
+hard locks.
+
+Character identity, progression, coin, inventory, and equipment persist as
+host-filesystem snapshots beneath `accounts/`. Avelorn declares no database
+capability and uses no database service.
+
 Run the game from the repository root with:
 
 ```text

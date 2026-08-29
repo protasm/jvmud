@@ -49,6 +49,10 @@ void offer_interactions() {
   jvmud_add_action("north", "n");
   jvmud_add_action("east", "east");
   jvmud_add_action("east", "e");
+  jvmud_add_action("south", "south");
+  jvmud_add_action("south", "s");
+  jvmud_add_action("west", "west");
+  jvmud_add_action("west", "w");
 }
 
 string short() {
@@ -65,6 +69,7 @@ void describe(object viewer) {
   jvmud_write("Reeve Oren, Sister Elara, and Quartermaster Rowan are here.\n");
   jvmud_write("The Company of the Lantern maintains a small chapter house to the north.\n");
   jvmud_write("The village market is east.\n");
+  jvmud_write("The reeve's hall is west, and the village shrine is south.\n");
 }
 
 int north(mixed ignored) {
@@ -84,4 +89,20 @@ int east(mixed ignored) {
       "travel_to",
       "east",
       "place/brindleford/market");
+}
+
+int south(mixed ignored) {
+  return jvmud_invoke_lpc_object(
+      jvmud_current_actor(),
+      "travel_to",
+      "south",
+      "place/brindleford/shrine");
+}
+
+int west(mixed ignored) {
+  return jvmud_invoke_lpc_object(
+      jvmud_current_actor(),
+      "travel_to",
+      "west",
+      "place/brindleford/reeves_hall");
 }

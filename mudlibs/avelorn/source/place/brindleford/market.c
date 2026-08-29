@@ -10,6 +10,8 @@ void initialize(mixed first_load) {
 void offer_interactions() {
   jvmud_add_action("west", "west");
   jvmud_add_action("west", "w");
+  jvmud_add_action("east", "east");
+  jvmud_add_action("east", "e");
 }
 
 string short() {
@@ -21,7 +23,8 @@ void describe(object viewer) {
   jvmud_write("Canvas awnings shade orderly rows of farm produce, woolens, lamp oil, ");
   jvmud_write("and road supplies. A clerk checks the Crown stamps on weights while ");
   jvmud_write("neighbors exchange news beside the outfitter's permanent oak counter.\n\n");
-  jvmud_write("The village green is west. The outfitter invites you to type list, buy, or sell.\n");
+  jvmud_write("The village green is west, and Mill Road runs east. ");
+  jvmud_write("The outfitter invites you to type list, buy, or sell.\n");
 }
 
 int west(mixed ignored) {
@@ -30,4 +33,12 @@ int west(mixed ignored) {
       "travel_to",
       "west",
       "place/brindleford/village_green");
+}
+
+int east(mixed ignored) {
+  return jvmud_invoke_lpc_object(
+      jvmud_current_actor(),
+      "travel_to",
+      "east",
+      "place/brindleford/mill_road");
 }

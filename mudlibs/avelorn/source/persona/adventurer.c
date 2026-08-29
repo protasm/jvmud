@@ -251,6 +251,9 @@ void offer_interactions() {
   jvmud_add_action("equip_item", "equip");
   jvmud_add_action("unequip_item", "unequip");
   jvmud_add_action("use_item", "use");
+  jvmud_add_action("attack", "attack");
+  jvmud_add_action("attack", "fight");
+  jvmud_add_action("consider", "consider");
   jvmud_add_action("money", "money");
   jvmud_add_action("improve", "improve");
   jvmud_add_action("pronouns_command", "pronouns");
@@ -505,6 +508,122 @@ int money(mixed ignored) {
   return 1;
 }
 
+int attack(mixed target) {
+  object place;
+  object opponent;
+  int damage;
+
+  if (!target) {
+    jvmud_write("Attack what?\n");
+    return 1;
+  }
+  place = jvmud_entity_location(jvmud_current_lpc_object());
+  opponent = jvmud_find_entity(target, place);
+  if (!opponent || !jvmud_method_exists("query_hostile", opponent)
+      || !jvmud_invoke_lpc_object(opponent, "query_hostile")) {
+    jvmud_write("That is not a hostile combatant.\n");
+    return 1;
+  }
+  damage = attack_damage();
+  return jvmud_invoke_lpc_object(
+      opponent,
+      "receive_attack",
+      jvmud_current_lpc_object(),
+      damage);
+}
+
+int consider(mixed target) {
+  object place;
+  object opponent;
+  int opponent_level;
+  int difference;
+  string opponent_gender;
+  string subject_word;
+  string be_word;
+
+  if (!target) {
+    jvmud_write("Consider what?\n");
+    return 1;
+  }
+  place = jvmud_entity_location(jvmud_current_lpc_object());
+  opponent = jvmud_find_entity(target, place);
+  if (!opponent || !jvmud_method_exists("query_hostile", opponent)
+      || !jvmud_invoke_lpc_object(opponent, "query_hostile")) {
+    jvmud_write("That is not a hostile combatant.\n");
+    return 1;
+  }
+  opponent_level = jvmud_invoke_lpc_object(opponent, "query_level");
+  difference = opponent_level - level;
+  opponent_gender = jvmud_invoke_lpc_object(opponent, "query_gender");
+  subject_word = jvmud_invoke_lpc_object("system/pronouns", "subject", opponent_gender);
+  be_word = jvmud_invoke_lpc_object("system/pronouns", "be_present", opponent_gender);
+  jvmud_write(jvmud_invoke_lpc_object(opponent, "query_name") + " is level ");
+  jvmud_write(opponent_level + ". ");
+  if (difference >= 3) {
+    jvmud_write(jvmud_capitalize_text(subject_word) + " " + be_word);
+    jvmud_write(" far beyond your present training, though you may still engage ");
+    jvmud_write(jvmud_invoke_lpc_object("system/pronouns", "object_form", opponent_gender) + ".\n");
+  } else if (difference > 0) {
+    jvmud_write(jvmud_capitalize_text(subject_word) + " " + be_word);
+    jvmud_write(" a dangerous challenge for you, but not an impossible one.\n");
+  } else if (difference < -2) {
+    jvmud_write(jvmud_capitalize_text(subject_word) + " should pose little danger to you.\n");
+  } else {
+    jvmud_write(jvmud_capitalize_text(subject_word) + " " + be_word);
+    jvmud_write(" an appropriate challenge for your present training.\n");
+  }
+  return 1;
+}
+
+int receive_damage(int amount, string attacker_name) {
+  object place;
+  int lost_copper;
+
+  if (amount < 1) {
+    amount = 1;
+  }
+  health -= amount;
+  jvmud_write(attacker_name + " strikes you for " + amount + " damage.\n");
+  if (health > 0) {
+    jvmud_write("You have " + health + "/" + max_health + " health remaining.\n");
+    return health;
+  }
+
+  place = jvmud_entity_location(jvmud_current_lpc_object());
+  jvmud_emit_perceivable_except(
+      place,
+      character_name + " is overcome and carried to Sister Elara's care.\n",
+      jvmud_current_lpc_object());
+  lost_copper = copper / 10;
+  copper -= lost_copper;
+  recalculate_resources(1);
+  jvmud_move_entity(jvmud_current_lpc_object(), "place/brindleford/shrine");
+  jvmud_write("You are overcome. Crown wardens bring you safely to the village shrine.\n");
+  if (lost_copper > 0) {
+    jvmud_write("You lost "
+        + jvmud_invoke_lpc_object("system/economy", "format_money", lost_copper)
+        + " in the retreat.\n");
+  }
+  save_character();
+  look(0);
+  return 0;
+}
+
+void award_victory(int xp, int coins, string opponent_name) {
+  jvmud_write_to_lpc_object(
+      jvmud_current_lpc_object(),
+      "You help defeat " + opponent_name + ".\n");
+  if (coins > 0) {
+    copper += coins;
+    jvmud_write_to_lpc_object(
+        jvmud_current_lpc_object(),
+        "The recovered bounty is worth "
+            + jvmud_invoke_lpc_object("system/economy", "format_money", coins) + ".\n");
+  }
+  gain_experience(xp);
+  save_character();
+}
+
 int purchase_blueprint(string blueprint) {
   object item;
   int price;
@@ -606,6 +725,14 @@ int complete_introductory_drill() {
   return 1;
 }
 
+int rest_at_shrine() {
+  recalculate_resources(1);
+  jvmud_write("You rest beneath the Seven Lamps and recover your health and "
+      + jvmud_lowercase_text(resource_name()) + ".\n");
+  save_character();
+  return 1;
+}
+
 int pronouns_command(mixed ignored) {
   string subject_word;
   string be_word;
@@ -625,7 +752,7 @@ int help(mixed ignored) {
   jvmud_write("Avelorn commands:\n");
   jvmud_write("  look, north/east/south/west, score, pronouns\n");
   jvmud_write("  inventory, equipment, get, drop, equip, unequip, use\n");
-  jvmud_write("  money, list, buy, sell, train, improve, save, help\n");
+  jvmud_write("  attack, consider, money, list, buy, sell, train, improve, save, help\n");
   return 1;
 }
 
@@ -762,6 +889,59 @@ int carried_weight() {
   return total;
 }
 
+int attack_damage() {
+  object item;
+  int base;
+  int penalty;
+  int recommended;
+  int minimum;
+  string stat;
+
+  if (character_class == "fighter") {
+    base = strength;
+  } else if (character_class == "ranger") {
+    base = dexterity;
+  } else if (character_class == "mage") {
+    base = intelligence;
+  } else {
+    base = wisdom;
+  }
+  item = equipped_weapon();
+  if (!item) {
+    penalty = 3;
+  } else {
+    recommended = jvmud_invoke_lpc_object(item, "query_recommended_level");
+    if (recommended > level) {
+      penalty += recommended - level;
+    }
+    stat = jvmud_invoke_lpc_object(item, "query_governing_stat");
+    minimum = jvmud_invoke_lpc_object(item, "query_minimum_stat");
+    if (minimum > stat_value(stat)) {
+      penalty += minimum - stat_value(stat);
+    }
+  }
+  base = 3 + level + base / 3 + jvmud_random(4) - penalty;
+  if (base < 1) {
+    return 1;
+  }
+  return base;
+}
+
+object equipped_weapon() {
+  object item;
+
+  item = jvmud_first_entity_at(jvmud_current_lpc_object());
+  while (item) {
+    if (is_item(item)
+        && jvmud_invoke_lpc_object(item, "query_equipped")
+        && jvmud_invoke_lpc_object(item, "query_slot") == "weapon") {
+      return item;
+    }
+    item = jvmud_next_entity_at(item);
+  }
+  return 0;
+}
+
 int carry_capacity() {
   return 20 + strength * 2;
 }
@@ -775,7 +955,9 @@ void gain_experience(int amount) {
     return;
   }
   experience += amount;
-  jvmud_write("You gain " + amount + " experience.\n");
+  jvmud_write_to_lpc_object(
+      jvmud_current_lpc_object(),
+      "You gain " + amount + " experience.\n");
   while (level < 10 && experience >= experience_for_next_level()) {
     experience -= experience_for_next_level();
     level += 1;
@@ -783,9 +965,13 @@ void gain_experience(int amount) {
       attribute_points += 1;
     }
     recalculate_resources(1);
-    jvmud_write("You advance to level " + level + "!\n");
+    jvmud_write_to_lpc_object(
+        jvmud_current_lpc_object(),
+        "You advance to level " + level + "!\n");
     if (level % 2 == 0) {
-      jvmud_write("You earn an attribute point. Use improve <attribute>.\n");
+      jvmud_write_to_lpc_object(
+          jvmud_current_lpc_object(),
+          "You earn an attribute point. Use improve <attribute>.\n");
     }
   }
 }

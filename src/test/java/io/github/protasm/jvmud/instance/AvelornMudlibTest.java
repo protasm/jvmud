@@ -8,6 +8,13 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,6 +22,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 /** Native boundary and first character-flow coverage for the Avelorn exemplar mudlib. */
 class AvelornMudlibTest {
+    private static final Pattern BRINDLEFORD_DESTINATION =
+            Pattern.compile("\\\"(place/brindleford/[a-z_]+)\\\"");
+
     @TempDir
     Path tempDir;
 
@@ -178,12 +188,112 @@ class AvelornMudlibTest {
         }
     }
 
+    @Test
+    void exposesAConnectedBrindlefordWithNoDanglingPlaceLinks() throws Exception {
+        Path sourceRoot = Path.of("mudlibs/avelorn/source").toAbsolutePath().normalize();
+        Path places = sourceRoot.resolve("place/brindleford");
+        Map<String, Set<String>> links = new HashMap<>();
+
+        try (var paths = Files.list(places)) {
+            for (Path path : paths.filter(candidate -> candidate.toString().endsWith(".c")).toList()) {
+                String place = "place/brindleford/"
+                        + path.getFileName().toString().replaceFirst("\\.c$", "");
+                Matcher matcher = BRINDLEFORD_DESTINATION.matcher(Files.readString(path));
+                Set<String> destinations = new HashSet<>();
+                while (matcher.find()) {
+                    String destination = matcher.group(1);
+                    assertTrue(
+                            Files.isRegularFile(sourceRoot.resolve(destination + ".c")),
+                            () -> place + " links to missing " + destination);
+                    if (!destination.equals(place)) {
+                        destinations.add(destination);
+                    }
+                }
+                links.put(place, destinations);
+            }
+        }
+
+        assertEquals(12, links.size());
+        Set<String> reached = new HashSet<>();
+        ArrayDeque<String> frontier = new ArrayDeque<>();
+        frontier.add("place/brindleford/village_green");
+        while (!frontier.isEmpty()) {
+            String place = frontier.removeFirst();
+            if (reached.add(place)) {
+                frontier.addAll(links.getOrDefault(place, Set.of()));
+            }
+        }
+        assertEquals(links.keySet(), reached);
+    }
+
+    @Test
+    void sharesCombatCreditBetweenCompanionsAndSoftGatesTheEncounter() throws Exception {
+        Path mudlib = copyAvelornFixture();
+        MudInstance mud = MudInstance.boot(mudlib, "jvmud/avelorn.config");
+        StringWriter firstOutput = new StringWriter();
+        StringWriter secondOutput = new StringWriter();
+        PrintWriter firstWriter = new PrintWriter(firstOutput, true);
+        PrintWriter secondWriter = new PrintWriter(secondOutput, true);
+        InstancePersona first = mud.attachPersona(firstWriter, "127.0.0.1");
+        InstancePersona second = mud.attachPersona(secondWriter, "127.0.0.2");
+
+        createCharacter(mud, first, firstWriter, "combat_one", "Alden Pike", "male", "fighter");
+        createCharacter(mud, second, secondWriter, "combat_two", "Bryn Mere", "non-binary", "cleric");
+        for (InstancePersona persona : new InstancePersona[] {first, second}) {
+            PrintWriter writer = persona == first ? firstWriter : secondWriter;
+            dispatch(mud, persona, writer, "east");
+            dispatch(mud, persona, writer, "east");
+            dispatch(mud, persona, writer, "north");
+            dispatch(mud, persona, writer, "down");
+            dispatch(mud, persona, writer, "east");
+        }
+        dispatch(mud, first, firstWriter, "look rat");
+        dispatch(mud, first, firstWriter, "consider rat");
+        dispatch(mud, first, firstWriter, "attack rat");
+        dispatch(mud, second, secondWriter, "attack rat");
+        dispatch(mud, first, firstWriter, "attack rat");
+        dispatch(mud, second, secondWriter, "attack rat");
+        for (int attempt = 0; attempt < 4
+                && !firstOutput.toString().contains("scarred granary rat is defeated."); attempt++) {
+            dispatch(mud, first, firstWriter, "attack rat");
+        }
+        dispatch(mud, first, firstWriter, "score");
+        dispatch(mud, second, secondWriter, "score");
+
+        String firstTranscript = firstOutput.toString();
+        String secondTranscript = secondOutput.toString();
+        assertTrue(firstTranscript.contains("Mill Grain Cellar"), firstTranscript);
+        assertTrue(firstTranscript.contains("She is a level 1 combatant"), firstTranscript);
+        assertTrue(firstTranscript.contains("appropriate challenge"), firstTranscript);
+        assertTrue(firstTranscript.contains("You help defeat scarred granary rat."), firstTranscript);
+        assertTrue(secondTranscript.contains("You help defeat scarred granary rat."), secondTranscript);
+        assertTrue(firstTranscript.contains("Experience 35/100"), firstTranscript);
+        assertTrue(secondTranscript.contains("Experience 35/100"), secondTranscript);
+    }
+
     private void dispatch(
             MudInstance mud,
             InstancePersona persona,
             PrintWriter writer,
             String command) {
         mud.dispatch(persona, writer, command);
+    }
+
+    private void createCharacter(
+            MudInstance mud,
+            InstancePersona persona,
+            PrintWriter writer,
+            String account,
+            String name,
+            String gender,
+            String characterClass) {
+        dispatch(mud, persona, writer, account);
+        dispatch(mud, persona, writer, "yes");
+        dispatch(mud, persona, writer, "Avelorn1!");
+        dispatch(mud, persona, writer, "Avelorn1!");
+        dispatch(mud, persona, writer, name);
+        dispatch(mud, persona, writer, gender);
+        dispatch(mud, persona, writer, characterClass);
     }
 
     private Path copyAvelornFixture() throws IOException {
