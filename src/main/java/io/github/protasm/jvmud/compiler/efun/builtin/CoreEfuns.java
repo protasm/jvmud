@@ -5,15 +5,16 @@ import io.github.protasm.jvmud.compiler.efun.EfunSignature;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
+import io.github.protasm.jvmud.compiler.runtime.JsonValueCodec;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCollectionTransform;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
-import io.github.protasm.jvmud.engine.mudlib.EngineCapability;
-import io.github.protasm.jvmud.engine.protocol.GmcpCodec;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeMapping;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeValueCodec;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
+import io.github.protasm.jvmud.engine.mudlib.EngineCapability;
+import io.github.protasm.jvmud.engine.protocol.GmcpCodec;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
@@ -239,6 +240,10 @@ import javax.crypto.spec.PBEKeySpec;
  * <ul>
  *   <li>{@code jvmud_read_mudlib_text(string path[, int startLine, int lineCount]) : mixed} reads a
  *       mudlib-relative text file, optionally slicing lines for legacy {@code read_file} calls.</li>
+ *   <li>{@code jvmud_read_mudlib_json(string path) : mixed} parses a mudlib-relative JSON file,
+ *       transparently accepting gzip compression.</li>
+ *   <li>{@code jvmud_read_mudlib_json_array(string path, string pointer, int offset, int count) : mixed}
+ *       streams a bounded slice from an array selected by JSON Pointer.</li>
  *   <li>{@code jvmud_list_mudlib_paths(string path[, int flags]) : array} lists mudlib-relative
  *       file names, including simple glob support for compatibility file discovery.</li>
  *   <li>{@code jvmud_append_mudlib_text(string path, mixed text) : status} appends text to a
@@ -252,6 +257,10 @@ import javax.crypto.spec.PBEKeySpec;
  *       directory.</li>
  *   <li>{@code jvmud_remove_mudlib_directory(string path) : status} removes an empty
  *       mudlib-relative directory.</li>
+ *   <li>{@code jvmud_parse_json(string document) : mixed} converts ordinary JSON objects, arrays,
+ *       and scalars to LPC-compatible values.</li>
+ *   <li>{@code jvmud_format_json(mixed value) : string} converts LPC-compatible values to ordinary
+ *       JSON, requiring string mapping keys.</li>
  *   <li>{@code jvmud_size(mixed value) : int} returns the size of a string, collection, mapping, or
  *       array.</li>
  *   <li>{@code jvmud_sqrt(mixed value) : float} returns the square root of a numeric value.</li>
@@ -406,6 +415,8 @@ public final class CoreEfuns {
         }
         if (Set.of(
                         "jvmud_read_mudlib_text",
+                        "jvmud_read_mudlib_json",
+                        "jvmud_read_mudlib_json_array",
                         "jvmud_append_mudlib_text",
                         "jvmud_remove_mudlib_text",
                         "jvmud_copy_mudlib_text",
@@ -569,6 +580,15 @@ public final class CoreEfuns {
                         String.valueOf(args[0]),
                         ((Number) args[1]).intValue(),
                         ((Number) args[2]).intValue())));
+        efuns.add(efun("jvmud_read_mudlib_json", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> runtime.readMudlibJson(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_read_mudlib_json_array", LPCType.LPCMIXED,
+                List.of(LPCType.LPCSTRING, LPCType.LPCSTRING, LPCType.LPCINT, LPCType.LPCINT),
+                (runtime, args) -> runtime.readMudlibJsonArray(
+                        String.valueOf(args[0]),
+                        String.valueOf(args[1]),
+                        ((Number) args[2]).intValue(),
+                        ((Number) args[3]).intValue())));
         efuns.add(efun("jvmud_list_mudlib_paths", LPCType.LPCARRAY, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.listMudlibPaths(String.valueOf(args[0]), 1)));
         efuns.add(efun("jvmud_list_mudlib_paths", LPCType.LPCARRAY,
@@ -659,6 +679,10 @@ public final class CoreEfuns {
                 (runtime, args) -> RuntimeValueCodec.serialize(args[0])));
         efuns.add(efun("jvmud_deserialize_lpc_value", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> RuntimeValueCodec.deserialize(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_parse_json", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
+                (runtime, args) -> JsonValueCodec.parse(String.valueOf(args[0]))));
+        efuns.add(efun("jvmud_format_json", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
+                (runtime, args) -> JsonValueCodec.format(args[0])));
         efuns.add(formatTextEfun());
         efuns.add(efun("jvmud_extract_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
                 (runtime, args) -> extractText(

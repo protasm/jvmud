@@ -110,6 +110,8 @@ public final class RuntimeContext {
     private Function<String, Object> objectFactory = path -> null;
     private Function<String, Object> objectLoader = path -> null;
     private Function<String, Object> mudlibTextReader = path -> 0;
+    private Function<String, Object> mudlibJsonReader = path -> 0;
+    private MudlibJsonArrayReader mudlibJsonArrayReader = (path, pointer, offset, count) -> 0;
     private BiFunction<String, Integer, Object> mudlibPathLister = (path, flags) -> List.of();
     private BiFunction<String, Object, Integer> mudlibTextAppender = (path, text) -> 0;
     private Function<String, Integer> mudlibTextRemover = path -> 0;
@@ -198,6 +200,26 @@ public final class RuntimeContext {
 
     public void setMudlibTextReader(Function<String, Object> mudlibTextReader) {
         this.mudlibTextReader = (mudlibTextReader != null) ? mudlibTextReader : path -> 0;
+    }
+
+    /**
+     * Sets the host callback used to parse mudlib-owned JSON files.
+     *
+     * @param mudlibJsonReader host reader, or {@code null} to restore the unavailable reader
+     */
+    public void setMudlibJsonReader(Function<String, Object> mudlibJsonReader) {
+        this.mudlibJsonReader = (mudlibJsonReader != null) ? mudlibJsonReader : path -> 0;
+    }
+
+    /**
+     * Sets the host callback used for bounded, structural reads of mudlib JSON arrays.
+     *
+     * @param mudlibJsonArrayReader host reader, or {@code null} to restore the unavailable reader
+     */
+    public void setMudlibJsonArrayReader(MudlibJsonArrayReader mudlibJsonArrayReader) {
+        this.mudlibJsonArrayReader = (mudlibJsonArrayReader != null)
+                ? mudlibJsonArrayReader
+                : (path, pointer, offset, count) -> 0;
     }
 
     /** Sets the host callback used by file-listing efuns to enumerate mudlib-rooted paths. */
@@ -1134,6 +1156,29 @@ public final class RuntimeContext {
 
     public Object readMudlibText(String path) {
         return mudlibTextReader.apply(path);
+    }
+
+    /**
+     * Parses an ordinary JSON file rooted inside the mudlib.
+     *
+     * @param path mudlib-relative JSON or gzip-compressed JSON path
+     * @return LPC-compatible JSON value, or LPC false when unavailable
+     */
+    public Object readMudlibJson(String path) {
+        return mudlibJsonReader.apply(path);
+    }
+
+    /**
+     * Reads a bounded slice from a JSON array inside a mudlib-rooted file.
+     *
+     * @param path mudlib-relative JSON file path
+     * @param pointer RFC 6901 JSON Pointer selecting an array
+     * @param offset zero-based first array entry to return
+     * @param count maximum number of entries to return
+     * @return LPC-compatible array slice, or LPC false when the reader cannot access the file
+     */
+    public Object readMudlibJsonArray(String path, String pointer, int offset, int count) {
+        return mudlibJsonArrayReader.read(path, pointer, offset, count);
     }
 
     /** Lists mudlib-rooted paths using an LP-style flag word. */

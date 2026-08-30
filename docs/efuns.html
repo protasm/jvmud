@@ -192,6 +192,8 @@
           <tbody>
             <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_read_mudlib_text</span><span>(string path)</span></code></td><td>Reads a mudlib-relative text file, returning LPC false when unavailable.</td></tr>
             <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_read_mudlib_text</span><span>(string path, int startLine, int lineCount)</span></code></td><td>Reads a line slice from a mudlib-relative text file for legacy file helpers.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_read_mudlib_json</span><span>(string path)</span></code></td><td>Parses a mudlib-relative ordinary JSON file, transparently accepting gzip compression.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_read_mudlib_json_array</span><span>(string path, string pointer, int offset, int count)</span></code></td><td>Streams a bounded slice from a JSON array selected by RFC 6901 JSON Pointer, returning LPC false when the file is unavailable.</td></tr>
             <tr><td><code class="efun-signature"><span>array</span><span>jvmud_list_mudlib_paths</span><span>(string path)</span></code></td><td>Lists mudlib-relative paths with default listing flags.</td></tr>
             <tr><td><code class="efun-signature"><span>array</span><span>jvmud_list_mudlib_paths</span><span>(string path, int flags)</span></code></td><td>Lists mudlib-relative paths, including simple glob support for compatibility discovery.</td></tr>
             <tr><td><code class="efun-signature"><span>status</span><span>jvmud_append_mudlib_text</span><span>(string path, mixed text)</span></code></td><td>Appends text to a mudlib-relative file.</td></tr>
@@ -262,6 +264,8 @@
             <tr><td><code class="efun-signature"><span>mapping</span><span>jvmud_mapping_delete</span><span>(mapping value, mixed key)</span></code></td><td>Removes a key from a mutable mapping and returns the same mapping.</td></tr>
             <tr><td><code class="efun-signature"><span>string</span><span>jvmud_serialize_lpc_value</span><span>(mixed value)</span></code></td><td>Serializes LPC data values to JVMud's tagged JSON payload.</td></tr>
             <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_deserialize_lpc_value</span><span>(string data)</span></code></td><td>Restores LPC data values produced by <code>jvmud_serialize_lpc_value</code>.</td></tr>
+            <tr><td><code class="efun-signature"><span>mixed</span><span>jvmud_parse_json</span><span>(string document)</span></code></td><td>Parses ordinary JSON into LPC mappings, arrays, strings, numbers, and 1/0 status values; JSON null becomes LPC false.</td></tr>
+            <tr><td><code class="efun-signature"><span>string</span><span>jvmud_format_json</span><span>(mixed value)</span></code></td><td>Formats LPC-compatible data as ordinary JSON; mapping keys must be strings.</td></tr>
             <tr><td><code class="efun-signature"><span>status</span><span>jvmud_is_string</span><span>(mixed value)</span></code></td><td>Reports whether the value is Java-backed LPC string data.</td></tr>
             <tr><td><code class="efun-signature"><span>status</span><span>jvmud_is_int</span><span>(mixed value)</span></code></td><td>Reports whether the value is Java-backed LPC integer data.</td></tr>
             <tr><td><code class="efun-signature"><span>status</span><span>jvmud_is_object</span><span>(mixed value)</span></code></td><td>Reports whether the value is a live runtime object.</td></tr>

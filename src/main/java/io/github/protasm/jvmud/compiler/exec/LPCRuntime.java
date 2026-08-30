@@ -8,6 +8,7 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationUnit;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
+import io.github.protasm.jvmud.compiler.runtime.JsonValueCodec;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
@@ -22,7 +23,9 @@ import io.github.protasm.jvmud.engine.identity.SessionRecord;
 import io.github.protasm.jvmud.engine.time.WorldScheduler;
 import io.github.protasm.jvmud.engine.world.MudlibWorldProjection;
 import io.github.protasm.jvmud.persistence.filesystem.LpcObjectStateStore;
+import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -39,6 +42,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Host-facing LPC execution runtime that owns classloading, object identity, and runtime context.
@@ -93,6 +97,8 @@ public final class LPCRuntime {
         this.runtimeContext.setObjectFactory(this::cloneObject);
         this.runtimeContext.setObjectLoader(this::loadOrGetObject);
         this.runtimeContext.setMudlibTextReader(this::readMudlibText);
+        this.runtimeContext.setMudlibJsonReader(this::readMudlibJson);
+        this.runtimeContext.setMudlibJsonArrayReader(this::readMudlibJsonArray);
         this.runtimeContext.setMudlibPathLister(this::listMudlibPaths);
         this.runtimeContext.setMudlibTextAppender(this::appendMudlibText);
         this.runtimeContext.setMudlibTextRemover(this::removeMudlibText);
@@ -452,6 +458,73 @@ public final class LPCRuntime {
             return Files.readString(resolved);
         } catch (IOException e) {
             return 0;
+        }
+    }
+
+    /**
+     * Parses a mudlib-relative ordinary JSON file, transparently accepting gzip compression.
+     *
+     * @param path mudlib-relative JSON or gzip-compressed JSON path
+     * @return LPC-compatible JSON value, or LPC false when the file is unavailable
+     */
+    public Object readMudlibJson(String path) {
+        Objects.requireNonNull(path, "path");
+        Path resolved = resolveMudlibDataFile(path);
+        if (resolved == null) {
+            return 0;
+        }
+        try (InputStream input = openJsonInput(resolved)) {
+            return JsonValueCodec.parse(input);
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Streams a bounded slice from a JSON array in a mudlib-relative file.
+     *
+     * <p>The JSON Pointer is resolved structurally while unrelated branches and entries outside
+     * the requested range are skipped without materializing them.</p>
+     *
+     * @param path mudlib-relative JSON file path
+     * @param pointer RFC 6901 JSON Pointer selecting an array
+     * @param offset zero-based first array entry to return
+     * @param count maximum number of entries to return
+     * @return LPC-compatible array slice, or LPC false when the file is unavailable
+     * @throws IllegalArgumentException when bounds, JSON, or the selected structure are invalid
+     */
+    public Object readMudlibJsonArray(String path, String pointer, int offset, int count) {
+        Objects.requireNonNull(path, "path");
+        Path resolved = resolveMudlibDataFile(path);
+        if (resolved == null) {
+            return 0;
+        }
+        try (InputStream input = openJsonInput(resolved)) {
+            return JsonValueCodec.readArraySlice(input, pointer, offset, count);
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    private Path resolveMudlibDataFile(String path) {
+        Path resolved = resolveMudlibStoragePath(path);
+        if (resolved == null || !Files.isRegularFile(resolved)) {
+            resolved = resolveMudlibTextPath(path);
+        }
+        return resolved != null && Files.isRegularFile(resolved) ? resolved : null;
+    }
+
+    private InputStream openJsonInput(Path path) throws IOException {
+        BufferedInputStream input = new BufferedInputStream(Files.newInputStream(path));
+        try {
+            input.mark(2);
+            int first = input.read();
+            int second = input.read();
+            input.reset();
+            return first == 0x1f && second == 0x8b ? new GZIPInputStream(input) : input;
+        } catch (IOException e) {
+            input.close();
+            throw e;
         }
     }
 

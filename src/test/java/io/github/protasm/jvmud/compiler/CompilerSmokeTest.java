@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -83,11 +84,65 @@ final class CompilerSmokeTest {
         assertNotNull(neutral.efunRegistry().lookup("jvmud_write", 1));
         assertNull(neutral.efunRegistry().lookup("jvmud_db_connect", 1));
         assertNull(neutral.efunRegistry().lookup("jvmud_read_mudlib_text", 1));
+        assertNull(neutral.efunRegistry().lookup("jvmud_read_mudlib_json", 1));
+        assertNull(neutral.efunRegistry().lookup("jvmud_read_mudlib_json_array", 4));
+        assertNotNull(neutral.efunRegistry().lookup("jvmud_parse_json", 1));
 
         RuntimeContext privileged = new RuntimeContext(null);
         CoreEfuns.registerCore(privileged, Set.of(EngineCapability.DATABASE, EngineCapability.MUDLIB_FILES));
         assertNotNull(privileged.efunRegistry().lookup("jvmud_db_connect", 1));
         assertNotNull(privileged.efunRegistry().lookup("jvmud_read_mudlib_text", 1));
+        assertNotNull(privileged.efunRegistry().lookup("jvmud_read_mudlib_json", 1));
+        assertNotNull(privileged.efunRegistry().lookup("jvmud_read_mudlib_json_array", 4));
+    }
+
+    @Test
+    void runtimeParsesJsonAndStreamsMudlibJsonArraySlices() throws Exception {
+        Files.writeString(tempDir.resolve("catalog.json"), """
+                {
+                  "edition": "first",
+                  "items": [
+                    {"item_id": "i0000", "path": "items/i0000.json"},
+                    {"item_id": "i0001", "path": "items/i0001.json"},
+                    {"item_id": "i0002", "path": "items/i0002.json"}
+                  ]
+                }
+                """);
+        try (GZIPOutputStream output = new GZIPOutputStream(Files.newOutputStream(tempDir.resolve("item.json.gz")))) {
+            output.write("{\"item_id\":\"i0001\",\"entries\":[{\"offset\":0}]}"
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        LPCObjectHandle reader = runtime.loadSource("smoke/json_reader.c", """
+                mapping parse_item() {
+                    return jvmud_parse_json("{\\\"code\\\":7,\\\"enabled\\\":true}");
+                }
+
+                mixed read_items() {
+                    return jvmud_read_mudlib_json_array("/catalog.json", "/items", 1, 2);
+                }
+
+                mapping read_compressed_item() {
+                    return jvmud_read_mudlib_json("/item.json.gz");
+                }
+
+                mixed read_compressed_entries() {
+                    return jvmud_read_mudlib_json_array("/item.json.gz", "/entries", 0, 1);
+                }
+                """);
+
+        assertEquals(Map.of("code", 7, "enabled", 1), reader.invoke("parse_item"));
+        assertEquals(List.of(
+                Map.of("item_id", "i0001", "path", "items/i0001.json"),
+                Map.of("item_id", "i0002", "path", "items/i0002.json")),
+                reader.invoke("read_items"));
+        assertEquals(Map.of(
+                "item_id", "i0001",
+                "entries", List.of(Map.of("offset", 0))),
+                reader.invoke("read_compressed_item"));
+        assertEquals(List.of(Map.of("offset", 0)), reader.invoke("read_compressed_entries"));
     }
 
     @Test

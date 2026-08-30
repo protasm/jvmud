@@ -1,3 +1,45 @@
 === Efuns
 
-Content to be written.
+JVMud exposes its native engine operations to LPC as `jvmud_`-prefixed efuns.
+The complete signature catalog is published in the static efun reference and
+the generated Java API documentation.
+
+==== Ordinary JSON
+
+`jvmud_parse_json(document)` converts an ordinary JSON document to LPC values.
+JSON objects become mappings with string keys; arrays retain their order;
+strings and numbers remain scalar values; booleans become status values `1`
+and `0`; and JSON `null` becomes LPC false (`0`).
+
+[source,c]
+----
+mapping item = jvmud_read_mudlib_json(
+    "/data/items/i0001.json.gz");
+----
+
+`jvmud_read_mudlib_json(path)` is available to mudlibs with the `MUDLIB_FILES`
+engine capability. It parses either plain JSON or gzip-compressed JSON, detected
+from the file content rather than the filename.
+
+`jvmud_format_json(value)` performs the inverse conversion for values that can
+be represented in ordinary JSON. Mapping keys must be strings. Because LPC
+false and a parsed JSON `null` share the value `0`, formatting a parsed value is
+not promised to reproduce the original JSON token-for-token.
+
+==== Bounded JSON Array Reads
+
+Mudlibs with the `MUDLIB_FILES` engine capability may read a structural slice
+without materializing an entire JSON document:
+
+[source,c]
+----
+mixed *items = jvmud_read_mudlib_json_array(
+    "/data/catalog.json", "/items", 500, 100);
+----
+
+The second argument is an RFC 6901 JSON Pointer selecting an array. `offset` is
+the zero-based first entry and `count` is the maximum number returned. JVMud
+scans forward through ordinary JSON, but skips unrelated branches and entries
+outside the requested range without constructing their LPC values. An empty
+pointer selects a root array. Plain and gzip-compressed documents are both
+accepted.
