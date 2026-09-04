@@ -9,8 +9,8 @@ import java.util.Objects;
 /**
  * AST node for the LPC compatibility form {@code function type (params) { return expr; }}.
  *
- * <p>This is a typed anonymous callable value. JVMud initially supports the common expression-return
- * subset used by RealmsMUD callbacks; full statement-bodied callable literals can be added later
+ * <p>This is a typed anonymous callable value. JVMud initially supports an expression-return
+ * subset; full statement-bodied callable literals can be added later
  * without changing this source-level representation.</p>
  */
 public final class ASTExprTypedFunctionLiteral extends ASTExpression {

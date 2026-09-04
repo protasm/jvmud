@@ -11,7 +11,7 @@ final class ManagedLoginPolicies {
             return null;
         }
         return switch (policy) {
-            case "lpmuseum_accounts" -> new LpmuseumLoginSession(mud, sessionId, remoteAddress);
+            case "filesystem_accounts" -> new FilesystemAccountLoginSession(mud, sessionId, remoteAddress);
             default -> throw new IllegalStateException("Unknown host session policy: " + policy);
         };
     }

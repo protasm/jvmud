@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+set -eu
+
+REALMS_JVMUD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT_DIR=$(CDPATH= cd -- "$REALMS_JVMUD_DIR/../../.." && pwd)
+
+"$REALMS_JVMUD_DIR/generate-full-init" >/dev/null
+
+CONFIG_FILE=${1:-"$REALMS_JVMUD_DIR/realmsmud.full.config"}
+REPORT_FILE=${2:-"$ROOT_DIR/target/realms-full-compile.md"}
+if [ "$#" -gt 2 ]; then
+  echo "Usage: mudlibs/realmsmud/jvmud/scan-full-compile [config-file] [report-file]" >&2
+  exit 64
+fi
+
+exec "$ROOT_DIR/scripts/scan-mudlib-preload-compile.sh" "$CONFIG_FILE" "$REPORT_FILE"

@@ -37,7 +37,7 @@ public final class RuntimeCoercions {
      * Coerces a dynamically typed LPC value into an explicit array context.
      *
      * <p>Some legacy mudlibs use {@code ([])} as a falsey empty collection placeholder before
-     * passing it into array-typed helpers that only check {@code sizeof()}. LDMud tolerates that at
+     * passing it into array-typed helpers that only check {@code sizeof()}. Some compatibility mudlibs tolerate that at
      * runtime; JVMud preserves the practical behavior only for the empty-mapping case and leaves
      * non-empty mappings incompatible with arrays.</p>
      */

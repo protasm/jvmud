@@ -6,7 +6,7 @@ ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/../../.." && pwd)
 
 DATABASE_ENV="$SCRIPT_DIR/realms-database.env"
 if [ -f "$DATABASE_ENV" ]; then
-    # Created with owner-only permissions by scripts/install-realms-database.sh.
+    # Created with owner-only permissions by mudlibs/realmsmud/jvmud/install-database.
     . "$DATABASE_ENV"
 fi
 

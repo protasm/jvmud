@@ -39,8 +39,6 @@ import java.util.stream.Stream;
 
 /** Local JVMud administration shell backed by the real runtime. */
 public final class AdminCli {
-    private static final Path DEFAULT_CONFIG_FILE = Path.of("mudlibs", "lpmuseum", "jvmud", "lpmuseum.config");
-
     private final PrintWriter out;
     private final Map<String, Object> handles = new java.util.LinkedHashMap<>();
     private final Map<Object, String> objectNames = new IdentityHashMap<>();
@@ -56,13 +54,12 @@ public final class AdminCli {
     }
 
     public static void main(String[] args) throws IOException {
-        if (args.length > 1) {
-            throw new IllegalArgumentException("Usage: scripts/jvmud-admin [mudlib-config-file]");
+        if (args.length != 1) {
+            throw new IllegalArgumentException("Usage: scripts/jvmud-admin <mudlib-config-file>");
         }
         PrintWriter out = new PrintWriter(System.out, true);
         AdminCli cli = new AdminCli(out);
-        Path configFile = args.length == 1 ? Path.of(args[0]) : DEFAULT_CONFIG_FILE;
-        cli.bootConfig(configFile);
+        cli.bootConfig(Path.of(args[0]));
         cli.run(new BufferedReader(new InputStreamReader(System.in)));
     }
 
@@ -100,7 +97,7 @@ public final class AdminCli {
         try {
             switch (canonicalName) {
             case "help" -> help();
-            case "boot" -> bootConfig(command.pathArgument(0, DEFAULT_CONFIG_FILE));
+            case "boot" -> bootConfig(Path.of(command.required(0)));
             case "pwd" -> pwd();
             case "cd" -> cd(command.optional(0, "/"));
             case "ls" -> ls(command.optional(0, "."));
@@ -223,7 +220,7 @@ public final class AdminCli {
     private void help() {
         out.println("Admin commands:");
         helpLine("h", "help", "Show this command reference.");
-        helpLine("b", "boot [mudlib-config-file]", "Start a fresh mudlib sandbox without a player session.");
+        helpLine("b", "boot <mudlib-config-file>", "Start a fresh mudlib sandbox without a player session.");
         helpLine("", "call <handle> <method> [args...]", "Invoke a method on a loaded object handle.");
         helpLine("", "cat <path>", "Print a file from the virtual mudlib filesystem.");
         helpLine("", "cd [path]", "Change the current virtual mudlib directory.");
@@ -582,7 +579,7 @@ public final class AdminCli {
 
     private void ensureBooted() {
         if (runtime == null) {
-            bootConfig(DEFAULT_CONFIG_FILE);
+            throw new IllegalStateException("No mudlib is booted. Use boot <mudlib-config-file> first.");
         }
     }
 
@@ -611,7 +608,7 @@ public final class AdminCli {
     private String syntaxFor(String command) {
         return switch (command) {
         case "help" -> "help";
-        case "boot" -> "boot [mudlib-config-file]";
+        case "boot" -> "boot <mudlib-config-file>";
         case "call" -> "call <handle> <method> [args...]";
         case "cat" -> "cat <path>";
         case "cd" -> "cd [path]";

@@ -69,9 +69,9 @@ lifecycle.object_loaded = reset
 lifecycle.interaction_scope_started = init
 ```
 
-`mudlib_object` identifies the mudlib-side boundary adapter object, such as
-LP245's `/jvmud/mudlib.c`. `mfun_object` identifies an optional mudlib-owned
-global helper object, such as RealmsMUD's `/secure/simul_efun.c`.
+`mudlib_object` identifies the mudlib-side boundary adapter object.
+`mfun_object` identifies an optional mudlib-owned global helper object. Neither
+path is discovered from a bundled mudlib's layout or historical driver convention.
 
 `compatibility_object` identifies an optional mudlib-side JVMud compatibility
 object. JVMud no longer discovers this object by convention; the manifest names
@@ -100,9 +100,9 @@ The currently defined JVMud lifecycle events are:
 | `entity_removed_from_entity` | Reserved | Removed entity or containing entity | previous container entity | An entity has left another entity's containment. |
 | `player_session_connected` | Implemented, optional mapping | Player object | none currently | A Session has connected and JVMud has created a Player endpoint for that Session; compatibility mudlibs may use this to start login input. |
 | `player_session_post_rebind` | Implemented, optional mapping | Newly bound mudlib projection | none currently | A live Session has been rebound to a different mudlib-facing interactive object. |
-| `player_persona_resolved` | Reserved | Boundary object or player object | persona id | Mudlib policy or JVMud fallback has resolved the entity that this Player will use as its in-world perspective. |
+| `player_persona_resolved` | Implemented for host-managed session policies | Player/Persona object | external user id, display name, gender text, profile-attribute mapping | Mudlib policy or JVMud fallback has resolved the entity that this Player will use as its in-world perspective. |
 | `player_object_bound` | Reserved | Player object | persona id, session id | JVMud has associated a live compatibility player object with the Player, Session, and Persona relationship. |
-| `player_entered_world` | Reserved | Player object | starting place | JVMud has placed the Persona into the world and interaction can begin. |
+| `player_entered_world` | Implemented for host-managed session policies | Player/Persona object | starting Place object | JVMud has placed the Persona into the world and interaction can begin. |
 | `player_session_disconnected` | Implemented, optional mapping | Player object | none currently | The transport has disconnected and mudlib policy may save or clean up related state before session routing is removed. |
 | `interaction_scope_started` | Implemented, optional mapping | Persona, Persona location, carried objects, and nearby objects | none currently | An interactive Persona's local command/perception scope is being refreshed; mudlib objects may register text commands or interaction affordances. |
 | `command_dispatch_started` | Reserved | Persona or boundary object | command text, verb | JVMud is about to dispatch Player text to mudlib behavior. |
@@ -143,11 +143,18 @@ profile/account data, login prompts, passwords, character names, duplicate
 control rules, and Persona behavior. Those are mudlib-owned meanings layered on
 top of JVMud's anonymous Player/Session/Persona mechanics.
 
+The optional `filesystem_accounts` host policy provides reusable local
+account-file, password-hashing, and pre-Persona prompt mechanics when a manifest
+selects it explicitly. It does not name or invoke mudlib methods directly.
+Instead, successful authentication produces a neutral managed Persona profile,
+then the mapped `player_persona_resolved` and `player_entered_world` lifecycle
+methods let the mudlib interpret that profile and perform its own entry behavior.
+
 The phrase player object is compatibility vocabulary for a mudlib-authored
 object, not an engine concept. A compatibility mudlib may use one object for
 account/profile fields, Persona behavior, login flow, duplicate-login policy,
-and legacy session glue. LP245's `/obj/player.c` has that combined shape. JVMud
-supports that collapse through adapters, but it does not make the combined
+and legacy session glue. JVMud supports that combined shape through adapters,
+but it does not make the combined
 object the engine ontology.
 
 The minimal JVMud-native attach sequence is:

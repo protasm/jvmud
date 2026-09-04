@@ -11,7 +11,7 @@ import java.util.Map;
 public final class RuntimeMapping {
     private RuntimeMapping() {}
 
-    /** Runtime representation for an LDMud mapping entry with multiple semicolon-separated values. */
+    /** Runtime representation for a mapping entry with multiple semicolon-separated values. */
     public record MultiValue(List<Object> values) {
         public MultiValue {
             if (values == null || values.isEmpty())
@@ -20,7 +20,7 @@ public final class RuntimeMapping {
         }
     }
 
-    /** Wraps an LDMud mapping entry's semicolon-separated values as one Java map value. */
+    /** Wraps a mapping entry's semicolon-separated values as one Java map value. */
     public static Object multiValue(Object... values) {
         return new MultiValue(Arrays.asList(values));
     }
@@ -38,7 +38,7 @@ public final class RuntimeMapping {
     }
 
     /**
-     * Replaces one value slot in an LDMud multi-value mapping entry.
+     * Replaces one value slot in a multi-value mapping entry.
      *
      * @param entry current Java representation of the mapping entry, or {@code null} when absent
      * @param index zero-based mapping value slot

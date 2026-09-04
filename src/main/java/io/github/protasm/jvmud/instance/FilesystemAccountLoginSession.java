@@ -1,12 +1,14 @@
 package io.github.protasm.jvmud.instance;
 
-import io.github.protasm.jvmud.persistence.filesystem.LpmuseumAccountFileStore.Account;
+import io.github.protasm.jvmud.persistence.filesystem.FilesystemAccountStore.Account;
 import java.io.PrintWriter;
+import java.util.Map;
 import java.util.Optional;
 
-/** LPMuseum account-login state machine selected explicitly by its mudlib manifest. */
-final class LpmuseumLoginSession implements ManagedLoginSession {
+/** Filesystem-backed account-login state machine selected explicitly by a mudlib manifest. */
+final class FilesystemAccountLoginSession implements ManagedLoginSession {
     private final MudInstance mud;
+    private final FilesystemAccountService accounts;
     private final String sessionId;
     private final String remoteAddress;
     private State state = State.ACCOUNT_ID;
@@ -17,8 +19,9 @@ final class LpmuseumLoginSession implements ManagedLoginSession {
     private String passwordHash = "";
     private int passwordAttempts;
 
-    LpmuseumLoginSession(MudInstance mud, String sessionId, String remoteAddress) {
+    FilesystemAccountLoginSession(MudInstance mud, String sessionId, String remoteAddress) {
         this.mud = mud;
+        this.accounts = new FilesystemAccountService(mud.mudlibRoot());
         this.sessionId = sessionId;
         this.remoteAddress = remoteAddress;
     }
@@ -58,7 +61,7 @@ final class LpmuseumLoginSession implements ManagedLoginSession {
         }
 
         accountId = normalized;
-        Optional<Account> account = mud.loadLpmuseumAccount(accountId);
+        Optional<Account> account = accounts.load(accountId);
         if (account.isPresent() && !account.orElseThrow().passwordHash().isEmpty()) {
             passwordAttempts = 0;
             passwordHash = account.orElseThrow().passwordHash();
@@ -69,7 +72,7 @@ final class LpmuseumLoginSession implements ManagedLoginSession {
             return ManagedLoginResult.continueLogin();
         }
 
-        message("No LPMuseum account exists for " + accountId + ". Create it? (yes/no) ");
+        message("No " + mud.gameName() + " account exists for " + accountId + ". Create it? (yes/no) ");
         state = State.CREATE_CONFIRMATION;
         return ManagedLoginResult.continueLogin();
     }
@@ -82,7 +85,7 @@ final class LpmuseumLoginSession implements ManagedLoginSession {
             return ManagedLoginResult.continueLogin();
         }
         if ("no".equals(answer) || "n".equals(answer)) {
-            message("No account was created. Please visit LPMuseum again when you are ready.\n");
+            message("No account was created. Please visit " + mud.gameName() + " again when you are ready.\n");
             return ManagedLoginResult.disconnectSession();
         }
         message("Please answer yes or no: ");
@@ -90,8 +93,8 @@ final class LpmuseumLoginSession implements ManagedLoginSession {
     }
 
     private ManagedLoginResult handleLoginPassword(String line, PrintWriter out) {
-        Optional<Account> account = mud.loadLpmuseumAccount(accountId);
-        if (account.isPresent() && mud.verifyPassword(line, account.orElseThrow().passwordHash())) {
+        Optional<Account> account = accounts.load(accountId);
+        if (account.isPresent() && accounts.verifyPassword(line, account.orElseThrow().passwordHash())) {
             return enter(out, account.orElseThrow());
         }
 
@@ -129,7 +132,7 @@ final class LpmuseumLoginSession implements ManagedLoginSession {
             return ManagedLoginResult.continueLogin();
         }
 
-        passwordHash = mud.hashPassword(line);
+        passwordHash = accounts.hashPassword(line);
         pendingPassword = "";
         message("Email address (optional): ");
         state = State.EMAIL;
@@ -174,16 +177,20 @@ final class LpmuseumLoginSession implements ManagedLoginSession {
         }
 
         Account account = new Account(accountId, personaName, normalized, email, passwordHash);
-        mud.saveLpmuseumAccount(account);
+        accounts.save(account);
         return enter(out, account);
     }
 
     private ManagedLoginResult enter(PrintWriter out, Account account) {
-        InstancePersona replacement = mud.attachAuthenticatedLpmuseumPersona(
+        InstancePersona replacement = mud.attachAuthenticatedPersona(
                 sessionId,
                 out,
                 remoteAddress,
-                account);
+                new ManagedPersonaProfile(
+                        account.accountId(),
+                        account.personaName(),
+                        account.gender(),
+                        Map.of("email", account.email(), "password_hash", account.passwordHash())));
         return ManagedLoginResult.replaceWith(replacement);
     }
 

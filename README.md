@@ -33,6 +33,7 @@ call_outs, or master objects as engine ontology.
 | `src/test/java/io/github/protasm/jvmud/` | JVMud Java test source, following the same package layout. |
 | `mudlibs/lpmuseum/` | Native JVMud mudlib content. This is the free-standing Telnet landing experience and museum concourse for exhibit mudlibs. |
 | `mudlibs/lp245/` | Vanilla LPMUD 2.4.5 exhibit mudlib content. Treat upstream files as read-only unless an explicit style or formatting change is requested; add compatibility through dedicated independent shim objects. |
+| `mudlibs/realmsmud/` | Imported RealmsMUD content plus its JVMud compatibility profile and profile-specific operational scripts. |
 | `docs/` | Static project site published from simple HTML. |
 
 ## Runtime Status
@@ -139,11 +140,12 @@ The `cli` module provides a local, single-user admin shell backed by the real
 object runtime. After building, run it with:
 
 ```text
-scripts/jvmud-admin
+scripts/jvmud-admin <mudlib-config-file>
 ```
 
 The launcher compiles the project, then starts the shell with the local build
-output. Optionally pass a mudlib config file as the single argument.
+output. The manifest argument is required so shared tooling never silently
+selects one bundled mudlib.
 
 The shell is admin-only: every input line is parsed as an admin command. Commands
 include `boot`, `call`, `cat`, `cd`, `clone`, `destruct`, `inspect`, `load`,
@@ -151,10 +153,9 @@ include `boot`, `call`, `cat`, `cd`, `clone`, `destruct`, `inspect`, `load`,
 `quit`. Some commands have single-character shortcuts; run `help` in the shell
 to see the current alias list and per-command usage notes.
 
-The CLI includes a mudlib-rooted virtual filesystem. If the config file is
-`/Users/jonathan/Projects/jvmud/mudlibs/lpmuseum/jvmud/lpmuseum.config`, then
-CLI path `/` maps to `/Users/jonathan/Projects/jvmud/mudlibs/lpmuseum`.
-Filesystem commands cannot navigate above the mudlib root.
+The CLI includes a mudlib-rooted virtual filesystem. CLI path `/` maps to the
+root selected by the supplied manifest, and filesystem commands cannot
+navigate above that mudlib root.
 
 Use `verbosity quiet`, `verbosity normal`, or `verbosity watch` to control shell
 output. `watch` prints compiler stage progress for commands such as `load` and
@@ -166,13 +167,13 @@ The `instance` package provides the player-facing hosted world, while
 a persistent Telnet target with:
 
 ```text
-scripts/jvmud-start [mudlib-config-file]
+scripts/jvmud-start <mudlib-config-file>
 ```
 
-The config argument is optional. By default it serves native JVMud LPMuseum from
-`mudlibs/lpmuseum/jvmud/lpmuseum.config` on `localhost:4000`. Telnet
-connections arrive in the LPMuseum concourse through the museum's own Persona
-object, command grammar, Places, and Entities. LPMuseum declares its LP245
+The config argument is required; JVMud does not choose a mudlib implicitly. For
+example, `mudlibs/lpmuseum/jvmud/lpmuseum.config` serves native JVMud LPMuseum
+on `localhost:4000`. Telnet connections arrive in the LPMuseum concourse through
+the museum's own Persona object, command grammar, Places, and Entities. LPMuseum declares its LP245
 exhibit as an explicit mounted-world config; mount discovery is not tied to a
 particular game ID or sibling-directory convention. To boot LP245 directly for
 compatibility testing, pass `mudlibs/lp245/jvmud/lp245.config`.
@@ -194,23 +195,29 @@ mounted-world requirements explicitly. Optional syntax is selected with
 efuns require the corresponding `engine_capabilities` grant. Secrets should be
 referenced with `database.password_env`, never committed as manifest values.
 
-To run the startup smoke test that launches `jvmud-start`, connects over TCP,
-verifies that the configured `obj/player` mudlib player object attaches, drives
-the vanilla login prompts through captured input, and checks `look` plus
+The optional `filesystem_accounts` session policy supplies reusable local
+account-file and password-verification mechanics without naming or calling a
+particular mudlib. After authentication, JVMud delivers neutral
+`player_persona_resolved` and `player_entered_world` lifecycle events; the
+manifest maps those events to mudlib-owned profile and entry behavior.
+
+To run the LP245 startup smoke test that launches `jvmud-start`, connects over
+TCP, proves the configured player behavior through the mudlib's login prompts,
+and checks `look` plus
 movement from the church to the village green and humpbacked bridge:
 
 ```text
-scripts/smoke-jvmud-start.sh
+mudlibs/lp245/jvmud/smoke-start
 ```
 
 ## Development Notes
 
 - Keep changes scoped to the relevant package under `src/main/java/io/github/protasm/jvmud/`,
-  `mudlibs/lp245/`, or `docs/`.
+  the applicable `mudlibs/<profile>/` tree, or `docs/`.
 - Use `docs/PRINCIPLES.md` as the source of truth for engine concepts. Do not edit
   vanilla mudlib files unless explicitly asked for style or formatting changes;
   prefer dedicated compatibility shim objects and engine/compiler support.
-- Treat `io.github.protasm.jvmud.engine` and `mudlibs/lp245/` as intentionally separate from compiler internals:
+- Treat `io.github.protasm.jvmud.engine` and every `mudlibs/<profile>/` tree as intentionally separate from compiler internals:
   compiler helpers used by generated bytecode currently remain under
   `src/main/java/io/github/protasm/jvmud/compiler/runtime/`.
 - Keep untyped LPC methods and untyped method parameters as compiler errors.

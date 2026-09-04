@@ -1,7 +1,7 @@
 package io.github.protasm.jvmud.instance;
 
-import io.github.protasm.jvmud.persistence.filesystem.LpmuseumAccountFileStore;
-import io.github.protasm.jvmud.persistence.filesystem.LpmuseumAccountFileStore.Account;
+import io.github.protasm.jvmud.persistence.filesystem.FilesystemAccountStore;
+import io.github.protasm.jvmud.persistence.filesystem.FilesystemAccountStore.Account;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -12,18 +12,18 @@ import java.util.Optional;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
-/** LPMuseum-specific durable account and password policy, isolated from the generic instance host. */
-final class LpmuseumAccountService {
+/** Durable account and password service for the optional filesystem-backed login policy. */
+final class FilesystemAccountService {
     private static final int PASSWORD_ITERATIONS = 210_000;
     private static final int PASSWORD_SALT_BYTES = 16;
     private static final int PASSWORD_HASH_BITS = 256;
 
     private final Path mudlibRoot;
-    private final LpmuseumAccountFileStore store = new LpmuseumAccountFileStore();
+    private final FilesystemAccountStore store = new FilesystemAccountStore();
     private final SecureRandom random = new SecureRandom();
 
-    /** Creates account policy rooted in the selected LPMuseum mudlib. */
-    LpmuseumAccountService(Path mudlibRoot) {
+    /** Creates an account service rooted in the selected mudlib. */
+    FilesystemAccountService(Path mudlibRoot) {
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
     }
 
@@ -32,7 +32,7 @@ final class LpmuseumAccountService {
         return store.load(mudlibRoot, accountId);
     }
 
-    /** Saves an account through the LPMuseum filesystem adapter. */
+    /** Saves an account through the filesystem adapter. */
     void save(Account account) {
         store.save(mudlibRoot, account);
     }

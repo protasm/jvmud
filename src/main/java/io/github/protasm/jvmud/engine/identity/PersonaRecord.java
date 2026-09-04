@@ -11,7 +11,7 @@ import java.util.Optional;
  * mudlib object before full World entity integration.</p>
  *
  * <p>The mudlib behavior projection is opaque to the runtime model. Compatibility layers may use it
- * to associate LPC-authored behavior, such as LP245's combined player object.</p>
+ * to associate LPC-authored behavior, including a mudlib's combined player/Persona object.</p>
  */
 public record PersonaRecord(
         PersonaId id,

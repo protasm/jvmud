@@ -30,6 +30,15 @@ final class AdminCliTest {
     Path tempDir;
 
     @Test
+    void mainRequiresAnExplicitMudlibConfig() {
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> AdminCli.main(new String[0]));
+
+        assertEquals("Usage: scripts/jvmud-admin <mudlib-config-file>", error.getMessage());
+    }
+
+    @Test
     void adminCanLoadCallCloneMoveInspectAndQuit() throws Exception {
         Files.writeString(tempDir.resolve("room.c"), """
                 string long(mixed str) {
@@ -278,6 +287,20 @@ final class AdminCliTest {
         assertTrue(output.contains("Usage: parse <path>"));
         assertTrue(output.contains("Error: Missing argument 0 for compile"));
         assertTrue(output.contains("Usage: compile <path>"));
+    }
+
+    @Test
+    void commandsRequireAnExplicitMudlibBoot() {
+        StringWriter transcript = new StringWriter();
+        AdminCli cli = new AdminCli(new PrintWriter(transcript, true));
+
+        cli.execute("objects");
+        cli.execute("boot");
+
+        String output = transcript.toString();
+        assertTrue(output.contains("Error: No mudlib is booted. Use boot <mudlib-config-file> first."), output);
+        assertTrue(output.contains("Error: Missing argument 0 for boot"), output);
+        assertTrue(output.contains("Usage: boot <mudlib-config-file>"), output);
     }
 
     @Test

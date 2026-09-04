@@ -250,9 +250,9 @@ import javax.crypto.spec.PBEKeySpec;
  *       mudlib-relative file.</li>
  *   <li>{@code jvmud_remove_mudlib_text(string path) : status} removes a mudlib-relative file.</li>
  *   <li>{@code jvmud_copy_mudlib_text(string source, string destination) : int} copies a
- *       mudlib-relative file, returning LDMud-style zero for success.</li>
+ *       mudlib-relative file, returning zero for success.</li>
  *   <li>{@code jvmud_rename_mudlib_text(string source, string destination) : int} renames a
- *       mudlib-relative path, returning LDMud-style zero for success.</li>
+ *       mudlib-relative path, returning zero for success.</li>
  *   <li>{@code jvmud_create_mudlib_directory(string path) : status} creates a mudlib-relative
  *       directory.</li>
  *   <li>{@code jvmud_remove_mudlib_directory(string path) : status} removes an empty
@@ -270,7 +270,7 @@ import javax.crypto.spec.PBEKeySpec;
  *       delimiter while preserving empty trailing fields.</li>
  *   <li>{@code jvmud_regex_match(array values, string pattern[, int flags]) : mixed} returns the
  *       values whose string forms match a regular expression, or LPC false when no value
- *       matches. JVMud accepts common LDMud regexp idioms before running the pattern on Java's
+ *       matches. JVMud normalizes supported compatibility-regexp idioms before running the pattern on Java's
  *       regex engine.</li>
  *   <li>{@code jvmud_regex_replace(string input, string pattern, mixed replacement, int flags) :
  *       string} performs a compatibility regex replacement for mudlib text helpers, including
@@ -291,7 +291,7 @@ import javax.crypto.spec.PBEKeySpec;
  *       by {@code jvmud_serialize_lpc_value}.</li>
  *   <li>{@code jvmud_format_text(string format, mixed ...args) : string} formats text using the
  *       host formatter with LPC {@code %O} object placeholders treated as string placeholders and
- *       LDMud string column mode handled directly.</li>
+ *       legacy-compatible string column mode handled directly.</li>
  *   <li>{@code jvmud_extract_text(mixed value, int from) : string} extracts text from an inclusive
  *       start index through the end.</li>
  *   <li>{@code jvmud_extract_text(mixed value, int from, int to) : string} extracts text using
@@ -312,7 +312,7 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_mapping_values(mapping value) : array} returns the mapping's values in
  *       runtime iteration order.</li>
  *   <li>{@code jvmud_mapping_values(mapping value, int index) : array} returns one value slot from
- *       each entry in an LDMud multi-value mapping.</li>
+ *       each entry in a multi-value mapping.</li>
  *   <li>{@code jvmud_mapping_from_keys(array keys) : mapping} builds a mapping whose keys come from
  *       the supplied array and whose values are LPC true.</li>
  *   <li>{@code jvmud_mapping_delete(mapping value, mixed key) : mapping} removes a key from a
@@ -336,7 +336,7 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_sscanf(mixed input, mixed format, mixed capture, mixed ...captures) : int}
  *       captures formatted text into one or more assignable LPC values.</li>
  *   <li>{@code jvmud_apply_callable(function callback, mixed ...args) : mixed} invokes a callable
- *       and expands a final array argument for LDMud-style {@code apply} calls.</li>
+ *       and expands a final array argument for compatibility {@code apply} calls.</li>
  *   <li>{@code jvmud_invoke_lpc_object(mixed target, string methodName, mixed ...args) : mixed}
  *       invokes an optional method on an LPC object, a path-resolved shared object, or each object
  *       in an LPC array.</li>
@@ -1143,12 +1143,12 @@ public final class CoreEfuns {
             System.arraycopy(args, 1, values, 0, values.length);
         }
         if (format.contains("%=")) {
-            return formatLdmudText(format, values);
+            return formatColumnText(format, values);
         }
         return String.format(Locale.ROOT, format, values);
     }
 
-    private static String formatLdmudText(String format, Object[] values) {
+    private static String formatColumnText(String format, Object[] values) {
         StringBuilder output = new StringBuilder();
         int valueIndex = 0;
         for (int i = 0; i < format.length(); i++) {
@@ -1436,7 +1436,7 @@ public final class CoreEfuns {
         return escapeAnchorQuestionMark(escapeLiteralLeftBracketsInCharacterClasses(pattern));
     }
 
-    /** Escapes LDMud-style literal {@code [} characters embedded inside regex character classes. */
+    /** Escapes compatibility-regexp literal {@code [} characters embedded inside character classes. */
     private static String escapeLiteralLeftBracketsInCharacterClasses(String pattern) {
         String literalLeftBracket = "\\" + "u005B";
         StringBuilder translated = new StringBuilder(pattern.length());
@@ -1472,9 +1472,9 @@ public final class CoreEfuns {
     }
 
     /**
-     * Keeps LDMud command aliases such as {@code ? [-v]} literal when the mudlib turns them into
+     * Keeps command aliases such as {@code ? [-v]} literal when a mudlib turns them into
      * an anchored pattern like {@code ^?( -v)*$}. Java treats {@code ?} after {@code ^} as a
-     * quantifier; LDMud mudlibs commonly intend it as command text in that position.
+     * quantifier; compatibility mudlibs commonly intend it as command text in that position.
      */
     private static String escapeAnchorQuestionMark(String pattern) {
         StringBuilder translated = new StringBuilder(pattern.length());

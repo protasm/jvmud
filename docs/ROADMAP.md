@@ -47,7 +47,7 @@ As of this reset, `mvn test` is green for the root project:
   runtime helper tests, and the non-failing mudlib compatibility scan.
 - `cli`: admin shell and boot/config behavior tests.
 
-The real process smoke also passes through `scripts/smoke-jvmud-start.sh`. That
+The LP245 real-process smoke also passes through `mudlibs/lp245/jvmud/smoke-start`. That
 script launches `scripts/jvmud-start`, connects over TCP, verifies the player-facing
 session, runs `look`, runs `north`, and quits cleanly. Treat this as the
 entrypoint smoke for Telnet and startup changes.
@@ -116,16 +116,16 @@ manifest declares:
 
 Recent work produced useful guardrails:
 
-- Real process behavior matters. Keep `scripts/smoke-jvmud-start.sh` healthy
+- Real process behavior matters. Keep `mudlibs/lp245/jvmud/smoke-start` healthy
   whenever Telnet, boot, movement, command dispatch, or config behavior changes.
 - The host-owned persona fallback is valuable. It keeps the listener playable
   if configured player attachment regresses or a development mudlib omits
   `player_object`.
 - `player_object` should stay config-driven. Do not hardcode `obj/player` in
   Java entrypoints.
-- The configured vanilla player object now attaches through the real
-  `scripts/jvmud-start` smoke. Keep that smoke strict enough to fail if the listener
-  falls back to a host-owned Persona unexpectedly.
+- The configured vanilla player behavior now attaches through the real
+  `scripts/jvmud-start` smoke. Keep that smoke strict enough to fail if the mudlib's
+  login prompts and player behavior are not reached.
 - The compatibility scan is evidence. It should guide parser, semantic,
   bytecode, engine-function, runtime, and shim work, but it should not dictate
   JVMud's architecture.
@@ -135,14 +135,15 @@ Recent work produced useful guardrails:
 ## Reset Priorities
 
 1. **Keep The Baseline Honest**
-   Preserve `mvn test` and `scripts/smoke-jvmud-start.sh` as the default
-   verification pair. If a change intentionally breaks one, document the reason
-   in the change and restore the signal quickly.
+   Preserve `mvn test` as the platform baseline and
+   `mudlibs/lp245/jvmud/smoke-start` as the LP245 compatibility acceptance check.
+   If a change intentionally breaks either applicable signal, document the reason
+   in the change and restore it quickly.
 
 2. **Guard The Configured Player Path**
    Keep `player_object = obj/player` attaching without falling back. The
-   `scripts/smoke-jvmud-start.sh` smoke must verify the configured mudlib player
-   object id, not only a generic attachment message. If a verifier or runtime
+   `mudlibs/lp245/jvmud/smoke-start` smoke must verify the configured mudlib's
+   login and player behavior, not an engine-internal object-id message. If a verifier or runtime
    failure returns, reproduce it with the smallest compiler/runtime test before
    changing Telnet fallback behavior.
 

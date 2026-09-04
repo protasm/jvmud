@@ -1904,7 +1904,7 @@ public final class RuntimeContext {
     /**
      * Installs host-level command aliases used before LPC action lookup.
      *
-     * <p>LDMud mudlibs commonly configure {@code H_MODIFY_COMMAND} with mappings such as
+     * <p>Compatibility mudlibs may configure a command-modification hook with mappings such as
      * {@code ([ "n": "north" ])}. JVMud keeps that compatibility at the runtime command boundary:
      * the first word is rewritten before registered {@code add_action} verbs are selected, and
      * {@code query_verb()} sees the expanded verb.</p>

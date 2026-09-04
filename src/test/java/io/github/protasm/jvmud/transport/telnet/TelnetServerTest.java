@@ -70,15 +70,12 @@ final class TelnetServerTest {
     }
 
     @Test
-    void telnetServerLaunchOptionsDefaultToLocalMudlibStart() {
-        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[0]);
+    void telnetServerLaunchOptionsRequireExplicitMudlibConfig() {
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> TelnetServer.parseLaunchOptions(new String[0]));
 
-        assertEquals(repositoryRoot().resolve("mudlibs/lpmuseum"), options.mudlibRoot());
-        assertEquals(4000, options.port());
-        assertEquals("localhost", options.bindAddress());
-        assertEquals(DEFAULT_CONFIG_PATH, options.configObjectPath());
-        assertFalse(options.help());
-        assertFalse(options.traceStartupLoads());
+        assertEquals("Missing mudlib config file.", error.getMessage());
     }
 
     @Test
@@ -126,7 +123,7 @@ final class TelnetServerTest {
     }
 
     @Test
-    void lpmuseumIsDefaultStandaloneNativeMudlib() throws Exception {
+    void bundledNativeMudlibCanRunStandalone() throws Exception {
         Path museum = lpmuseumTestRoot();
 
         try (TelnetServer server = new TelnetServer(

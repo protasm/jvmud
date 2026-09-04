@@ -1,6 +1,5 @@
 package io.github.protasm.jvmud.cli;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,11 +55,6 @@ final class CommandLine {
     String optional(int index, String defaultValue) {
         int tokenIndex = index + 1;
         return tokenIndex < tokens.size() ? tokens.get(tokenIndex) : defaultValue;
-    }
-
-    Path pathArgument(int index, Path defaultPath) {
-        int tokenIndex = index + 1;
-        return tokenIndex < tokens.size() ? Path.of(tokens.get(tokenIndex)) : defaultPath;
     }
 
     String[] argumentsAfter(int index) {

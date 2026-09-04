@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** Starts a mudlib as a persistent telnet target for interactive JVMud sessions. */
 public final class TelnetServer implements AutoCloseable {
     public static final int DEFAULT_PORT = 4000;
-    private static final Path DEFAULT_CONFIG_FILE = Path.of("mudlibs", "lpmuseum", "jvmud", "lpmuseum.config");
     private static final String DEFAULT_BIND_ADDRESS = "localhost";
 
     private final String bindAddress;
@@ -98,7 +97,7 @@ public final class TelnetServer implements AutoCloseable {
 
     static LaunchOptions parseLaunchOptions(String[] args) {
         if (args.length == 1 && ("-help".equals(args[0]) || "--help".equals(args[0]))) {
-            return optionsForConfigFile(DEFAULT_CONFIG_FILE, true, false);
+            return new LaunchOptions(null, DEFAULT_PORT, DEFAULT_BIND_ADDRESS, null, true, false);
         }
 
         boolean traceStartupLoads = false;
@@ -115,7 +114,10 @@ public final class TelnetServer implements AutoCloseable {
             }
         }
 
-        return optionsForConfigFile(configFile != null ? configFile : DEFAULT_CONFIG_FILE, false, traceStartupLoads);
+        if (configFile == null) {
+            throw new IllegalArgumentException("Missing mudlib config file.");
+        }
+        return optionsForConfigFile(configFile, false, traceStartupLoads);
     }
 
     private static LaunchOptions optionsForConfigFile(Path configFile, boolean help, boolean traceStartupLoads) {
@@ -166,8 +168,7 @@ public final class TelnetServer implements AutoCloseable {
     }
 
     private static String usage() {
-        return "Usage: scripts/jvmud-start [mudlib-config-file]\n"
-                + "Default: scripts/jvmud-start mudlibs/lpmuseum/jvmud/lpmuseum.config\n"
+        return "Usage: scripts/jvmud-start [--trace-startup-loads] <mudlib-config-file>\n"
                 + "Options: --trace-startup-loads prints every underlying startup object load.\n"
                 + "Listens on localhost:4000.";
     }
@@ -461,6 +462,7 @@ public final class TelnetServer implements AutoCloseable {
         }
     }
 
+    /** Parsed launcher options; mudlib paths are absent only for a help request. */
     record LaunchOptions(
             Path mudlibRoot,
             int port,

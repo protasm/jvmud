@@ -11,7 +11,7 @@ public final class ASTParameter extends ASTNode {
     /**
      * Creates a parsed LPC parameter.
      *
-     * <p>The {@code varargs} flag records LDMud-style parameter-local optional/rest spelling such
+     * <p>The {@code varargs} flag records parameter-local optional/rest spelling such
      * as {@code varargs mixed *data}. JVMud currently preserves that source shape for compatibility
      * analysis; call dispatch still uses the declared parameter type and arity.</p>
      *

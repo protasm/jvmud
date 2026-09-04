@@ -746,7 +746,7 @@ final class RealmsMudCompatibilityScanTest {
 
     @Test
     void realmsFullPreloadManifestExcludesMudlibTestFixtures() throws IOException {
-        String generator = Files.readString(REPO_ROOT.resolve("scripts/generate-realms-full-init.sh"));
+        String generator = Files.readString(REPO_ROOT.resolve("mudlibs/realmsmud/jvmud/generate-full-init"));
 
         assertTrue(generator.contains("! -path \"$SOURCE_DIR/lib/tests/*\""), generator);
     }

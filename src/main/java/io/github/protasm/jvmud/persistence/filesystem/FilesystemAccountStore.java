@@ -9,12 +9,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
-/** Filesystem persistence for LPMuseum account records. */
-public final class LpmuseumAccountFileStore {
+/** Filesystem persistence for an explicitly selected host-managed account policy. */
+public final class FilesystemAccountStore {
     private static final ObjectMapper JSON = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT);
 
-    /** Loads an account record from the mudlib's account directory. */
+    /** Loads an account record from the selected mudlib's account directory. */
     public Optional<Account> load(Path mudlibRoot, String accountId) {
         Path path = accountPath(mudlibRoot, accountId);
         if (!Files.isRegularFile(path)) {
@@ -34,7 +34,7 @@ public final class LpmuseumAccountFileStore {
         }
     }
 
-    /** Saves an account record to the mudlib's account directory. */
+    /** Saves an account record to the selected mudlib's account directory. */
     public void save(Path mudlibRoot, Account account) {
         Path path = accountPath(mudlibRoot, account.accountId());
         ObjectNode root = JSON.createObjectNode();
@@ -42,22 +42,27 @@ public final class LpmuseumAccountFileStore {
         root.put("format", "jvmud.lpc-object-state");
         root.put("version", 1);
         root.set("fields", fields);
-        putString(fields, "lpmuseum.account.account_id", account.accountId());
-        putString(fields, "lpmuseum.account.password_hash", account.passwordHash());
-        putString(fields, "lpmuseum.account.email", account.email());
-        putString(fields, "lpmuseum.account.gender", account.gender());
-        putString(fields, "lpmuseum.account.persona_name", account.personaName().toLowerCase());
-        putInt(fields, "lpmuseum.account.account_created", 1);
+        putString(fields, "account.account_id", account.accountId());
+        putString(fields, "account.password_hash", account.passwordHash());
+        putString(fields, "account.email", account.email());
+        putString(fields, "account.gender", account.gender());
+        putString(fields, "account.persona_name", account.personaName());
+        putInt(fields, "account.account_created", 1);
         try {
             Files.createDirectories(path.getParent());
             JSON.writeValue(path.toFile(), root);
         } catch (IOException e) {
-            throw new IllegalStateException("Could not save LPMuseum account " + account.accountId(), e);
+            throw new IllegalStateException("Could not save account " + account.accountId(), e);
         }
     }
 
     private Path accountPath(Path mudlibRoot, String accountId) {
-        return mudlibRoot.resolve("accounts").resolve(accountId + ".o").normalize();
+        Path accountRoot = mudlibRoot.toAbsolutePath().normalize().resolve("accounts");
+        Path path = accountRoot.resolve(accountId + ".o").normalize();
+        if (!path.getParent().equals(accountRoot)) {
+            throw new IllegalArgumentException("accountId must name one account inside the account directory.");
+        }
+        return path;
     }
 
     private String field(JsonNode fields, String suffix, String fallback) {
@@ -94,7 +99,7 @@ public final class LpmuseumAccountFileStore {
         fields.set(name, field);
     }
 
-    /** Durable LPMuseum account data independent of any live player session. */
+    /** Durable account data supplied to the mudlib after host authentication succeeds. */
     public record Account(
             String accountId,
             String personaName,

@@ -5,6 +5,7 @@ import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntimeConfig;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
+import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundaryConfigReader;
 import java.io.IOException;
@@ -16,28 +17,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Compiles every object listed in the RealmsMUD full preload manifest without loading instances.
+ * Compiles every object listed in a mudlib preload manifest without loading instances.
  *
  * <p>This is a compatibility radar for compiler/analyzer/codegen failures. It deliberately stops
  * before object construction so database-backed {@code create()} methods do not drown out compile
- * errors.</p>
+ * errors. For the same reason, environment-backed database passwords are not resolved: this
+ * command parses the boundary to configure compilation, but cannot perform database operations.</p>
  */
-public final class RealmsFullCompileScan {
-    private static final Path DEFAULT_CONFIG = Path.of("mudlibs/realmsmud/jvmud/realmsmud.full.config");
-    private static final Path DEFAULT_REPORT = Path.of("target/realms-full-compile.md");
-
-    private RealmsFullCompileScan() {}
+public final class MudlibPreloadCompileScan {
+    private MudlibPreloadCompileScan() {}
 
     public static void main(String[] args) throws IOException {
-        Path configFile = resolveRepoPath(args.length > 0 ? Path.of(args[0]) : DEFAULT_CONFIG);
-        Path reportFile = resolveRepoPath(args.length > 1 ? Path.of(args[1]) : DEFAULT_REPORT);
-        if (args.length > 2) {
-            throw new IllegalArgumentException("Usage: scripts/scan-realms-full-compile.sh [config-file] [report-file]");
+        if (args.length == 0 || args.length > 2) {
+            throw new IllegalArgumentException(
+                    "Usage: scripts/scan-mudlib-preload-compile.sh <config-file> [report-file]");
         }
 
+        Path configFile = resolveRepoPath(Path.of(args[0]));
         Path mudlibRoot = mudlibRootForConfigFile(configFile);
         String configObjectPath = mudlibRoot.relativize(configFile).toString().replace('\\', '/');
-        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(mudlibRoot, configObjectPath);
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(
+                mudlibRoot, configObjectPath, ignored -> "unused-by-preload-compile-scan");
+        String mudlibId = boundary.gameId().orElseGet(() -> mudlibRoot.getFileName().toString());
+        String mudlibName = boundary.gameName().orElse(mudlibId);
+        Path reportFile = args.length > 1
+                ? resolveRepoPath(Path.of(args[1]))
+                : resolveRepoPath(Path.of("target", safeReportStem(mudlibId) + "-preload-compile.md"));
         Path activeRoot = boundary.mudlibRootPath().orElse(mudlibRoot).toAbsolutePath().normalize();
         Path manifest = activeRoot.resolve(boundary.preloadFilePath()
                 .orElseThrow(() -> new IllegalArgumentException("Config does not declare preload_file")));
@@ -45,8 +50,9 @@ public final class RealmsFullCompileScan {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
                 .baseIncludePath(mudlibRoot.toAbsolutePath().normalize())
                 .build());
-        CoreEfuns.registerCore(runtime);
+        CoreEfuns.registerCore(runtime, boundary.engineCapabilities());
         runtime.registerMudlibBoundary(boundary);
+        runtime.setParserOptions(ParserOptions.features(boundary.languageFeatures()));
 
         List<String> entries = manifestEntries(manifest);
         List<Failure> failures = new ArrayList<>();
@@ -75,9 +81,10 @@ public final class RealmsFullCompileScan {
             }
         }
 
-        writeReport(reportFile, configFile, manifest, entries.size(), compiled, failures);
+        writeReport(reportFile, mudlibName, configFile, manifest, entries.size(), compiled, failures);
         System.out.printf(
-                "Realms full compile scan: %d compiled, %d failed. Report: %s%n",
+                "%s preload compile scan: %d compiled, %d failed. Report: %s%n",
+                mudlibName,
                 compiled,
                 failures.size(),
                 reportFile);
@@ -100,6 +107,7 @@ public final class RealmsFullCompileScan {
 
     private static void writeReport(
             Path reportFile,
+            String mudlibName,
             Path configFile,
             Path manifest,
             int total,
@@ -111,7 +119,7 @@ public final class RealmsFullCompileScan {
         }
 
         try (PrintWriter out = new PrintWriter(Files.newBufferedWriter(reportFile, StandardCharsets.UTF_8))) {
-            out.println("# RealmsMUD Full Compile Scan");
+            out.println("# " + mudlibName + " Preload Compile Scan");
             out.println();
             out.println("- Config: `" + configFile + "`");
             out.println("- Manifest: `" + manifest + "`");
@@ -160,6 +168,11 @@ public final class RealmsFullCompileScan {
         return launchRoot().resolve(path).normalize();
     }
 
+    private static String safeReportStem(String value) {
+        String stem = value.replaceAll("[^A-Za-z0-9._-]+", "-");
+        return stem.isBlank() ? "mudlib" : stem;
+    }
+
     private static Path launchRoot() {
         Path current = Path.of("").toAbsolutePath().normalize();
         while (current != null) {
@@ -195,7 +208,7 @@ public final class RealmsFullCompileScan {
     private record Failure(String objectPath, List<String> details) {
         static Failure fromProblems(String objectPath, List<CompilationProblem> problems) {
             return new Failure(objectPath, problems.stream()
-                    .map(RealmsFullCompileScan::problemDetail)
+                    .map(MudlibPreloadCompileScan::problemDetail)
                     .toList());
         }
 

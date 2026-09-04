@@ -71,7 +71,7 @@ public final class Preprocessor {
    * Creates a preprocessor with explicit compatibility predefines.
    *
    * <p>The predefined values are replacement source text. This constructor is used by mudlib
-   * boundary profiles to expose driver-compatibility macros, for example LDMud-shaped version
+   * boundary profiles to expose driver-compatibility macros, for example imported-driver version
    * probes, without making those macros JVMud-native LPC.</p>
    *
    * @param resolver include resolver for {@code #include} directives

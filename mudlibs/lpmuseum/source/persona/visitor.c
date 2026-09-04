@@ -37,13 +37,13 @@ void connect() {
   player_bound_messages_enabled = 1;
 }
 
-void configure_account(mixed user_id, mixed persona, mixed account_gender, mixed account_email, mixed account_password_hash) {
+void configure_account(mixed user_id, mixed persona, mixed account_gender, mapping account_attributes) {
   account_id = user_id;
   persona_name = lower_case(persona);
   display_name = capitalize(persona_name);
   gender = account_gender;
-  email = account_email;
-  password_hash = account_password_hash;
+  email = account_attributes["email"];
+  password_hash = account_attributes["password_hash"];
   account_created = 1;
   pending_password = "";
   password_attempts = 0;
@@ -95,7 +95,7 @@ void confirm_replacement_password(mixed value) {
   write("Password changed.\n");
 }
 
-void enter_museum() {
+void enter_museum(mixed starting_place) {
   player_bound_messages_enabled = 1;
   enable_commands();
   write("Hi, " + display_name + "! Welcome to LPMuseum.\n");

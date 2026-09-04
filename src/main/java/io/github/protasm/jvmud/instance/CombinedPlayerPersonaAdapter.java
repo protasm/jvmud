@@ -6,10 +6,10 @@ import java.util.Objects;
 /**
  * Adapter for mudlib player objects that collapse several JVMud concepts into one object.
  *
- * <p>LP245's {@code /obj/player.c} is the motivating case: the same LPC object carries mudlib
- * account/profile fields, login prompts and policy, Persona behavior, and session-oriented glue.
- * JVMud keeps Session, Player, and Persona engine-owned; this adapter records the combined object as a
- * combined mudlib projection attached to that relationship.</p>
+ * <p>Some compatibility mudlibs use one LPC object for account/profile fields, login prompts and
+ * policy, Persona behavior, and session-oriented glue. JVMud keeps Session, Player, and Persona
+ * engine-owned; this adapter records that object as a combined mudlib projection attached to the
+ * relationship.</p>
  */
 public final class CombinedPlayerPersonaAdapter {
     private final String playerObjectPath;

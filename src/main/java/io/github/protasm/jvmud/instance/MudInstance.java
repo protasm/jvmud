@@ -17,7 +17,6 @@ import io.github.protasm.jvmud.engine.protocol.GmcpCodec;
 import io.github.protasm.jvmud.engine.protocol.GmcpMessage;
 import io.github.protasm.jvmud.engine.world.Place;
 import io.github.protasm.jvmud.engine.world.WorldRuntime;
-import io.github.protasm.jvmud.persistence.filesystem.LpmuseumAccountFileStore.Account;
 import java.io.PrintWriter;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -46,10 +45,11 @@ public final class MudInstance implements InstanceHost {
     private final boolean showRuler;
     private final String playerSessionConnectedMethod;
     private final String playerSessionPostRebindMethod;
+    private final String playerPersonaResolvedMethod;
+    private final String playerEnteredWorldMethod;
     private final String playerSessionDisconnectedMethod;
     private final String runtimeErrorMethod;
     private final MudlibBootResult bootResult;
-    private final LpmuseumAccountService lpmuseumAccounts;
     private final Map<Object, String> requestedTransfers = new IdentityHashMap<>();
     private TransferHandler transferHandler = (mud, actor, gameId) -> 0;
     private int nextPersonaId = 1;
@@ -71,6 +71,8 @@ public final class MudInstance implements InstanceHost {
             boolean showRuler,
             String playerSessionConnectedMethod,
             String playerSessionPostRebindMethod,
+            String playerPersonaResolvedMethod,
+            String playerEnteredWorldMethod,
             String playerSessionDisconnectedMethod,
             String runtimeErrorMethod,
             MudlibBootResult bootResult) {
@@ -78,7 +80,6 @@ public final class MudInstance implements InstanceHost {
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
         this.gameId = Objects.requireNonNull(gameId, "gameId");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
-        this.lpmuseumAccounts = new LpmuseumAccountService(mudlibRoot);
         this.startingPlacePath = Objects.requireNonNull(startingPlacePath, "startingPlacePath");
         this.startingPlaceObject = Objects.requireNonNull(startingPlaceObject, "startingPlaceObject");
         this.playerObjectPath = playerObjectPath;
@@ -91,6 +92,8 @@ public final class MudInstance implements InstanceHost {
         this.showRuler = showRuler;
         this.playerSessionConnectedMethod = playerSessionConnectedMethod;
         this.playerSessionPostRebindMethod = playerSessionPostRebindMethod;
+        this.playerPersonaResolvedMethod = playerPersonaResolvedMethod;
+        this.playerEnteredWorldMethod = playerEnteredWorldMethod;
         this.playerSessionDisconnectedMethod = playerSessionDisconnectedMethod;
         this.runtimeErrorMethod = runtimeErrorMethod;
         this.bootResult = Objects.requireNonNull(bootResult, "bootResult");
@@ -168,6 +171,8 @@ public final class MudInstance implements InstanceHost {
                 boundary.showRuler(),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_CONNECTED).orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_POST_REBIND).orElse(null),
+                boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_PERSONA_RESOLVED).orElse(null),
+                boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_ENTERED_WORLD).orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_DISCONNECTED).orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.RUNTIME_ERROR).orElse(null),
                 result);
@@ -178,6 +183,11 @@ public final class MudInstance implements InstanceHost {
 
     String gameId() {
         return gameId;
+    }
+
+    /** Returns the configured display name used by optional host-managed policies. */
+    String gameName() {
+        return bootResult.mudlibBoundary().gameName().orElse(gameId);
     }
 
     void setTransferHandler(TransferHandler transferHandler) {
@@ -401,18 +411,24 @@ public final class MudInstance implements InstanceHost {
         return persona;
     }
 
-    InstancePersona attachAuthenticatedLpmuseumPersona(
+    /**
+     * Attaches the Persona selected by an optional host-managed authentication policy.
+     *
+     * <p>Account interpretation remains mudlib policy: JVMud delivers neutral lifecycle events,
+     * and the manifest maps those events to whatever methods the selected mudlib uses.</p>
+     */
+    InstancePersona attachAuthenticatedPersona(
             String sessionId,
             PrintWriter out,
             String remoteAddress,
-            Account account) {
+            ManagedPersonaProfile profile) {
         int id = nextPersonaId++;
         Object actor = runtime.cloneObject(playerObjectPath);
         String objectId = Objects.requireNonNullElse(runtime.objectId(actor), playerObjectPath + "#" + id);
         Place startingPlace = placeFor(startingPlacePath);
         Entity nativeActor = worldRuntime.createEntity(
                 objectId,
-                account.personaName(),
+                profile.displayName(),
                 startingPlace,
                 Capability.ACTOR,
                 Capability.PERCEPTIVE);
@@ -425,18 +441,27 @@ public final class MudInstance implements InstanceHost {
         }, projection);
         runtime.refreshCommandActions(actor);
         runtime.clearOutputTranscript();
-        runtime.invokeObject(
-                actor,
-                "configure_account",
-                account.accountId(),
-                account.personaName(),
-                account.gender(),
-                account.email(),
-                account.passwordHash());
-        runtime.invokeObject(actor, "save_account");
-        runtime.invokeObject(actor, "enter_museum");
+        if (playerPersonaResolvedMethod != null) {
+            runtime.invokeObject(
+                    actor,
+                    playerPersonaResolvedMethod,
+                    profile.externalUserId(),
+                    profile.displayName(),
+                    profile.gender(),
+                    profile.attributes());
+        }
+        if (playerEnteredWorldMethod != null) {
+            runtime.invokeObject(actor, playerEnteredWorldMethod, startingPlaceObject);
+        }
         runtime.clearOutputTranscript();
-        return new InstancePersona(this, sessionId, objectId, account.personaName(), account.accountId(), account.gender(), actor,
+        return new InstancePersona(
+                this,
+                sessionId,
+                objectId,
+                profile.displayName(),
+                profile.externalUserId(),
+                profile.gender(),
+                actor,
                 remoteAddress);
     }
 
@@ -770,22 +795,6 @@ public final class MudInstance implements InstanceHost {
 
     void messageLoginPlayer(String sessionId, String text) {
         writeToPlayerForSession(sessionId, text);
-    }
-
-    Optional<Account> loadLpmuseumAccount(String accountId) {
-        return lpmuseumAccounts.load(accountId);
-    }
-
-    void saveLpmuseumAccount(Account account) {
-        lpmuseumAccounts.save(account);
-    }
-
-    String hashPassword(String password) {
-        return lpmuseumAccounts.hashPassword(password);
-    }
-
-    boolean verifyPassword(String password, String encodedHash) {
-        return lpmuseumAccounts.verifyPassword(password, encodedHash);
     }
 
     @FunctionalInterface

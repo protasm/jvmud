@@ -45,7 +45,7 @@ public final class ASTExprArrayStore extends ASTExpression {
         return index;
     }
 
-    /** Returns the optional value slot for an LDMud multi-value mapping assignment. */
+    /** Returns the optional value slot for a multi-value mapping assignment. */
     public ASTExpression valueIndex() {
         return valueIndex;
     }

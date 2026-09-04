@@ -8,7 +8,7 @@ import java.util.Objects;
  * IR value for an LPC inline callable literal, such as {@code (: $1 > 0 :)}.
  *
  * <p>The body is lowered with synthetic callback argument locals so callable invocation can
- * execute expression and LDMud statement-block bodies through the same IR/bytecode machinery used
+ * execute expression and statement-block bodies through the same IR/bytecode machinery used
  * by existing special-form callbacks.</p>
  */
 public record IRInlineCallableLiteral(

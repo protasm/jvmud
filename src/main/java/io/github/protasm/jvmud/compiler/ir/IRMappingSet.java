@@ -15,7 +15,7 @@ public final class IRMappingSet implements IRExpression {
         this(line, mapping, key, null, value, type);
     }
 
-    /** Creates a mapping assignment, optionally targeting one LDMud multi-value slot. */
+    /** Creates a mapping assignment, optionally targeting one multi-value slot. */
     public IRMappingSet(
             int line,
             IRExpression mapping,

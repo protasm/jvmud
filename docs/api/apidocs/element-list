@@ -23,6 +23,7 @@ io.github.protasm.jvmud.engine
 io.github.protasm.jvmud.engine.identity
 io.github.protasm.jvmud.engine.mudlib
 io.github.protasm.jvmud.engine.output
+io.github.protasm.jvmud.engine.protocol
 io.github.protasm.jvmud.engine.support
 io.github.protasm.jvmud.engine.time
 io.github.protasm.jvmud.engine.world

@@ -132,7 +132,7 @@ public final class RuntimeDatabaseService {
         return new ArrayList<>(handles.keySet());
     }
 
-    /** Escapes a string for interpolation into Realms-style SQL text. */
+    /** Escapes backslashes and single quotes for compatibility SQL text interpolation. */
     public String escape(String value) {
         if (value == null) {
             return "";

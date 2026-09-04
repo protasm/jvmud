@@ -18,8 +18,8 @@ import java.util.Set;
  *
  * <p>Lifecycle hooks are registered here as mappings from {@link MudlibLifecycleEvent} values to
  * mudlib method names. The event is the JVMud-native contract; the method name is mudlib policy.
- * For example, an LP245 compatibility boundary can map {@link MudlibLifecycleEvent#OBJECT_LOADED}
- * to {@code reset} and {@link MudlibLifecycleEvent#INTERACTION_SCOPE_STARTED} to {@code init}
+ * For example, a compatibility boundary can map {@link MudlibLifecycleEvent#OBJECT_LOADED} to a
+ * mudlib method such as {@code reset} and {@link MudlibLifecycleEvent#INTERACTION_SCOPE_STARTED} to {@code init}
  * without making those legacy method names part of the engine ontology.</p>
  *
  * <p>A mapping is optional. When an event occurs and no method is configured, JVMud skips the
@@ -335,7 +335,7 @@ public final class MudlibBoundary {
      * Returns preprocessor predefines supplied by a mudlib compatibility profile.
      *
      * <p>These are compile-time facts exposed to LPC source before parsing. They are intended for
-     * driver-compatibility shims, such as LDMud-flavored version macros that imported mudlibs probe
+     * driver-compatibility shims, such as foreign-driver version macros that imported mudlibs probe
      * with {@code __VERSION_MAJOR__}. JVMud keeps them at the mudlib boundary instead of treating
      * another driver's predefined macro vocabulary as JVMud-native LPC.</p>
      *

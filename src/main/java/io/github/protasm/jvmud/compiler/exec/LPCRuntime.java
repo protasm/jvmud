@@ -60,7 +60,7 @@ import java.util.zip.GZIPInputStream;
  *
  * <pre>{@code
  * LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder()
- *         .baseIncludePath(Path.of("mudlibs", "lp245"))
+ *         .baseIncludePath(Path.of("path", "to", "mudlib"))
  *         .build());
  * LPCObjectHandle orc = runtime.load("/obj/orc.c");
  * runtime.withRuntimeContext(() -> {
@@ -612,7 +612,7 @@ public final class LPCRuntime {
         }
     }
 
-    /** Copies a mudlib-rooted file, returning LDMud-style zero for success. */
+    /** Copies a mudlib-rooted file, returning zero for success. */
     public int copyMudlibText(String source, String destination) {
         Objects.requireNonNull(source, "source");
         Objects.requireNonNull(destination, "destination");
@@ -633,7 +633,7 @@ public final class LPCRuntime {
         }
     }
 
-    /** Renames a mudlib-rooted file or directory, returning LDMud-style zero for success. */
+    /** Renames a mudlib-rooted file or directory, returning zero for success. */
     public int renameMudlibText(String source, String destination) {
         Objects.requireNonNull(source, "source");
         Objects.requireNonNull(destination, "destination");

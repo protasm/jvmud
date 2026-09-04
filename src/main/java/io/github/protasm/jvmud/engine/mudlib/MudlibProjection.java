@@ -8,8 +8,8 @@ import java.util.Set;
  * Opaque mudlib-side projection attached to JVMud-native Player or Persona records.
  *
  * <p>This records the adapter meaning of a mudlib object without making that object define JVMud's
- * engine ontology. LP245's {@code /obj/player.c}, for example, is a combined projection that carries
- * login/profile policy and Persona behavior in one LPC object.</p>
+ * engine ontology. A compatibility profile may, for example, identify one LPC object as carrying
+ * both login/profile policy and Persona behavior.</p>
  */
 public record MudlibProjection(String sourcePath, Object object, Set<MudlibProjectionRole> roles) {
     public MudlibProjection {

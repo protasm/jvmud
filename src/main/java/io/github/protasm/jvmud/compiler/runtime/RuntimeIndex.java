@@ -71,7 +71,7 @@ public final class RuntimeIndex {
     }
 
     /**
-     * Stores one value slot in an LDMud multi-value mapping entry.
+     * Stores one value slot in a multi-value mapping entry.
      *
      * @param target mapping to update
      * @param key mapping key

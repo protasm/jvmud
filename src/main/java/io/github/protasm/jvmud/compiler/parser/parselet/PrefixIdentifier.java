@@ -94,7 +94,7 @@ public class PrefixIdentifier implements PrefixParselet {
      * Parses the expression-return subset of typed LPC function literals.
      *
      * <p>The supported form is {@code function return_type (typed_params) { return expression; }}.
-     * It is deliberately narrower than full statement-bodied LDMud closures.</p>
+     * It is deliberately narrower than full statement-bodied compatibility closures.</p>
      */
     private ASTExpression typedFunctionLiteral(Parser parser, int line) {
         Symbol returnSymbol = new Symbol(typeName(parser, "Expect function literal return type."), "$function_return");

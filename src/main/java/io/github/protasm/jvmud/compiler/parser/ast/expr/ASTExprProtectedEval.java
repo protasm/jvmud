@@ -7,7 +7,7 @@ import java.util.Objects;
 /**
  * JVMud-neutral protected evaluation expression.
  *
- * <p>LDMud-compatible source can spell this as {@code catch (...)}, but the AST keeps that
+ * <p>Compatibility source can spell this as {@code catch (...)}, but the AST keeps that
  * compatibility syntax at the parser boundary.</p>
  */
 public final class ASTExprProtectedEval extends ASTExpression {

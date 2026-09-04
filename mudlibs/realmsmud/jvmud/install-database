@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
     cat <<'USAGE'
-Usage: scripts/install-realms-database.sh [--delete] [--mysql PATH]
+Usage: mudlibs/realmsmud/jvmud/install-database [--delete] [--mysql PATH]
 
 Runs RealmsMUD's own installDatabase.pl script and stores the generated
 realmslib password in an ignored, owner-readable environment file.
@@ -45,9 +45,9 @@ while (($#)); do
     esac
 done
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-installer="$repo_root/mudlibs/realmsmud/source/secure/simulated-efuns/database/installDatabase.pl"
-credential_file="$repo_root/mudlibs/realmsmud/jvmud/realms-database.env"
+realms_jvmud_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+installer="$realms_jvmud_dir/../source/secure/simulated-efuns/database/installDatabase.pl"
+credential_file="$realms_jvmud_dir/realms-database.env"
 
 if [[ ! -f "$installer" ]]; then
     echo "ERROR: Realms installer not found at $installer" >&2

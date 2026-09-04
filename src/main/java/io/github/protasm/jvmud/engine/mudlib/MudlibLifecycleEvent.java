@@ -24,7 +24,7 @@ public enum MudlibLifecycleEvent {
      * object, passing one LPC argument: {@code mixed first_load}. Current compatibility passes
      * {@code 0} for that argument.</p>
      *
-     * <p>Common LP245 compatibility mapping: {@code lifecycle.object_loaded = reset}.</p>
+     * <p>Example compatibility mapping: {@code lifecycle.object_loaded = reset}.</p>
      */
     OBJECT_LOADED,
 
@@ -49,7 +49,7 @@ public enum MudlibLifecycleEvent {
      * <p>Current delivery: implemented. JVMud invokes the mapped method on the configured boundary
      * object, passing the normalized requested object path.</p>
      *
-     * <p>Common LP245 compatibility mapping: {@code lifecycle.object_source_missing =
+     * <p>Example compatibility mapping: {@code lifecycle.object_source_missing =
      * compile_object}.</p>
      */
     OBJECT_SOURCE_MISSING,
@@ -61,7 +61,7 @@ public enum MudlibLifecycleEvent {
      * object, passing the target object being destroyed. The hook's return value is advisory to the
      * runtime destruction path.</p>
      *
-     * <p>Common LP245 compatibility mapping: {@code lifecycle.object_destruction_requested =
+     * <p>Example compatibility mapping: {@code lifecycle.object_destruction_requested =
      * prepare_destruct}.</p>
      */
     OBJECT_DESTRUCTION_REQUESTED,
@@ -115,7 +115,7 @@ public enum MudlibLifecycleEvent {
      * player object method is invoked without LPC arguments and may start login or character
      * selection input.</p>
      *
-     * <p>Common LP245 compatibility mapping: {@code lifecycle.player_session_connected = logon}.</p>
+     * <p>Example compatibility mapping: {@code lifecycle.player_session_connected = logon}.</p>
      */
     PLAYER_SESSION_CONNECTED,
 
@@ -131,8 +131,10 @@ public enum MudlibLifecycleEvent {
     /**
      * Mudlib policy or JVMud fallback has resolved the Persona a Player will use.
      *
-     * <p>Current delivery: reserved. This is a Player/Session/Persona lifecycle step, not a legacy
-     * login-driver apply.</p>
+     * <p>Current delivery: implemented for a host-managed session policy. JVMud invokes the mapped
+     * method on the resolved Persona object with the external user id, display name, gender text,
+     * and a mapping of policy-defined profile attributes. Mudlibs that own their complete login
+     * flow do not need this event.</p>
      */
     PLAYER_PERSONA_RESOLVED,
 
@@ -147,8 +149,9 @@ public enum MudlibLifecycleEvent {
     /**
      * A Player's Persona has entered the world and can begin ordinary interaction.
      *
-     * <p>Current delivery: reserved. The engine already owns the attach sequence; this event is
-     * named for mudlib policy that wants an explicit post-entry notification.</p>
+     * <p>Current delivery: implemented for a host-managed session policy. JVMud invokes the mapped
+     * method on the Persona object with its configured starting Place object after the Session,
+     * Player, Persona, and world-location associations have been established.</p>
      */
     PLAYER_ENTERED_WORLD,
 
@@ -159,7 +162,7 @@ public enum MudlibLifecycleEvent {
      * player object method is invoked without LPC arguments so the mudlib can save or clean up
      * session-owned state.</p>
      *
-     * <p>Common LP245 compatibility mapping: {@code lifecycle.player_session_disconnected =
+     * <p>Example compatibility mapping: {@code lifecycle.player_session_disconnected =
      * quit}.</p>
      */
     PLAYER_SESSION_DISCONNECTED,
@@ -171,7 +174,7 @@ public enum MudlibLifecycleEvent {
      * the active Persona, its location, objects in that location, and objects carried by the
      * Persona. This is where compatibility mudlibs commonly register local text commands.</p>
      *
-     * <p>Common LP245 compatibility mapping: {@code lifecycle.interaction_scope_started = init}.</p>
+     * <p>Example compatibility mapping: {@code lifecycle.interaction_scope_started = init}.</p>
      */
     INTERACTION_SCOPE_STARTED,
 
@@ -198,7 +201,7 @@ public enum MudlibLifecycleEvent {
      * object with the object path and diagnostic message, then clears generated output so reporting
      * does not leak into gameplay transcripts.</p>
      *
-     * <p>Common LP245 compatibility mapping: {@code lifecycle.log_error = log_error}.</p>
+     * <p>Example compatibility mapping: {@code lifecycle.log_error = log_error}.</p>
      */
     LOG_ERROR,
 
@@ -209,7 +212,7 @@ public enum MudlibLifecycleEvent {
      * JVMud invokes the mapped method on the configured boundary/error handler object with details
      * about the target, context, operation, and message.</p>
      *
-     * <p>Common LP245 compatibility mapping: {@code lifecycle.runtime_error = runtime_error}.</p>
+     * <p>Example compatibility mapping: {@code lifecycle.runtime_error = runtime_error}.</p>
      */
     RUNTIME_ERROR,
 
@@ -219,7 +222,7 @@ public enum MudlibLifecycleEvent {
      * <p>Current delivery: implemented. When a scheduled tick throws, JVMud can invoke this
      * specialized error hook in addition to {@link #RUNTIME_ERROR}.</p>
      *
-     * <p>Common LP245 compatibility mapping: {@code lifecycle.scheduled_tick_error =
+     * <p>Example compatibility mapping: {@code lifecycle.scheduled_tick_error =
      * heart_beat_error}.</p>
      */
     SCHEDULED_TICK_ERROR,
@@ -240,7 +243,7 @@ public enum MudlibLifecycleEvent {
      * <p>Current delivery: implemented by the server layer. JVMud invokes the mapped method on the
      * configured boundary/error handler object, passing the shutdown reason.</p>
      *
-     * <p>Common LP245 compatibility mapping: {@code lifecycle.server_shutdown = notify_shutdown}.</p>
+     * <p>Example compatibility mapping: {@code lifecycle.server_shutdown = notify_shutdown}.</p>
      */
     SERVER_SHUTDOWN,
 
