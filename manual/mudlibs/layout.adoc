@@ -1,3 +1,24 @@
 === Layout
 
-Content to be written.
+A useful source layout separates authored content, host configuration, and
+writable state. This is an illustrative convention, not a required game:
+
+[source,text]
+----
+<content-root>/
+  source/           LPC source, headers, and authored data
+  jvmud/            manifest and host-facing adapters
+  <state-area>/     profile-selected writable data
+----
+
+`mudlib_root` selects the actual source root. If the manifest lives in `jvmud/`,
+`mudlib_root = ../source` resolves from that directory. Inspect persistence code
+before choosing, moving, or cleaning state paths; not every store uses a sibling
+state directory.
+
+Mounts use `mount.<game-id> = <config-path>`; the manifest explicitly names each
+mounted world. Paths resolve relative to the declaring manifest. Do not rely on
+sibling-directory discovery or any bundled game identity.
+
+Small Mercies follows this separation under `mudlibs/smallmercies/`. Its guest
+characters are transient; it does not demonstrate durable account storage.

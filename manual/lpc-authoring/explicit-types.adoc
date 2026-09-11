@@ -1,3 +1,37 @@
 === Explicit Types
 
-Content to be written.
+Declare return types and every parameter type. Untyped methods and parameters
+are compiler errors. Use `mixed` when a value intentionally varies, and `void`
+when a method returns no value.
+
+For a disposable authoring exercise, save this as `example/counter.c` beneath
+the selected mudlib source root (create the directory if needed):
+
+[source,lpc]
+----
+int count;
+
+int add(int amount) {
+    count += amount;
+    return count;
+}
+
+int increment() {
+    return add(2);
+}
+
+int query_count() {
+    return count;
+}
+----
+
+In the admin shell, run `load /example/counter`, then use its returned handle
+with `call <handle> increment` and `call <handle> query_count`. Both calls should
+return `2` on a fresh object. Use `inspect <handle>` to see its fields and methods.
+This exercise needs no legacy efun aliases. Remove only your disposable example
+when finished; keep upstream mudlib source intact.
+
+The current admin `call` command passes supplied arguments as strings; it does
+not coerce numeric text to LPC integers. This exercise uses a no-argument method
+to call the typed integer helper. Test non-string argument contracts through LPC
+wrappers or the Java execution API.

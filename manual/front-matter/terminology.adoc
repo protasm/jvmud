@@ -1,3 +1,13 @@
-== Terminology
+=== Terms used in procedures
 
-Content to be written.
+[[_terminology]]
+A *Player* is an identity; a *Session* is a connection; a *Persona* is the Entity
+through which that Player acts in a World. A *Place* provides locality, a *Link*
+connects Places, and a *Location* identifies containment. A loaded LPC object
+can also be a service with no physical presence.
+
+A *manifest* is the profile's `.config` file. It selects source paths, startup
+objects, lifecycle mappings, language features, and engine capabilities. A
+*profile* includes this manifest and the mudlib-side adapters needed to host that
+content. Legacy terms such as `room` and `heart_beat` are used when naming actual
+LPC paths or compatibility methods.

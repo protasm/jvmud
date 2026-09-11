@@ -1,3 +1,13 @@
 === Build Failures
 
-Content to be written.
+* *Release 21 not supported:* compare `java -version` and `mvn -version`; Maven
+  may be using a different JDK. Select the intended JDK before rebuilding.
+* *Dependencies cannot resolve:* check access to the configured Maven repository.
+  An offline cache must already contain the required artifacts.
+* *Tests fail on database setup:* inspect the selected profile's external service
+  requirements. Do not put a password in the manifest to silence the failure.
+* *Permission denied launching a script:* use a POSIX shell environment and check
+  the script's executable bit in the checkout.
+
+Retain Maven's first error and the relevant Surefire report. Repeatedly rebuilding
+without changing the failing prerequisite is unlikely to help.

@@ -494,3 +494,41 @@ code {
     padding-block: 48px;
   }
 }
+
+/* Shared reading and navigation refinements. */
+:focus-visible { outline: 3px solid var(--accent-strong); outline-offset: 4px; }
+.skip-link { position: fixed; top: -100px; left: 16px; z-index: 100; padding: 12px 18px; background: var(--accent); color: #08110f; }
+.skip-link:focus { top: 12px; }
+.side-nav { overflow-y: auto; }
+.side-nav a { padding-block: 7px; }
+.side-nav .brand { margin-bottom: 16px; }
+.content-page { max-width: 1240px; }
+.content-page h1 { font-size: clamp(2.5rem, 5vw, 4.6rem); line-height: 1.08; }
+.content-page h2 { line-height: 1.25; }
+.content-page a:not(.button-link), .intro a, .status a { text-underline-offset: .2em; }
+.content-page code, .status code { overflow-wrap: anywhere; }
+.hero { min-height: 620px; }
+.hero-copy { padding-top: 72px; padding-bottom: 64px; }
+.hero-copy > p { color: #dbe8d9; font-size: clamp(1.15rem, 2vw, 1.4rem); }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.button-link:hover { background: rgba(155, 221, 88, .22); }
+.button-link.secondary { background: rgba(8,17,15,.75); border-color: var(--line); }
+.site-footer { border-top: 1px solid var(--line); padding: 28px 24px; color: var(--muted); font-size: .9rem; }
+.content-page .site-footer { padding-inline: 0; }
+.reading-path li { margin-bottom: 14px; }
+section[id], h2[id], h3[id] { scroll-margin-top: 100px; }
+pre { max-width: 100%; }
+@media (max-width: 880px) {
+  .hero { min-height: auto; }
+  .side-nav { position: relative; flex-wrap: wrap; gap: 2px 6px; overflow: visible; box-shadow: none; }
+  .side-nav .brand { margin-bottom: 0; }
+  .side-nav a { font-size: .9rem; }
+  .hero-copy { padding-top: 48px; padding-bottom: 48px; }
+}
+@media print {
+  .side-nav, .skip-link, .hero-backdrop, .hero-actions { display: none; }
+  body, main, .band, .api-callout, .feature-grid article, .term-grid article { background: white; color: black; }
+  main { margin-left: 0; }
+  .content-page p, .content-page li, .site-footer { color: #222; }
+  .hero::after { display: none; }
+}

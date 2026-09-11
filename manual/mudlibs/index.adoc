@@ -1,3 +1,5 @@
 == Mudlibs
 
-Content to be written.
+A profile combines authored LPC with explicit hosting requirements. Native and
+legacy profiles share the JVMud host while owning their own vocabulary and game
+rules.

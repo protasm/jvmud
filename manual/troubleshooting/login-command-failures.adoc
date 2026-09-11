@@ -1,3 +1,20 @@
 === Login And Command Failures
 
-Content to be written.
+[cols="1,2",options="header"]
+|===
+|Symptom |Check
+|Connection refused |Wait for the listening message; verify the process is still
+running on loopback port 4000.
+|Address already in use |Stop your earlier listener. The launcher has no port argument.
+|Prompts repeat or login fails |Confirm the selected profile and account policy;
+inspect the server log and that profile's writable storage.
+|Admin command is unrecognized in Telnet |Use the separate admin shell. It does
+not attach to this listener.
+|Movement or `look` is unrecognized |Complete login and read the active mudlib's
+help; verify command registration and lifecycle mapping.
+|GMCP output is absent |Check client negotiation, `session_control`, and the
+mudlib's package emission. GMCP is not required for ordinary text play.
+|===
+
+For mounted-world issues, first prove each profile can boot directly, then test
+the mount configuration and transfer route. Capture the first failing transition.

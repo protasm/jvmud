@@ -1,3 +1,14 @@
-== Status
+[[_status]]
+[.lead]
+JVMud is an experimental LPC/LPMud engine for the JVM. This manual explains how
+to understand its design, run a local world, inspect LPC objects, and develop
+mudlib content against the current repository.
 
-Content to be written.
+The documented version is {revnumber}. The platform provides a compiler, world
+model, hosted instances, Telnet sessions, storage adapters, and an admin shell.
+Compatibility is incremental; a successful build or preload scan does not prove
+complete gameplay or production readiness.
+
+ifdef::backend-html5[]
+link:jvmud-user-manual.pdf[Download the PDF] · link:../documentation.html[Documentation home]
+endif::[]

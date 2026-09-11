@@ -1,3 +1,14 @@
 === Compatibility Notes
 
-Content to be written.
+LPC dialects differ. Accepted syntax, successful compilation, object loading,
+and correct interactive behavior are separate levels of support. Optional
+language features are selected per profile; legacy efun names and lifecycle
+methods are boundary mappings.
+
+`docs/COMPATIBILITY_FEATURE_PROVENANCE.md` records why compatibility features
+exist. `docs/DEFERRED_WORK.md` records implementation debt;
+`docs/FUTURE_DESIGN_IDEAS.md` collects proposals. None is a substitute for the
+active source and tests, or a guarantee of full legacy-driver parity.
+
+Database provisioning and recovery remain profile-specific. Start with
+the credential-free examples in this manual before taking on that environment.

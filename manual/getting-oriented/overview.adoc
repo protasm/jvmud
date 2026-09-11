@@ -1,3 +1,13 @@
 === Overview
 
-Content to be written.
+JVMud compiles LPC source to JVM bytecode and loads that code as live objects.
+The engine models shared world concepts; a mudlib supplies fiction, commands,
+rules, and presentation. The hosted instance brings these parts together, while
+Telnet gives players a line-oriented way to participate.
+
+The distribution includes Small Mercies, a tiny teaching world. Start with its
+walkthrough, or choose or author a compatible LPC source tree and declare its hosting requirements
+in a manifest. Shared launchers always require that manifest explicitly.
+
+The Java code is one Maven project with responsibility-based packages. The
+packages described here are not separately released Maven modules.

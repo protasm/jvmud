@@ -1,3 +1,15 @@
 === Compatibility Shims
 
-Content to be written.
+Keep imported source as upstream material. Put compatibility functions, aliases,
+headers, and lifecycle translations in the profile's `jvmud/` area where possible.
+`mfun_object` supplies mudlib-global helpers; `compatibility_object` and
+`compatibility_overrides` support explicit compatibility overrides.
+
+For a missing legacy operation, first identify whether the gap is syntax, a
+native engine operation, or profile policy. Add generic compiler/engine behavior
+only when it belongs to JVMud; map legacy vocabulary in the profile. Do not relax
+explicit typing to accommodate an untyped legacy declaration.
+
+Record the motivating source and test in `docs/COMPATIBILITY_FEATURE_PROVENANCE.md`
+when changing compatibility features. The result should remain usable without
+hardcoding a particular game into shared Java or launch scripts.

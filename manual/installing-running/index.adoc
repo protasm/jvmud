@@ -1,3 +1,4 @@
 == Installing And Running
 
-Content to be written.
+This chapter gets one local listener running and proves that a player can reach
+it. Database requirements depend on the selected profile.

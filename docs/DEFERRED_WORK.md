@@ -28,7 +28,7 @@ should be locatable, and only valid locations or containers should be able to
 contain other entities. Daemons and service objects should remain executable LPC
 objects without physical presence.
 
-We are postponing stricter enforcement because RealmsMUD and other legacy
+We are postponing stricter enforcement because legacy
 mudlibs blur the line between "object" and "thing in the world", and the current
 compatibility goal is to keep moving through real boot blockers. Revisit this
 when JVMud has a clearer runtime distinction between generic loaded LPC objects,
@@ -53,7 +53,7 @@ confusion. Eventually, object movement, location, containment, and presence
 should line up with the engine's world model rather than existing only as
 compiler-runtime helper maps.
 
-We are postponing this because RealmsMUD compatibility is still shaking out the
+We are postponing this because LPC compatibility is still shaking out the
 minimum required LPC surface. Revisit once the startup path is stable enough to
 separate "make legacy code run" from "make the engine model authoritative."
 
@@ -101,7 +101,7 @@ behave when generated LPC code throws runtime errors, Java helper code throws,
 or compatibility efuns signal failure. The surface should stay neutral JVMud
 LPC, even if it accepts legacy syntax.
 
-We are postponing the deeper audit while the RealmsMUD boot path is still
+We are postponing the deeper audit while the configured boot path is still
 surfacing more basic missing efuns and runtime helpers.
 
 ## First-Class Callable Completeness
@@ -131,7 +131,7 @@ that the language feature is cheaper than the overload sprawl.
 
 ## LDMud Header And Sys Compatibility Strategy
 
-RealmsMUD expects LDMud-style `/sys` headers and driver-defined constants in a
+Some LPC profiles expect LDMud-style `/sys` headers and driver-defined constants in a
 few places. JVMud should avoid vendoring LDMud-controlled code into the engine.
 When possible, compatibility should be expressed as JVMud-native language
 support, small compatibility headers under the mudlib boundary, or manifest
@@ -141,42 +141,15 @@ We are postponing a full policy because the practical need is still being
 discovered file by file. Revisit if `/sys` dependencies expand beyond small
 constants and declarations.
 
-## RealmsMUD Database Setup Hardening
+## Database Setup Contract
 
-RealmsMUD's database setup scripts are fragile on a modern local development
-machine, especially around MySQL/MariaDB versions, local root authentication,
-Python executable naming, and privilege assumptions.
+Database-backed profiles need clear requirements for connection URLs, credentials,
+service availability, and failure handling. Profile-specific provisioning scripts
+and schemas belong with the content rather than the JVMud platform manual.
 
-JVMud should eventually have a repeatable Realms database setup story that
-documents what is Realms-owned, what is JVMud-owned, and what local services are
-required. We are postponing deeper automation while the boot path is still
+JVMud should eventually have a repeatable host-side database connection guide that
+documents what JVMud configures and what the selected content must supply. We are postponing deeper automation while the boot path is still
 revealing runtime compatibility blockers.
 
-Revisit when Realms reaches a point where database contents, not compiler or
+Revisit when integration work reaches a point where database contents, not compiler or
 runtime compatibility, are the main obstacle to meaningful gameplay smoke tests.
-
-## RealmsMUD dataAccess.c Probable Source Mismatch
-
-The RealmsMUD compatibility radar currently waives one probable Realms source
-bug from the JVMud blocker count:
-
-- `lib/modules/secure/dataAccess.c`
-- line 87
-- semantic analysis reports `Argument 2 type mismatch (expected LPCSTRING but
-  found LPCINT)`
-
-The observed shape is that RealmsMUD passes `playerId` to
-`saveCompositeResearch`, while the declared signature expects `playerName`.
-That looks like a Realms source-level mismatch rather than a JVMud language or
-runtime gap.
-
-We are intentionally not changing upstream Realms source during the current
-compatibility work, and we should not relax JVMud typing just to accept this
-one suspicious call. The radar keeps the issue visible, but excludes it from
-the current JVMud blocker count so that new compiler/runtime compatibility gaps
-continue to surface.
-
-Revisit if Realms upstream changes this code, if the declaration turns out to
-be intentionally misleading for an LDMud-specific reason, or if broader
-diagnostic recovery reveals a second JVMud-side blocker behind this first
-problem.

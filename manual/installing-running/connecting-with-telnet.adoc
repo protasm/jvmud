@@ -1,5 +1,19 @@
 === Connecting With Telnet
 
+In a second terminal, use a Telnet client:
+
+[source,shell]
+----
+telnet 127.0.0.1 4000
+----
+
+If your system has no `telnet` command, use a Telnet-capable MUD client with host
+`127.0.0.1` and port `4000`. Follow the mudlib's login prompts, then try `help`
+and `look`. Use `//quit` to disconnect from profiles using the default transport prefix. The listener keeps
+running until stopped in its own terminal.
+
+==== Optional GMCP integration
+
 JVMud's Telnet listener supports ordinary line-oriented clients and negotiates
 the Generic Mud Communication Protocol (GMCP) as Telnet option 201. The server
 offers GMCP with `IAC WILL GMCP`; clients that accept it can exchange UTF-8 GMCP

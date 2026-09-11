@@ -1,0 +1,130 @@
+[[small-mercies]]
+=== First steps with Small Mercies
+
+Small Mercies is JVMud's bundled toy mudlib: five rooms, a few talkative NPCs,
+and sparring opponents with more confidence than good sense. It demonstrates a
+native LPC profile without database setup, account registration, or saved characters.
+Use it to learn the player flow and to find small source examples.
+
+==== Launch and create a guest
+
+From the repository root:
+
+[source,shell]
+----
+scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config
+----
+
+Wait for `JVMud mudlib listening on 127.0.0.1:4000`. In a second terminal or
+Telnet-capable MUD client, connect to `127.0.0.1` on port `4000`:
+
+[source,shell]
+----
+telnet 127.0.0.1 4000
+----
+
+Answer each prompt separately:
+
+. Choose a name containing 2–16 letters. It must be different from the names of
+  players currently connected.
+. Choose `male` or `female`.
+. Choose `warrior` or `mage`.
+
+You arrive in the *Village Square*. Type `help`, then `score`.
+There is no password. A guest character exists for one connection: disconnecting
+ends that character's visit, and reconnecting starts character creation again.
+
+[cols="1,1,1,1,1",options="header,unbreakable"]
+|===
+|Class |STR |INT |DEX |Starting HP
+|Warrior |12 |6 |9 |32
+|Mage |6 |12 |9 |26
+|===
+
+Warriors use STR for their attacks; mages use INT for sparks. DEX helps dodge.
+`score` also shows victories and the current opponent, when fighting. Gender
+changes the character description, not the attributes or rules.
+
+==== Explore the whole world
+
+Every exit has a return route. Read `look` to see a description, exits, and nearby
+characters. Use full directions, their initials, or `go <direction>`.
+
+[cols="2,3",options="header"]
+|===
+|Place |Exits
+|Village Square |`west` to The Resting Hero; `north` to the Municipal Herb Garden;
+`east` to Very Short Lane.
+|The Resting Hero |`east` to the square.
+|Municipal Herb Garden |`south` to the square.
+|Very Short Lane |`west` to the square; `down` to the Cellar of Mild Peril.
+|Cellar of Mild Peril |`up` to the lane.
+|===
+
+From a fresh arrival in the square, enter these player commands one at a time:
+
+[source,text]
+----
+look
+talk mayor
+west
+talk innkeeper
+rest
+east
+north
+look goose
+south
+east
+down
+look rat
+up
+west
+----
+
+You finish back in the square. `rest` restores full health only at the inn.
+`talk` addresses an NPC in your current Place. Try `who` to list connected
+adventurers. `say Hello!` and `smile`, `wave`, `bow`, or `laugh` provide local
+communication. Connect a second guest to try these with another player.
+
+==== Try a short sparring match
+
+From the square, go `north`, then type `attack goose`. Combat repeats every two
+seconds; you do not need to repeat the attack command. `kill goose` is an alias.
+Use `stop` or move `south` to end the bout. The rat in the cellar is the other
+sparring opponent; the mayor and innkeeper are friendly.
+
+A defeated NPC rests for 20 seconds before recovering. A player defeat sends you
+to the inn with 1 HP; `rest` restores full health. NPCs spar with one challenger
+at a time; their remaining HP persists when a visitor stops or leaves. There is no player-versus-player combat. If an opponent is resting or
+occupied, return later rather than repeatedly issuing `attack`.
+
+Use `score` to check health and victories, then `quit` to end your visit.
+`//quit` is the default transport disconnect control. Neither creates a saved
+character. NPC state remains shared while the server runs; restarting resets the
+world. Stop the server with Ctrl+C in its terminal when finished.
+
+==== Read the implementation
+
+The manifest selects `room/square` and `player/adventurer`, maps object loading to
+`create`, interaction scope to `init`, session connection to `connect`, and
+session disconnection to `disconnect`. It grants `session_control` and maps
+recurring ticks to `tick`; there is no filesystem-account policy or database.
+
+[cols="2,3",options="header"]
+|===
+|Path under `mudlibs/smallmercies/` |What to learn
+|`jvmud/smoke-play.py` |Two-guest live Telnet check of the tutorial route and combat.
+|`jvmud/smallmercies.config` |Explicit source root, preloads, Persona, initial
+Place, lifecycle mappings, and capability grant.
+|`source/lib/room.c` |Shared descriptions, authored exit lookup, and NPC creation.
+|`source/room/*.c` |Small Place definitions with prose, exits, and resident NPCs.
+|`source/player/adventurer.c` |Guest creation, command registration, movement,
+communication, score, and recurring combat.
+|`source/npc/villager.c` |NPC identity, dialogue, single-challenger combat, and
+deferred recovery.
+|===
+
+These LPC examples use JVMud-native efuns. Game rules stay in the mudlib; the
+host supplies execution, session, location, and scheduling services. Read the
+source before changing behavior, then replay the relevant route after restarting.
+Use a separate copy for experiments you do not intend to keep in the distribution.

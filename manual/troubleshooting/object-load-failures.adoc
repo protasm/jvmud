@@ -1,3 +1,13 @@
 === Object Load Failures
 
-Content to be written.
+. Confirm the source path is relative to the selected mudlib root, not the Java
+  repository root.
+. Inspect `include_paths`, inherited source paths, and preload declarations.
+. In the admin shell, set `verbosity watch` and run `load <path>`.
+. Use `preprocess`, `scan`, `parse`, or `ir` to stop at the earliest failing stage.
+. Check explicit types, optional `language_features`, efun aliases, and capability
+  grants before changing source semantics.
+
+Unknown manifest keys fail fast. A missing `initial_place` or invalid profile
+mapping is a hosting configuration problem. Runtime invocation failures after a
+successful load need an execution test, not just another compile scan.

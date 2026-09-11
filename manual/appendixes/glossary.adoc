@@ -1,3 +1,6 @@
 === Glossary
 
-Content to be written.
+Use link:{site-url}/glossary.html[the JVMud Glossary] for the full conceptual vocabulary.
+Its controlling repository source is `docs/GLOSSARY.md`; the controlling design
+principles are in `docs/PRINCIPLES.md`. The short terms section at the beginning
+of this manual defines the words needed for its procedures.

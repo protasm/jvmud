@@ -3,24 +3,28 @@
 <head>
   <meta charset="utf-8">
   <title>Architecture - JVMud</title>
+  <meta name="description" content="Architecture - JVMud: concepts and references for the JVMud LPC/LPMud engine.">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <nav class="side-nav" aria-label="Project sections">
-    <a class="brand" href="index.html">JVMud</a>
-    <a href="principles.html">Principles</a>
-    <a href="architecture.html" aria-current="page">Architecture</a>
-    <a href="glossary.html">Glossary</a>
-    <a href="efuns.html">Efuns</a>
-    <a href="lifecycle-events.html">Lifecycle Events</a>
-    <a href="lpc.html">LPC</a>
-    <a href="manual/index.html">Manual</a>
-    <a href="api/index.html" target="_blank" rel="noopener">API Docs</a>
-    <a href="https://github.com/protasm/jvmud">GitHub</a>
-  </nav>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <nav class="side-nav" aria-label="Documentation">
+<a class="brand" href="index.html">JVMud</a>
+<a href="documentation.html">Documentation</a>
+<a href="principles.html">Design philosophy</a>
+<a href="architecture.html" aria-current="page">Architecture</a>
+<a href="packages.html">Core packages</a>
+<a href="manual/index.html">User Manual</a>
+<a href="lpc.html">LPC language</a>
+<a href="efuns.html">Efun reference</a>
+<a href="lifecycle-events.html">Lifecycle events</a>
+<a href="glossary.html">Glossary</a>
+<a href="api/index.html">Java API</a>
+<a href="https://github.com/protasm/jvmud">GitHub ↗</a>
+</nav>
 
-  <main class="content-page">
+  <main id="main" class="content-page">
     <header>
       <p class="eyebrow">Package responsibilities</p>
       <h1>Architecture</h1>
@@ -32,6 +36,7 @@
 
     <section>
       <h2>Responsibility Map</h2>
+<p>Begin with the <a href="principles.html">design philosophy</a>. This is a responsibility map, not a Java dependency diagram or a deployment topology.</p>
       <pre class="architecture-map"><code>                 compiler
                      |
                      v
@@ -95,7 +100,8 @@ persistence &lt;--&gt; engine &lt;--&gt; mudlib
     </section>
 
     <section>
-      <h2>Rule Of Thumb</h2>
+      <h2>Follow the next layer</h2><p>The <a href="packages.html">core package guide</a> links each responsibility to its Java API. The <a href="manual/index.html#_developer_reference">developer reference</a> follows compilation and hosted execution.</p>
+<h2>Rule Of Thumb</h2>
       <p>
         If a concept defines what JVMud means by a world, it belongs near the
         engine. If it exists because a particular mudlib is running, it belongs
@@ -104,6 +110,7 @@ persistence &lt;--&gt; engine &lt;--&gt; mudlib
         it is authored LPC content, it belongs in a mudlib.
       </p>
     </section>
-  </main>
+  <footer class="site-footer">JVMud · Experimental LPC/LPMud engine · <a href="https://github.com/protasm/jvmud">Source and issue tracker</a></footer>
+</main>
 </body>
 </html>

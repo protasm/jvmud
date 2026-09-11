@@ -1,3 +1,4 @@
 == Operating JVMud
 
-Content to be written.
+Use the local admin shell to investigate object behavior, the manifest to define
+hosting policy, and the server log to diagnose a running listener.

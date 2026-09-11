@@ -1,3 +1,5 @@
-== Playing And Testing A World
+== Playing And Testing
 
-Content to be written.
+[[_playing_and_testing_a_world]]
+Player commands belong to the selected mudlib. JVMud handles transport controls
+and delivers ordinary input to the hosted world.

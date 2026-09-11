@@ -1,3 +1,47 @@
 === Smoke Tests
 
-Content to be written.
+For the bundled toy, run its focused integration test from the repository root:
+
+[source,shell]
+----
+mvn -Dtest=SmallMerciesTest test
+----
+
+This boots the real profile and exercises character creation, movement,
+room-local communication, and scheduled combat. It does not start a TCP listener;
+use the route in <<small-mercies>> for live transport verification.
+
+For an automated live check, start a fresh Small Mercies listener as described in
+the walkthrough. Keep it running, then use a second terminal:
+
+[source,shell]
+----
+python3 mudlibs/smallmercies/jvmud/smoke-play.py
+----
+
+The script connects to loopback port 4000, creates two disposable guests, and
+checks login, both classes, chat, an emote, the tutorial route, combat, score,
+rest, and quit. Success prints `PASS: live guest login...`. It does not launch
+or stop the server. Use a dedicated development listener so another player's
+sparring match or a resting NPC does not interfere.
+
+The shared preload-scan script expects `preload_file`; Small Mercies declares
+`preload_objects` inline. Use the focused test rather than that scanner for this
+profile.
+A host smoke test should prove the complete route from launch to interaction,
+using the profile you intend to run:
+
+. Start the listener with its explicit manifest and wait for the listening message.
+. Connect a Telnet client and complete the configured login or entry flow.
+. Exercise a known command and verify its expected text.
+. Move through a known Link and verify the new Place.
+. Disconnect and reconnect to check cleanup and any state the profile promises to save.
+. Stop the listener and retain the first error if a step fails.
+
+Use a disposable account and state directory selected for the test. Profile-owned
+scripts may automate these steps, but the shared engine does not prescribe game
+names, account names, commands, locations, or credentials.
+
+Passing proves that profile's particular transcript. It does not prove all
+language behavior or multi-user reliability. Separate compiler assertions,
+preload scans, and live player evidence when reporting results.

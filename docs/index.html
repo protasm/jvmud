@@ -4,140 +4,58 @@
   <meta charset="utf-8">
   <title>JVMud</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="JVMud is an experimental LPC/LPMud text-world engine for the JVM, with a native museum mudlib and legacy exhibit compatibility work.">
+  <meta name="description" content="JVMud is an experimental LPC/LPMud text-world engine for the JVM, with explicit hosting profiles and a native world model.">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <nav class="side-nav" aria-label="Project sections">
-    <a class="brand" href="index.html" aria-current="page">JVMud</a>
-    <a href="principles.html">Principles</a>
-    <a href="architecture.html">Architecture</a>
-    <a href="glossary.html">Glossary</a>
-    <a href="efuns.html">Efuns</a>
-    <a href="lifecycle-events.html">Lifecycle Events</a>
-    <a href="lpc.html">LPC</a>
-    <a href="manual/index.html">Manual</a>
-    <a href="api/index.html" target="_blank" rel="noopener">API Docs</a>
-    <a href="https://github.com/protasm/jvmud">GitHub</a>
-  </nav>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <nav class="side-nav" aria-label="Documentation">
+<a class="brand" href="index.html" aria-current="page">JVMud</a>
+<a href="documentation.html">Documentation</a>
+<a href="principles.html">Design philosophy</a>
+<a href="architecture.html">Architecture</a>
+<a href="packages.html">Core packages</a>
+<a href="manual/index.html">User Manual</a>
+<a href="lpc.html">LPC language</a>
+<a href="efuns.html">Efun reference</a>
+<a href="lifecycle-events.html">Lifecycle events</a>
+<a href="glossary.html">Glossary</a>
+<a href="api/index.html">Java API</a>
+<a href="https://github.com/protasm/jvmud">GitHub ↗</a>
+</nav>
 
-  <main>
+  <main id="main">
     <section class="hero">
-      <img class="hero-backdrop" src="assets/jvmud-hero.png" alt="A text adventure world rendered as connected rooms, command output, and bytecode motifs.">
+      <img class="hero-backdrop" src="assets/jvmud-hero.png" alt="">
       <div class="hero-copy">
         <p class="eyebrow">Open-source LPC worlds on the JVM</p>
         <h1 class="hero-logo-heading">
           <img class="hero-logo" src="assets/jvmud-logo.png" alt="JVMud">
         </h1>
         <p>
-          A modern Java-native platform for building and playing text-only,
+          A Java-native engine for building and playing text-only,
           interactive, multiplayer worlds in the LPMUD tradition: live LPC
           content hosted inside a JVMud engine built around places, entities,
           personas, persistence, time, and presence.
         </p>
+        <div class="hero-actions"><a class="button-link" href="manual/index.html#_installing_and_running">Get started</a><a class="button-link secondary" href="documentation.html">Explore the docs</a></div>
       </div>
     </section>
 
     <section class="intro">
-      <div>
-        <h2>What It Is</h2>
-        <p>
-          JVMud compiles LPC-authored game content to JVM classes and hosts it
-          inside an engine built around the core features of MUD: Game, Text,
-          Interactive, Multiplayer, World, Persistence, Temporality, and
-          Presence. Check out the <a href="glossary.html">Glossary</a> to learn more!
-        </p>
-      </div>
-      <div>
-        <h2>Current Shape</h2>
-        <p>
-          The repository contains a Java engine, an LPC compiler, a hosted
-          instance layer, Telnet transport, persistence adapters, a local admin
-          CLI, the native LPMuseum landing mudlib, and legacy mudlib content
-          used to drive compatibility work.
-        </p>
-      </div>
-    </section>
-
-    <section class="band">
-      <h2>Project Areas</h2>
-      <div class="feature-grid">
-        <article>
-          <h3>Engine</h3>
-          <p>
-            Engine-owned world concepts: worlds, places, links, entities,
-            containment, capabilities, players, sessions, personas, and
-            deterministic scheduling.
-          </p>
-        </article>
-        <article>
-          <h3>Compiler</h3>
-          <p>
-            Scanner, preprocessor, parser, semantic analysis, typed IR, bytecode
-            generation, efun contracts, generated-code helpers, and LPC runtime
-            loading.
-          </p>
-        </article>
-        <article>
-          <h3>Instance And Transport</h3>
-          <p>
-            A manifest-selected hosted world instance, a Telnet transport for
-            player sessions, and a single-user admin shell for filesystem and
-            object work.
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <section class="api-callout">
-      <div>
-        <h2>Architecture</h2>
-        <p>
-          JVMud's package layout follows a responsibility map centered on the
-          engine, with compiler, mudlib, persistence, instance, transport, and
-          player-facing concerns kept distinct.
-        </p>
-      </div>
-      <a class="button-link" href="architecture.html">Open Architecture</a>
-    </section>
-
-    <section class="status">
-      <div>
-        <h2>Status</h2>
-        <p>
-          JVMud is early-stage engine work with a Maven-backed baseline, a
-          buildable runtime module, a live Telnet path, and an LPC compiler that
-          is being expanded against real mudlib transcripts. Compatibility work
-          is deliberately incremental and preservation-first.
-        </p>
-      </div>
-      <pre><code>mvn test
-scripts/jvmud-admin &lt;mudlib-config-file&gt;
-scripts/jvmud-start &lt;mudlib-config-file&gt;</code></pre>
-    </section>
-
-    <section class="api-callout">
-      <div>
-        <h2>User Manual</h2>
-        <p>
-          The user manual collects the current JVMud guide in a browsable web
-          page with a matching PDF for offline reading.
-        </p>
-      </div>
-      <a class="button-link" href="manual/index.html">Open User Manual</a>
-    </section>
-
-    <section class="api-callout">
-      <div>
-        <h2>Java API Docs</h2>
-        <p>
-          Generated Javadocs publish the current compiler and engine contracts:
-          runtime world primitives, mudlib boundary declarations, compiler
-          pipeline entry points, LPC runtime loading, and efun registration.
-        </p>
-      </div>
-      <a class="button-link" href="api/index.html" target="_blank" rel="noopener">Open API Docs</a>
-    </section>
-  </main>
+<div><p class="eyebrow">LPC content. Native world model.</p><h2>Build worlds with clear boundaries</h2><p>Compile LPC into JVM classes. Model Places, Links, Entities, identity, and time in the engine. Keep authored rules and compatibility policy in the mudlib.</p><p><a href="architecture.html">Explore the architecture →</a></p></div>
+<div><p class="eyebrow">Project status</p><h2>Experimental, with explicit scope</h2><p>JVMud includes a working compiler, hosted-world layer, Telnet transport, storage adapters, and local admin shell. Legacy compatibility is incremental; production hardening remains ongoing.</p><p><a href="documentation.html">Explore the documentation →</a></p></div></section>
+<section class="band"><h2>From design to a running world</h2><div class="feature-grid">
+<article><h3>01 · Understand</h3><p>Begin with the principles and follow the responsibility map into six core package families.</p><a href="principles.html">Design philosophy →</a></article>
+<article><h3>02 · Run</h3><p>Explore Small Mercies, the bundled toy world, with a short player walkthrough.</p><a href="manual/index.html#_installing_and_running">Run your first world →</a></article>
+<article><h3>03 · Create</h3><p>Write a typed LPC object, inspect it in the admin sandbox, and connect it to world behavior.</p><a href="manual/index.html#_lpc_authoring">Author LPC content →</a></article>
+</div></section>
+<section class="status"><div><h2>Try JVMud locally</h2><p>Use a Java 21-capable JDK, Maven, and a POSIX shell. From a repository checkout, launch Small Mercies, the bundled five-room teaching world. Then connect a Telnet client to <code>127.0.0.1:4000</code>.</p><p>Choose a guest name, gender, and class. Try <code>help</code> and <code>score</code>. Characters last for one connection.</p><p><a href="manual/index.html#small-mercies">Play Small Mercies →</a></p></div>
+<pre><code>mvn -DskipTests compile
+scripts/jvmud-start \
+  mudlibs/smallmercies/jvmud/smallmercies.config</code></pre></section>
+<section class="api-callout"><div><h2>A practical guide, online and offline</h2><p>The User Manual covers first launch, play, the admin shell, LPC authoring, profiles, troubleshooting, and configuration.</p><p><a href="manual/jvmud-user-manual.pdf">Download the PDF manual</a></p></div><a class="button-link" href="manual/index.html">Read the User Manual</a></section>
+<footer class="site-footer">JVMud · Experimental LPC/LPMud engine · <a href="https://github.com/protasm/jvmud">Source and issue tracker</a></footer>
+</main>
 </body>
 </html>

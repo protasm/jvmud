@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Core packages — JVMud</title><meta name="description" content="Find the owner of a behavior before opening a class reference.">
+<link rel="stylesheet" href="styles.css"></head><body>
+<a class="skip-link" href="#main">Skip to content</a>
+<nav class="side-nav" aria-label="Documentation">
+<a class="brand" href="index.html">JVMud</a>
+<a href="documentation.html">Documentation</a>
+<a href="principles.html">Design philosophy</a>
+<a href="architecture.html">Architecture</a>
+<a href="packages.html" aria-current="page">Core packages</a>
+<a href="manual/index.html">User Manual</a>
+<a href="lpc.html">LPC language</a>
+<a href="efuns.html">Efun reference</a>
+<a href="lifecycle-events.html">Lifecycle events</a>
+<a href="glossary.html">Glossary</a>
+<a href="api/index.html">Java API</a>
+<a href="https://github.com/protasm/jvmud">GitHub ↗</a>
+</nav>
+<main id="main" class="content-page"><header><p class="eyebrow">JVMud documentation</p><h1>Core packages</h1><p>Find the owner of a behavior before opening a class reference.</p></header>
+<section><h2>One Maven project, six core package families</h2><p>These are responsibility boundaries within one Java artifact, not independently versioned modules. All names begin with <code>io.github.protasm.jvmud</code>.</p></section><section id="engine"><h2><code>engine</code> · World rules and identity</h2><p>world, identity, time, mudlib, output, support.</p><p>Start with WorldRuntime, Place, Entity, Link, Player, Session, Persona, WorldScheduler, MudlibBoundary.</p><a href="api/apidocs/io/github/protasm/jvmud/engine/package-summary.html">Read the engine package API →</a></section><section id="compiler"><h2><code>compiler</code> · LPC source to executable objects</h2><p>preproc → scanner → parser → semantic → ir → bytecode; exec loads objects; runtime supports generated code.</p><p>Start with JVMudCompiler, CompilationPipeline, LPCRuntime.</p><a href="api/apidocs/io/github/protasm/jvmud/compiler/package-summary.html">Read the compiler package API →</a></section><section id="instance"><h2><code>instance</code> · A running hosted world</h2><p>Manifest boot, preloads, Persona attachment, lifecycle dispatch, mounted-world routing.</p><p>Start with MudlibBoot, MudInstance, MudlibRouter.</p><a href="api/apidocs/io/github/protasm/jvmud/instance/package-summary.html">Read the instance package API →</a></section><section id="transport"><h2><code>transport</code> · Player connections</h2><p>Telnet framing, line input, echo negotiation, GMCP, and connection lifecycle.</p><p>Start with TelnetServer.</p><a href="api/apidocs/io/github/protasm/jvmud/transport/package-summary.html">Read the transport package API →</a></section><section id="persistence"><h2><code>persistence</code> · Durable storage adapters</h2><p>filesystem and jdbc; selected profiles own storage policy.</p><p>Start with FilesystemAccountStore and JDBC adapters.</p><a href="api/apidocs/io/github/protasm/jvmud/persistence/package-summary.html">Read the persistence package API →</a></section><section id="cli"><h2><code>cli</code> · Local administration sandbox</h2><p>Virtual filesystem, compiler stages, object loading, inspection, invocation, and mutation.</p><p>Start with AdminCli.</p><a href="api/apidocs/io/github/protasm/jvmud/cli/package-summary.html">Read the cli package API →</a></section><section><h2>Choose the right layer</h2><p>A world rule belongs in the engine; a hosted lifecycle belongs in the instance; a protocol mechanic belongs in transport. Generated-bytecode helpers belong in <code>compiler.runtime</code>. Authored game behavior and compatibility policy belong in the mudlib.</p><p>Continue with the <a href="manual/index.html#_compiler_pipeline">compiler pipeline</a> or <a href="manual/index.html#_instance_and_transport_internals">instance and transport flow</a>.</p></section><footer class="site-footer">JVMud · Experimental LPC/LPMud engine · <a href="https://github.com/protasm/jvmud">Source and issue tracker</a></footer></main></body></html>

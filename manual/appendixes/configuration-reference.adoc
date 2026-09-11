@@ -1,3 +1,106 @@
 === Configuration Reference
 
-Content to be written.
+Manifests use `key = value`, one declaration per line. Lists are comma-separated.
+Blank lines and `#` comments are ignored. Simple surrounding quotes are removed;
+this is not a general-purpose quoted-string format, and `#` still starts a
+comment. Unknown keys are rejected by `MudlibBoundaryConfigReader`.
+
+Use a checked-in profile as the complete example. The following groups cover the
+reader's exact keys and supported key prefixes. Optional values can still become
+required by the selected boot, session, or database policy.
+
+==== Identity and paths
+
+[cols="2,4",options="header"]
+|===
+|Key |Meaning
+|`game_id`, `game_name` |Stable profile identity and display name.
+|`mudlib_root` |LPC source root; relative paths resolve from the manifest directory.
+|`initial_place` |Startup Place object path, required for hosted boot.
+|`persona_object`, `player_object` |Interactive object path; `persona_object`
+takes precedence over the legacy spelling when both are present.
+|`mudlib_object` |Optional boundary-declaration LPC object.
+|`mfun_object` |Mudlib-global function object.
+|`include_paths` |Comma-separated source include search paths.
+|`preload_file` |Profile preload-list file.
+|`preload_objects` |Additional comma-separated startup object paths.
+|`mount.<game-id>` |Mounted profile config, relative to this manifest's directory.
+|===
+
+Use mudlib-rooted object paths such as `room/church`; Java package paths are not
+LPC paths. The launch scripts resolve a relative manifest argument from the
+repository root. `mudlib_root` resolves from the manifest, a different base.
+
+==== Sessions and presentation
+
+[cols="2,4",options="header"]
+|===
+|Key |Meaning
+|`session_policy` |Optional host-managed login policy. `filesystem_accounts`
+selects reusable local account persistence; omit for profile-owned login.
+|`player_prompt`, `command_prompt` |Prompt text; `player_prompt` takes precedence.
+|`presentation.connected_banner` |Text shown on connection.
+|`transport.control_prefix` |Escape prefix for transport controls; default `//`.
+|`diagnostics.location_command` |Optional profile-selected location diagnostic command.
+|`max_line_length` |Presentation line width, validated against engine bounds.
+|`show_ruler` |Presentation ruler toggle. Booleans accept true/false, yes/no,
+on/off, or 1/0.
+|===
+
+Host and port are not manifest keys. The shared Telnet launcher uses loopback
+port 4000; passing a port as a second positional argument fails.
+
+==== Language and host access
+
+[cols="2,4",options="header"]
+|===
+|Key |Meaning
+|`language_features` |Optional syntax gates: `protected_evaluation`,
+`typed_function_literals`, `inline_callables`, `multi_value_mappings`, `varargs`.
+|`engine_capabilities` |Capability grants: `mudlib_files`, `database`,
+`session_control`, `host_control`.
+|`engine_function.<native-name>` |One or more mudlib aliases for a native engine function.
+|`compatibility_object` |Explicit compatibility-global function object.
+|`compatibility_overrides` |Names allowed to override mudlib-global functions.
+|`compatibility.predefine.<macro>` |Object-like compatibility macro replacement.
+|`compatibility.function_predefine.<macro>.<argument>` |Single-argument function-like
+compatibility macro replacement.
+|===
+
+Feature flags enable syntax; capabilities enable restricted host operations.
+Start with the active profile's actual requirements. A compatibility alias does
+not bypass a capability grant.
+
+==== Lifecycle and time
+
+[cols="2,4",options="header"]
+|===
+|Key |Meaning
+|`handled_lifecycle_events` |Comma-separated native event declarations.
+|`lifecycle.<event>` |Map a native lifecycle event to a mudlib method. Event names
+are normalized for case, spaces, and hyphens.
+|`temporal_tick_method` |Mudlib method for scheduler-backed recurring behavior.
+|`temporal_tick_interval` |Interval in seconds by default; also accepts `s`,
+`seconds`, `ms`, or `milliseconds`. Negative values fail. Zero does not install
+an interval override.
+|===
+
+Refer to link:{site-url}/lifecycle-events.html[lifecycle events] for event roles and
+verify method signatures against the selected profile.
+
+==== Database
+
+[cols="2,4",options="header"]
+|===
+|Key |Meaning
+|`database.url`, `database.jdbc_url` |JDBC URL; `database.url` takes precedence.
+|`database.user` |Database user for the selected profile.
+|`database.password_env` |Name of a required nonblank environment variable
+containing the password. Preferred for configured profiles.
+|`database.password` |Literal password alternative supported by the reader;
+do not commit secrets. Mutually exclusive with `database.password_env`.
+|===
+
+A missing named password environment variable fails manifest loading. Setting
+the variable does not provision a database, create a schema, or grant database
+access. Those are profile-specific prerequisites.

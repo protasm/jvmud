@@ -37,7 +37,6 @@ Suggested values:
 
 - `JVMUD_NATIVE`
 - `ANSI_C`
-- `LP_245`
 - `LDMUD`
 - `FLUFFOS`
 - `DGD`
@@ -86,7 +85,7 @@ If JVMud adds a Java annotation for this later, it could look like this:
     source = CompatibilitySource.LDMUD,
     reason = CompatibilityReason.MUDLIB_IMPORT_COMPATIBILITY,
     guidance = JvmudNativeGuidance.DISCOURAGED,
-    note = "Supports array range replacement syntax used by RealmsMUD."
+    note = "Supports array range replacement syntax used by imported LPC source."
 )
 ```
 
@@ -122,7 +121,7 @@ legacy wart.
 
 ### Direct Efun Name Translation
 
-- Source: `LDMUD`, `LP_245`, or mudlib-specific profile
+- Source: `LDMUD` or a local compatibility profile
 - Reason: `MUDLIB_IMPORT_COMPATIBILITY`
 - Native guidance: `DISCOURAGED`
 

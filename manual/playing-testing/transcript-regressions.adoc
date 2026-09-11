@@ -1,3 +1,12 @@
 === Transcript Regressions
 
-Content to be written.
+For a useful regression report, record the repository revision, manifest path,
+startup summary, client input, expected result, actual output, and server error.
+Use a small route with known starting state. A successful login is a different
+assertion from successful movement, persistence, or transfer between worlds.
+
+Start with the Small Mercies walkthrough and the relevant tests under
+`src/test/java/io/github/protasm/jvmud/instance/` and `transport/`. Add a focused
+assertion for the first wrong behavior, then replay the route against a restarted
+listener when runtime code changes. Avoid treating a long transcript with no
+assertions as proof of compatibility.

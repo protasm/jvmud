@@ -1,3 +1,5 @@
 == Getting Oriented
 
-Content to be written.
+Start with what JVMud means by a world, then follow how its packages collaborate.
+The architecture is an ownership model; it is not a claim that every planned
+engine behavior is complete.

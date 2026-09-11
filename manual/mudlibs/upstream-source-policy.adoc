@@ -1,3 +1,6 @@
 === Upstream Source Policy
 
-Content to be written.
+Preserve upstream material and provenance. Prefer dedicated shims and manifest
+mappings to broad source rewrites. Keep necessary source fixes small and tested;
+a content bug is not automatically a compiler defect. Never commit private saves
+or secrets. Use `database.password_env` for database credentials.

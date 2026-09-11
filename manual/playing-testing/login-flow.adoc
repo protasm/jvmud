@@ -1,3 +1,20 @@
 === Login Flow
 
-Content to be written.
+Connect only after the listener reports that it is ready. Follow the profile's
+prompts rather than sending gameplay commands before entry is complete.
+
+There are two configuration patterns:
+
+* With `session_policy = filesystem_accounts`, JVMud performs local account-file
+  and password-verification work. It then dispatches `player_persona_resolved`
+  and `player_entered_world` to mudlib-owned methods selected in the manifest.
+* Without a managed session policy, the configured interactive object supplies
+  the login conversation through its mapped session-connection lifecycle method.
+
+`persona_object` selects the interactive LPC source; `player_object` is the
+legacy manifest spelling. Method names and prompts belong to that source tree,
+not to a universal JVMud game flow.
+
+For a repeatable test, record the manifest, whether the account is new or existing,
+the prompt where input was sent, and the first unexpected reply. Exclude passwords
+and private account fields from shared transcripts.

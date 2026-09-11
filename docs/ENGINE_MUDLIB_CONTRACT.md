@@ -41,7 +41,7 @@ objects translate legacy mudlib terms into those native operations.
 
 JVMud lifecycle events are engine concepts. LPC method names are mudlib boundary
 configuration. A mudlib may map an event to whatever method name it wants; for a
-legacy LPMUD 2.4.5 compatibility layer, that mapping may happen to use names
+legacy LPC compatibility layer, that mapping may happen to use names
 such as `reset`, `init`, `heart_beat`, `call_out` callbacks, `valid_read`,
 `valid_write`, or `log_error`.
 
@@ -253,7 +253,7 @@ entry points, not the conceptual boundary.
 
 Compatibility shims are mudlib-side objects dedicated to translation. They are
 allowed to know legacy LPC names. They should be independent from upstream
-mudlib content so vanilla files remain intact.
+mudlib content so upstream files remain intact.
 
 New compatibility work should be added in two steps. First identify and name
 the JVMud-native engine operation in terms of this contract, such as session
@@ -289,7 +289,7 @@ legacy method names as engine ontology.
   behavior or policy, but they do not define whether the World endures.
 - Live reload of LPC-authored objects is an LPMud target requirement, but legacy
   reload hooks and driver names are adapter details.
-- Vanilla upstream mudlib files are preserved by default.
+- Upstream mudlib files are preserved by default.
 
 ## First Implementation Slice
 

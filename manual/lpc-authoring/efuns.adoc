@@ -1,8 +1,25 @@
 === Efuns
 
-JVMud exposes its native engine operations to LPC as `jvmud_`-prefixed efuns.
-The complete signature catalog is published in the static efun reference and
-the generated Java API documentation.
+Efuns expose host operations to LPC. Ordinary calls may resolve through mudlib
+functions or the active boundary's translation table. `efun::name(...)` selects
+that efun surface; `jvmud::name(...)` requires an exact native JVMud efun name.
+
+[source,lpc]
+----
+int sample_size() {
+    return jvmud::jvmud_size(({ 1, 2, 3 }));
+}
+----
+
+The native form does not invent a `jvmud_` prefix or translate `sizeof`.
+Legacy aliases belong in the profile. A recognized efun can still require an
+`engine_capabilities` grant, such as `mudlib_files`, `database`, `session_control`,
+or `host_control`.
+
+Use link:{site-url}/efuns.html[the efun reference] for signatures and categories, and
+`compiler.efun.builtin.CoreEfuns` for implementation details. Do not duplicate the
+catalog in a mudlib guide. When a call fails, check its spelling, argument types,
+profile mapping, and required capability.
 
 ==== Ordinary JSON
 

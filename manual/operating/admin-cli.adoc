@@ -1,3 +1,49 @@
 === Admin CLI
 
-Content to be written.
+Start a separate local sandbox:
+
+[source,shell]
+----
+scripts/jvmud-admin mudlibs/smallmercies/jvmud/smallmercies.config
+----
+
+This example selects Small Mercies. Substitute your manifest to inspect other
+content.
+This creates its own runtime. It does *not* attach to an already running Telnet
+server. Shell changes therefore do not modify that other process's live world.
+Every line is an admin command; there is no player command mode.
+
+Inside the shell:
+
+[source,text]
+----
+help
+pwd
+ls /
+cat /room/square.c
+verbosity watch
+load /room/square
+objects
+----
+
+Use the handle printed by `load` or `objects` in subsequent commands:
+
+[source,text]
+----
+inspect <handle>
+look <handle>
+call <handle> short
+where <handle>
+----
+
+`/` is the manifest-selected mudlib source root. Paths cannot navigate above it.
+`boot <mudlib-config-file>` starts a fresh sandbox; it is not a reload of the
+current world. `quit` exits this shell.
+
+To investigate a changed object, edit its LPC source in your editor, run
+`reload <path>`, and inspect the resulting handle. `clone <path>` creates a
+separate instance; `destruct <handle>` removes an object. Do not assume reload
+migrates all state or references. Verify the affected object and callers.
+
+The complete command syntax is in <<_commands>>. `verbosity watch` reveals compiler
+stages; use `verbosity normal` to return to concise output.

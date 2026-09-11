@@ -1,0 +1,18 @@
+extends: default
+base:
+  text_align: left
+heading:
+  chapter_break_before: auto
+  font_color: '17241F'
+  min_height_after: 40
+  margin_top: 20
+  margin_bottom: 10
+link:
+  font_color: '236B43'
+codespan:
+  font_color: '254D3B'
+title_page:
+  title:
+    font_color: '17241F'
+    font_size: 34
+    font_style: bold

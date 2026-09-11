@@ -1,3 +1,5 @@
 == Appendixes
 
-Content to be written.
+Use these references while following the procedures. The manifest key inventory
+and command syntax describe the current implementation; compatibility limits are
+explicit rather than implied by a successful build.

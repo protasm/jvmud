@@ -1,3 +1,23 @@
 === Installing
 
-Content to be written.
+You need a JDK that can compile Java 21, Maven, Git, and a POSIX shell for the
+repository launch scripts. Some profile-owned smoke scripts also require Bash or Python 3.
+A Telnet-capable client is needed for interactive play. The bundled Small Mercies
+walkthrough needs no database or saved-account setup.
+
+[source,shell]
+----
+git clone https://github.com/protasm/jvmud.git
+cd jvmud
+java -version
+mvn -version
+mvn -DskipTests compile
+----
+
+Check that Maven reports the intended JDK. The compiler release is set to 21 in
+`pom.xml`. The first build needs access to Maven dependencies; later builds may
+use the local cache. Successful compilation creates `target/classes/`.
+
+For an existing checkout, run commands from its root. Do not clone over local
+work. Tests are described in <<_testing_and_verification>>; compiling alone does
+not run them.

@@ -1,3 +1,19 @@
 === Lifecycle Hooks
 
-Content to be written.
+JVMud emits native events; a manifest maps them to LPC methods. For example:
+
+[source,text]
+----
+lifecycle.object_loaded = reset
+lifecycle.interaction_scope_started = init
+lifecycle.player_session_connected = logon
+----
+
+These are illustrative legacy method names, not required names. Native profiles
+can map the same events to their own typed LPC methods.
+
+Read link:{site-url}/lifecycle-events.html[the lifecycle reference] for each event's
+role. Verify the mapped method's signature in the profile and corresponding
+Java dispatch code before adding a hook. Test normal entry, failed input, and
+disconnect paths; recognizing a method name does not establish its invocation
+order or error behavior.

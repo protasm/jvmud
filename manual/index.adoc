@@ -5,13 +5,17 @@
 :encoding: utf-8
 :lang: en
 :toc: left
-:toclevels: 3
+:toclevels: 2
 :sectanchors:
 :sectlinks:
 :xrefstyle: short
 :imagesdir: assets
-
-include::front-matter/status.adoc[]
+:site-url: https://jvmud.org
+ifdef::backend-html5[]
+:site-url: ..
+endif::[]
+:webfonts!:
+:reproducible:
 
 include::front-matter/how-to-read.adoc[]
 
@@ -21,9 +25,9 @@ include::getting-oriented/index.adoc[]
 
 include::getting-oriented/overview.adoc[]
 
-include::getting-oriented/architecture.adoc[]
-
 include::getting-oriented/philosophy-of-mud.adoc[]
+
+include::getting-oriented/architecture.adoc[]
 
 include::getting-oriented/repository-tour.adoc[]
 
@@ -32,6 +36,8 @@ include::installing-running/index.adoc[]
 include::installing-running/installing.adoc[]
 
 include::installing-running/running-jvmud.adoc[]
+
+include::installing-running/small-mercies.adoc[]
 
 include::installing-running/connecting-with-telnet.adoc[]
 
@@ -71,7 +77,7 @@ include::mudlibs/index.adoc[]
 
 include::mudlibs/layout.adoc[]
 
-include::mudlibs/lp245-notes.adoc[]
+include::mudlibs/profile-validation.adoc[]
 
 include::mudlibs/upstream-source-policy.adoc[]
 

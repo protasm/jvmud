@@ -1,3 +1,35 @@
 === Documentation Generation
 
-Content to be written.
+Edit `manual/**/*.adoc`, not `docs/manual/index.html` or the PDF. From the
+repository root, generate both manual formats:
+
+[source,shell]
+----
+mvn -Pmanual-docs -DskipTests process-resources
+----
+
+The outputs are `docs/manual/index.html` and
+`docs/manual/jvmud-user-manual.pdf`. Shared HTML styling and navigation come from
+`manual/docinfo.html` and `manual/docinfo-header.html`; PDF typography and page
+flow come from `manual/pdf-theme.yml`.
+
+Generate the Java API with:
+
+[source,shell]
+----
+mvn -Psite-docs -DskipTests javadoc:javadoc
+python3 scripts/check-docs.py
+----
+
+Javadocs live under `docs/api/apidocs/`; `docs/api/index.html` is the authored
+package guide. The checker verifies local HTML links, fragment targets, and
+manual placeholders. It does not check external URLs or prove visual quality.
+
+Preview the static site with `python3 -m http.server 8000 --directory docs` and
+open `http://localhost:8000/`. Stop that preview with Ctrl+C.
+
+If generation fails, check Maven dependency resolution, missing AsciiDoc includes,
+and the first generator error. Regenerate HTML and PDF together, then inspect the
+PDF contents, page breaks, and long code/table cells before publishing. See
+`docs/README.md` for source ownership and `docs/DOCUMENTATION_GAPS.md` for remaining
+coverage work.

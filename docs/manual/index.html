@@ -7,7 +7,6 @@
 <meta name="generator" content="Asciidoctor 2.0.23">
 <meta name="author" content="JVMud Project">
 <title>JVMud User Manual</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
 /* Uncomment the following line when using as a custom stylesheet */
@@ -524,8 +523,22 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 .CodeRay .change .change{color:#66f}
 .CodeRay .head .head{color:#f4f}
 </style>
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="../manual.css">
+<meta name="description" content="The JVMud User Manual: philosophy, architecture, installation, play, operation, LPC authoring, and configuration.">
 </head>
 <body class="book toc2 toc-left">
+<a class="skip-link" href="#content">Skip to manual content</a>
+<nav class="manual-nav" aria-label="Documentation">
+<a class="brand" href="../index.html">JVMud</a>
+<a href="../documentation.html">Documentation</a>
+<a href="../principles.html">Design philosophy</a>
+<a href="../architecture.html">Architecture</a>
+<a href="../packages.html">Core packages</a>
+<a href="index.html" aria-current="page">User Manual</a>
+<a href="../api/index.html">Java API</a>
+<a href="jvmud-user-manual.pdf">PDF</a>
+</nav>
 <div id="header">
 <h1>JVMud User Manual</h1>
 <div class="details">
@@ -535,38 +548,29 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
-<li><a href="#_status">Status</a></li>
-<li><a href="#_how_to_read_this_manual">How To Read This Manual</a></li>
-<li><a href="#_terminology">Terminology</a></li>
+<li><a href="#_how_to_use_this_manual">How to use this manual</a>
+<ul class="sectlevel2">
+<li><a href="#_terms_used_in_procedures">Terms used in procedures</a></li>
+</ul>
+</li>
 <li><a href="#_getting_oriented">Getting Oriented</a>
 <ul class="sectlevel2">
 <li><a href="#_overview">Overview</a></li>
+<li><a href="#_the_jvmud_philosophy_of_mud">The JVMud Philosophy Of MUD</a></li>
 <li><a href="#_architecture">Architecture</a></li>
-<li><a href="#_the_jvmud_philosophy_of_mud">The JVMud Philosophy Of MUD</a>
-<ul class="sectlevel3">
-<li><a href="#_game">Game</a></li>
-<li><a href="#_text">Text</a></li>
-<li><a href="#_interactive">Interactive</a></li>
-<li><a href="#_multiplayer">Multiplayer</a></li>
-<li><a href="#_world">World</a></li>
-<li><a href="#_persistence">Persistence</a></li>
-<li><a href="#_temporality">Temporality</a></li>
-<li><a href="#_presence">Presence</a></li>
-<li><a href="#_lpc_compatibility_and_engine_vocabulary">LPC Compatibility And Engine Vocabulary</a></li>
-</ul>
-</li>
-<li><a href="#_repository_tour">Repository Tour</a></li>
+<li><a href="#_core_packages_and_repository_tour">Core packages and repository tour</a></li>
 </ul>
 </li>
 <li><a href="#_installing_and_running">Installing And Running</a>
 <ul class="sectlevel2">
 <li><a href="#_installing">Installing</a></li>
 <li><a href="#_running_jvmud">Running JVMud</a></li>
+<li><a href="#small-mercies">First steps with Small Mercies</a></li>
 <li><a href="#_connecting_with_telnet">Connecting With Telnet</a></li>
 <li><a href="#_smoke_tests">Smoke Tests</a></li>
 </ul>
 </li>
-<li><a href="#_playing_and_testing_a_world">Playing And Testing A World</a>
+<li><a href="#_playing_and_testing">Playing And Testing</a>
 <ul class="sectlevel2">
 <li><a href="#_login_flow">Login Flow</a></li>
 <li><a href="#_basic_commands">Basic Commands</a></li>
@@ -581,23 +585,9 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_mudlib_boundary">Mudlib Boundary</a></li>
 </ul>
 </li>
-<li><a href="#_lpc_and_mudlib_authoring">LPC And Mudlib Authoring</a>
+<li><a href="#_lpc_authoring">LPC Authoring</a>
 <ul class="sectlevel2">
-<li><a href="#_supported_lpc">Supported LPC</a>
-<ul class="sectlevel3">
-<li><a href="#_source_files_and_objects">Source Files And Objects</a></li>
-<li><a href="#_types">Types</a></li>
-<li><a href="#_declarations_and_modifiers">Declarations And Modifiers</a></li>
-<li><a href="#_statements">Statements</a></li>
-<li><a href="#_expressions">Expressions</a></li>
-<li><a href="#_collections">Collections</a></li>
-<li><a href="#_efun_calls">Efun Calls</a></li>
-<li><a href="#_function_references_and_inline_callables">Function References And Inline Callables</a></li>
-<li><a href="#_preprocessor_and_includes">Preprocessor And Includes</a></li>
-<li><a href="#_runtime_oriented_lpc">Runtime-Oriented LPC</a></li>
-<li><a href="#_current_limits">Current Limits</a></li>
-</ul>
-</li>
+<li><a href="#_supported_lpc">Supported LPC</a></li>
 <li><a href="#_explicit_types">Explicit Types</a></li>
 <li><a href="#_efuns">Efuns</a></li>
 <li><a href="#_lifecycle_hooks">Lifecycle Hooks</a></li>
@@ -607,7 +597,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_mudlibs">Mudlibs</a>
 <ul class="sectlevel2">
 <li><a href="#_layout">Layout</a></li>
-<li><a href="#_lp245_notes">LP245 Notes</a></li>
+<li><a href="#_validate_a_profile">Validate a profile</a></li>
 <li><a href="#_upstream_source_policy">Upstream Source Policy</a></li>
 </ul>
 </li>
@@ -639,26 +629,69 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 <div id="content">
 <div class="sect1">
-<h2 id="_status"><a class="anchor" href="#_status"></a><a class="link" href="#_status">Status</a></h2>
+<h2 id="_how_to_use_this_manual"><a class="anchor" href="#_how_to_use_this_manual"></a><a class="link" href="#_how_to_use_this_manual">How to use this manual</a></h2>
 <div class="sectionbody">
+<div id="_status" class="paragraph lead">
+<p>JVMud is an experimental LPC/LPMud engine for the JVM. This manual explains how
+to understand its design, run a local world, inspect LPC objects, and develop
+mudlib content against the current repository.</p>
+</div>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>The documented version is 0.1.0-SNAPSHOT. The platform provides a compiler, world
+model, hosted instances, Telnet sessions, storage adapters, and an admin shell.
+Compatibility is incremental; a successful build or preload scan does not prove
+complete gameplay or production readiness.</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_how_to_read_this_manual"><a class="anchor" href="#_how_to_read_this_manual"></a><a class="link" href="#_how_to_read_this_manual">How To Read This Manual</a></h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>Content to be written.</p>
+<p><a href="jvmud-user-manual.pdf">Download the PDF</a> · <a href="../documentation.html">Documentation home</a></p>
 </div>
+<div id="_how_to_read_this_manual" class="ulist">
+<ul>
+<li>
+<p><strong>Evaluating JVMud:</strong> read <a href="#_getting_oriented"><em>Getting Oriented</em></a> for philosophy, architecture,
+and the core package map.</p>
+</li>
+<li>
+<p><strong>Running or playing a local world:</strong> follow <a href="#_installing_and_running"><em>Installing And Running</em></a> and the <a href="#small-mercies">Small Mercies walkthrough</a>, then
+<a href="#_playing_and_testing"><em>Playing And Testing</em></a>. Commands in terminal blocks run from the repository root.</p>
+</li>
+<li>
+<p><strong>Operating or debugging:</strong> use <a href="#_operating_jvmud"><em>Operating JVMud</em></a> and <a href="#_troubleshooting"><em>Troubleshooting</em></a>.</p>
+</li>
+<li>
+<p><strong>Writing LPC:</strong> follow <a href="#_lpc_authoring"><em>LPC Authoring</em></a> and <a href="#_mudlibs"><em>Mudlibs</em></a>; keep the configuration
+and command references nearby.</p>
+</li>
+<li>
+<p><strong>Changing Java:</strong> start with the package map, then <a href="#_developer_reference"><em>Developer Reference</em></a>.</p>
+</li>
+</ul>
 </div>
-</div>
-<div class="sect1">
-<h2 id="_terminology"><a class="anchor" href="#_terminology"></a><a class="link" href="#_terminology">Terminology</a></h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Examples identify whether input belongs in a terminal, the admin shell, or a
+Telnet client. Replace angle-bracket placeholders with actual values; do not type
+the angle brackets. A mudlib is the LPC source and configuration that define a game.</p>
+</div>
+<div class="paragraph">
+<p>The manual owns procedures. The website&#8217;s Principles and Glossary pages explain
+concepts; its efun and lifecycle pages own focused boundary references. Java API
+pages describe Java contracts, not player commands.</p>
+</div>
+<div class="sect2">
+<h3 id="_terms_used_in_procedures"><a class="anchor" href="#_terms_used_in_procedures"></a><a class="link" href="#_terms_used_in_procedures">Terms used in procedures</a></h3>
+<div id="_terminology" class="paragraph">
+<p>A <strong>Player</strong> is an identity; a <strong>Session</strong> is a connection; a <strong>Persona</strong> is the Entity
+through which that Player acts in a World. A <strong>Place</strong> provides locality, a <strong>Link</strong>
+connects Places, and a <strong>Location</strong> identifies containment. A loaded LPC object
+can also be a service with no physical presence.</p>
+</div>
+<div class="paragraph">
+<p>A <strong>manifest</strong> is the profile&#8217;s <code>.config</code> file. It selects source paths, startup
+objects, lifecycle mappings, language features, and engine capabilities. A
+<strong>profile</strong> includes this manifest and the mudlib-side adapters needed to host that
+content. Legacy terms such as <code>room</code> and <code>heart_beat</code> are used when naming actual
+LPC paths or compatibility methods.</p>
+</div>
 </div>
 </div>
 </div>
@@ -666,90 +699,26 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <h2 id="_getting_oriented"><a class="anchor" href="#_getting_oriented"></a><a class="link" href="#_getting_oriented">Getting Oriented</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Start with what JVMud means by a world, then follow how its packages collaborate.
+The architecture is an ownership model; it is not a claim that every planned
+engine behavior is complete.</p>
 </div>
 <div class="sect2">
 <h3 id="_overview"><a class="anchor" href="#_overview"></a><a class="link" href="#_overview">Overview</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_architecture"><a class="anchor" href="#_architecture"></a><a class="link" href="#_architecture">Architecture</a></h3>
-<div class="paragraph">
-<p>JVMud is organized around a small set of architectural responsibilities. The
-diagram is the responsibility map for the Java package layout and for the
-boundary between JVMud-owned code and mudlib-authored content.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="text">                 compiler
-                     |
-                     v
-persistence &lt;--&gt; engine &lt;--&gt; mudlib
-                     |
-                  instance
-                     |
-                 transport
-                     |
-                   player</code></pre>
-</div>
+<p>JVMud compiles LPC source to JVM bytecode and loads that code as live objects.
+The engine models shared world concepts; a mudlib supplies fiction, commands,
+rules, and presentation. The hosted instance brings these parts together, while
+Telnet gives players a line-oriented way to participate.</p>
 </div>
 <div class="paragraph">
-<p>The engine is the center of the architecture. It owns JVMud truth: the world
-model, canonical state machinery, and rules that should still make sense in a
-non-Telnet, non-LPC, test-only JVMud world. That includes Places, Entities,
-Locations, Links, Personas, Sessions, world time, mudlib boundary events, and
-the <code>WorldRuntime</code> that enforces engine rules such as single containment and
-valid movement.</p>
+<p>The distribution includes Small Mercies, a tiny teaching world. Start with its
+walkthrough, or choose or author a compatible LPC source tree and declare its hosting requirements
+in a manifest. Shared launchers always require that manifest explicitly.</p>
 </div>
 <div class="paragraph">
-<p>The compiler feeds the engine by turning LPC source into executable JVM code.
-Compiler packages own preprocessing, scanning, parsing, semantic analysis, IR,
-bytecode generation, efun contracts, generated-code helpers, and LPC runtime
-loading. Compiler helper classes support generated bytecode; they do not define
-the engine ontology.</p>
-</div>
-<div class="paragraph">
-<p>The mudlib is the authored world. It supplies LPC content, fiction, object
-behavior, commands, rules, and compatibility policy. Mudlibs are deliberately
-outside the JVMud Java package tree and live under <code>mudlibs/</code>, because they are
-content hosted by JVMud rather than JVMud engine code.</p>
-</div>
-<div class="paragraph">
-<p>Persistence sits beside the engine because durable state is a cross-cutting
-storage concern, not an engine ontology concern. Filesystem and JDBC adapters
-belong in persistence packages so the engine and instance layers can ask for
-durable services without embedding file formats or database details.</p>
-</div>
-<div class="paragraph">
-<p>The instance layer is one live hosted realization of the architecture. It boots
-a mudlib, assembles compiler output with engine state, owns the active
-<code>WorldRuntime</code> object for that hosted world, attaches Personas, dispatches
-mudlib lifecycle hooks, and routes mounted mudlib worlds through the
-<code>MudlibRouter</code>. The instance is concrete in a way the engine is not: it knows
-which mudlib is booted, which LPC objects are loaded, and which players are
-currently attached.</p>
-</div>
-<div class="paragraph">
-<p>The transport layer is the human connection boundary. Telnet code owns sockets,
-sessions, echo behavior, line input, output delivery, and connection lifecycle.
-Transport turns a human connection into input for an instance; it does not own
-world rules.</p>
-</div>
-<div class="paragraph">
-<p>The player is at the bottom because all of this machinery exists to create an
-interactive, player-present text world. A player reaches JVMud through a
-transport, enters a running instance, experiences engine-owned world reality
-through a Persona, and interacts with mudlib-authored behavior compiled into
-JVM code.</p>
-</div>
-<div class="paragraph">
-<p>As a rule of thumb: if a concept defines what JVMud means by a world, it belongs
-near <code>engine</code>. If it exists because a particular hosted mudlib is running, it
-belongs near <code>instance</code>. If it speaks a connection protocol, it belongs near
-<code>transport</code>. If it stores durable state, it belongs near <code>persistence</code>. If it is
-authored LPC content, it belongs in a mudlib.</p>
+<p>The Java code is one Maven project with responsibility-based packages. The
+packages described here are not separately released Maven modules.</p>
 </div>
 </div>
 <div class="sect2">
@@ -906,9 +875,139 @@ from Places, Links, Entities, Players, Sessions, and Personas.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_repository_tour"><a class="anchor" href="#_repository_tour"></a><a class="link" href="#_repository_tour">Repository Tour</a></h3>
+<h3 id="_architecture"><a class="anchor" href="#_architecture"></a><a class="link" href="#_architecture">Architecture</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>JVMud is organized around a small set of architectural responsibilities. The
+diagram is the responsibility map for the Java package layout and for the
+boundary between JVMud-owned code and mudlib-authored content.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">                 compiler
+                     |
+                     v
+persistence &lt;--&gt; engine &lt;--&gt; mudlib
+                     |
+                  instance
+                     |
+                 transport
+                     |
+                   player</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The engine is the center of the architecture. It owns JVMud truth: the world
+model, canonical state machinery, and rules that should still make sense in a
+non-Telnet, non-LPC, test-only JVMud world. That includes Places, Entities,
+Locations, Links, Personas, Sessions, world time, mudlib boundary events, and
+the <code>WorldRuntime</code> that enforces engine rules such as single containment and
+valid movement.</p>
+</div>
+<div class="paragraph">
+<p>The compiler feeds the engine by turning LPC source into executable JVM code.
+Compiler packages own preprocessing, scanning, parsing, semantic analysis, IR,
+bytecode generation, efun contracts, generated-code helpers, and LPC runtime
+loading. Compiler helper classes support generated bytecode; they do not define
+the engine ontology.</p>
+</div>
+<div class="paragraph">
+<p>The mudlib is the authored world. It supplies LPC content, fiction, object
+behavior, commands, rules, and compatibility policy. Mudlibs are deliberately
+outside the JVMud Java package tree and live under <code>mudlibs/</code>, because they are
+content hosted by JVMud rather than JVMud engine code.</p>
+</div>
+<div class="paragraph">
+<p>Persistence sits beside the engine because durable state is a cross-cutting
+storage concern, not an engine ontology concern. Filesystem and JDBC adapters
+belong in persistence packages so the engine and instance layers can ask for
+durable services without embedding file formats or database details.</p>
+</div>
+<div class="paragraph">
+<p>The instance layer is one live hosted realization of the architecture. It boots
+a mudlib, assembles compiler output with engine state, owns the active
+<code>WorldRuntime</code> object for that hosted world, attaches Personas, dispatches
+mudlib lifecycle hooks, and routes mounted mudlib worlds through the
+<code>MudlibRouter</code>. The instance is concrete in a way the engine is not: it knows
+which mudlib is booted, which LPC objects are loaded, and which players are
+currently attached.</p>
+</div>
+<div class="paragraph">
+<p>The transport layer is the human connection boundary. Telnet code owns sockets,
+sessions, echo behavior, line input, output delivery, and connection lifecycle.
+Transport turns a human connection into input for an instance; it does not own
+world rules.</p>
+</div>
+<div class="paragraph">
+<p>The player is at the bottom because all of this machinery exists to create an
+interactive, player-present text world. A player reaches JVMud through a
+transport, enters a running instance, experiences engine-owned world reality
+through a Persona, and interacts with mudlib-authored behavior compiled into
+JVM code.</p>
+</div>
+<div class="paragraph">
+<p>As a rule of thumb: if a concept defines what JVMud means by a world, it belongs
+near <code>engine</code>. If it exists because a particular hosted mudlib is running, it
+belongs near <code>instance</code>. If it speaks a connection protocol, it belongs near
+<code>transport</code>. If it stores durable state, it belongs near <code>persistence</code>. If it is
+authored LPC content, it belongs in a mudlib.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_core_packages_and_repository_tour"><a class="anchor" href="#_core_packages_and_repository_tour"></a><a class="link" href="#_core_packages_and_repository_tour">Core packages and repository tour</a></h3>
+<div id="_repository_tour" class="paragraph">
+<p>All Java package names below begin with <code>io.github.protasm.jvmud</code>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Package</th>
+<th class="tableblock halign-left valign-top">Responsibility and starting points</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>engine</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">World rules and identity. Start with <code>world.WorldRuntime</code>,
+<code>identity</code>, <code>time.WorldScheduler</code>, and <code>mudlib.MudlibBoundary</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>compiler</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LPC compilation and execution. Start with <code>JVMudCompiler</code>,
+<code>pipeline</code>, and <code>exec.LPCRuntime</code>. <code>runtime</code> supports generated bytecode.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>instance</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot and hosted-world orchestration. Start with <code>MudlibBoot</code>,
+<code>MudInstance</code>, and <code>MudlibRouter</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>transport</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Player connection mechanics. Start with <code>telnet.TelnetServer</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>persistence</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Durable adapters under <code>filesystem</code> and <code>jdbc</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cli</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local object sandbox. Start with <code>AdminCli</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>src/main/java/</code> contains these packages; <code>src/test/java/</code> mirrors them.
+<code>mudlibs/&lt;name&gt;/source/</code> contains LPC content, and <code>mudlibs/&lt;name&gt;/jvmud/</code>
+contains manifests, adapters, and profile-specific scripts. Inspect the selected
+profile before assuming all mudlibs have the same storage layout.</p>
+</div>
+<div class="paragraph">
+<p><code>manual/</code> contains editable AsciiDoc; <code>docs/</code> contains the site, generated manual,
+and API. Shared tools live in <code>scripts/</code>. <code>pom.xml</code> defines dependencies and
+build profiles. See <a href="#_documentation_generation">Documentation Generation</a> before editing generated pages.</p>
 </div>
 </div>
 </div>
@@ -917,62 +1016,548 @@ from Places, Links, Entities, Players, Sessions, and Personas.</p>
 <h2 id="_installing_and_running"><a class="anchor" href="#_installing_and_running"></a><a class="link" href="#_installing_and_running">Installing And Running</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>This chapter gets one local listener running and proves that a player can reach
+it. Database requirements depend on the selected profile.</p>
 </div>
 <div class="sect2">
 <h3 id="_installing"><a class="anchor" href="#_installing"></a><a class="link" href="#_installing">Installing</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>You need a JDK that can compile Java 21, Maven, Git, and a POSIX shell for the
+repository launch scripts. Some profile-owned smoke scripts also require Bash or Python 3.
+A Telnet-capable client is needed for interactive play. The bundled Small Mercies
+walkthrough needs no database or saved-account setup.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">git clone https://github.com/protasm/jvmud.git
+cd jvmud
+java -version
+mvn -version
+mvn -DskipTests compile</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Check that Maven reports the intended JDK. The compiler release is set to 21 in
+<code>pom.xml</code>. The first build needs access to Maven dependencies; later builds may
+use the local cache. Successful compilation creates <code>target/classes/</code>.</p>
+</div>
+<div class="paragraph">
+<p>For an existing checkout, run commands from its root. Do not clone over local
+work. Tests are described in <a href="#_testing_and_verification">Testing And Verification</a>; compiling alone does
+not run them.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_running_jvmud"><a class="anchor" href="#_running_jvmud"></a><a class="link" href="#_running_jvmud">Running JVMud</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>For a ready-to-run example, use <a href="#small-mercies">First steps with Small Mercies</a>. To host your own content,
+select a JVMud-compatible LPC source tree and its manifest. JVMud is the
+host; it does not choose game content implicitly. The manifest must describe
+real source files, including an initial Place and the profile&#8217;s player behavior.
+Small Mercies is the bundled teaching example; the same host contract applies
+to other compatible content.</p>
+</div>
+<div class="paragraph">
+<p>In a terminal at the repository root:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-start &lt;mudlib-config-file&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Replace <code>&lt;mudlib-config-file&gt;</code> with the absolute path to your manifest, or a path
+relative to the repository root. Do not type the angle brackets. The script
+compiles Java, resolves the dependency classpath, and runs the Telnet server in
+the foreground. Wait for the preload summary followed by
+<code>JVMud mudlib listening on 127.0.0.1:4000</code> before connecting.</p>
+</div>
+<div class="paragraph">
+<p>The launcher listens on loopback port 4000. It does not accept a port argument
+or a host flag. Run one listener at a time. Mounted profiles, if declared, must
+also be present and valid. See <a href="#_configuration_reference">Configuration Reference</a> for manifest keys.</p>
+</div>
+<div class="paragraph">
+<p>To capture detailed startup failures:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-start --trace-startup-loads &lt;mudlib-config-file&gt; &gt; target/startup.log 2&gt;&amp;1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This still runs in the foreground. Inspect the log from another terminal and
+stop with Ctrl+C. Trace output can be large; begin with the preload summary and
+first failure. To see launch syntax, use <code>scripts/jvmud-start --help</code>.</p>
+</div>
+<div class="paragraph">
+<p>Ctrl+C runs the server&#8217;s shutdown path. Persistence is profile-specific; shutting
+down does not promise a snapshot of every loaded object&#8217;s state. The local admin
+shell is a separate process, not an attachment to this listener.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="small-mercies"><a class="anchor" href="#small-mercies"></a><a class="link" href="#small-mercies">First steps with Small Mercies</a></h3>
+<div class="paragraph">
+<p>Small Mercies is JVMud&#8217;s bundled toy mudlib: five rooms, a few talkative NPCs,
+and sparring opponents with more confidence than good sense. It demonstrates a
+native LPC profile without database setup, account registration, or saved characters.
+Use it to learn the player flow and to find small source examples.</p>
+</div>
+<div class="sect3">
+<h4 id="_launch_and_create_a_guest"><a class="anchor" href="#_launch_and_create_a_guest"></a><a class="link" href="#_launch_and_create_a_guest">Launch and create a guest</a></h4>
+<div class="paragraph">
+<p>From the repository root:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Wait for <code>JVMud mudlib listening on 127.0.0.1:4000</code>. In a second terminal or
+Telnet-capable MUD client, connect to <code>127.0.0.1</code> on port <code>4000</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">telnet 127.0.0.1 4000</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Answer each prompt separately:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Choose a name containing 2–16 letters. It must be different from the names of
+players currently connected.</p>
+</li>
+<li>
+<p>Choose <code>male</code> or <code>female</code>.</p>
+</li>
+<li>
+<p>Choose <code>warrior</code> or <code>mage</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>You arrive in the <strong>Village Square</strong>. Type <code>help</code>, then <code>score</code>.
+There is no password. A guest character exists for one connection: disconnecting
+ends that character&#8217;s visit, and reconnecting starts character creation again.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Class</th>
+<th class="tableblock halign-left valign-top">STR</th>
+<th class="tableblock halign-left valign-top">INT</th>
+<th class="tableblock halign-left valign-top">DEX</th>
+<th class="tableblock halign-left valign-top">Starting HP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Warrior</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mage</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">26</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Warriors use STR for their attacks; mages use INT for sparks. DEX helps dodge.
+<code>score</code> also shows victories and the current opponent, when fighting. Gender
+changes the character description, not the attributes or rules.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_explore_the_whole_world"><a class="anchor" href="#_explore_the_whole_world"></a><a class="link" href="#_explore_the_whole_world">Explore the whole world</a></h4>
+<div class="paragraph">
+<p>Every exit has a return route. Read <code>look</code> to see a description, exits, and nearby
+characters. Use full directions, their initials, or <code>go &lt;direction&gt;</code>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Place</th>
+<th class="tableblock halign-left valign-top">Exits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Village Square</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>west</code> to The Resting Hero; <code>north</code> to the Municipal Herb Garden;
+<code>east</code> to Very Short Lane.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Resting Hero</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>east</code> to the square.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Municipal Herb Garden</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>south</code> to the square.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Very Short Lane</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>west</code> to the square; <code>down</code> to the Cellar of Mild Peril.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cellar of Mild Peril</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>up</code> to the lane.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>From a fresh arrival in the square, enter these player commands one at a time:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">look
+talk mayor
+west
+talk innkeeper
+rest
+east
+north
+look goose
+south
+east
+down
+look rat
+up
+west</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You finish back in the square. <code>rest</code> restores full health only at the inn.
+<code>talk</code> addresses an NPC in your current Place. Try <code>who</code> to list connected
+adventurers. <code>say Hello!</code> and <code>smile</code>, <code>wave</code>, <code>bow</code>, or <code>laugh</code> provide local
+communication. Connect a second guest to try these with another player.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_try_a_short_sparring_match"><a class="anchor" href="#_try_a_short_sparring_match"></a><a class="link" href="#_try_a_short_sparring_match">Try a short sparring match</a></h4>
+<div class="paragraph">
+<p>From the square, go <code>north</code>, then type <code>attack goose</code>. Combat repeats every two
+seconds; you do not need to repeat the attack command. <code>kill goose</code> is an alias.
+Use <code>stop</code> or move <code>south</code> to end the bout. The rat in the cellar is the other
+sparring opponent; the mayor and innkeeper are friendly.</p>
+</div>
+<div class="paragraph">
+<p>A defeated NPC rests for 20 seconds before recovering. A player defeat sends you
+to the inn with 1 HP; <code>rest</code> restores full health. NPCs spar with one challenger
+at a time; their remaining HP persists when a visitor stops or leaves. There is no player-versus-player combat. If an opponent is resting or
+occupied, return later rather than repeatedly issuing <code>attack</code>.</p>
+</div>
+<div class="paragraph">
+<p>Use <code>score</code> to check health and victories, then <code>quit</code> to end your visit.
+<code>//quit</code> is the default transport disconnect control. Neither creates a saved
+character. NPC state remains shared while the server runs; restarting resets the
+world. Stop the server with Ctrl+C in its terminal when finished.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_read_the_implementation"><a class="anchor" href="#_read_the_implementation"></a><a class="link" href="#_read_the_implementation">Read the implementation</a></h4>
+<div class="paragraph">
+<p>The manifest selects <code>room/square</code> and <code>player/adventurer</code>, maps object loading to
+<code>create</code>, interaction scope to <code>init</code>, session connection to <code>connect</code>, and
+session disconnection to <code>disconnect</code>. It grants <code>session_control</code> and maps
+recurring ticks to <code>tick</code>; there is no filesystem-account policy or database.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Path under <code>mudlibs/smallmercies/</code></th>
+<th class="tableblock halign-left valign-top">What to learn</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jvmud/smoke-play.py</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Two-guest live Telnet check of the tutorial route and combat.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jvmud/smallmercies.config</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Explicit source root, preloads, Persona, initial
+Place, lifecycle mappings, and capability grant.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>source/lib/room.c</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shared descriptions, authored exit lookup, and NPC creation.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>source/room/*.c</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Small Place definitions with prose, exits, and resident NPCs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>source/player/adventurer.c</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Guest creation, command registration, movement,
+communication, score, and recurring combat.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>source/npc/villager.c</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">NPC identity, dialogue, single-challenger combat, and
+deferred recovery.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>These LPC examples use JVMud-native efuns. Game rules stay in the mudlib; the
+host supplies execution, session, location, and scheduling services. Read the
+source before changing behavior, then replay the relevant route after restarting.
+Use a separate copy for experiments you do not intend to keep in the distribution.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_connecting_with_telnet"><a class="anchor" href="#_connecting_with_telnet"></a><a class="link" href="#_connecting_with_telnet">Connecting With Telnet</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>In a second terminal, use a Telnet client:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">telnet 127.0.0.1 4000</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If your system has no <code>telnet</code> command, use a Telnet-capable MUD client with host
+<code>127.0.0.1</code> and port <code>4000</code>. Follow the mudlib&#8217;s login prompts, then try <code>help</code>
+and <code>look</code>. Use <code>//quit</code> to disconnect from profiles using the default transport prefix. The listener keeps
+running until stopped in its own terminal.</p>
+</div>
+<div class="sect3">
+<h4 id="_optional_gmcp_integration"><a class="anchor" href="#_optional_gmcp_integration"></a><a class="link" href="#_optional_gmcp_integration">Optional GMCP integration</a></h4>
+<div class="paragraph">
+<p>JVMud&#8217;s Telnet listener supports ordinary line-oriented clients and negotiates
+the Generic Mud Communication Protocol (GMCP) as Telnet option 201. The server
+offers GMCP with <code>IAC WILL GMCP</code>; clients that accept it can exchange UTF-8 GMCP
+subnegotiations without affecting the visible text stream.</p>
+</div>
+<div class="paragraph">
+<p>Mudlibs with the <code>session_control</code> engine capability can use:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>jvmud_gmcp_enabled()</code> or <code>jvmud_gmcp_enabled(user)</code> to test negotiation state.</p>
+</li>
+<li>
+<p><code>jvmud_send_gmcp(package)</code> for a package without a payload.</p>
+</li>
+<li>
+<p><code>jvmud_send_gmcp(package, payload)</code> to JSON-encode LPC strings, numbers,
+arrays, and string-keyed mappings.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>An interactive LPC object may implement
+<code>client_protocol_changed(string protocol, int enabled)</code> to react to negotiation
+and <code>receive_gmcp(string package, mixed payload)</code> to receive decoded client
+messages. JVMud owns Telnet framing and JSON conversion; mudlib code owns the
+meaning of packages such as <code>Room.Info</code> and <code>Char.Vitals</code>.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_smoke_tests"><a class="anchor" href="#_smoke_tests"></a><a class="link" href="#_smoke_tests">Smoke Tests</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>For the bundled toy, run its focused integration test from the repository root:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">mvn -Dtest=SmallMerciesTest test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This boots the real profile and exercises character creation, movement,
+room-local communication, and scheduled combat. It does not start a TCP listener;
+use the route in <a href="#small-mercies">First steps with Small Mercies</a> for live transport verification.</p>
+</div>
+<div class="paragraph">
+<p>For an automated live check, start a fresh Small Mercies listener as described in
+the walkthrough. Keep it running, then use a second terminal:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">python3 mudlibs/smallmercies/jvmud/smoke-play.py</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The script connects to loopback port 4000, creates two disposable guests, and
+checks login, both classes, chat, an emote, the tutorial route, combat, score,
+rest, and quit. Success prints <code>PASS: live guest login&#8230;&#8203;</code>. It does not launch
+or stop the server. Use a dedicated development listener so another player&#8217;s
+sparring match or a resting NPC does not interfere.</p>
+</div>
+<div class="paragraph">
+<p>The shared preload-scan script expects <code>preload_file</code>; Small Mercies declares
+<code>preload_objects</code> inline. Use the focused test rather than that scanner for this
+profile.
+A host smoke test should prove the complete route from launch to interaction,
+using the profile you intend to run:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Start the listener with its explicit manifest and wait for the listening message.</p>
+</li>
+<li>
+<p>Connect a Telnet client and complete the configured login or entry flow.</p>
+</li>
+<li>
+<p>Exercise a known command and verify its expected text.</p>
+</li>
+<li>
+<p>Move through a known Link and verify the new Place.</p>
+</li>
+<li>
+<p>Disconnect and reconnect to check cleanup and any state the profile promises to save.</p>
+</li>
+<li>
+<p>Stop the listener and retain the first error if a step fails.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Use a disposable account and state directory selected for the test. Profile-owned
+scripts may automate these steps, but the shared engine does not prescribe game
+names, account names, commands, locations, or credentials.</p>
+</div>
+<div class="paragraph">
+<p>Passing proves that profile&#8217;s particular transcript. It does not prove all
+language behavior or multi-user reliability. Separate compiler assertions,
+preload scans, and live player evidence when reporting results.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_playing_and_testing_a_world"><a class="anchor" href="#_playing_and_testing_a_world"></a><a class="link" href="#_playing_and_testing_a_world">Playing And Testing A World</a></h2>
+<h2 id="_playing_and_testing"><a class="anchor" href="#_playing_and_testing"></a><a class="link" href="#_playing_and_testing">Playing And Testing</a></h2>
 <div class="sectionbody">
-<div class="paragraph">
-<p>Content to be written.</p>
+<div id="_playing_and_testing_a_world" class="paragraph">
+<p>Player commands belong to the selected mudlib. JVMud handles transport controls
+and delivers ordinary input to the hosted world.</p>
 </div>
 <div class="sect2">
 <h3 id="_login_flow"><a class="anchor" href="#_login_flow"></a><a class="link" href="#_login_flow">Login Flow</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Connect only after the listener reports that it is ready. Follow the profile&#8217;s
+prompts rather than sending gameplay commands before entry is complete.</p>
+</div>
+<div class="paragraph">
+<p>There are two configuration patterns:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>With <code>session_policy = filesystem_accounts</code>, JVMud performs local account-file
+and password-verification work. It then dispatches <code>player_persona_resolved</code>
+and <code>player_entered_world</code> to mudlib-owned methods selected in the manifest.</p>
+</li>
+<li>
+<p>Without a managed session policy, the configured interactive object supplies
+the login conversation through its mapped session-connection lifecycle method.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>persona_object</code> selects the interactive LPC source; <code>player_object</code> is the
+legacy manifest spelling. Method names and prompts belong to that source tree,
+not to a universal JVMud game flow.</p>
+</div>
+<div class="paragraph">
+<p>For a repeatable test, record the manifest, whether the account is new or existing,
+the prompt where input was sent, and the first unexpected reply. Exclude passwords
+and private account fields from shared transcripts.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_basic_commands"><a class="anchor" href="#_basic_commands"></a><a class="link" href="#_basic_commands">Basic Commands</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Read the selected world&#8217;s welcome text and help after entry. A profile may
+provide verbs such as <code>help</code>, <code>look</code>, or movement directions, but JVMud does not
+require a universal gameplay vocabulary. Use the exact verbs and exits documented
+by your authored content.</p>
+</div>
+<div class="paragraph">
+<p>For a first route, inspect your current Place, choose one listed exit, move, and
+verify that the description changes. Record the expected text in your test.
+These are player-client inputs; the local admin shell has a separate grammar.</p>
+</div>
+<div class="paragraph">
+<p>With the default transport prefix, <code>//help</code> shows connection controls and
+<code>//quit</code> disconnects the client. A mudlib&#8217;s own exit command can run game-specific
+saving and cleanup. For persistence tests, exercise that command as well as
+transport disconnect/reconnect.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_command_routing"><a class="anchor" href="#_command_routing"></a><a class="link" href="#_command_routing">Command Routing</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Input passes from the Telnet session to the hosted instance and the profile&#8217;s
+LPC command behavior. The configured <code>transport.control_prefix</code> reserves an
+escaped namespace for connection controls; its default is <code>//</code>.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>//help</code> and <code>//quit</code> are transport controls in profiles using the default transport prefix.</p>
+</li>
+<li>
+<p><code>look</code> and movement verbs go to the mudlib after login.</p>
+</li>
+<li>
+<p>Ordinary single-slash commands remain available to mudlib code.</p>
+</li>
+<li>
+<p><code>load</code>, <code>inspect</code>, and <code>reload</code> are local admin-shell operations, not a remote
+administration protocol.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>If a command is unrecognized, first identify which of these contexts received it.
+Then check the active profile&#8217;s lifecycle mappings and command registration.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_transcript_regressions"><a class="anchor" href="#_transcript_regressions"></a><a class="link" href="#_transcript_regressions">Transcript Regressions</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>For a useful regression report, record the repository revision, manifest path,
+startup summary, client input, expected result, actual output, and server error.
+Use a small route with known starting state. A successful login is a different
+assertion from successful movement, persistence, or transfer between worlds.</p>
+</div>
+<div class="paragraph">
+<p>Start with the Small Mercies walkthrough and the relevant tests under
+<code>src/test/java/io/github/protasm/jvmud/instance/</code> and <code>transport/</code>. Add a focused
+assertion for the first wrong behavior, then replay the route against a restarted
+listener when runtime code changes. Avoid treating a long transcript with no
+assertions as proof of compatibility.</p>
 </div>
 </div>
 </div>
@@ -981,33 +1566,164 @@ from Places, Links, Entities, Players, Sessions, and Personas.</p>
 <h2 id="_operating_jvmud"><a class="anchor" href="#_operating_jvmud"></a><a class="link" href="#_operating_jvmud">Operating JVMud</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Use the local admin shell to investigate object behavior, the manifest to define
+hosting policy, and the server log to diagnose a running listener.</p>
 </div>
 <div class="sect2">
 <h3 id="_admin_cli"><a class="anchor" href="#_admin_cli"></a><a class="link" href="#_admin_cli">Admin CLI</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Start a separate local sandbox:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-admin mudlibs/smallmercies/jvmud/smallmercies.config</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This example selects Small Mercies. Substitute your manifest to inspect other
+content.
+This creates its own runtime. It does <strong>not</strong> attach to an already running Telnet
+server. Shell changes therefore do not modify that other process&#8217;s live world.
+Every line is an admin command; there is no player command mode.</p>
+</div>
+<div class="paragraph">
+<p>Inside the shell:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">help
+pwd
+ls /
+cat /room/square.c
+verbosity watch
+load /room/square
+objects</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Use the handle printed by <code>load</code> or <code>objects</code> in subsequent commands:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">inspect &lt;handle&gt;
+look &lt;handle&gt;
+call &lt;handle&gt; short
+where &lt;handle&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>/</code> is the manifest-selected mudlib source root. Paths cannot navigate above it.
+<code>boot &lt;mudlib-config-file&gt;</code> starts a fresh sandbox; it is not a reload of the
+current world. <code>quit</code> exits this shell.</p>
+</div>
+<div class="paragraph">
+<p>To investigate a changed object, edit its LPC source in your editor, run
+<code>reload &lt;path&gt;</code>, and inspect the resulting handle. <code>clone &lt;path&gt;</code> creates a
+separate instance; <code>destruct &lt;handle&gt;</code> removes an object. Do not assume reload
+migrates all state or references. Verify the affected object and callers.</p>
+</div>
+<div class="paragraph">
+<p>The complete command syntax is in <a href="#_commands">Commands</a>. <code>verbosity watch</code> reveals compiler
+stages; use <code>verbosity normal</code> to return to concise output.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_runtime_model"><a class="anchor" href="#_runtime_model"></a><a class="link" href="#_runtime_model">Runtime Model</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p><code>WorldRuntime</code> enforces single containment and rejects containment cycles.
+Places connect through Links; Entities can be contained by Places or Entities.
+Players participate through Personas attached to Sessions. Time-dependent work
+uses the engine scheduler.</p>
+</div>
+<div class="paragraph">
+<p>Hosted LPC execution also keeps object environment and inventory state in its
+runtime context. Do not assume every loaded service object is a world-present
+Entity, or that all compatibility bookkeeping has been unified with
+<code>WorldRuntime</code>. The repository&#8217;s <code>docs/DEFERRED_WORK.md</code> records this boundary
+and the remaining world-event/concurrency work.</p>
+</div>
+<div class="paragraph">
+<p>The <code>filesystem_accounts</code> policy stores account records under <code>accounts/</code> in its
+selected mudlib root. LPC object save/restore and JDBC data are separate storage
+surfaces. Before an upgrade or reset, identify the active profile&#8217;s state paths
+and database, stop writers, and preserve those stores. The project does not yet
+provide a universal backup/restore command or a verified production recovery
+procedure; test restoration on a disposable copy of the profile&#8217;s data.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_mudlib_boundary"><a class="anchor" href="#_mudlib_boundary"></a><a class="link" href="#_mudlib_boundary">Mudlib Boundary</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>The manifest declares how a profile participates in JVMud. <code>initial_place</code>
+selects the starting Place. <code>persona_object</code> (or legacy <code>player_object</code>) selects
+the interactive LPC object. Preloads, include paths, lifecycle methods, syntax
+features, and capabilities are explicit.</p>
+</div>
+<div class="paragraph">
+<p>To adapt a profile:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Begin with its current <code>.config</code> file and identify <code>mudlib_root</code>.</p>
+</li>
+<li>
+<p>Verify the initial Place, Persona, and preload paths exist.</p>
+</li>
+<li>
+<p>Map JVMud lifecycle events to the mudlib&#8217;s method names.</p>
+</li>
+<li>
+<p>Enable only the syntax and engine capabilities the profile needs.</p>
+</li>
+<li>
+<p>Launch it, inspect the preload summary, and test login and a small command route.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Unknown keys fail validation. <code>language_features</code> controls optional syntax;
+<code>engine_capabilities</code> authorizes capability-gated efuns. Neither is a substitute
+for the other. See <a href="#_configuration_reference">Configuration Reference</a> for the supported keys.</p>
+</div>
+<div class="paragraph">
+<p><code>docs/ENGINE_MUDLIB_CONTRACT.md</code> is the detailed design contract. Keep native world
+semantics in the engine and profile vocabulary in manifests or dedicated shims.</p>
+</div>
+<div class="sect3">
+<h4 id="_example_declaration"><a class="anchor" href="#_example_declaration"></a><a class="link" href="#_example_declaration">Example declaration</a></h4>
+<div class="paragraph">
+<p>The following is a manifest shape, not a complete runnable world. Each source
+path must exist in your authored tree; the chosen method names must match it.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">game_id = &lt;your-world-id&gt;
+mudlib_root = ../source
+initial_place = place/start
+persona_object = persona/player
+lifecycle.player_session_connected = connect
+transport.control_prefix = //</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Add preloads, mapped world-entry behavior, account policy, syntax gates, and host
+capabilities only as required by that content. Validate startup before testing
+player interaction.</p>
+</div>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_lpc_and_mudlib_authoring"><a class="anchor" href="#_lpc_and_mudlib_authoring"></a><a class="link" href="#_lpc_and_mudlib_authoring">LPC And Mudlib Authoring</a></h2>
+<h2 id="_lpc_authoring"><a class="anchor" href="#_lpc_authoring"></a><a class="link" href="#_lpc_authoring">LPC Authoring</a></h2>
 <div class="sectionbody">
-<div class="paragraph">
-<p>Content to be written.</p>
+<div id="_lpc_and_mudlib_authoring" class="paragraph">
+<p>The <a href="#small-mercies">Small Mercies source map</a> links runnable examples of rooms,
+commands, NPCs, and scheduling. Start with a typed object and test it in the admin sandbox. Then connect its
+behavior to the selected mudlib&#8217;s commands and lifecycle. The language overview
+below preserves practical LPC examples; compatibility names such as <code>write</code> and
+<code>sizeof</code> depend on the active profile&#8217;s mappings.</p>
 </div>
 <div class="sect2">
 <h3 id="_supported_lpc"><a class="anchor" href="#_supported_lpc"></a><a class="link" href="#_supported_lpc">Supported LPC</a></h3>
@@ -1126,14 +1842,16 @@ avoid importing legacy driver ambiguity into the engine contract.</p>
     return &quot;a brass lantern&quot;;
 }
 
+int count;
+
 void set_count(int value) {
     count = value;
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Legacy mudlib source may use patterns that JVMud accepts for compatibility, but
-new JVMud-facing source should prefer explicit signatures.</p>
+<p>Untyped methods and untyped parameters are rejected. Compatibility syntax does
+not remove the requirement for explicit signatures.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1171,7 +1889,9 @@ currently recognizes:</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The <code>varargs</code> modifier applies to methods only.</p>
+<p>The <code>varargs</code> modifier applies to methods only and requires the <code>varargs</code>
+language feature. Protected evaluation, typed function literals, inline
+callables, and multi-value mappings also have explicit profile feature gates.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1498,25 +2218,162 @@ by compiler or telnet smoke tests.</p>
 <div class="sect2">
 <h3 id="_explicit_types"><a class="anchor" href="#_explicit_types"></a><a class="link" href="#_explicit_types">Explicit Types</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Declare return types and every parameter type. Untyped methods and parameters
+are compiler errors. Use <code>mixed</code> when a value intentionally varies, and <code>void</code>
+when a method returns no value.</p>
+</div>
+<div class="paragraph">
+<p>For a disposable authoring exercise, save this as <code>example/counter.c</code> beneath
+the selected mudlib source root (create the directory if needed):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">int count;
+
+int add(int amount) {
+    count += amount;
+    return count;
+}
+
+int increment() {
+    return add(2);
+}
+
+int query_count() {
+    return count;
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the admin shell, run <code>load /example/counter</code>, then use its returned handle
+with <code>call &lt;handle&gt; increment</code> and <code>call &lt;handle&gt; query_count</code>. Both calls should
+return <code>2</code> on a fresh object. Use <code>inspect &lt;handle&gt;</code> to see its fields and methods.
+This exercise needs no legacy efun aliases. Remove only your disposable example
+when finished; keep upstream mudlib source intact.</p>
+</div>
+<div class="paragraph">
+<p>The current admin <code>call</code> command passes supplied arguments as strings; it does
+not coerce numeric text to LPC integers. This exercise uses a no-argument method
+to call the typed integer helper. Test non-string argument contracts through LPC
+wrappers or the Java execution API.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_efuns"><a class="anchor" href="#_efuns"></a><a class="link" href="#_efuns">Efuns</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Efuns expose host operations to LPC. Ordinary calls may resolve through mudlib
+functions or the active boundary&#8217;s translation table. <code>efun::name(&#8230;&#8203;)</code> selects
+that efun surface; <code>jvmud::name(&#8230;&#8203;)</code> requires an exact native JVMud efun name.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">int sample_size() {
+    return jvmud::jvmud_size(({ 1, 2, 3 }));
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The native form does not invent a <code>jvmud_</code> prefix or translate <code>sizeof</code>.
+Legacy aliases belong in the profile. A recognized efun can still require an
+<code>engine_capabilities</code> grant, such as <code>mudlib_files</code>, <code>database</code>, <code>session_control</code>,
+or <code>host_control</code>.</p>
+</div>
+<div class="paragraph">
+<p>Use <a href="../efuns.html">the efun reference</a> for signatures and categories, and
+<code>compiler.efun.builtin.CoreEfuns</code> for implementation details. Do not duplicate the
+catalog in a mudlib guide. When a call fails, check its spelling, argument types,
+profile mapping, and required capability.</p>
+</div>
+<div class="sect3">
+<h4 id="_ordinary_json"><a class="anchor" href="#_ordinary_json"></a><a class="link" href="#_ordinary_json">Ordinary JSON</a></h4>
+<div class="paragraph">
+<p><code>jvmud_parse_json(document)</code> converts an ordinary JSON document to LPC values.
+JSON objects become mappings with string keys; arrays retain their order;
+strings and numbers remain scalar values; booleans become status values <code>1</code>
+and <code>0</code>; and JSON <code>null</code> becomes LPC false (<code>0</code>).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c">mapping item = jvmud_read_mudlib_json(
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">/data/items/i0001.json.gz</span><span class="delimiter">&quot;</span></span>);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>jvmud_read_mudlib_json(path)</code> is available to mudlibs with the <code>MUDLIB_FILES</code>
+engine capability. It parses either plain JSON or gzip-compressed JSON, detected
+from the file content rather than the filename.</p>
+</div>
+<div class="paragraph">
+<p><code>jvmud_format_json(value)</code> performs the inverse conversion for values that can
+be represented in ordinary JSON. Mapping keys must be strings. Because LPC
+false and a parsed JSON <code>null</code> share the value <code>0</code>, formatting a parsed value is
+not promised to reproduce the original JSON token-for-token.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_bounded_json_array_reads"><a class="anchor" href="#_bounded_json_array_reads"></a><a class="link" href="#_bounded_json_array_reads">Bounded JSON Array Reads</a></h4>
+<div class="paragraph">
+<p>Mudlibs with the <code>MUDLIB_FILES</code> engine capability may read a structural slice
+without materializing an entire JSON document:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c">mixed *items = jvmud_read_mudlib_json_array(
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">/data/catalog.json</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">/items</span><span class="delimiter">&quot;</span></span>, <span class="integer">500</span>, <span class="integer">100</span>);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The second argument is an RFC 6901 JSON Pointer selecting an array. <code>offset</code> is
+the zero-based first entry and <code>count</code> is the maximum number returned. JVMud
+scans forward through ordinary JSON, but skips unrelated branches and entries
+outside the requested range without constructing their LPC values. An empty
+pointer selects a root array. Plain and gzip-compressed documents are both
+accepted.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_lifecycle_hooks"><a class="anchor" href="#_lifecycle_hooks"></a><a class="link" href="#_lifecycle_hooks">Lifecycle Hooks</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>JVMud emits native events; a manifest maps them to LPC methods. For example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">lifecycle.object_loaded = reset
+lifecycle.interaction_scope_started = init
+lifecycle.player_session_connected = logon</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>These are illustrative legacy method names, not required names. Native profiles
+can map the same events to their own typed LPC methods.</p>
+</div>
+<div class="paragraph">
+<p>Read <a href="../lifecycle-events.html">the lifecycle reference</a> for each event&#8217;s
+role. Verify the mapped method&#8217;s signature in the profile and corresponding
+Java dispatch code before adding a hook. Test normal entry, failed input, and
+disconnect paths; recognizing a method name does not establish its invocation
+order or error behavior.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_compatibility_shims"><a class="anchor" href="#_compatibility_shims"></a><a class="link" href="#_compatibility_shims">Compatibility Shims</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Keep imported source as upstream material. Put compatibility functions, aliases,
+headers, and lifecycle translations in the profile&#8217;s <code>jvmud/</code> area where possible.
+<code>mfun_object</code> supplies mudlib-global helpers; <code>compatibility_object</code> and
+<code>compatibility_overrides</code> support explicit compatibility overrides.</p>
+</div>
+<div class="paragraph">
+<p>For a missing legacy operation, first identify whether the gap is syntax, a
+native engine operation, or profile policy. Add generic compiler/engine behavior
+only when it belongs to JVMud; map legacy vocabulary in the profile. Do not relax
+explicit typing to accommodate an untyped legacy declaration.</p>
+</div>
+<div class="paragraph">
+<p>Record the motivating source and test in <code>docs/COMPATIBILITY_FEATURE_PROVENANCE.md</code>
+when changing compatibility features. The result should remain usable without
+hardcoding a particular game into shared Java or launch scripts.</p>
 </div>
 </div>
 </div>
@@ -1525,24 +2382,80 @@ by compiler or telnet smoke tests.</p>
 <h2 id="_mudlibs"><a class="anchor" href="#_mudlibs"></a><a class="link" href="#_mudlibs">Mudlibs</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>A profile combines authored LPC with explicit hosting requirements. Native and
+legacy profiles share the JVMud host while owning their own vocabulary and game
+rules.</p>
 </div>
 <div class="sect2">
 <h3 id="_layout"><a class="anchor" href="#_layout"></a><a class="link" href="#_layout">Layout</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>A useful source layout separates authored content, host configuration, and
+writable state. This is an illustrative convention, not a required game:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">&lt;content-root&gt;/
+  source/           LPC source, headers, and authored data
+  jvmud/            manifest and host-facing adapters
+  &lt;state-area&gt;/     profile-selected writable data</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>mudlib_root</code> selects the actual source root. If the manifest lives in <code>jvmud/</code>,
+<code>mudlib_root = ../source</code> resolves from that directory. Inspect persistence code
+before choosing, moving, or cleaning state paths; not every store uses a sibling
+state directory.</p>
+</div>
+<div class="paragraph">
+<p>Mounts use <code>mount.&lt;game-id&gt; = &lt;config-path&gt;</code>; the manifest explicitly names each
+mounted world. Paths resolve relative to the declaring manifest. Do not rely on
+sibling-directory discovery or any bundled game identity.</p>
+</div>
+<div class="paragraph">
+<p>Small Mercies follows this separation under <code>mudlibs/smallmercies/</code>. Its guest
+characters are transient; it does not demonstrate durable account storage.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_lp245_notes"><a class="anchor" href="#_lp245_notes"></a><a class="link" href="#_lp245_notes">LP245 Notes</a></h3>
+<h3 id="_validate_a_profile"><a class="anchor" href="#_validate_a_profile"></a><a class="link" href="#_validate_a_profile">Validate a profile</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Before hosting content, check these responsibilities against your source tree:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the manifest&#8217;s initial Place and Persona paths resolve to real LPC objects;</p>
+</li>
+<li>
+<p>includes, inherited objects, and preloads resolve under the intended root;</p>
+</li>
+<li>
+<p>lifecycle mappings name methods with the expected signatures;</p>
+</li>
+<li>
+<p>optional language features and engine capabilities match actual requirements;</p>
+</li>
+<li>
+<p>writable stores exist where the persistence policy expects them;</p>
+</li>
+<li>
+<p>mounted worlds boot independently before you exercise transfer.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For a load failure, reproduce the same object under the same manifest in the
+admin shell with <code>verbosity watch</code>. Changes to includes, syntax flags, or adapters
+can affect many objects, so rerun focused tests and the relevant live route.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_upstream_source_policy"><a class="anchor" href="#_upstream_source_policy"></a><a class="link" href="#_upstream_source_policy">Upstream Source Policy</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Preserve upstream material and provenance. Prefer dedicated shims and manifest
+mappings to broad source rewrites. Keep necessary source fixes small and tested;
+a content bug is not automatically a compiler defect. Never commit private saves
+or secrets. Use <code>database.password_env</code> for database credentials.</p>
 </div>
 </div>
 </div>
@@ -1551,7 +2464,9 @@ by compiler or telnet smoke tests.</p>
 <h2 id="_developer_reference"><a class="anchor" href="#_developer_reference"></a><a class="link" href="#_developer_reference">Developer Reference</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Use the core package map to choose where a change belongs, then follow the
+compiler and hosted-instance flows below. The <a href="../api/index.html">Java API</a>
+provides class and method contracts for all six core package families.</p>
 </div>
 <div class="sect2">
 <h3 id="_compiler_pipeline"><a class="anchor" href="#_compiler_pipeline"></a><a class="link" href="#_compiler_pipeline">Compiler Pipeline</a></h3>
@@ -1627,7 +2542,7 @@ forward. <code>efun</code> defines the LPC-facing function contract, and
 compiled LPC bytecode: active execution context, truthiness, coercions,
 indexing, strings, arrays, and runtime type descriptors. It is not the JVMud
 engine ontology. Engine-owned concepts live under <code>io.github.protasm.jvmud.engine</code>
-in <code>io.github.protasm.jvmud.engine</code>: <code>engine.world</code> for <code>WorldRuntime</code>,
+with <code>engine.world</code> for <code>WorldRuntime</code>,
 <code>Place</code>, and <code>Entity</code>; <code>engine.identity</code> for <code>Player</code>, <code>Session</code>, and <code>Persona</code>
 records; <code>engine.time</code> for scheduling; and <code>engine.mudlib</code> for mudlib lifecycle
 boundaries.</p>
@@ -1636,13 +2551,59 @@ boundaries.</p>
 <div class="sect2">
 <h3 id="_instance_and_transport_internals"><a class="anchor" href="#_instance_and_transport_internals"></a><a class="link" href="#_instance_and_transport_internals">Instance And Transport Internals</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p><code>MudlibBoot</code> reads profile metadata, assembles runtime configuration, and loads
+startup content. <code>MudInstance</code> coordinates the running world, LPC objects,
+Personas, lifecycle dispatch, and scheduled work. <code>MudlibRouter</code> coordinates
+explicitly mounted worlds. <code>TelnetServer</code> owns the listener and connection path.</p>
+</div>
+<div class="paragraph">
+<p>Follow an input from transport to instance to LPC command handling when debugging
+player behavior. Follow an efun from its catalog through runtime context and
+instance services when debugging host effects. <code>compiler.runtime</code> is generated-code
+support; <code>engine.world</code> owns the engine&#8217;s world model.</p>
+</div>
+<div class="paragraph">
+<p>The admin shell boots a separate runtime and is not a remote mutation channel.
+Storage adapters live under <code>persistence</code>. Concurrency hardening and alignment
+between LPC location bookkeeping and engine containment remain tracked in
+<code>docs/DEFERRED_WORK.md</code>; avoid implying that package boundaries alone prove
+production isolation.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_testing_and_verification"><a class="anchor" href="#_testing_and_verification"></a><a class="link" href="#_testing_and_verification">Testing And Verification</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Run the repository baseline from its root:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">mvn test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For a targeted change, select the relevant JUnit class, for example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">mvn -Dtest=AdminCliTest test</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Some integration checks require an external database and configured password
+environment variable. A missing prerequisite is an incomplete integration check,
+not a passing compatibility result. Read the failing test and profile before
+classifying it as a Java regression.</p>
+</div>
+<div class="paragraph">
+<p>Use <code>target/surefire-reports/</code> for test outcomes. Informational compatibility
+reports and full preload scans answer different questions from assertions and
+live player tests. Shared scan tooling is <code>scripts/scan-mudlib-preload-compile.sh</code>;
+profile wrappers remain under the owning mudlib&#8217;s <code>jvmud/</code> directory.</p>
+</div>
+<div class="paragraph">
+<p>For runtime changes, restart the affected profile and replay the relevant player
+route. For documentation-only edits, regenerate outputs and check local links,
+anchors, commands against source, and PDF layout. See <a href="#_documentation_generation">Documentation Generation</a>.</p>
 </div>
 </div>
 </div>
@@ -1651,30 +2612,157 @@ boundaries.</p>
 <h2 id="_troubleshooting"><a class="anchor" href="#_troubleshooting"></a><a class="link" href="#_troubleshooting">Troubleshooting</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Begin with the smallest failing step: Java build, manifest validation, object
+load, listener startup, login, or command handling. Keep the first diagnostic and
+the exact manifest path; later errors may be consequences of the first failure.</p>
 </div>
 <div class="sect2">
 <h3 id="_build_failures"><a class="anchor" href="#_build_failures"></a><a class="link" href="#_build_failures">Build Failures</a></h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Release 21 not supported:</strong> compare <code>java -version</code> and <code>mvn -version</code>; Maven
+may be using a different JDK. Select the intended JDK before rebuilding.</p>
+</li>
+<li>
+<p><strong>Dependencies cannot resolve:</strong> check access to the configured Maven repository.
+An offline cache must already contain the required artifacts.</p>
+</li>
+<li>
+<p><strong>Tests fail on database setup:</strong> inspect the selected profile&#8217;s external service
+requirements. Do not put a password in the manifest to silence the failure.</p>
+</li>
+<li>
+<p><strong>Permission denied launching a script:</strong> use a POSIX shell environment and check
+the script&#8217;s executable bit in the checkout.</p>
+</li>
+</ul>
+</div>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Retain Maven&#8217;s first error and the relevant Surefire report. Repeatedly rebuilding
+without changing the failing prerequisite is unlikely to help.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_object_load_failures"><a class="anchor" href="#_object_load_failures"></a><a class="link" href="#_object_load_failures">Object Load Failures</a></h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Confirm the source path is relative to the selected mudlib root, not the Java
+repository root.</p>
+</li>
+<li>
+<p>Inspect <code>include_paths</code>, inherited source paths, and preload declarations.</p>
+</li>
+<li>
+<p>In the admin shell, set <code>verbosity watch</code> and run <code>load &lt;path&gt;</code>.</p>
+</li>
+<li>
+<p>Use <code>preprocess</code>, <code>scan</code>, <code>parse</code>, or <code>ir</code> to stop at the earliest failing stage.</p>
+</li>
+<li>
+<p>Check explicit types, optional <code>language_features</code>, efun aliases, and capability
+grants before changing source semantics.</p>
+</li>
+</ol>
+</div>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Unknown manifest keys fail fast. A missing <code>initial_place</code> or invalid profile
+mapping is a hosting configuration problem. Runtime invocation failures after a
+successful load need an execution test, not just another compile scan.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_login_and_command_failures"><a class="anchor" href="#_login_and_command_failures"></a><a class="link" href="#_login_and_command_failures">Login And Command Failures</a></h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Symptom</th>
+<th class="tableblock halign-left valign-top">Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Connection refused</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Wait for the listening message; verify the process is still
+running on loopback port 4000.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address already in use</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stop your earlier listener. The launcher has no port argument.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Prompts repeat or login fails</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Confirm the selected profile and account policy;
+inspect the server log and that profile&#8217;s writable storage.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Admin command is unrecognized in Telnet</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use the separate admin shell. It does
+not attach to this listener.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Movement or <code>look</code> is unrecognized</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Complete login and read the active mudlib&#8217;s
+help; verify command registration and lifecycle mapping.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GMCP output is absent</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Check client negotiation, <code>session_control</code>, and the
+mudlib&#8217;s package emission. GMCP is not required for ordinary text play.</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>For mounted-world issues, first prove each profile can boot directly, then test
+the mount configuration and transfer route. Capture the first failing transition.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_documentation_generation"><a class="anchor" href="#_documentation_generation"></a><a class="link" href="#_documentation_generation">Documentation Generation</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Edit <code>manual/<strong>*/</strong>.adoc</code>, not <code>docs/manual/index.html</code> or the PDF. From the
+repository root, generate both manual formats:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">mvn -Pmanual-docs -DskipTests process-resources</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The outputs are <code>docs/manual/index.html</code> and
+<code>docs/manual/jvmud-user-manual.pdf</code>. Shared HTML styling and navigation come from
+<code>manual/docinfo.html</code> and <code>manual/docinfo-header.html</code>; PDF typography and page
+flow come from <code>manual/pdf-theme.yml</code>.</p>
+</div>
+<div class="paragraph">
+<p>Generate the Java API with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">mvn -Psite-docs -DskipTests javadoc:javadoc
+python3 scripts/check-docs.py</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Javadocs live under <code>docs/api/apidocs/</code>; <code>docs/api/index.html</code> is the authored
+package guide. The checker verifies local HTML links, fragment targets, and
+manual placeholders. It does not check external URLs or prove visual quality.</p>
+</div>
+<div class="paragraph">
+<p>Preview the static site with <code>python3 -m http.server 8000 --directory docs</code> and
+open <code><a href="http://localhost:8000/" class="bare">http://localhost:8000/</a></code>. Stop that preview with Ctrl+C.</p>
+</div>
+<div class="paragraph">
+<p>If generation fails, check Maven dependency resolution, missing AsciiDoc includes,
+and the first generator error. Regenerate HTML and PDF together, then inspect the
+PDF contents, page breaks, and long code/table cells before publishing. See
+<code>docs/README.md</code> for source ownership and <code>docs/DOCUMENTATION_GAPS.md</code> for remaining
+coverage work.</p>
 </div>
 </div>
 </div>
@@ -1683,30 +2771,443 @@ boundaries.</p>
 <h2 id="_appendixes"><a class="anchor" href="#_appendixes"></a><a class="link" href="#_appendixes">Appendixes</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Use these references while following the procedures. The manifest key inventory
+and command syntax describe the current implementation; compatibility limits are
+explicit rather than implied by a successful build.</p>
 </div>
 <div class="sect2">
 <h3 id="_commands"><a class="anchor" href="#_commands"></a><a class="link" href="#_commands">Commands</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>These commands run inside <code>scripts/jvmud-admin &lt;mudlib-config-file&gt;</code>.
+Paths name source files; handles identify loaded objects. Use <code>objects</code> to find
+handles. Arguments to <code>call</code> are passed as strings; quote strings containing
+spaces. Numeric text is not automatically converted to LPC integers. <code>help</code> is the live syntax reference.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 37.5%;">
+<col style="width: 12.5%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Command</th>
+<th class="tableblock halign-left valign-top">Alias</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>help</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>h</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Show this command reference.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>boot &lt;mudlib-config-file&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>b</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Start a fresh mudlib sandbox without a player session.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>call &lt;handle&gt; &lt;method&gt; [args&#8230;&#8203;]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Invoke a method on a loaded object handle.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cat &lt;path&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Print a file from the virtual mudlib filesystem.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cd [path]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Change the current virtual mudlib directory.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clone &lt;path&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Compile if needed and create a new LPC object instance.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>compile &lt;path&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>c</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Compile an LPC source file to bytecode without loading it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>destruct &lt;handle&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>x</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Remove an object from the runtime.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>inspect &lt;handle&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Show object state, inventory, environment, and methods.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ir &lt;path&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ir</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Compile through lowering and print the typed IR.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>load &lt;path&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Compile, load, and register an LPC object.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>look &lt;handle&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>k</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Call long() or short() and display object text.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ls [path]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">List a virtual mudlib directory or file.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>move &lt;handle&gt; &lt;dest&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>m</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Move one object handle into another object&#8217;s inventory.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>objects</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">List known CLI object handles.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>parse &lt;path&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>p</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Preprocess, scan, parse, and print the LPC AST.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>preprocess &lt;path&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pp</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expand includes, macros, and preprocessor directives.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pwd</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Print the current virtual mudlib directory.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>reload &lt;path&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>r</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Recompile and replace a loaded LPC object.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scan &lt;path&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>s</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Preprocess and print scanner tokens for an LPC source file.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>verbosity [quiet&#124;normal&#124;watch]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>v</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Show or change compiler/shell output detail.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>where &lt;handle&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>w</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Show the environment containing an object.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>quit</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>q</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exit the local shell.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The terminal launcher for play is
+<code>scripts/jvmud-start [--trace-startup-loads] &lt;mudlib-config-file&gt;</code>.
+Inside a player client, profiles using the default transport prefix reserve <code>//help</code> and <code>//quit</code> for
+transport controls. The mudlib owns all gameplay verbs.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_configuration_reference"><a class="anchor" href="#_configuration_reference"></a><a class="link" href="#_configuration_reference">Configuration Reference</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Manifests use <code>key = value</code>, one declaration per line. Lists are comma-separated.
+Blank lines and <code><mark></code> comments are ignored. Simple surrounding quotes are removed;
+this is not a general-purpose quoted-string format, and <code></mark></code> still starts a
+comment. Unknown keys are rejected by <code>MudlibBoundaryConfigReader</code>.</p>
+</div>
+<div class="paragraph">
+<p>Use a checked-in profile as the complete example. The following groups cover the
+reader&#8217;s exact keys and supported key prefixes. Optional values can still become
+required by the selected boot, session, or database policy.</p>
+</div>
+<div class="sect3">
+<h4 id="_identity_and_paths"><a class="anchor" href="#_identity_and_paths"></a><a class="link" href="#_identity_and_paths">Identity and paths</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Key</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>game_id</code>, <code>game_name</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stable profile identity and display name.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mudlib_root</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LPC source root; relative paths resolve from the manifest directory.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>initial_place</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Startup Place object path, required for hosted boot.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>persona_object</code>, <code>player_object</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interactive object path; <code>persona_object</code>
+takes precedence over the legacy spelling when both are present.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mudlib_object</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional boundary-declaration LPC object.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mfun_object</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mudlib-global function object.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>include_paths</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Comma-separated source include search paths.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>preload_file</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Profile preload-list file.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>preload_objects</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Additional comma-separated startup object paths.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mount.&lt;game-id&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mounted profile config, relative to this manifest&#8217;s directory.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Use mudlib-rooted object paths such as <code>room/church</code>; Java package paths are not
+LPC paths. The launch scripts resolve a relative manifest argument from the
+repository root. <code>mudlib_root</code> resolves from the manifest, a different base.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_sessions_and_presentation"><a class="anchor" href="#_sessions_and_presentation"></a><a class="link" href="#_sessions_and_presentation">Sessions and presentation</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Key</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>session_policy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional host-managed login policy. <code>filesystem_accounts</code>
+selects reusable local account persistence; omit for profile-owned login.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>player_prompt</code>, <code>command_prompt</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Prompt text; <code>player_prompt</code> takes precedence.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>presentation.connected_banner</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Text shown on connection.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>transport.control_prefix</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Escape prefix for transport controls; default <code>//</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diagnostics.location_command</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional profile-selected location diagnostic command.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>max_line_length</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Presentation line width, validated against engine bounds.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>show_ruler</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Presentation ruler toggle. Booleans accept true/false, yes/no,
+on/off, or 1/0.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Host and port are not manifest keys. The shared Telnet launcher uses loopback
+port 4000; passing a port as a second positional argument fails.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_language_and_host_access"><a class="anchor" href="#_language_and_host_access"></a><a class="link" href="#_language_and_host_access">Language and host access</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Key</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>language_features</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional syntax gates: <code>protected_evaluation</code>,
+<code>typed_function_literals</code>, <code>inline_callables</code>, <code>multi_value_mappings</code>, <code>varargs</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>engine_capabilities</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Capability grants: <code>mudlib_files</code>, <code>database</code>,
+<code>session_control</code>, <code>host_control</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>engine_function.&lt;native-name&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One or more mudlib aliases for a native engine function.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>compatibility_object</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Explicit compatibility-global function object.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>compatibility_overrides</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Names allowed to override mudlib-global functions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>compatibility.predefine.&lt;macro&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Object-like compatibility macro replacement.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>compatibility.function_predefine.&lt;macro&gt;.&lt;argument&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single-argument function-like
+compatibility macro replacement.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Feature flags enable syntax; capabilities enable restricted host operations.
+Start with the active profile&#8217;s actual requirements. A compatibility alias does
+not bypass a capability grant.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_lifecycle_and_time"><a class="anchor" href="#_lifecycle_and_time"></a><a class="link" href="#_lifecycle_and_time">Lifecycle and time</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Key</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>handled_lifecycle_events</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Comma-separated native event declarations.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lifecycle.&lt;event&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Map a native lifecycle event to a mudlib method. Event names
+are normalized for case, spaces, and hyphens.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>temporal_tick_method</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mudlib method for scheduler-backed recurring behavior.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>temporal_tick_interval</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interval in seconds by default; also accepts <code>s</code>,
+<code>seconds</code>, <code>ms</code>, or <code>milliseconds</code>. Negative values fail. Zero does not install
+an interval override.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Refer to <a href="../lifecycle-events.html">lifecycle events</a> for event roles and
+verify method signatures against the selected profile.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_database"><a class="anchor" href="#_database"></a><a class="link" href="#_database">Database</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Key</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>database.url</code>, <code>database.jdbc_url</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JDBC URL; <code>database.url</code> takes precedence.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>database.user</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Database user for the selected profile.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>database.password_env</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name of a required nonblank environment variable
+containing the password. Preferred for configured profiles.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>database.password</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Literal password alternative supported by the reader;
+do not commit secrets. Mutually exclusive with <code>database.password_env</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>A missing named password environment variable fails manifest loading. Setting
+the variable does not provision a database, create a schema, or grant database
+access. Those are profile-specific prerequisites.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_compatibility_notes"><a class="anchor" href="#_compatibility_notes"></a><a class="link" href="#_compatibility_notes">Compatibility Notes</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>LPC dialects differ. Accepted syntax, successful compilation, object loading,
+and correct interactive behavior are separate levels of support. Optional
+language features are selected per profile; legacy efun names and lifecycle
+methods are boundary mappings.</p>
+</div>
+<div class="paragraph">
+<p><code>docs/COMPATIBILITY_FEATURE_PROVENANCE.md</code> records why compatibility features
+exist. <code>docs/DEFERRED_WORK.md</code> records implementation debt;
+<code>docs/FUTURE_DESIGN_IDEAS.md</code> collects proposals. None is a substitute for the
+active source and tests, or a guarantee of full legacy-driver parity.</p>
+</div>
+<div class="paragraph">
+<p>Database provisioning and recovery remain profile-specific. Start with
+the credential-free examples in this manual before taking on that environment.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_glossary"><a class="anchor" href="#_glossary"></a><a class="link" href="#_glossary">Glossary</a></h3>
 <div class="paragraph">
-<p>Content to be written.</p>
+<p>Use <a href="../glossary.html">the JVMud Glossary</a> for the full conceptual vocabulary.
+Its controlling repository source is <code>docs/GLOSSARY.md</code>; the controlling design
+principles are in <code>docs/PRINCIPLES.md</code>. The short terms section at the beginning
+of this manual defines the words needed for its procedures.</p>
 </div>
 </div>
 </div>
@@ -1715,7 +3216,6 @@ boundaries.</p>
 <div id="footer">
 <div id="footer-text">
 Version 0.1.0-SNAPSHOT<br>
-Last updated 2026-06-20 08:49:29 -0400
 </div>
 </div>
 </body>

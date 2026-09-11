@@ -1,0 +1,44 @@
+/* Applied after Asciidoctor's base CSS; generated HTML stays generator-owned. */
+body { background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, sans-serif; }
+body.toc2 { padding-top: 0; }
+#header, #content, #footnotes, #footer { max-width: 64rem; padding-inline: 2rem; }
+#header { padding-top: 2.5rem; }
+#header > h1:first-child { color: var(--text); font-family: inherit; font-size: clamp(2.4rem, 5vw, 4rem); line-height: 1.12; }
+h1,h2,h3,h4,h5,h6,#toctitle { color: var(--text); font-family: inherit; }
+h2 { line-height: 1.2; }
+a, #toc a { color: var(--accent); }
+p, li, dd, td, th { font-family: inherit; }
+#header .details, #footer-text { color: var(--muted); }
+#content p, #content li { color: var(--text); }
+#toc.toc2 { background: var(--panel); border-color: var(--line); padding: 1.5rem 1rem; }
+#toc ul { font-size: .95rem; }
+#toc #toctitle { font-size: 1.25rem; }
+.sect1 + .sect1, #header > h1:first-child { border-color: var(--line); }
+#content code { color: var(--accent); background: var(--panel); overflow-wrap: anywhere; }
+#content pre, #content pre code { background: #030806; color: #eef5e9; white-space: pre-wrap; word-wrap: break-word; }
+#content pre { font-size: .9rem; box-shadow: none; }
+#content table { background: var(--panel); color: var(--text); border-color: var(--line); width: 100%; table-layout: fixed; }
+#content table thead, #content table tr.even, #content table tr.alt, #content table tr:nth-of-type(even) { background: var(--panel-strong); }
+#content table th, #content table td { color: var(--text); border-color: var(--line); overflow-wrap: anywhere; }
+#content .admonitionblock td.icon, #content .admonitionblock td.content { color: var(--text); }
+#content .quoteblock blockquote, #content .quoteblock p { color: var(--muted); }
+#footer { background: var(--panel); }
+.manual-nav { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: 1rem 2rem; border-bottom: 1px solid var(--line); background: var(--bg); font-size: .95rem; }
+.manual-nav a { padding-block: .35rem; text-underline-offset: .2em; }
+.manual-nav .brand { font-weight: 800; color: var(--text); }
+.manual-nav [aria-current] { color: var(--text); text-decoration-thickness: 2px; }
+@media (max-width: 767px) {
+  #header,#content,#footnotes,#footer { padding-inline: 1.25rem; }
+  .manual-nav { padding-inline: 1.25rem; }
+  #toc.toc2 { margin-inline: 0; }
+  #content table { font-size: .9rem; }
+}
+@media print {
+  .manual-nav, #toc, .skip-link { display: none; }
+  body { padding: 0 !important; }
+  #content table, #content table tr, #content table td, #content table th, #content pre, #content pre code, #content code { background: white; color: black; }
+  #content p, #content li, h1,h2,h3,h4 { color: black; }
+}
+
+/* The default light-theme syntax palette is not legible on dark code panels. */
+#content pre code span { color: inherit; background: transparent; }

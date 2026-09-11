@@ -1,3 +1,15 @@
 === Basic Commands
 
-Content to be written.
+Read the selected world's welcome text and help after entry. A profile may
+provide verbs such as `help`, `look`, or movement directions, but JVMud does not
+require a universal gameplay vocabulary. Use the exact verbs and exits documented
+by your authored content.
+
+For a first route, inspect your current Place, choose one listed exit, move, and
+verify that the description changes. Record the expected text in your test.
+These are player-client inputs; the local admin shell has a separate grammar.
+
+With the default transport prefix, `//help` shows connection controls and
+`//quit` disconnects the client. A mudlib's own exit command can run game-specific
+saving and cleanup. For persistence tests, exercise that command as well as
+transport disconnect/reconnect.

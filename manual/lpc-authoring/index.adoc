@@ -1,3 +1,8 @@
-== LPC And Mudlib Authoring
+== LPC Authoring
 
-Content to be written.
+[[_lpc_and_mudlib_authoring]]
+The <<small-mercies,Small Mercies source map>> links runnable examples of rooms,
+commands, NPCs, and scheduling. Start with a typed object and test it in the admin sandbox. Then connect its
+behavior to the selected mudlib's commands and lifecycle. The language overview
+below preserves practical LPC examples; compatibility names such as `write` and
+`sizeof` depend on the active profile's mappings.

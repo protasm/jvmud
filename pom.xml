@@ -99,11 +99,11 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
             <configuration>
-              <doctitle>JVMud Compiler and Engine API</doctitle>
+              <doctitle>JVMud Java API</doctitle>
               <windowtitle>JVMud API</windowtitle>
               <outputDirectory>${maven.multiModuleProjectDirectory}/docs/api</outputDirectory>
               <sourcepath>${maven.multiModuleProjectDirectory}/src/main/java</sourcepath>
-              <subpackages>io.github.protasm.jvmud.engine:io.github.protasm.jvmud.compiler</subpackages>
+              <subpackages>io.github.protasm.jvmud.engine:io.github.protasm.jvmud.compiler:io.github.protasm.jvmud.instance:io.github.protasm.jvmud.transport:io.github.protasm.jvmud.persistence:io.github.protasm.jvmud.cli</subpackages>
               <source>${maven.compiler.release}</source>
               <doclint>all,-missing</doclint>
             </configuration>
@@ -140,7 +140,7 @@
                     <sectlinks>true</sectlinks>
                     <source-highlighter>coderay</source-highlighter>
                     <toc>left</toc>
-                    <toclevels>3</toclevels>
+                    <toclevels>2</toclevels>
                   </attributes>
                 </configuration>
               </execution>
@@ -160,11 +160,11 @@
                   <attributes>
                     <icons>font</icons>
                     <pagenums>true</pagenums>
-                    <pdf-theme>default</pdf-theme>
+                    <pdf-theme>${maven.multiModuleProjectDirectory}/manual/pdf-theme.yml</pdf-theme>
                     <sectanchors>true</sectanchors>
                     <source-highlighter>coderay</source-highlighter>
                     <toc>true</toc>
-                    <toclevels>3</toclevels>
+                    <toclevels>1</toclevels>
                   </attributes>
                 </configuration>
               </execution>

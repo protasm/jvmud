@@ -1,3 +1,40 @@
 === Mudlib Boundary
 
-Content to be written.
+The manifest declares how a profile participates in JVMud. `initial_place`
+selects the starting Place. `persona_object` (or legacy `player_object`) selects
+the interactive LPC object. Preloads, include paths, lifecycle methods, syntax
+features, and capabilities are explicit.
+
+To adapt a profile:
+
+. Begin with its current `.config` file and identify `mudlib_root`.
+. Verify the initial Place, Persona, and preload paths exist.
+. Map JVMud lifecycle events to the mudlib's method names.
+. Enable only the syntax and engine capabilities the profile needs.
+. Launch it, inspect the preload summary, and test login and a small command route.
+
+Unknown keys fail validation. `language_features` controls optional syntax;
+`engine_capabilities` authorizes capability-gated efuns. Neither is a substitute
+for the other. See <<_configuration_reference>> for the supported keys.
+
+`docs/ENGINE_MUDLIB_CONTRACT.md` is the detailed design contract. Keep native world
+semantics in the engine and profile vocabulary in manifests or dedicated shims.
+
+==== Example declaration
+
+The following is a manifest shape, not a complete runnable world. Each source
+path must exist in your authored tree; the chosen method names must match it.
+
+[source,text]
+----
+game_id = <your-world-id>
+mudlib_root = ../source
+initial_place = place/start
+persona_object = persona/player
+lifecycle.player_session_connected = connect
+transport.control_prefix = //
+----
+
+Add preloads, mapped world-entry behavior, account policy, syntax gates, and host
+capabilities only as required by that content. Validate startup before testing
+player interaction.

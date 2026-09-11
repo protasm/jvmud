@@ -1,0 +1,14 @@
+=== Validate a profile
+
+Before hosting content, check these responsibilities against your source tree:
+
+* the manifest's initial Place and Persona paths resolve to real LPC objects;
+* includes, inherited objects, and preloads resolve under the intended root;
+* lifecycle mappings name methods with the expected signatures;
+* optional language features and engine capabilities match actual requirements;
+* writable stores exist where the persistence policy expects them;
+* mounted worlds boot independently before you exercise transfer.
+
+For a load failure, reproduce the same object under the same manifest in the
+admin shell with `verbosity watch`. Changes to includes, syntax flags, or adapters
+can affect many objects, so rerun focused tests and the relevant live route.

@@ -1,3 +1,19 @@
 === Runtime Model
 
-Content to be written.
+`WorldRuntime` enforces single containment and rejects containment cycles.
+Places connect through Links; Entities can be contained by Places or Entities.
+Players participate through Personas attached to Sessions. Time-dependent work
+uses the engine scheduler.
+
+Hosted LPC execution also keeps object environment and inventory state in its
+runtime context. Do not assume every loaded service object is a world-present
+Entity, or that all compatibility bookkeeping has been unified with
+`WorldRuntime`. The repository's `docs/DEFERRED_WORK.md` records this boundary
+and the remaining world-event/concurrency work.
+
+The `filesystem_accounts` policy stores account records under `accounts/` in its
+selected mudlib root. LPC object save/restore and JDBC data are separate storage
+surfaces. Before an upgrade or reset, identify the active profile's state paths
+and database, stop writers, and preserve those stores. The project does not yet
+provide a universal backup/restore command or a verified production recovery
+procedure; test restoration on a disposable copy of the profile's data.

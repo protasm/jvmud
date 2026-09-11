@@ -1,3 +1,39 @@
 === Commands
 
-Content to be written.
+These commands run inside `scripts/jvmud-admin <mudlib-config-file>`.
+Paths name source files; handles identify loaded objects. Use `objects` to find
+handles. Arguments to `call` are passed as strings; quote strings containing
+spaces. Numeric text is not automatically converted to LPC integers. `help` is the live syntax reference.
+
+[cols="3,1,4",options="header"]
+|===
+|Command |Alias |Purpose
+|`help` |`h` |Show this command reference.
+|`boot <mudlib-config-file>` |`b` |Start a fresh mudlib sandbox without a player session.
+|`call <handle> <method> [args...]` |— |Invoke a method on a loaded object handle.
+|`cat <path>` |— |Print a file from the virtual mudlib filesystem.
+|`cd [path]` |— |Change the current virtual mudlib directory.
+|`clone <path>` |— |Compile if needed and create a new LPC object instance.
+|`compile <path>` |`c` |Compile an LPC source file to bytecode without loading it.
+|`destruct <handle>` |`x` |Remove an object from the runtime.
+|`inspect <handle>` |`i` |Show object state, inventory, environment, and methods.
+|`ir <path>` |`ir` |Compile through lowering and print the typed IR.
+|`load <path>` |`l` |Compile, load, and register an LPC object.
+|`look <handle>` |`k` |Call long() or short() and display object text.
+|`ls [path]` |— |List a virtual mudlib directory or file.
+|`move <handle> <dest>` |`m` |Move one object handle into another object's inventory.
+|`objects` |`o` |List known CLI object handles.
+|`parse <path>` |`p` |Preprocess, scan, parse, and print the LPC AST.
+|`preprocess <path>` |`pp` |Expand includes, macros, and preprocessor directives.
+|`pwd` |— |Print the current virtual mudlib directory.
+|`reload <path>` |`r` |Recompile and replace a loaded LPC object.
+|`scan <path>` |`s` |Preprocess and print scanner tokens for an LPC source file.
+|`verbosity [quiet&#124;normal&#124;watch]` |`v` |Show or change compiler/shell output detail.
+|`where <handle>` |`w` |Show the environment containing an object.
+|`quit` |`q` |Exit the local shell.
+|===
+
+The terminal launcher for play is
+`scripts/jvmud-start [--trace-startup-loads] <mudlib-config-file>`.
+Inside a player client, profiles using the default transport prefix reserve `//help` and `//quit` for
+transport controls. The mudlib owns all gameplay verbs.

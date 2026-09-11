@@ -1,3 +1,21 @@
-== How To Read This Manual
+== How to use this manual
 
-Content to be written.
+include::status.adoc[]
+
+[[_how_to_read_this_manual]]
+* *Evaluating JVMud:* read <<_getting_oriented>> for philosophy, architecture,
+  and the core package map.
+* *Running or playing a local world:* follow <<_installing_and_running>> and the <<small-mercies,Small Mercies walkthrough>>, then
+  <<_playing_and_testing>>. Commands in terminal blocks run from the repository root.
+* *Operating or debugging:* use <<_operating_jvmud>> and <<_troubleshooting>>.
+* *Writing LPC:* follow <<_lpc_authoring>> and <<_mudlibs>>; keep the configuration
+  and command references nearby.
+* *Changing Java:* start with the package map, then <<_developer_reference>>.
+
+Examples identify whether input belongs in a terminal, the admin shell, or a
+Telnet client. Replace angle-bracket placeholders with actual values; do not type
+the angle brackets. A mudlib is the LPC source and configuration that define a game.
+
+The manual owns procedures. The website's Principles and Glossary pages explain
+concepts; its efun and lifecycle pages own focused boundary references. Java API
+pages describe Java contracts, not player commands.

@@ -72,13 +72,15 @@ string short() {
     return "a brass lantern";
 }
 
+int count;
+
 void set_count(int value) {
     count = value;
 }
 ----
 
-Legacy mudlib source may use patterns that JVMud accepts for compatibility, but
-new JVMud-facing source should prefer explicit signatures.
+Untyped methods and untyped parameters are rejected. Compatibility syntax does
+not remove the requirement for explicit signatures.
 
 ==== Declarations And Modifiers
 
@@ -94,7 +96,9 @@ currently recognizes:
 * `nosave`
 * `deprecated`
 
-The `varargs` modifier applies to methods only.
+The `varargs` modifier applies to methods only and requires the `varargs`
+language feature. Protected evaluation, typed function literals, inline
+callables, and multi-value mappings also have explicit profile feature gates.
 
 [source,lpc]
 ----

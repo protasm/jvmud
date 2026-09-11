@@ -3,24 +3,28 @@
 <head>
   <meta charset="utf-8">
   <title>LPC - JVMud</title>
+  <meta name="description" content="LPC - JVMud: concepts and references for the JVMud LPC/LPMud engine.">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <nav class="side-nav" aria-label="Project sections">
-    <a class="brand" href="index.html">JVMud</a>
-    <a href="principles.html">Principles</a>
-    <a href="architecture.html">Architecture</a>
-    <a href="glossary.html">Glossary</a>
-    <a href="efuns.html">Efuns</a>
-    <a href="lifecycle-events.html">Lifecycle Events</a>
-    <a href="lpc.html" aria-current="page">LPC</a>
-    <a href="manual/index.html">Manual</a>
-    <a href="api/index.html" target="_blank" rel="noopener">API Docs</a>
-    <a href="https://github.com/protasm/jvmud">GitHub</a>
-  </nav>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <nav class="side-nav" aria-label="Documentation">
+<a class="brand" href="index.html">JVMud</a>
+<a href="documentation.html">Documentation</a>
+<a href="principles.html">Design philosophy</a>
+<a href="architecture.html">Architecture</a>
+<a href="packages.html">Core packages</a>
+<a href="manual/index.html">User Manual</a>
+<a href="lpc.html" aria-current="page">LPC language</a>
+<a href="efuns.html">Efun reference</a>
+<a href="lifecycle-events.html">Lifecycle events</a>
+<a href="glossary.html">Glossary</a>
+<a href="api/index.html">Java API</a>
+<a href="https://github.com/protasm/jvmud">GitHub ↗</a>
+</nav>
 
-  <main class="content-page">
+  <main id="main" class="content-page">
     <header>
       <p class="eyebrow">Language target</p>
       <h1>LPC</h1>
@@ -41,15 +45,15 @@
     <section>
       <h2>Mudlib Compatibility</h2>
       <p>
-        The repository includes a native JVMud LPMuseum mudlib, vanilla LPMUD
-        2.4.5 exhibit content, and additional legacy mudlib material for future
-        compatibility exploration. Upstream files are treated as source
+        JVMud hosts explicitly configured LPC content. Syntax features, lifecycle mappings, and host capabilities belong to the selected profile. Upstream files are treated as source
         material; JVMud compatibility should come from focused compiler/runtime
         support and dedicated shim objects.
       </p>
     </section>
 
     <section>
+<h2>Write and test an object</h2><p>Explore the <a href="manual/index.html#small-mercies">Small Mercies source map</a> or follow the <a href="manual/index.html#_explicit_types">typed-object exercise</a>, then consult <a href="manual/index.html#_supported_lpc">supported LPC</a> and the <a href="manual/index.html#_configuration_reference">profile feature flags</a>. Untyped methods and parameters are rejected; optional compatibility syntax is selected explicitly.</p></section>
+<section>
       <h2>Qualified Efuns</h2>
       <p>
         LPC source may use <code>efun::name(...)</code> to call through the
@@ -60,6 +64,7 @@
         <code>sizeof</code>.
       </p>
     </section>
-  </main>
+  <footer class="site-footer">JVMud · Experimental LPC/LPMud engine · <a href="https://github.com/protasm/jvmud">Source and issue tracker</a></footer>
+</main>
 </body>
 </html>

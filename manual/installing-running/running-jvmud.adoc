@@ -1,3 +1,40 @@
 === Running JVMud
 
-Content to be written.
+For a ready-to-run example, use <<small-mercies>>. To host your own content,
+select a JVMud-compatible LPC source tree and its manifest. JVMud is the
+host; it does not choose game content implicitly. The manifest must describe
+real source files, including an initial Place and the profile's player behavior.
+Small Mercies is the bundled teaching example; the same host contract applies
+to other compatible content.
+
+In a terminal at the repository root:
+
+[source,shell]
+----
+scripts/jvmud-start <mudlib-config-file>
+----
+
+Replace `<mudlib-config-file>` with the absolute path to your manifest, or a path
+relative to the repository root. Do not type the angle brackets. The script
+compiles Java, resolves the dependency classpath, and runs the Telnet server in
+the foreground. Wait for the preload summary followed by
+`JVMud mudlib listening on 127.0.0.1:4000` before connecting.
+
+The launcher listens on loopback port 4000. It does not accept a port argument
+or a host flag. Run one listener at a time. Mounted profiles, if declared, must
+also be present and valid. See <<_configuration_reference>> for manifest keys.
+
+To capture detailed startup failures:
+
+[source,shell]
+----
+scripts/jvmud-start --trace-startup-loads <mudlib-config-file> > target/startup.log 2>&1
+----
+
+This still runs in the foreground. Inspect the log from another terminal and
+stop with Ctrl+C. Trace output can be large; begin with the preload summary and
+first failure. To see launch syntax, use `scripts/jvmud-start --help`.
+
+Ctrl+C runs the server's shutdown path. Persistence is profile-specific; shutting
+down does not promise a snapshot of every loaded object's state. The local admin
+shell is a separate process, not an attachment to this listener.

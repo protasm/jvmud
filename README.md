@@ -1,228 +1,99 @@
 # JVMud
 
-JVMud is an experimental LPC/LPMud text-world engine for the JVM. The project
-is organized around compiler, engine, instance, transport, persistence, and
-mudlib responsibilities. JVMud-owned Java code lives under the conventional
-Maven `src/` tree, while third-party and authored mudlibs live under
-`mudlibs/`.
+JVMud is an experimental LPC/LPMud text-world engine for the JVM. It compiles LPC
+to JVM classes and hosts authored worlds through a native model of Places,
+Links, Entities, Players, Sessions, Personas, persistence, and time.
 
-`docs/PRINCIPLES.md` is the controlling design document for the engine, and
-`docs/GLOSSARY.md` defines JVMud vocabulary. The engine is being built around
-JVMud's core concepts: Game, Text, Multiplayer, Interactive, World (Linked
-Places, Entities, Movement), Persistence, Temporality, and Presence. JVMud has
-a sole LPC/LPMud target: compatibility choices should deepen that target, not
-broaden the engine into a generic MUD framework. The upstream mudlib should
-remain unchanged by default; compatibility belongs in dedicated mudlib-side shim
-objects plus the engine/compiler support needed to host them.
+The project is one Maven artifact with six core Java package families. Mudlibs
+own fiction, rules, commands, presentation, and compatibility policy. Shared
+engine and launcher code remains independent of any bundled game.
 
-Here "LPMud" means LPC-authored game worlds compiled into live objects that can
-be rewritten, recompiled, and reloaded without rebooting the whole game. It does
-not mean JVMud adopts legacy driver concepts such as rooms, heartbeats, applies,
-call_outs, or master objects as engine ontology.
+## Documentation
 
-## Repository Layout
+Read from the system design down to the details:
 
-| Path | Purpose |
+1. [Design principles](docs/PRINCIPLES.md) — the controlling design document.
+2. [Architecture](https://jvmud.org/architecture.html) — responsibility and execution boundaries.
+3. [Core packages](https://jvmud.org/packages.html) — package ownership and API entry points.
+4. [User Manual](https://jvmud.org/manual/index.html) — installation, play, operation,
+   LPC authoring, troubleshooting, and command/configuration reference.
+5. [Java API](https://jvmud.org/api/index.html) — generated contracts for all core packages.
+
+The [documentation home](https://jvmud.org/documentation.html) groups reader paths
+and references. The editable manual is [manual/index.adoc](manual/index.adoc);
+[documentation maintenance](docs/README.md) explains how to build and preview the
+local site. Website changes appear online only after publication.
+
+## Run locally
+
+Use a Java 21-capable JDK, Maven, and a POSIX shell. From the checkout root:
+
+```sh
+mvn -DskipTests compile
+scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config
+```
+
+This starts **Small Mercies**, the bundled toy mudlib: five rooms, friendly NPCs,
+a goose to spar with, and no database or account setup. The launcher still
+selects content explicitly through its manifest.
+Wait for the listening message, then connect a Telnet-capable client to
+`127.0.0.1:4000`. Choose a guest name, male/female, and warrior/mage, then try `help` and `score`.
+Guest characters last for one connection. See the
+[Small Mercies walkthrough](https://jvmud.org/manual/index.html#small-mercies)
+for the map, communication, and combat. Ctrl+C in the
+server terminal stops the listener. The launcher requires a manifest and does
+not accept a port argument.
+
+For a local admin sandbox:
+
+```sh
+scripts/jvmud-admin mudlibs/smallmercies/jvmud/smallmercies.config
+```
+
+Run `help` inside the shell. This is a separate runtime, not a connection to the
+Telnet server. See the User Manual for object loading, inspection, and reload.
+
+## Repository map
+
+| Path | Responsibility |
 | --- | --- |
-| `src/main/java/io/github/protasm/jvmud/engine/` | JVMud engine source. It contains subpackages for world ontology, player/session/persona identity, time, mudlib boundaries, output formatting, and small shared support helpers. |
-| `src/main/java/io/github/protasm/jvmud/compiler/` | JVMud compiler Java source. It contains the LPC preprocessor, scanner, parser, semantic analysis, IR, bytecode compiler, efun contracts/catalogs, generated-code runtime helpers, and host-facing LPC loader classes. |
-| `src/main/java/io/github/protasm/jvmud/instance/` | JVMud hosted-instance source. It boots a mudlib, assembles compiler output with engine runtime state, attaches Personas, and manages a running world. |
-| `src/main/java/io/github/protasm/jvmud/transport/` | JVMud player-transport source. It owns Telnet sockets, sessions, protocol echo behavior, line I/O, and connection lifecycle mechanics. |
-| `src/main/java/io/github/protasm/jvmud/persistence/` | JVMud persistence adapters for durable filesystem and JDBC-backed state. |
-| `src/main/java/io/github/protasm/jvmud/cli/` | JVMud local admin CLI source. It is a single-user command-line tool for filesystem navigation, object loading, inspection, invocation, and mutation. |
-| `src/test/java/io/github/protasm/jvmud/` | JVMud Java test source, following the same package layout. |
-| `mudlibs/lpmuseum/` | Native JVMud mudlib content. This is the free-standing Telnet landing experience and museum concourse for exhibit mudlibs. |
-| `mudlibs/lp245/` | Vanilla LPMUD 2.4.5 exhibit mudlib content. Treat upstream files as read-only unless an explicit style or formatting change is requested; add compatibility through dedicated independent shim objects. |
-| `mudlibs/realmsmud/` | Imported RealmsMUD content plus its JVMud compatibility profile and profile-specific operational scripts. |
-| `docs/` | Static project site published from simple HTML. |
+| `src/main/java/io/github/protasm/jvmud/engine/` | World, identity, time, mudlib boundary, output, and support |
+| `src/main/java/io/github/protasm/jvmud/compiler/` | LPC pipeline, efuns, generated-code helpers, and execution APIs |
+| `src/main/java/io/github/protasm/jvmud/instance/` | Boot, hosted worlds, Personas, lifecycle dispatch, and routing |
+| `src/main/java/io/github/protasm/jvmud/transport/` | Telnet sessions and protocol mechanics |
+| `src/main/java/io/github/protasm/jvmud/persistence/` | Filesystem and JDBC storage adapters |
+| `src/main/java/io/github/protasm/jvmud/cli/` | Local admin shell |
+| `src/test/java/` | Java tests mirroring package ownership |
+| `mudlibs/` | LPC content and profiles, separate from the host |
+| `mudlibs/smallmercies/` | Bundled toy mudlib and teaching examples |
+| `manual/` | Editable User Manual sources |
+| `docs/` | Static site, generated manual and Java API, design records |
+| `scripts/` | Shared manifest-driven launch and development tools |
 
-## Runtime Status
+`compiler.runtime` supports generated LPC bytecode; it is distinct from the
+engine's world model. These packages are not separately released Maven modules.
 
-The engine-owned model lives under `io.github.protasm.jvmud.engine`:
+## Verification and status
 
-- `engine.world`: `World`, `WorldRuntime`, `Place`, `Entity`, `Link`, `Location`, and `Capability`
-- `engine.identity`: `Player`, `Session`, and `Persona` ids and record types
-- `engine.time`: `WorldScheduler`, `ScheduledTask`, and `WorldClock`
-- `engine.mudlib`: `MudlibBoundary`, lifecycle events, and mudlib projections
-- `engine.output`: text presentation helpers for output leaving the runtime
-- `engine.support`: small shared model helpers that do not define engine ontology
-
-`WorldRuntime` owns single containment: every `Entity` has one immediate
-`Location`, movement updates the containment graph, and containment cycles are
-rejected. It also owns navigable links between places, so the engine models a
-world as connected containment rather than only an assemblage of isolated
-places. Links are strictly place-to-place; entities can be contained by places
-or other entities, but entities are not link endpoints.
-
-## Compiler Status
-
-The compiler source is present at:
-
-```text
-src/main/java/io/github/protasm/jvmud/compiler/
-```
-
-The compiler is now under the JVMud umbrella package,
-`io.github.protasm.jvmud.compiler`.
-
-Important compiler packages include:
-
-- `preproc`: include resolution, macro expansion, conditional directives, and source mapping.
-- `scanner` and `token`: lexical analysis and token model.
-- `parser`: Pratt parser, parselets, AST nodes, and LPC type/operator models.
-- `semantic` and `ir`: semantic analysis, type checking, and typed intermediate representation.
-- `bytecode`: JVM bytecode generation using ASM.
-- `efun`: LPC-facing efun contracts plus the built-in `efun.builtin.CoreEfuns` catalog.
-- `runtime`: compiled-LPC support helpers used by generated bytecode, not the engine ontology.
-- `exec`: host-facing LPC class loading and object execution APIs.
-- `pipeline`: orchestration for preprocessing, scanning, parsing, semantic analysis, IR lowering, and bytecode generation.
-
-`io.github.protasm.jvmud.compiler.JVMudCompiler` is the current facade and
-command-line entry point. It compiles one LPC source file to a JVM class file
-when invoked with:
-
-```text
-JVMudCompiler <source-file> [output-dir]
-```
-
-## Build Notes
-
-The repository uses the conventional single-project Maven layout. Run the
-current baseline with:
-
-```text
+```sh
 mvn test
 ```
 
-The project depends on ASM for bytecode generation and JUnit Jupiter for tests.
-The current test suite includes end-to-end compiler/runtime smoke tests and an
-informational mudlib compatibility scan. The scan writes:
+Some integration checks require external services and configured environment
+variables. Inspect missing prerequisites separately from Java failures. A live
+smoke test should verify the selected profile's entry, commands, movement,
+disconnect, and expected persistence with disposable state.
 
-```text
-target/jvmud-mudlib-compatibility.md
-```
+A successful compile, informational compatibility report, and live gameplay test
+prove different things. JVMud remains experimental. See [deferred work](docs/DEFERRED_WORK.md),
+[the roadmap](docs/ROADMAP.md), and [documentation gaps](docs/DOCUMENTATION_GAPS.md).
 
-That report is deliberately non-failing: it records current parser, semantic,
-function, and runtime gaps while keeping the green build useful.
+## Contributing
 
-See `docs/GLOSSARY.md` for JVMud terminology.
-See `docs/ROADMAP.md` for the full-stack project waypoints.
-See `docs/ENGINE_MUDLIB_CONTRACT.md` for the native JVMud boundary between the
-engine and mudlib compatibility layer.
-
-## Engine-First Development
-
-Development should start from `docs/PRINCIPLES.md`, then make compiler, runtime, CLI,
-and compatibility choices fit that model. The mudlib is content for JVMud, not a
-constraint that forces the engine to recreate every legacy LPC engine behavior.
-At the same time, the vanilla mudlib source is upstream material and should not
-be rewritten merely to compensate for JVMud gaps.
-
-When a conflict appears, prefer:
-
-- engine semantics that clearly model world, place, entity, location,
-  containment, presence, perception, persistence, and time;
-- compiler and runtime support for the sole LPC/LPMud target rather than
-  alternate mudlib languages or generic MUD abstractions;
-- live object reload semantics for LPC-authored game code without turning
-  legacy LPMud driver vocabulary into JVMud engine concepts;
-- compiler/runtime support that can host legacy LPC content without distorting
-  the JVMud ontology;
-- dedicated mudlib-side compatibility shims, such as mfun objects, shadow, or
-  adapter objects, instead of broad edits to upstream mudlib files;
-- JVMud-native engine operation names, with legacy LPC method and engine function names
-  translated by compatibility shims;
-- small bridge APIs only where they keep current LPC content usable.
-
-## Admin CLI And Telnet Transport
-
-The `cli` module provides a local, single-user admin shell backed by the real
-object runtime. After building, run it with:
-
-```text
-scripts/jvmud-admin <mudlib-config-file>
-```
-
-The launcher compiles the project, then starts the shell with the local build
-output. The manifest argument is required so shared tooling never silently
-selects one bundled mudlib.
-
-The shell is admin-only: every input line is parsed as an admin command. Commands
-include `boot`, `call`, `cat`, `cd`, `clone`, `destruct`, `inspect`, `load`,
-`look`, `ls`, `move`, `objects`, `pwd`, `reload`, `verbosity`, `where`, and
-`quit`. Some commands have single-character shortcuts; run `help` in the shell
-to see the current alias list and per-command usage notes.
-
-The CLI includes a mudlib-rooted virtual filesystem. CLI path `/` maps to the
-root selected by the supplied manifest, and filesystem commands cannot
-navigate above that mudlib root.
-
-Use `verbosity quiet`, `verbosity normal`, or `verbosity watch` to control shell
-output. `watch` prints compiler stage progress for commands such as `load` and
-`clone`, which is useful when inspecting parser, analyzer, lowering, or bytecode
-failures.
-
-The `instance` package provides the player-facing hosted world, while
-`transport.telnet` provides the Telnet path into that world. Start a mudlib as
-a persistent Telnet target with:
-
-```text
-scripts/jvmud-start <mudlib-config-file>
-```
-
-The config argument is required; JVMud does not choose a mudlib implicitly. For
-example, `mudlibs/lpmuseum/jvmud/lpmuseum.config` serves native JVMud LPMuseum
-on `localhost:4000`. Telnet connections arrive in the LPMuseum concourse through
-the museum's own Persona object, command grammar, Places, and Entities. LPMuseum declares its LP245
-exhibit as an explicit mounted-world config; mount discovery is not tied to a
-particular game ID or sibling-directory convention. To boot LP245 directly for
-compatibility testing, pass `mudlibs/lp245/jvmud/lp245.config`.
-
-Player/world input is routed through the lifecycle and engine-function mappings
-declared by the active profile. Telnet controls use a configurable escaped
-prefix (`//help` and `//quit` in the bundled profiles), so ordinary slash-prefixed
-mudlib commands remain available to LPC. The listener also negotiates GMCP
-Telnet option 201. Session-enabled mudlibs can send JSON-backed packages through
-`jvmud_send_gmcp` and receive decoded packages in `receive_gmcp`. Admin inspection and object
-mutation stay in the admin CLI. This is still an early development listener:
-session-to-session messaging, output isolation between participants, and
-production networking policy belong to later instance and transport slices.
-
-Mudlib boot is manifest-driven and fail-fast. A profile must name its initial
-place and any boundary, preload, include-search, syntax-feature, capability, or
-mounted-world requirements explicitly. Optional syntax is selected with
-`language_features`; filesystem, database, session-control, and host-control
-efuns require the corresponding `engine_capabilities` grant. Secrets should be
-referenced with `database.password_env`, never committed as manifest values.
-
-The optional `filesystem_accounts` session policy supplies reusable local
-account-file and password-verification mechanics without naming or calling a
-particular mudlib. After authentication, JVMud delivers neutral
-`player_persona_resolved` and `player_entered_world` lifecycle events; the
-manifest maps those events to mudlib-owned profile and entry behavior.
-
-To run the LP245 startup smoke test that launches `jvmud-start`, connects over
-TCP, proves the configured player behavior through the mudlib's login prompts,
-and checks `look` plus
-movement from the church to the village green and humpbacked bridge:
-
-```text
-mudlibs/lp245/jvmud/smoke-start
-```
-
-## Development Notes
-
-- Keep changes scoped to the relevant package under `src/main/java/io/github/protasm/jvmud/`,
-  the applicable `mudlibs/<profile>/` tree, or `docs/`.
-- Use `docs/PRINCIPLES.md` as the source of truth for engine concepts. Do not edit
-  vanilla mudlib files unless explicitly asked for style or formatting changes;
-  prefer dedicated compatibility shim objects and engine/compiler support.
-- Treat `io.github.protasm.jvmud.engine` and every `mudlibs/<profile>/` tree as intentionally separate from compiler internals:
-  compiler helpers used by generated bytecode currently remain under
-  `src/main/java/io/github/protasm/jvmud/compiler/runtime/`.
-- Keep untyped LPC methods and untyped method parameters as compiler errors.
-  Mudlib compatibility work should add explicit LPC signatures to mudlib source
-  files rather than relaxing semantic analysis.
-- Prioritize readability alongside functionality. Prefer clear names, focused
-  tests, and short comments explaining non-obvious legacy LPC engine semantics or
-  bytecode/runtime lifecycle rules.
+Read [AGENTS.md](AGENTS.md), [design principles](docs/PRINCIPLES.md),
+[the glossary](docs/GLOSSARY.md), and [the engine–mudlib contract](docs/ENGINE_MUDLIB_CONTRACT.md).
+Preserve upstream mudlib material; prefer dedicated profile shims and native
+engine behavior. Keep untyped LPC methods and parameters as compiler errors.
+Keep profile-specific launchers under the owning mudlib, and document non-obvious
+Java behavior with Javadocs. Test at the changed layer and replay a live route
+when runtime behavior changes.
