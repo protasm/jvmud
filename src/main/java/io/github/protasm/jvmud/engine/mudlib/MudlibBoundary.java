@@ -1,6 +1,9 @@
 package io.github.protasm.jvmud.engine.mudlib;
 
 import java.nio.file.Path;
+import java.util.List;
+import java.util.ArrayList;
+import io.github.protasm.jvmud.transpiler.FieldTypeOverride;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -58,6 +61,8 @@ public final class MudlibBoundary {
     private final String databaseJdbcUrl;
     private final String databaseUser;
     private final String databasePassword;
+    private final List<FieldTypeOverride> fieldTypeOverrides;
+    private final boolean transpileUntypedMethods;
     private final Set<LanguageFeature> languageFeatures;
     private final Set<EngineCapability> engineCapabilities;
     private final String temporalTickMethod;
@@ -94,6 +99,8 @@ public final class MudlibBoundary {
         this.databaseJdbcUrl = normalizeOptionalText(builder.databaseJdbcUrl);
         this.databaseUser = normalizeOptionalText(builder.databaseUser);
         this.databasePassword = builder.databasePassword != null ? builder.databasePassword : null;
+        this.fieldTypeOverrides = List.copyOf(builder.fieldTypeOverrides);
+        this.transpileUntypedMethods = builder.transpileUntypedMethods;
         this.languageFeatures = Set.copyOf(builder.languageFeatures);
         this.engineCapabilities = Set.copyOf(builder.engineCapabilities);
         this.temporalTickMethod = normalizeOptionalText(builder.temporalTickMethod);
@@ -257,6 +264,16 @@ public final class MudlibBoundary {
         return Optional.ofNullable(databasePassword);
     }
 
+    /** Checked, explicitly configured field transformations; empty by default. */
+    public List<FieldTypeOverride> fieldTypeOverrides() {
+        return fieldTypeOverrides;
+    }
+
+    /** Whether to normalize missing method types before strict parsing; disabled by default. */
+    public boolean transpileUntypedMethods() {
+        return transpileUntypedMethods;
+    }
+
     /** Returns optional LPC syntax families explicitly selected by this profile. */
     public Set<LanguageFeature> languageFeatures() {
         return languageFeatures;
@@ -410,6 +427,8 @@ public final class MudlibBoundary {
                 || databaseJdbcUrl != null
                 || databaseUser != null
                 || databasePassword != null
+                || !fieldTypeOverrides.isEmpty()
+                || transpileUntypedMethods
                 || !languageFeatures.isEmpty()
                 || !engineCapabilities.isEmpty()
                 || temporalTickMethod != null
@@ -568,6 +587,8 @@ public final class MudlibBoundary {
         private String databaseJdbcUrl;
         private String databaseUser;
         private String databasePassword;
+        private final List<FieldTypeOverride> fieldTypeOverrides = new ArrayList<>();
+        private boolean transpileUntypedMethods;
         private final EnumSet<LanguageFeature> languageFeatures = EnumSet.noneOf(LanguageFeature.class);
         private final EnumSet<EngineCapability> engineCapabilities = EnumSet.noneOf(EngineCapability.class);
         private String temporalTickMethod;
@@ -733,6 +754,18 @@ public final class MudlibBoundary {
         /** Sets the JDBC password used by JVMud-native database efuns. */
         public Builder databasePassword(String databasePassword) {
             this.databasePassword = databasePassword;
+            return this;
+        }
+
+        /** Adds a checked, mudlib-scoped field transformation. */
+        public Builder fieldTypeOverride(FieldTypeOverride rule) {
+            fieldTypeOverrides.add(Objects.requireNonNull(rule, "rule"));
+            return this;
+        }
+
+        /** Enables in-memory legacy method typing without changing the compiler language. */
+        public Builder transpileUntypedMethods(boolean enabled) {
+            this.transpileUntypedMethods = enabled;
             return this;
         }
 

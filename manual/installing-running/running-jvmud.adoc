@@ -20,9 +20,12 @@ compiles Java, resolves the dependency classpath, and runs the Telnet server in
 the foreground. Wait for the preload summary followed by
 `JVMud mudlib listening on 127.0.0.1:4000` before connecting.
 
-The launcher listens on loopback port 4000. It does not accept a port argument
-or a host flag. Run one listener at a time. Mounted profiles, if declared, must
-also be present and valid. See <<_configuration_reference>> for manifest keys.
+The launcher defaults to loopback port 4000. Use `--bind 0.0.0.0 --port 4000`
+to accept incoming connections on all IPv4 interfaces, or choose a specific
+local address and a different port. Clients use the server's actual address;
+allow the selected TCP port through applicable firewalls and router forwarding.
+Each listener needs an available address/port pair. Mounted profiles, if declared,
+must also be present and valid. See <<_configuration_reference>> for manifest keys.
 
 To capture detailed startup failures:
 
@@ -36,5 +39,6 @@ stop with Ctrl+C. Trace output can be large; begin with the preload summary and
 first failure. To see launch syntax, use `scripts/jvmud-start --help`.
 
 Ctrl+C runs the server's shutdown path. Persistence is profile-specific; shutting
-down does not promise a snapshot of every loaded object's state. The local admin
-shell is a separate process, not an attachment to this listener.
+down does not promise a snapshot of every loaded object's state. Add `--admin-port 4100` to enable the authenticated local admin listener, then
+connect with `scripts/jvmud-cli --port 4100`. The CLI controls this live primary
+world; its port is separate from the player port.

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 /** Guards shared production code and launchers against bundled-mudlib coupling. */
 final class FlavorNeutralityTest {
     private static final List<String> BUNDLED_MUDLIB_NAMES =
-            List.of("lpmuseum", "lp245", "realmsmud", "avelorn");
+            List.of("lp245", "smallmercies");
 
     @Test
     void sharedProductionCodeAndScriptsDoNotNameBundledMudlibs() throws IOException {

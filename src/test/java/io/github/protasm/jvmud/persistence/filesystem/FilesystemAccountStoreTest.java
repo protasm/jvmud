@@ -35,11 +35,11 @@ class FilesystemAccountStoreTest {
                   "format" : "jvmud.lpc-object-state",
                   "version" : 1,
                   "fields" : {
-                    "lpmuseum.account.account_id" : { "type" : "string", "value" : "reader" },
-                    "lpmuseum.account.persona_name" : { "type" : "string", "value" : "archivist" },
-                    "lpmuseum.account.gender" : { "type" : "string", "value" : "none" },
-                    "lpmuseum.account.email" : { "type" : "string", "value" : "" },
-                    "lpmuseum.account.password_hash" : { "type" : "string", "value" : "old-hash" }
+                    "example_mudlib.account.account_id" : { "type" : "string", "value" : "reader" },
+                    "example_mudlib.account.persona_name" : { "type" : "string", "value" : "archivist" },
+                    "example_mudlib.account.gender" : { "type" : "string", "value" : "none" },
+                    "example_mudlib.account.email" : { "type" : "string", "value" : "" },
+                    "example_mudlib.account.password_hash" : { "type" : "string", "value" : "old-hash" }
                   }
                 }
                 """);

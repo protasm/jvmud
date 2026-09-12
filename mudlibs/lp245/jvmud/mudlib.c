@@ -8,8 +8,8 @@ string player_prompt() {
 }
 
 void log_error(mixed file, mixed err) {
-  jvmud_append_mudlib_text("/log/COMPILER", file + "\n");
-  jvmud_append_mudlib_text("/log/COMPILER", err + "\n");
+  jvmud_append_mudlib_text("/jvmud/log/COMPILER", file + "\n");
+  jvmud_append_mudlib_text("/jvmud/log/COMPILER", err + "\n");
 }
 
 mixed compile_object(mixed filename) {
@@ -42,8 +42,8 @@ void runtime_error(mixed actor, mixed context, mixed operation, mixed detail) {
     jvmud_write(message);
   }
 
-  jvmud_append_mudlib_text("/log/RUNTIME", "context=" + context + " operation=" + operation + "\n");
-  jvmud_append_mudlib_text("/log/RUNTIME", detail + "\n");
+  jvmud_append_mudlib_text("/jvmud/log/RUNTIME", "context=" + context + " operation=" + operation + "\n");
+  jvmud_append_mudlib_text("/jvmud/log/RUNTIME", detail + "\n");
 }
 
 mixed heart_beat_error(mixed culprit, mixed err, mixed prg, mixed curobj, mixed line) {
@@ -51,16 +51,16 @@ mixed heart_beat_error(mixed culprit, mixed err, mixed prg, mixed curobj, mixed 
     jvmud_write_to_lpc_object(culprit, "Game driver tells you: You have no heart beat !\n");
   }
 
-  jvmud_append_mudlib_text("/log/HEART_BEAT", "culprit=" + curobj + " program=" + prg + " line=" + line + "\n");
-  jvmud_append_mudlib_text("/log/HEART_BEAT", err + "\n");
+  jvmud_append_mudlib_text("/jvmud/log/HEART_BEAT", "culprit=" + curobj + " program=" + prg + " line=" + line + "\n");
+  jvmud_append_mudlib_text("/jvmud/log/HEART_BEAT", err + "\n");
 
   return 0;
 }
 
 void notify_shutdown(mixed crash_reason) {
   if (crash_reason) {
-    jvmud_append_mudlib_text("/log/SHUTDOWN", "PANIC! " + crash_reason + "\n");
+    jvmud_append_mudlib_text("/jvmud/log/SHUTDOWN", "PANIC! " + crash_reason + "\n");
   } else {
-    jvmud_append_mudlib_text("/log/SHUTDOWN", "LPmud shutting down immediately.\n");
+    jvmud_append_mudlib_text("/jvmud/log/SHUTDOWN", "LPmud shutting down immediately.\n");
   }
 }

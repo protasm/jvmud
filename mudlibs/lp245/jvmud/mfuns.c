@@ -376,34 +376,6 @@ int sizeof(mixed value) {
   return jvmud_size(value);
 }
 
-int sscanf(mixed input, mixed format, mixed capture1) {
-  return jvmud_sscanf(input, format, capture1);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1, mixed capture2) {
-  return jvmud_sscanf(input, format, capture1, capture2);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3) {
-  return jvmud_sscanf(input, format, capture1, capture2, capture3);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3,
-  mixed capture4) {
-  return jvmud_sscanf(input, format, capture1, capture2, capture3, capture4);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3,
-  mixed capture4, mixed capture5) {
-  return jvmud_sscanf(input, format, capture1, capture2, capture3, capture4, capture5);
-}
-
-int sscanf(mixed input, mixed format, mixed capture1, mixed capture2, mixed capture3,
-  mixed capture4, mixed capture5, mixed capture6) {
-  return jvmud_sscanf(input, format, capture1, capture2, capture3, capture4, capture5,
-    capture6);
-}
-
 int strlen(mixed value) {
   return jvmud_size(value);
 }
@@ -509,4 +481,77 @@ object *users() {
 
 void write(mixed value) {
   jvmud_write(value);
+}
+
+// LDMud implode uses only string elements, including empty strings.
+string implode(mixed *values, string delimiter) {
+  string result;
+  int found;
+
+  result = "";
+  found = 0;
+  foreach (mixed value : values) {
+    if (jvmud_is_string(value)) {
+      if (found) result += delimiter;
+      result += value;
+      found = 1;
+    }
+  }
+  return result;
+}
+
+// Environments are ordered from nearest container to outermost; no parent is 0.
+object *all_environment(object ob) {
+  object *result;
+
+  result = ({});
+  if (!ob) return 0;
+  ob = jvmud_entity_location(ob);
+  while (ob) {
+    result += ({ob});
+    ob = jvmud_entity_location(ob);
+  }
+  if (!sizeof(result)) return 0;
+  return result;
+}
+
+object *all_environment() {
+  return all_environment(jvmud_current_lpc_object());
+}
+
+// Breadth-first inventory order. Positive depth limits levels; negative selects one.
+object *deep_inventory(object ob, int depth) {
+  object *result;
+  object *parents;
+  object *children;
+  object child;
+  int level;
+
+  result = ({});
+  if (!ob) return result;
+  parents = ({ob});
+  level = 0;
+  while (sizeof(parents)) {
+    children = ({});
+    foreach (object parent : parents) {
+      child = jvmud_first_entity_at(parent);
+      while (child) {
+        children += ({child});
+        child = jvmud_next_entity_at(child);
+      }
+    }
+    level += 1;
+    if (depth >= 0 || level == -depth) result += children;
+    if ((depth > 0 && level >= depth) || (depth < 0 && level == -depth)) return result;
+    parents = children;
+  }
+  return result;
+}
+
+object *deep_inventory(object ob) {
+  return deep_inventory(ob, 0);
+}
+
+object *deep_inventory() {
+  return deep_inventory(jvmud_current_lpc_object(), 0);
 }

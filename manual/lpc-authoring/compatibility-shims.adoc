@@ -13,3 +13,60 @@ explicit typing to accommodate an untyped legacy declaration.
 Record the motivating source and test in `docs/COMPATIBILITY_FEATURE_PROVENANCE.md`
 when changing compatibility features. The result should remain usable without
 hardcoding a particular game into shared Java or launch scripts.
+
+==== Opt-In Legacy Method Transpilation
+
+A bridge manifest may explicitly set `transpilation.untyped_methods = true`.
+The default is false. JVMud's sibling `io.github.protasm.jvmud.transpiler` package
+adds explicit `mixed` return and parameter types to untyped method signatures
+in memory after preprocessing and before parsing. Includes, inherited objects,
+and global helper objects use the same profile setting. Existing explicit types
+and method bodies remain unchanged, and inserted tokens retain the original
+source locations. The compiler still rejects missing explicit method types when
+transpilation is disabled. This accommodation does not imply support for every
+legacy LPC dialect feature and never rewrites imported files.
+
+==== Checked Field-Type Overrides
+
+Select a bridge-owned JSON file explicitly in the manifest:
+
+[source,properties]
+----
+transpilation.overrides = transpilation.json
+----
+
+The override file path is relative to the manifest directory. This setting is
+independent of `transpilation.untyped_methods`; neither enables the other.
+
+[source,json]
+----
+{
+  "field_type_overrides": [
+    {
+      "file": "obj/torch.c",
+      "field": "amount_of_fuel",
+      "expected_type": "string",
+      "replacement_type": "int"
+    }
+  ]
+}
+----
+
+`file` identifies a filesystem compilation unit relative to `mudlib_root`.
+Rules apply after preprocessing, so declarations expanded from its headers are
+part of that unit. They also apply when the unit is loaded as an inherited
+object, global helper, or bridge object. In-memory snippets without a source
+file path are not matched by file overrides.
+
+The named field must occur exactly once with the expected type. A mismatch,
+missing field, or duplicate declaration stops compilation at the `TRANSPILE`
+stage. Invalid JSON, unknown keys, duplicate rules, missing source files, and
+unsupported field types are errors. Fields can use `int`, `float`, `string`,
+`object`, `mixed`, `mapping`, `function`, or `status`, with optional array stars.
+The JSON vocabulary currently supports only `field_type_overrides`.
+
+Grouped declarations are split when necessary to preserve neighboring fields'
+types, modifiers, and initializer order. Locals, parameters, method bodies, and
+string values are not field override targets. Source locations are retained for
+diagnostics and original files are never rewritten. Rules are read at manifest
+load; restart the instance to load changed configuration.

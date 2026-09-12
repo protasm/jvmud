@@ -179,3 +179,31 @@ When adding a compatibility feature:
 
 This keeps compatibility work practical while preserving JVMud's own design
 voice.
+
+## Opt-in untyped method transpilation
+
+- Motivation: original Lysator LP 2.4.5 declarations such as `reset(arg)` and
+  `close(str)` in `mudlibs/lp245/obj/chest.c`, preserved without source changes.
+- Bridge setting: `transpilation.untyped_methods = true` (default false).
+- Implementation: sibling `io.github.protasm.jvmud.transpiler` package adds
+  explicit `mixed` signature types to expanded tokens before strict compilation.
+  Existing type declarations remain authoritative. Other legacy syntax is outside
+  this transformation's scope.
+- Verification: `UntypedMethodTranspilerTest` covers profile isolation, explicit
+  type errors, includes/macros, inheritance, global helpers, source positions,
+  prototypes, and preservation of existing tokens. `CompilerSmokeTest` verifies
+  that native compilation rejects untyped methods and parameters.
+
+## Checked field-type overrides
+
+- Motivation: original LP245 `obj/torch.c` declares `amount_of_fuel` as `string`
+  while initializing it to 2000 and using multiplication/division for burning
+  time and value.
+- Configuration: `transpilation.overrides` selects a bridge-owned JSON file with
+  `field_type_overrides`, independently of the untyped-method flag.
+- Implementation: `FieldTypeTranspiler` checks a named field's original type,
+  scopes edits by compilation unit, preserves neighboring declarations and source
+  positions, and reports mismatches before parsing/code generation.
+- Verification: `FieldTypeTranspilerTest` covers negative expectations, grouped
+  declarations, arrays, includes/inheritance, global helpers, hosted startup,
+  explicit selection, and numeric execution of the unchanged original torch.

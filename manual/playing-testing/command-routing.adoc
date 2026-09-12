@@ -7,8 +7,8 @@ escaped namespace for connection controls; its default is `//`.
 * `//help` and `//quit` are transport controls in profiles using the default transport prefix.
 * `look` and movement verbs go to the mudlib after login.
 * Ordinary single-slash commands remain available to mudlib code.
-* `load`, `inspect`, and `reload` are local admin-shell operations, not a remote
-  administration protocol.
+* `load`, `inspect`, and `reload` run through the authenticated admin connection
+  against the live primary world. They are not player Telnet commands.
 
 If a command is unrecognized, first identify which of these contexts received it.
 Then check the active profile's lifecycle mappings and command registration.

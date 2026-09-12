@@ -8,6 +8,8 @@ import io.github.protasm.jvmud.instance.MudlibBootResult;
 import io.github.protasm.jvmud.instance.MudlibRouter;
 import io.github.protasm.jvmud.engine.time.WorldClock;
 import java.io.IOException;
+import io.github.protasm.jvmud.transport.admin.AdminServer;
+import io.github.protasm.jvmud.transport.admin.AdminWire;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -37,6 +39,7 @@ public final class TelnetServer implements AutoCloseable {
     private final ExecutorService sessions;
     private InstanceHost mud;
     private WorldClock worldClock;
+    private AdminServer adminServer;
     private ServerSocket serverSocket;
     private Thread acceptThread;
     private volatile boolean running;
@@ -86,7 +89,19 @@ public final class TelnetServer implements AutoCloseable {
                 options.configObjectPath(),
                 commandLineBootProgress(),
                 startupLoadTrace);
-        server.start();
+        try {
+            server.start();
+            if (options.adminPort() != null) {
+                Path tokenFile = options.adminTokenFile() == null
+                        ? AdminWire.tokenFile(options.adminPort()) : options.adminTokenFile();
+                server.startAdministration(options.adminPort(), tokenFile);
+                System.out.println("JVMud admin listening on 127.0.0.1:" + options.adminPort()
+                        + " (credential: " + tokenFile.toAbsolutePath() + ")");
+            }
+        } catch (IOException | RuntimeException e) {
+            server.close();
+            throw e;
+        }
         startupLoadTrace.finishStartup();
         System.out.println(server.preloadSummary());
         startupLoadTrace.printSummaryIfEnabled();
@@ -95,16 +110,49 @@ public final class TelnetServer implements AutoCloseable {
         server.await();
     }
 
+    /**
+     * Parses a manifest and optional listener settings. Defaults to localhost:4000;
+     * network exposure requires an explicit bind address. Ports must be 1–65535.
+     *
+     * @throws IllegalArgumentException for missing values or invalid options
+     */
     static LaunchOptions parseLaunchOptions(String[] args) {
         if (args.length == 1 && ("-help".equals(args[0]) || "--help".equals(args[0]))) {
-            return new LaunchOptions(null, DEFAULT_PORT, DEFAULT_BIND_ADDRESS, null, true, false);
+            return new LaunchOptions(null, DEFAULT_PORT, DEFAULT_BIND_ADDRESS, null, true, false, null, null);
         }
 
         boolean traceStartupLoads = false;
         Path configFile = null;
-        for (String arg : args) {
+        String bindAddress = DEFAULT_BIND_ADDRESS;
+        int port = DEFAULT_PORT;
+        Integer adminPort = null;
+        Path adminTokenFile = null;
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
             if ("--trace-startup-loads".equals(arg)) {
                 traceStartupLoads = true;
+            } else if ("--bind".equals(arg) || "--port".equals(arg)
+                    || "--admin-port".equals(arg) || "--admin-token-file".equals(arg)) {
+                if (++i >= args.length || args[i].isBlank() || args[i].startsWith("--")) {
+                    throw new IllegalArgumentException("Missing value for " + arg + ".");
+                }
+                if ("--bind".equals(arg)) {
+                    bindAddress = args[i];
+                } else if ("--admin-token-file".equals(arg)) {
+                    adminTokenFile = Path.of(args[i]);
+                } else {
+                    int value;
+                    try {
+                        value = Integer.parseInt(args[i]);
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException("Port must be an integer from 1 to 65535.");
+                    }
+                    if (value < 1 || value > 65535) {
+                        throw new IllegalArgumentException("Port must be an integer from 1 to 65535.");
+                    }
+                    if ("--admin-port".equals(arg)) adminPort = value;
+                    else port = value;
+                }
             } else if (arg.startsWith("-")) {
                 throw new IllegalArgumentException("Unknown option: " + arg);
             } else if (configFile == null) {
@@ -117,16 +165,24 @@ public final class TelnetServer implements AutoCloseable {
         if (configFile == null) {
             throw new IllegalArgumentException("Missing mudlib config file.");
         }
-        return optionsForConfigFile(configFile, false, traceStartupLoads);
+        if (adminTokenFile != null && adminPort == null) {
+            throw new IllegalArgumentException("--admin-token-file requires --admin-port.");
+        }
+        if (adminPort != null && adminPort == port) {
+            throw new IllegalArgumentException("Player and admin ports must be different.");
+        }
+        return optionsForConfigFile(configFile, port, bindAddress, traceStartupLoads, adminPort, adminTokenFile);
     }
 
-    private static LaunchOptions optionsForConfigFile(Path configFile, boolean help, boolean traceStartupLoads) {
+    private static LaunchOptions optionsForConfigFile(
+            Path configFile, int port, String bindAddress, boolean traceStartupLoads,
+            Integer adminPort, Path adminTokenFile) {
         Path resolvedConfigFile = resolveConfigFile(configFile);
         Path mudlibRoot = mudlibRootForConfigFile(resolvedConfigFile);
         String configObjectPath = mudlibRoot.relativize(resolvedConfigFile).toString()
                 .replace('\\', '/');
         return new LaunchOptions(
-                mudlibRoot, DEFAULT_PORT, DEFAULT_BIND_ADDRESS, configObjectPath, help, traceStartupLoads);
+                mudlibRoot, port, bindAddress, configObjectPath, false, traceStartupLoads, adminPort, adminTokenFile);
     }
 
     private static Path mudlibRootForConfigFile(Path configFile) {
@@ -168,9 +224,14 @@ public final class TelnetServer implements AutoCloseable {
     }
 
     private static String usage() {
-        return "Usage: scripts/jvmud-start [--trace-startup-loads] <mudlib-config-file>\n"
-                + "Options: --trace-startup-loads prints every underlying startup object load.\n"
-                + "Listens on localhost:4000.";
+        return "Usage: scripts/jvmud-start [--bind <address>] [--port <port>] "
+                + "[--admin-port <port>] [--admin-token-file <path>] [--trace-startup-loads] <mudlib-config-file>\n"
+                + "Options: --bind selects a listener address (default localhost).\n"
+                + "         --port selects a TCP port from 1 to 65535 (default 4000).\n"
+                + "         --admin-port enables authenticated local administration on a separate port.\n"
+                + "         --admin-token-file overrides the private per-port credential path.\n"
+                + "         --trace-startup-loads prints every underlying startup object load.\n"
+                + "Use --bind 0.0.0.0 to accept connections on all IPv4 interfaces.";
     }
 
     public synchronized void start() throws IOException {
@@ -183,6 +244,19 @@ public final class TelnetServer implements AutoCloseable {
         running = true;
         acceptThread = new Thread(this::acceptLoop, "jvmud-start-accept");
         acceptThread.start();
+    }
+
+    /**
+     * Enables authenticated loopback administration of the running primary world.
+     * Must use a different port from the player listener; port zero requests an available port
+     * for embedded callers. Closing this server closes the admin endpoint and its sessions.
+     */
+    public synchronized int startAdministration(int port, Path tokenFile) throws IOException {
+        if (!running) throw new IllegalStateException("Start the player server before administration.");
+        if (adminServer != null) throw new IllegalStateException("Administration already started.");
+        if (port != 0 && port == port()) throw new IllegalArgumentException("Player and admin ports must be different.");
+        adminServer = new AdminServer(mud, port, tokenFile);
+        return adminServer.port();
     }
 
     public void await() throws IOException {
@@ -234,6 +308,10 @@ public final class TelnetServer implements AutoCloseable {
     @Override
     public synchronized void close() {
         running = false;
+        if (adminServer != null) {
+            adminServer.close();
+            adminServer = null;
+        }
         if (worldClock != null) {
             worldClock.close();
             worldClock = null;
@@ -469,5 +547,7 @@ public final class TelnetServer implements AutoCloseable {
             String bindAddress,
             String configObjectPath,
             boolean help,
-            boolean traceStartupLoads) {}
+            boolean traceStartupLoads,
+            Integer adminPort,
+            Path adminTokenFile) {}
 }

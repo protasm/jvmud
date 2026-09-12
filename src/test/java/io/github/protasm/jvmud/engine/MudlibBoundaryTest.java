@@ -116,9 +116,9 @@ final class MudlibBoundaryTest {
                 include_paths = obj, sys
                 language_features = protected_evaluation, varargs
                 engine_capabilities = mudlib_files, session_control
-                database.url = jdbc:mysql://127.0.0.1:3306/RealmsLib
-                database.user = realmslib
-                database.password = realmsdev
+                database.url = jdbc:mysql://127.0.0.1:3306/TestDatabase
+                database.user = testdatabase
+                database.password = exampledev
                 handled_lifecycle_events = scheduled-tick
                 lifecycle.object_loaded = reset
                 lifecycle.object_source_missing = compile_object
@@ -161,9 +161,9 @@ final class MudlibBoundaryTest {
         assertEquals(
                 java.util.Set.of(EngineCapability.MUDLIB_FILES, EngineCapability.SESSION_CONTROL),
                 boundary.engineCapabilities());
-        assertEquals("jdbc:mysql://127.0.0.1:3306/RealmsLib", boundary.databaseJdbcUrl().orElseThrow());
-        assertEquals("realmslib", boundary.databaseUser().orElseThrow());
-        assertEquals("realmsdev", boundary.databasePassword().orElseThrow());
+        assertEquals("jdbc:mysql://127.0.0.1:3306/TestDatabase", boundary.databaseJdbcUrl().orElseThrow());
+        assertEquals("testdatabase", boundary.databaseUser().orElseThrow());
+        assertEquals("exampledev", boundary.databasePassword().orElseThrow());
         assertTrue(boundary.handles(MudlibLifecycleEvent.SCHEDULED_TICK));
         assertEquals("reset", boundary.lifecycleMethod(MudlibLifecycleEvent.OBJECT_LOADED).orElseThrow());
         assertEquals(
@@ -249,7 +249,7 @@ final class MudlibBoundaryTest {
 
     @Test
     void configReaderUsesExplicitCompatibilityObject() throws IOException {
-        Path config = tempDir.resolve("jvmud").resolve("realmsmud.config");
+        Path config = tempDir.resolve("jvmud").resolve("examplemud.config");
         Files.createDirectories(config.getParent());
         Path compatibilityObject = config.getParent().resolve("compat.c");
         Files.writeString(compatibilityObject, "mixed helper() { return 1; }\n");
@@ -259,7 +259,7 @@ final class MudlibBoundaryTest {
                 compatibility_object = jvmud/compat
                 """);
 
-        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/realmsmud.config");
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/examplemud.config");
 
         assertEquals("secure/simul_efun", boundary.mudlibGlobalObjectPath().orElseThrow());
         assertEquals("secure/simul_efun", boundary.mfunObjectPath().orElseThrow());
@@ -272,7 +272,7 @@ final class MudlibBoundaryTest {
 
     @Test
     void configReaderDoesNotDiscoverSiblingCompatibilityObjectImplicitly() throws IOException {
-        Path config = tempDir.resolve("jvmud").resolve("realmsmud.config");
+        Path config = tempDir.resolve("jvmud").resolve("examplemud.config");
         Files.createDirectories(config.getParent());
         Files.writeString(config.getParent().resolve("jvmud.c"), "mixed helper() { return 1; }\n");
         Files.writeString(config, """
@@ -280,7 +280,7 @@ final class MudlibBoundaryTest {
                 mfun_object = secure/simul_efun
                 """);
 
-        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/realmsmud.config");
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/examplemud.config");
 
         assertEquals("secure/simul_efun", boundary.mfunObjectPath().orElseThrow());
         assertTrue(boundary.mudlibGlobalObjectSourcePath().isEmpty());
@@ -317,16 +317,16 @@ final class MudlibBoundaryTest {
 
     @Test
     void configReaderAcceptsNativePersonaObjectSpelling() throws IOException {
-        Path config = tempDir.resolve("jvmud").resolve("lpmuseum.config");
+        Path config = tempDir.resolve("jvmud").resolve("example_mudlib.config");
         Files.createDirectories(config.getParent());
         Files.writeString(config, """
-                game_id = lpmuseum
+                game_id = example_mudlib
                 mudlib_root = ../source
                 persona_object = persona/visitor
                 initial_place = place/concourse
                 """);
 
-        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/lpmuseum.config");
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/example_mudlib.config");
 
         assertEquals("persona/visitor", boundary.playerObjectPath().orElseThrow());
         assertEquals("place/concourse", boundary.initialPlacePath().orElseThrow());
@@ -344,7 +344,7 @@ final class MudlibBoundaryTest {
 
     @Test
     void configReaderParsesBooleanAliasesForRuler() throws IOException {
-        Path config = tempDir.resolve("jvmud").resolve("lpmuseum.config");
+        Path config = tempDir.resolve("jvmud").resolve("example_mudlib.config");
         Files.createDirectories(config.getParent());
         Files.writeString(config, """
                 mudlib_root = ..
@@ -352,7 +352,7 @@ final class MudlibBoundaryTest {
                 show_ruler = yes
                 """);
 
-        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/lpmuseum.config");
+        MudlibBoundary boundary = MudlibBoundaryConfigReader.read(tempDir, "jvmud/example_mudlib.config");
 
         assertEquals(140, boundary.maxLineLength());
         assertTrue(boundary.showRuler());

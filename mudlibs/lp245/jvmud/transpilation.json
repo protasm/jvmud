@@ -1,0 +1,10 @@
+{
+  "field_type_overrides": [
+    {
+      "file": "obj/torch.c",
+      "field": "amount_of_fuel",
+      "expected_type": "string",
+      "replacement_type": "int"
+    }
+  ]
+}

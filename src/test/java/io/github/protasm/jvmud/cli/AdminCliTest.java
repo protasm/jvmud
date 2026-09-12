@@ -30,12 +30,12 @@ final class AdminCliTest {
     Path tempDir;
 
     @Test
-    void mainRequiresAnExplicitMudlibConfig() {
+    void mainRequiresAnExplicitAdminPort() {
         IllegalArgumentException error = assertThrows(
                 IllegalArgumentException.class,
                 () -> AdminCli.main(new String[0]));
 
-        assertEquals("Usage: scripts/jvmud-admin <mudlib-config-file>", error.getMessage());
+        assertEquals("Usage: scripts/jvmud-cli --port <admin-port> [--token-file <path>]", error.getMessage());
     }
 
     @Test

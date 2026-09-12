@@ -97,6 +97,13 @@ public final class MudlibRouter implements InstanceHost {
         return 1;
     }
 
+    /** Serializes trusted administration with player dispatch and world ticks. */
+    @Override
+    public synchronized <T> T administer(
+            java.util.function.Function<io.github.protasm.jvmud.compiler.exec.LPCRuntime, T> action) {
+        return defaultMud.administer(action);
+    }
+
     @Override
     public Path mudlibRoot() {
         return defaultMud.mudlibRoot();

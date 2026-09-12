@@ -7,6 +7,15 @@ import java.util.function.BiConsumer;
 
 /** Interactive host behind one telnet listener. */
 public interface InstanceHost {
+    /**
+     * Executes trusted administrative work against the primary world's runtime while holding
+     * the same locks used for player dispatch and ticks. The callback must not use
+     * the runtime outside an administer call, and must not wait for network input or write to a socket.
+     */
+    default <T> T administer(java.util.function.Function<io.github.protasm.jvmud.compiler.exec.LPCRuntime, T> action) {
+        throw new UnsupportedOperationException("Administration is unavailable for this host.");
+    }
+
     Path mudlibRoot();
 
     MudlibBootResult bootResult();

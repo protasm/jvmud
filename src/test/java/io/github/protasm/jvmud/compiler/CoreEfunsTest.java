@@ -71,7 +71,7 @@ final class CoreEfunsTest {
                     .databasePassword("configured-password")
                     .build());
 
-            assertEquals(1, context.invokeEfun("jvmud_db_connect", 3, new Object[] {"RealmsLib", null, null}));
+            assertEquals(1, context.invokeEfun("jvmud_db_connect", 3, new Object[] {"TestDatabase", null, null}));
 
             assertEquals("configured-user", driver.user);
             assertEquals("configured-password", driver.password);

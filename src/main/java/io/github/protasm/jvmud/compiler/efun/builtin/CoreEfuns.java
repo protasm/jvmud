@@ -267,7 +267,7 @@ import javax.crypto.spec.PBEKeySpec;
  *   <li>{@code jvmud_lowercase_text(mixed value) : string} lowercases text.</li>
  *   <li>{@code jvmud_uppercase_text(mixed value) : string} uppercases text.</li>
  *   <li>{@code jvmud_split_text(string text, string delimiter) : array} splits text on a literal
- *       delimiter while preserving empty trailing fields.</li>
+ *       delimiter while preserving empty fields; empty text yields a single empty field.</li>
  *   <li>{@code jvmud_regex_match(array values, string pattern[, int flags]) : mixed} returns the
  *       values whose string forms match a regular expression, or LPC false when no value
  *       matches. JVMud normalizes supported compatibility-regexp idioms before running the pattern on Java's
@@ -1015,7 +1015,9 @@ public final class CoreEfuns {
         return value.substring(0, 1).toUpperCase() + value.substring(1);
     }
 
+    /** Literal splitting preserves a single empty field even with an empty delimiter. */
     private static List<String> splitText(String text, String delimiter) {
+        if (text.isEmpty()) return new ArrayList<>(List.of(""));
         if (delimiter.isEmpty()) {
             List<String> characters = new ArrayList<>();
             for (int i = 0; i < text.length(); i++) {

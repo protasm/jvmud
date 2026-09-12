@@ -202,6 +202,13 @@ public final class MudInstance implements InstanceHost {
         return persona != null ? requestedTransfers.remove(persona.actor()) : null;
     }
 
+    /** Serializes trusted administration with player dispatch and world ticks. */
+    @Override
+    public synchronized <T> T administer(
+            java.util.function.Function<io.github.protasm.jvmud.compiler.exec.LPCRuntime, T> action) {
+        return action.apply(runtime);
+    }
+
     @Override
     public Path mudlibRoot() {
         return mudlibRoot;

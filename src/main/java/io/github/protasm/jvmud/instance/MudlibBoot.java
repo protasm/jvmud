@@ -94,6 +94,7 @@ public final class MudlibBoot {
                 initialPlace);
     }
 
+    /** Installs the manifest's compilation context before loading its declaration object. */
     private MudlibBoundary discoverMudlibBoundary(
             List<String> preloadedObjects,
             List<String> skippedPreloads) {
@@ -103,6 +104,7 @@ public final class MudlibBoot {
         try {
             MudlibBoundary boundary = MudlibBoundaryConfigReader.read(mudlibRoot, configPath);
             runtime.setParserOptions(ParserOptions.features(boundary.languageFeatures()));
+            runtime.registerMudlibBoundary(boundary);
             return readConfiguredBoundaryObject(boundary, preloadedObjects, skippedPreloads);
         } catch (IOException | RuntimeException e) {
             throw new IllegalStateException("Invalid mudlib configuration: " + configPath, e);
@@ -159,7 +161,8 @@ public final class MudlibBoot {
      * <p>The config profile is the authoritative compatibility surface because it can be selected per
      * mudlib without asking mudlib source to know JVMud-native names. Object declarations still provide
      * mudlib-owned hooks and defaults. For additive maps, object declarations are applied first and
-     * config declarations second so explicit profile settings win conflicts.</p>
+     * config declarations second so explicit profile settings win conflicts. Transpilation is
+     * selected exclusively by the manifest and is preserved, including its default-off value.</p>
      */
     private MudlibBoundary mergeBoundaryDeclarations(MudlibBoundary configBoundary, MudlibBoundary objectBoundary) {
         MudlibBoundary.Builder builder = MudlibBoundary.builder();
@@ -201,6 +204,8 @@ public final class MudlibBoot {
         configBoundary.databaseJdbcUrl().ifPresent(builder::databaseJdbcUrl);
         configBoundary.databaseUser().ifPresent(builder::databaseUser);
         configBoundary.databasePassword().ifPresent(builder::databasePassword);
+        configBoundary.fieldTypeOverrides().forEach(builder::fieldTypeOverride);
+        builder.transpileUntypedMethods(configBoundary.transpileUntypedMethods());
         configBoundary.languageFeatures().forEach(builder::languageFeature);
         configBoundary.engineCapabilities().forEach(builder::engineCapability);
         configBoundary.temporalTickMethod().ifPresent(builder::temporalTickMethod);

@@ -30,7 +30,8 @@ import java.util.Set;
  * Coordinates the LPC compiler stages for one source unit.
  *
  * <p>The pipeline is the compiler facade used by host tooling. It preprocesses and scans source,
- * parses an LPC object, resolves inherited source, performs semantic analysis, lowers to typed IR,
+ * applies any bridge-selected legacy transpilation, parses an LPC object, resolves inherited source,
+ * performs semantic analysis, lowers to typed IR,
  * and optionally produces JVM bytecode. Stage failures are returned as {@link CompilationProblem}
  * values rather than thrown for ordinary source errors.</p>
  */
@@ -121,6 +122,18 @@ public final class CompilationPipeline {
             CompilationProblem problem = new CompilationProblem(CompilationStage.SCAN, "Error scanning source", e);
             problems.add(problem);
             observer.stageFailed(unit, CompilationStage.SCAN, problem);
+            return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
+        }
+
+        try {
+            observer.stageStarted(unit, CompilationStage.TRANSPILE);
+            tokens = runtimeContext.transpileSourceTokens(unit.sourcePath(), tokens);
+            unit.setTokens(tokens);
+            observer.stageSucceeded(unit, CompilationStage.TRANSPILE);
+        } catch (io.github.protasm.jvmud.transpiler.TranspilationException e) {
+            CompilationProblem problem = new CompilationProblem(CompilationStage.TRANSPILE, e.getMessage(), e.line(), e);
+            problems.add(problem);
+            observer.stageFailed(unit, CompilationStage.TRANSPILE, problem);
             return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
         }
 

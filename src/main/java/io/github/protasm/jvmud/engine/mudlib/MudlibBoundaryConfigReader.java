@@ -65,6 +65,8 @@ public final class MudlibBoundaryConfigReader {
             "database.password",
             "database.password_env",
             "language_features",
+            "transpilation.untyped_methods",
+            "transpilation.overrides",
             "engine_capabilities",
             "handled_lifecycle_events",
             "temporal_tick_method",
@@ -163,6 +165,14 @@ public final class MudlibBoundaryConfigReader {
             }
         }
         addString(builder::databasePassword, databasePassword);
+        String overrides = firstValue(values, "transpilation.overrides");
+        if (overrides != null) {
+            Path overrideFile = configFile.getParent().resolve(overrides).normalize();
+            Path activeRoot = resolveMudlibRootPath(configFile, mudlibRoot, firstValue(values, "mudlib_root"));
+            io.github.protasm.jvmud.transpiler.TranspilationConfigReader.read(overrideFile, activeRoot)
+                    .forEach(builder::fieldTypeOverride);
+        }
+        addBoolean(builder::transpileUntypedMethods, firstValue(values, "transpilation.untyped_methods"));
         addLanguageFeatures(builder, allValues(values, "language_features"));
         addEngineCapabilities(builder, allValues(values, "engine_capabilities"));
         addEngineFunctions(builder, values);

@@ -1,19 +1,24 @@
-=== Admin CLI
+[[_admin_cli]]
+=== Live Admin CLI
 
-Start a separate local sandbox:
+Start a server with an explicit, separate administration port:
 
 [source,shell]
 ----
-scripts/jvmud-admin mudlibs/smallmercies/jvmud/smallmercies.config
+scripts/jvmud-start --port 4000 --admin-port 4100 mudlibs/smallmercies/jvmud/smallmercies.config
 ----
 
-This example selects Small Mercies. Substitute your manifest to inspect other
-content.
-This creates its own runtime. It does *not* attach to an already running Telnet
-server. Shell changes therefore do not modify that other process's live world.
-Every line is an admin command; there is no player command mode.
+Connect from another terminal as the same OS user:
 
-Inside the shell:
+[source,shell]
+----
+scripts/jvmud-cli --port 4100
+----
+
+The CLI displays the selected server's admin port and world path. Commands act on
+that server's primary world, sharing its actual objects and execution lock with
+player input and ticks. No new world is booted. Mounted worlds are not selected
+by this interface. Every input line is an admin command, not a player command.
 
 [source,text]
 ----
@@ -21,29 +26,33 @@ help
 pwd
 ls /
 cat /room/square.c
-verbosity watch
-load /room/square
 objects
+inspect room/square
+call room/square short
+quit
 ----
 
-Use the handle printed by `load` or `objects` in subsequent commands:
+`/` is the manifest-selected mudlib source root. `objects` refreshes the live
+registry, including connected player objects. `quit` or terminal EOF disconnects
+only this client. The attached CLI rejects `boot`; select another server by
+connecting to its admin port. Stop the server in its own terminal with Ctrl+C.
 
-[source,text]
-----
-inspect <handle>
-look <handle>
-call <handle> short
-where <handle>
-----
+Administration is opt-in and always binds `127.0.0.1`, even when player Telnet
+binds all network interfaces. A random credential is created with owner-only
+permissions at `~/.jvmud/admin/<admin-port>.token`. The client reads it automatically;
+normal server shutdown removes it. A stale credential after a crash requires
+explicit removal after confirming that the old server has stopped.
 
-`/` is the manifest-selected mudlib source root. Paths cannot navigate above it.
-`boot <mudlib-config-file>` starts a fresh sandbox; it is not a reload of the
-current world. `quit` exits this shell.
+Override the credential path with `--admin-token-file <path>` on the server and
+`--token-file <path>` on the CLI. Startup never overwrites an existing credential.
+Use a different player/admin port pair for every independently running server.
 
-To investigate a changed object, edit its LPC source in your editor, run
-`reload <path>`, and inspect the resulting handle. `clone <path>` creates a
-separate instance; `destruct <handle>` removes an object. Do not assume reload
-migrates all state or references. Verify the affected object and callers.
+To investigate a changed object, edit its LPC source, run `reload <path>`, and
+inspect the result. `clone <path>` creates an instance; `destruct <handle>` removes
+one. These commands affect live state. Reload does not migrate all state or
+references; verify callers and avoid assuming occupied rooms or players can be
+replaced transparently. Long administrative commands can delay player input and
+ticks because commands execute under the world's lock.
 
-The complete command syntax is in <<_commands>>. `verbosity watch` reveals compiler
-stages; use `verbosity normal` to return to concise output.
+The complete command syntax is in <<_commands>>. Compilation diagnostics use the
+running server's configured observer; the attached client does not replace it.

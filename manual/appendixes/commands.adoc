@@ -1,6 +1,6 @@
 === Commands
 
-These commands run inside `scripts/jvmud-admin <mudlib-config-file>`.
+These commands run inside `scripts/jvmud-cli --port <admin-port>`.
 Paths name source files; handles identify loaded objects. Use `objects` to find
 handles. Arguments to `call` are passed as strings; quote strings containing
 spaces. Numeric text is not automatically converted to LPC integers. `help` is the live syntax reference.
@@ -9,7 +9,6 @@ spaces. Numeric text is not automatically converted to LPC integers. `help` is t
 |===
 |Command |Alias |Purpose
 |`help` |`h` |Show this command reference.
-|`boot <mudlib-config-file>` |`b` |Start a fresh mudlib sandbox without a player session.
 |`call <handle> <method> [args...]` |— |Invoke a method on a loaded object handle.
 |`cat <path>` |— |Print a file from the virtual mudlib filesystem.
 |`cd [path]` |— |Change the current virtual mudlib directory.
@@ -22,7 +21,7 @@ spaces. Numeric text is not automatically converted to LPC integers. `help` is t
 |`look <handle>` |`k` |Call long() or short() and display object text.
 |`ls [path]` |— |List a virtual mudlib directory or file.
 |`move <handle> <dest>` |`m` |Move one object handle into another object's inventory.
-|`objects` |`o` |List known CLI object handles.
+|`objects` |`o` |List registered live object handles.
 |`parse <path>` |`p` |Preprocess, scan, parse, and print the LPC AST.
 |`preprocess <path>` |`pp` |Expand includes, macros, and preprocessor directives.
 |`pwd` |— |Print the current virtual mudlib directory.
@@ -30,10 +29,10 @@ spaces. Numeric text is not automatically converted to LPC integers. `help` is t
 |`scan <path>` |`s` |Preprocess and print scanner tokens for an LPC source file.
 |`verbosity [quiet&#124;normal&#124;watch]` |`v` |Show or change compiler/shell output detail.
 |`where <handle>` |`w` |Show the environment containing an object.
-|`quit` |`q` |Exit the local shell.
+|`quit` |`q` |Disconnect this CLI session; the world keeps running.
 |===
 
 The terminal launcher for play is
-`scripts/jvmud-start [--trace-startup-loads] <mudlib-config-file>`.
+`scripts/jvmud-start [--bind <address>] [--port <port>] [--admin-port <port>] [--admin-token-file <path>] [--trace-startup-loads] <mudlib-config-file>`.
 Inside a player client, profiles using the default transport prefix reserve `//help` and `//quit` for
 transport controls. The mudlib owns all gameplay verbs.

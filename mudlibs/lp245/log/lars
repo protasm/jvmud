@@ -1,0 +1,29 @@
+players/lars/xx.c line 4:Bad type of index
+players/lars/xx.c line 4:Bad assignment
+players/lars/xx.c line 4:Bad type of index
+players/lars/xx.c line 4:Bad type of index: "any* "
+players/lars/xx.c line 4:Bad assignment. Rhs: "string* "
+players/lars/xx.c line 4:Bad type of index: "any * "
+players/lars/xx.c line 5:Bad type of index: "mixed * "
+players/lars/xx.c line 5:Bad type of index: "mixed * "
+players/lars/xx.c line 5:Bad type of index: "mixed * "
+players/lars/yy.c line 1:syntax error
+players/lars/xx.c line 5:Bad type of index: "mixed * "
+players/lars/xx.c line 5:Bad type of index: "mixed * "
+players/lars/xx.c line 3:Bad type of index: "mixed * "
+players/lars/yy.c line 4:Return type not matching: "string * "
+players/lars/yy.c line 4:Return type not matching: "string "
+players/lars/xx.c line 2:Newline in string
+players/lars/xx.c line 2:syntax error
+players/lars/xx.c line 2:Newline in string
+players/lars/xx.c line 2:syntax error
+players/lars/xx.c line 2:Newline in string
+players/lars/xx.c line 2:Newline in string
+players/lars/xx.c line 2:Newline in string
+players/lars/xx.c line 2:syntax error
+players/lars/xx.c line 6:Variable str not declared !
+players/lars/xx.c line 6:Variable str not declared !
+players/lars/xx.c line 6:Variable str not declared !
+players/lars/xx.c line 2:Undefined function print
+players/lars/xx.c line 22:Redeclaration of function func.
+players/lars/xx.c line 2:syntax error

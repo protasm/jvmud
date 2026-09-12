@@ -57,7 +57,7 @@ appropriate when explaining how to configure independently authored content.
 
 Use JVMud-native terms for the engine and actual legacy names when describing a
 profile's source. Explain Player, Session, and Persona before using them in a
-workflow. Name the context for every command: terminal, admin sandbox, or player
+workflow. Name the context for every command: terminal, attached admin CLI, or player
 client. State prerequisites, expected results, recovery steps, and material
 limits. Distinguish implemented behavior, observed verification, and proposals.
 

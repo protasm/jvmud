@@ -539,13 +539,15 @@ public final class SemanticAnalyzer {
 
         for (ASTMethod method : astObject.methods()) {
             if (method.symbol().declaredTypeName() == null) {
-                method.symbol().resolveDeclaredType(LPCType.LPCMIXED);
+                problems.add(new CompilationProblem(CompilationStage.ANALYZE,
+                        "Method '" + method.symbol().name() + "' requires an explicit return type.", method.line()));
             }
             resolveSymbolType(method.symbol(), method.line(), problems);
             if (method.parameters() != null) {
                 for (ASTParameter parameter : method.parameters()) {
                     if (parameter.symbol().declaredTypeName() == null) {
-                        parameter.symbol().resolveDeclaredType(LPCType.LPCMIXED);
+                        problems.add(new CompilationProblem(CompilationStage.ANALYZE,
+                                "Parameter '" + parameter.symbol().name() + "' requires an explicit type.", parameter.line()));
                     }
                     resolveSymbolType(parameter.symbol(), parameter.line(), problems);
                 }

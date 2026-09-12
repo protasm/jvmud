@@ -580,7 +580,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 <li><a href="#_operating_jvmud">Operating JVMud</a>
 <ul class="sectlevel2">
-<li><a href="#_admin_cli">Admin CLI</a></li>
+<li><a href="#_admin_cli">Live Admin CLI</a></li>
 <li><a href="#_runtime_model">Runtime Model</a></li>
 <li><a href="#_mudlib_boundary">Mudlib Boundary</a></li>
 </ul>
@@ -1073,9 +1073,12 @@ the foreground. Wait for the preload summary followed by
 <code>JVMud mudlib listening on 127.0.0.1:4000</code> before connecting.</p>
 </div>
 <div class="paragraph">
-<p>The launcher listens on loopback port 4000. It does not accept a port argument
-or a host flag. Run one listener at a time. Mounted profiles, if declared, must
-also be present and valid. See <a href="#_configuration_reference">Configuration Reference</a> for manifest keys.</p>
+<p>The launcher defaults to loopback port 4000. Use <code>--bind 0.0.0.0 --port 4000</code>
+to accept incoming connections on all IPv4 interfaces, or choose a specific
+local address and a different port. Clients use the server&#8217;s actual address;
+allow the selected TCP port through applicable firewalls and router forwarding.
+Each listener needs an available address/port pair. Mounted profiles, if declared,
+must also be present and valid. See <a href="#_configuration_reference">Configuration Reference</a> for manifest keys.</p>
 </div>
 <div class="paragraph">
 <p>To capture detailed startup failures:</p>
@@ -1092,8 +1095,9 @@ first failure. To see launch syntax, use <code>scripts/jvmud-start --help</code>
 </div>
 <div class="paragraph">
 <p>Ctrl+C runs the server&#8217;s shutdown path. Persistence is profile-specific; shutting
-down does not promise a snapshot of every loaded object&#8217;s state. The local admin
-shell is a separate process, not an attachment to this listener.</p>
+down does not promise a snapshot of every loaded object&#8217;s state. Add <code>--admin-port 4100</code> to enable the authenticated local admin listener, then
+connect with <code>scripts/jvmud-cli --port 4100</code>. The CLI controls this live primary
+world; its port is separate from the player port.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1534,8 +1538,8 @@ escaped namespace for connection controls; its default is <code>//</code>.</p>
 <p>Ordinary single-slash commands remain available to mudlib code.</p>
 </li>
 <li>
-<p><code>load</code>, <code>inspect</code>, and <code>reload</code> are local admin-shell operations, not a remote
-administration protocol.</p>
+<p><code>load</code>, <code>inspect</code>, and <code>reload</code> run through the authenticated admin connection
+against the live primary world. They are not player Telnet commands.</p>
 </li>
 </ul>
 </div>
@@ -1570,24 +1574,28 @@ assertions as proof of compatibility.</p>
 hosting policy, and the server log to diagnose a running listener.</p>
 </div>
 <div class="sect2">
-<h3 id="_admin_cli"><a class="anchor" href="#_admin_cli"></a><a class="link" href="#_admin_cli">Admin CLI</a></h3>
+<h3 id="_admin_cli"><a class="anchor" href="#_admin_cli"></a><a class="link" href="#_admin_cli">Live Admin CLI</a></h3>
 <div class="paragraph">
-<p>Start a separate local sandbox:</p>
+<p>Start a server with an explicit, separate administration port:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-admin mudlibs/smallmercies/jvmud/smallmercies.config</code></pre>
+<pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-start --port 4000 --admin-port 4100 mudlibs/smallmercies/jvmud/smallmercies.config</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>This example selects Small Mercies. Substitute your manifest to inspect other
-content.
-This creates its own runtime. It does <strong>not</strong> attach to an already running Telnet
-server. Shell changes therefore do not modify that other process&#8217;s live world.
-Every line is an admin command; there is no player command mode.</p>
+<p>Connect from another terminal as the same OS user:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-cli --port 4100</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>Inside the shell:</p>
+<p>The CLI displays the selected server&#8217;s admin port and world path. Commands act on
+that server&#8217;s primary world, sharing its actual objects and execution lock with
+player input and ticks. No new world is booted. Mounted worlds are not selected
+by this interface. Every input line is an admin command, not a player command.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1595,36 +1603,41 @@ Every line is an admin command; there is no player command mode.</p>
 pwd
 ls /
 cat /room/square.c
-verbosity watch
-load /room/square
-objects</code></pre>
+objects
+inspect room/square
+call room/square short
+quit</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Use the handle printed by <code>load</code> or <code>objects</code> in subsequent commands:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="text">inspect &lt;handle&gt;
-look &lt;handle&gt;
-call &lt;handle&gt; short
-where &lt;handle&gt;</code></pre>
-</div>
+<p><code>/</code> is the manifest-selected mudlib source root. <code>objects</code> refreshes the live
+registry, including connected player objects. <code>quit</code> or terminal EOF disconnects
+only this client. The attached CLI rejects <code>boot</code>; select another server by
+connecting to its admin port. Stop the server in its own terminal with Ctrl+C.</p>
 </div>
 <div class="paragraph">
-<p><code>/</code> is the manifest-selected mudlib source root. Paths cannot navigate above it.
-<code>boot &lt;mudlib-config-file&gt;</code> starts a fresh sandbox; it is not a reload of the
-current world. <code>quit</code> exits this shell.</p>
+<p>Administration is opt-in and always binds <code>127.0.0.1</code>, even when player Telnet
+binds all network interfaces. A random credential is created with owner-only
+permissions at <code>~/.jvmud/admin/&lt;admin-port&gt;.token</code>. The client reads it automatically;
+normal server shutdown removes it. A stale credential after a crash requires
+explicit removal after confirming that the old server has stopped.</p>
 </div>
 <div class="paragraph">
-<p>To investigate a changed object, edit its LPC source in your editor, run
-<code>reload &lt;path&gt;</code>, and inspect the resulting handle. <code>clone &lt;path&gt;</code> creates a
-separate instance; <code>destruct &lt;handle&gt;</code> removes an object. Do not assume reload
-migrates all state or references. Verify the affected object and callers.</p>
+<p>Override the credential path with <code>--admin-token-file &lt;path&gt;</code> on the server and
+<code>--token-file &lt;path&gt;</code> on the CLI. Startup never overwrites an existing credential.
+Use a different player/admin port pair for every independently running server.</p>
 </div>
 <div class="paragraph">
-<p>The complete command syntax is in <a href="#_commands">Commands</a>. <code>verbosity watch</code> reveals compiler
-stages; use <code>verbosity normal</code> to return to concise output.</p>
+<p>To investigate a changed object, edit its LPC source, run <code>reload &lt;path&gt;</code>, and
+inspect the result. <code>clone &lt;path&gt;</code> creates an instance; <code>destruct &lt;handle&gt;</code> removes
+one. These commands affect live state. Reload does not migrate all state or
+references; verify callers and avoid assuming occupied rooms or players can be
+replaced transparently. Long administrative commands can delay player input and
+ticks because commands execute under the world&#8217;s lock.</p>
+</div>
+<div class="paragraph">
+<p>The complete command syntax is in <a href="#_commands">Commands</a>. Compilation diagnostics use the
+running server&#8217;s configured observer; the attached client does not replace it.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1720,7 +1733,7 @@ player interaction.</p>
 <div class="sectionbody">
 <div id="_lpc_and_mudlib_authoring" class="paragraph">
 <p>The <a href="#small-mercies">Small Mercies source map</a> links runnable examples of rooms,
-commands, NPCs, and scheduling. Start with a typed object and test it in the admin sandbox. Then connect its
+commands, NPCs, and scheduling. Start with a typed object and test it through the CLI attached to a development server. Then connect its
 behavior to the selected mudlib&#8217;s commands and lifecycle. The language overview
 below preserves practical LPC examples; compatibility names such as <code>write</code> and
 <code>sizeof</code> depend on the active profile&#8217;s mappings.</p>
@@ -2563,7 +2576,11 @@ instance services when debugging host effects. <code>compiler.runtime</code> is 
 support; <code>engine.world</code> owns the engine&#8217;s world model.</p>
 </div>
 <div class="paragraph">
-<p>The admin shell boots a separate runtime and is not a remote mutation channel.
+<p><code>AdminClient</code> connects to the authenticated loopback <code>AdminServer</code>; each client
+gets an attached <code>AdminCli</code> command session. <code>InstanceHost.administer</code> serializes
+commands against the primary world with the same router/instance locks used by
+player dispatch and ticks. Admin socket reads and response writes occur outside
+those locks. The client never boots a runtime.
 Storage adapters live under <code>persistence</code>. Concurrency hardening and alignment
 between LPC location bookkeeping and engine containment remain tracked in
 <code>docs/DEFERRED_WORK.md</code>; avoid implying that package boundaries alone prove
@@ -2689,11 +2706,11 @@ successful load need an execution test, not just another compile scan.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Connection refused</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Wait for the listening message; verify the process is still
-running on loopback port 4000.</p></td>
+running on the configured address and player port (default localhost:4000).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Address already in use</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Stop your earlier listener. The launcher has no port argument.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stop your earlier listener or choose another port with <code>--port 4001</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Prompts repeat or login fails</p></td>
@@ -2702,8 +2719,8 @@ inspect the server log and that profile&#8217;s writable storage.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Admin command is unrecognized in Telnet</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Use the separate admin shell. It does
-not attach to this listener.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use <code>scripts/jvmud-cli --port &lt;admin-port&gt;</code>;
+the server must have been started with <code>--admin-port</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Movement or <code>look</code> is unrecognized</p></td>
@@ -2778,7 +2795,7 @@ explicit rather than implied by a successful build.</p>
 <div class="sect2">
 <h3 id="_commands"><a class="anchor" href="#_commands"></a><a class="link" href="#_commands">Commands</a></h3>
 <div class="paragraph">
-<p>These commands run inside <code>scripts/jvmud-admin &lt;mudlib-config-file&gt;</code>.
+<p>These commands run inside <code>scripts/jvmud-cli --port &lt;admin-port&gt;</code>.
 Paths name source files; handles identify loaded objects. Use <code>objects</code> to find
 handles. Arguments to <code>call</code> are passed as strings; quote strings containing
 spaces. Numeric text is not automatically converted to LPC integers. <code>help</code> is the live syntax reference.</p>
@@ -2801,11 +2818,6 @@ spaces. Numeric text is not automatically converted to LPC integers. <code>help<
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>help</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>h</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Show this command reference.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>boot &lt;mudlib-config-file&gt;</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>b</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Start a fresh mudlib sandbox without a player session.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>call &lt;handle&gt; &lt;method&gt; [args&#8230;&#8203;]</code></p></td>
@@ -2870,7 +2882,7 @@ spaces. Numeric text is not automatically converted to LPC integers. <code>help<
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>objects</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">List known CLI object handles.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">List registered live object handles.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>parse &lt;path&gt;</code></p></td>
@@ -2910,13 +2922,13 @@ spaces. Numeric text is not automatically converted to LPC integers. <code>help<
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>quit</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>q</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Exit the local shell.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disconnect this CLI session; the world keeps running.</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
 <p>The terminal launcher for play is
-<code>scripts/jvmud-start [--trace-startup-loads] &lt;mudlib-config-file&gt;</code>.
+<code>scripts/jvmud-start [--bind &lt;address&gt;] [--port &lt;port&gt;] [--admin-port &lt;port&gt;] [--admin-token-file &lt;path&gt;] [--trace-startup-loads] &lt;mudlib-config-file&gt;</code>.
 Inside a player client, profiles using the default transport prefix reserve <code>//help</code> and <code>//quit</code> for
 transport controls. The mudlib owns all gameplay verbs.</p>
 </div>

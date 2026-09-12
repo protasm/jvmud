@@ -19,7 +19,7 @@ of its game rules.
 
 The repository provides a staged LPC compiler, object execution APIs, the
 `WorldRuntime` containment model, scheduling, manifest-driven hosted instances,
-Telnet transport, persistence adapters, and an admin sandbox. See the
+Telnet transport, persistence adapters, and an attached live admin CLI. See the
 [core package guide](packages.html) and [User Manual](manual/index.html).
 
 Current verification must come from a fresh test run and the relevant runtime

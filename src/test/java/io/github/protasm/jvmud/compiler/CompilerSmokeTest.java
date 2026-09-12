@@ -3219,10 +3219,10 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void realmsConversationFormattingKeepsCapitalizedPlayerPronounTogether() {
+    void exampleConversationFormattingKeepsCapitalizedPlayerPronounTogether() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
-        LPCObjectHandle object = runtime.loadSource("smoke/realms_conversation_format.c", """
+        LPCObjectHandle object = runtime.loadSource("smoke/example_conversation_format.c", """
                 string render() {
                     string message = "@D@@C@you look at Maiwyn and state, @S@'And here you are. Alive...'";
                     while (jvmud_size(jvmud_regex_match(({ message }), "@C@", 0))) {
@@ -3998,9 +3998,10 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void untypedMethodsDefaultToMixedForCompatibility() {
+    void untypedMethodsRequireOptInTranspilation() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
 
+        runtime.registerMudlibBoundary(MudlibBoundary.builder().transpileUntypedMethods(true).build());
         LPCObjectHandle object = runtime.loadSource("smoke/untyped.c", """
                 reset(arg) {
                     return arg + 1;
@@ -4851,15 +4852,15 @@ final class CompilerSmokeTest {
                     return jvmud_regex_match(({ "alpha.c", "beta.txt", "gamma.c" }), "[.]c$");
                 }
 
-                string realms_command_text() {
+                string example_command_text() {
                     return jvmud_regex_replace("look [##Target##]", "^([^[#]+) +[[#].*", "\\\\1", 1);
                 }
 
-                string realms_option_prefix_text() {
+                string example_option_prefix_text() {
                     return jvmud_regex_replace("score [-v]", "^([^-[]+ +)(.*)", "\\\\1", 1);
                 }
 
-                string *realms_question_command_alias_matches_literal() {
+                string *example_question_command_alias_matches_literal() {
                     return jvmud_regex_match(({ "?", "look" }), "(^?( -v)*$)");
                 }
 
@@ -5037,9 +5038,9 @@ final class CompilerSmokeTest {
         assertEquals(12, reader.invoke("square_root"));
         assertEquals("12", reader.invoke("number_text"));
         assertEquals(List.of("alpha.c", "gamma.c"), reader.invoke("regex_matches"));
-        assertEquals("look", reader.invoke("realms_command_text"));
-        assertEquals("score ", reader.invoke("realms_option_prefix_text"));
-        assertEquals(List.of("?"), reader.invoke("realms_question_command_alias_matches_literal"));
+        assertEquals("look", reader.invoke("example_command_text"));
+        assertEquals("score ", reader.invoke("example_option_prefix_text"));
+        assertEquals(List.of("?"), reader.invoke("example_question_command_alias_matches_literal"));
         assertEquals("you ponder", reader.invoke("callback_regex_replacement"));
         assertEquals("You ponder.", reader.invoke("callback_efun_regex_replacement"));
         assertEquals("You ponder.", reader.invoke("callback_engine_function_regex_replacement"));
@@ -7007,7 +7008,7 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeUsesBoundaryMudlibRootForAbsoluteInherits() throws Exception {
-        Path mudlibRoot = tempDir.resolve("realms");
+        Path mudlibRoot = tempDir.resolve("example");
         Files.createDirectories(mudlibRoot.resolve("areas"));
         Files.createDirectories(mudlibRoot.resolve("lib/environment"));
         Files.writeString(mudlibRoot.resolve("lib/environment/environment.c"), """
@@ -7037,7 +7038,7 @@ final class CompilerSmokeTest {
 
     @Test
     void runtimeResolvesExtensionlessAbsoluteMudlibInherits() throws Exception {
-        Path mudlibRoot = tempDir.resolve("realms");
+        Path mudlibRoot = tempDir.resolve("example");
         Files.createDirectories(mudlibRoot.resolve("areas"));
         Files.createDirectories(mudlibRoot.resolve("lib/core"));
         Files.writeString(mudlibRoot.resolve("lib/core/thing.c"), """
@@ -7877,27 +7878,27 @@ final class CompilerSmokeTest {
     }
 
     @Test
-    void pipelineTreatsUntypedObjectMethodsAsMixed() {
+    void pipelineRejectsUntypedObjectMethods() {
         CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
                 value() {
                     return 42;
                 }
                 """);
 
-        assertTrue(result.getProblems().isEmpty());
-        assertNotNull(result.getBytecode());
+        assertFalse(result.getProblems().isEmpty());
+        assertNull(result.getBytecode());
     }
 
     @Test
-    void pipelineTreatsUntypedMethodParametersAsMixed() {
+    void pipelineRejectsUntypedMethodParameters() {
         CompilationResult result = new CompilationPipeline("java/lang/Object").run("""
                 mixed value(arg) {
                     return arg;
                 }
                 """);
 
-        assertTrue(result.getProblems().isEmpty());
-        assertNotNull(result.getBytecode());
+        assertFalse(result.getProblems().isEmpty());
+        assertNull(result.getBytecode());
     }
 
     @Test

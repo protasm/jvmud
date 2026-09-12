@@ -37,7 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-/** Local JVMud administration shell backed by the real runtime. */
+/** Administrative command session, either attached to a live runtime or used as a local test sandbox. */
 public final class AdminCli {
     private final PrintWriter out;
     private final Map<String, Object> handles = new java.util.LinkedHashMap<>();
@@ -48,19 +48,28 @@ public final class AdminCli {
     private Verbosity verbosity = Verbosity.NORMAL;
     private boolean suppressCompilationFailures;
     private boolean running = true;
+    private boolean attached;
 
     public AdminCli(PrintWriter out) {
         this.out = Objects.requireNonNull(out, "out");
     }
 
     public static void main(String[] args) throws IOException {
-        if (args.length != 1) {
-            throw new IllegalArgumentException("Usage: scripts/jvmud-admin <mudlib-config-file>");
-        }
-        PrintWriter out = new PrintWriter(System.out, true);
+        AdminClient.main(args);
+    }
+
+    /**
+     * Creates an attached command session without booting a new world. Creation and every
+     * execute call must occur inside InstanceHost.administer; runtime access never escapes
+     * that execution boundary. The host supplies its already configured runtime.
+     */
+    public static AdminCli attach(PrintWriter out, LPCRuntime runtime, Path root) {
         AdminCli cli = new AdminCli(out);
-        cli.bootConfig(Path.of(args[0]));
-        cli.run(new BufferedReader(new InputStreamReader(System.in)));
+        cli.runtime = Objects.requireNonNull(runtime, "runtime");
+        cli.mudlibRoot = runtime.mudlibBoundary().mudlibRootPath().orElse(root)
+                .toAbsolutePath().normalize();
+        cli.attached = true;
+        return cli;
     }
 
     public void run(BufferedReader in) throws IOException {
@@ -85,6 +94,11 @@ public final class AdminCli {
             return;
         }
 
+        if (attached) {
+            handles.clear();
+            objectNames.clear();
+            runtime.registeredObjects().forEach(this::remember);
+        }
         CommandLine command = CommandLine.parse(line);
         if (!command.isBlank()) {
             executeAdminCommand(command);
@@ -142,6 +156,9 @@ public final class AdminCli {
     }
 
     public void boot(Path mudlibRoot, String configObjectPath) {
+        if (attached) {
+            throw new IllegalStateException("An attached CLI cannot boot a different world. Connect to its admin port instead.");
+        }
         this.mudlibRoot = mudlibRoot.toAbsolutePath().normalize();
         this.virtualCwd = Path.of("");
         runtime = new LPCRuntime(LPCRuntimeConfig.builder()
@@ -220,7 +237,9 @@ public final class AdminCli {
     private void help() {
         out.println("Admin commands:");
         helpLine("h", "help", "Show this command reference.");
-        helpLine("b", "boot <mudlib-config-file>", "Start a fresh mudlib sandbox without a player session.");
+        if (!attached) {
+            helpLine("b", "boot <mudlib-config-file>", "Start a fresh mudlib sandbox without a player session.");
+        }
         helpLine("", "call <handle> <method> [args...]", "Invoke a method on a loaded object handle.");
         helpLine("", "cat <path>", "Print a file from the virtual mudlib filesystem.");
         helpLine("", "cd [path]", "Change the current virtual mudlib directory.");
@@ -409,7 +428,7 @@ public final class AdminCli {
         ensureBooted();
         String runtimePath = runtimePath(path);
         Object object = runtime.cloneObject(runtimePath);
-        String handle = nextHandle(runtimePath);
+        String handle = attached ? runtime.inspectObject(object).objectId() : nextHandle(runtimePath);
         remember(handle, object);
         info("Cloned " + runtimePath + " as " + handle);
     }

@@ -1,7 +1,7 @@
 /**
  * Orchestration layer for the compiler pipeline.
  *
- * <p>{@link io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline} runs scan, parse,
+ * <p>{@link io.github.protasm.jvmud.compiler.pipeline.CompilationPipeline} runs scan, opt-in transpilation, parse,
  * inherited-source resolution, semantic analysis, IR lowering, and optional bytecode generation,
  * collecting source-level failures as {@link
  * io.github.protasm.jvmud.compiler.pipeline.CompilationProblem} instances in a {@link

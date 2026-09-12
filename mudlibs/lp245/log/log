@@ -1,0 +1,10 @@
+obj/simul_efun.c line 12:Missing type for argument
+obj/simul_efun.c line 33:Undefined function slice_array
+obj/simul_efun.c line 80:Undefined function filter_array
+obj/simul_efun.c line 81:Undefined function filter_array
+obj/simul_efun.c line 23:missing expression in #if
+obj/simul_efun.c line 84:Undefined function filter_array
+obj/simul_efun.c line 23:missing expression in #if
+obj/simul_efun.c line 84:Undefined function filter_array
+obj/simul_efun.c line 84:Undefined function filter_array
+obj/simul_efun.c line 84:Undefined function filter_array

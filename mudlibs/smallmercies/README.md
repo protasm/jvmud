@@ -126,5 +126,5 @@ run because their required password environment variable was unavailable.
 To run the same credential-free baseline:
 
 ```sh
-mvn '-Dtest=!RealmsMudCompatibilityScanTest' test
+mvn test
 ```

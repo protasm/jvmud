@@ -308,6 +308,15 @@ public final class RuntimeContext {
         globalObjectDeclarations.clear();
     }
 
+    /** Applies only the source translations explicitly selected by this mudlib's bridge. */
+    public TokenList transpileSourceTokens(Path sourcePath, TokenList tokens) {
+        tokens = new io.github.protasm.jvmud.transpiler.FieldTypeTranspiler().transpile(
+                sourcePath, mudlibBoundary.mudlibRootPath().orElse(null), tokens, mudlibBoundary.fieldTypeOverrides());
+        return mudlibBoundary.transpileUntypedMethods()
+                ? new io.github.protasm.jvmud.transpiler.UntypedMethodTranspiler().transpile(tokens)
+                : tokens;
+    }
+
     /** Sets active mudlib boundary metadata for generated-code helpers and compatibility lookup. */
     public void setMudlibBoundary(MudlibBoundary mudlibBoundary) {
         this.mudlibBoundary = mudlibBoundary != null ? mudlibBoundary : MudlibBoundary.empty();
@@ -642,7 +651,8 @@ public final class RuntimeContext {
                 return Optional.empty();
             }
             Scanner scanner = new Scanner(newPreprocessor());
-            TokenList tokens = scanner.scan(source.sourcePath(), source.source(), source.displayPath());
+            TokenList tokens = transpileSourceTokens(source.sourcePath(),
+                    scanner.scan(source.sourcePath(), source.source(), source.displayPath()));
             Parser parser = new Parser(this, parserOptions);
             return Optional.of(parser.parse(objectPath, tokens));
         } catch (IOException e) {

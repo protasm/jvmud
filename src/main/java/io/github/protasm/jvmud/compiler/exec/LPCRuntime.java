@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiFunction;
@@ -804,6 +805,14 @@ public final class LPCRuntime {
         Objects.requireNonNull(persona, "persona");
         Objects.requireNonNull(line, "line");
         return withRuntimeContext(() -> runtimeContext.deliverCapturedSessionInput(persona, line));
+    }
+
+    /**
+     * Returns a snapshot of registered object ids and their live instances for administration.
+     * Callers must hold the owning hosted instance's execution lock while using these objects.
+     */
+    public Map<String, Object> registeredObjects() {
+        return new java.util.LinkedHashMap<>(runtimeContext.objectsView());
     }
 
     /** Builds a reflection-backed inspection snapshot for admin tooling. */
