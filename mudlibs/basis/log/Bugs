@@ -1,0 +1,21 @@
+
+718019334	Shadowhawk	Fri Oct  2 04:48:54 1992	/room/start
+
+more doesn't check environ var lines.
+
+718283915	Shadowhawk	Mon Oct  5 06:18:35 1992	/room/start
+
+Two things on flocks...
+If you type ed with no arg, it gives you a flock on the dir you
+are in, which is a useless behaviour.
+Also, more irritating, people can flock files even if they can't
+edit the file.
+
+718285764	Shadowhawk	Mon Oct  5 06:49:24 1992	/room/start
+
+More pukes when trying to display an empty file.
+
+718286927	Shadowhawk	Mon Oct  5 07:08:47 1992	/room/start
+
+The du command reports figures that are way below the actual disk
+comsumtion. I got 243 used for /bin when Unix du reported 350 or so.

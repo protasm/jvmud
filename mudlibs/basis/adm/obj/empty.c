@@ -1,0 +1,7 @@
+/* this empty object used by /adm/obj/login.c when reconnecting to an
+   interactive login
+*/
+
+create()
+{
+}

@@ -5,6 +5,30 @@
       "field": "amount_of_fuel",
       "expected_type": "string",
       "replacement_type": "int"
+    },
+    {
+      "file": "room/room.c",
+      "field": "dest_dir",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/room.c",
+      "field": "items",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/room.c",
+      "field": "numbers",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/room.c",
+      "field": "property",
+      "expected_type": "string",
+      "replacement_type": "mixed"
     }
   ]
 }

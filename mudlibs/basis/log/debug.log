@@ -1,0 +1,5 @@
+Illegal mapping format when restore data/obj/i/admin/truilkan.o.
+program: std/save.c, object: obj/i/admin#13 line 59
+'   get_password' in '     adm/obj/login.c' ('    adm/obj/login#12')line 147
+' switch_new_obj' in 'adm/std/login/misc.c' ('    adm/obj/login#12')line 92
+'   restore_data' in '          std/save.c' ('      obj/i/admin#13')line 59

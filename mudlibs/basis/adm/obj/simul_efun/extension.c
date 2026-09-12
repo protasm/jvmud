@@ -1,0 +1,13 @@
+// mudlib: Basis
+
+string
+extension(string file)
+{
+    string *parts;
+
+    parts = explode(file, ".");
+    if (sizeof(parts) > 1) {
+        return parts[sizeof(parts)-1];
+    }
+    return 0;
+}

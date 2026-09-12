@@ -207,3 +207,21 @@ voice.
 - Verification: `FieldTypeTranspilerTest` covers negative expectations, grouped
   declarations, arrays, includes/inheritance, global helpers, hosted startup,
   explicit selection, and numeric execution of the unchanged original torch.
+
+## Opt-in implicit self calls
+
+- Motivation: LP245's living base calls `short()` without declaring it, expecting
+  a concrete descendant to supply it.
+- Bridge setting: `transpilation.implicit_self_calls = true` (default false),
+  independent of untyped-method normalization.
+- Implementation: `ImplicitSelfCallTranspiler` runs after ordinary name lookup
+  during semantic resolution and produces a required dynamic call on the current
+  object. The result is mixed, the original call line and arguments are retained,
+  and missing implementations fail at runtime. Known names and qualified calls
+  retain their existing checks. It does not synthesize abstract declarations.
+- Tradeoff: unknown-name typos and missing services may also compile; this flag
+  shifts their detection to invocation and does not prove gameplay compatibility.
+- Verification: `ImplicitSelfCallTranspilerTest` covers inherited dispatch,
+  missing implementations, single evaluation of arguments, strict mode,
+  known-function/alias checks and hosted startup. `Lp245BridgeTest` executes
+  the unchanged living base's `show_stats()` against a concrete child.

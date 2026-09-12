@@ -32,6 +32,64 @@ final class Lp245BridgeTest {
         return runtime;
     }
 
+    /** Runs the unchanged living base against a concrete implementation of its implicit hook. */
+    @Test
+    void originalLivingStatsDispatchToConcreteShort() throws Exception {
+        Path mudlib = UPSTREAM.toAbsolutePath();
+        var boundary = MudlibBoundaryConfigReader.read(mudlib, "jvmud/lp245.config");
+        var rt = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(mudlib).build());
+        CoreEfuns.registerCore(rt, boundary.engineCapabilities());
+        rt.registerMudlibBoundary(boundary);
+        rt.setParserOptions(ParserOptions.features(boundary.languageFeatures()));
+        rt.load("obj/living");
+        var concrete = rt.loadSource("living_probe.c", """
+                inherit "/obj/living";
+                string short() { return "Concrete living probe"; }
+                """);
+        concrete.invoke("show_stats");
+        assertTrue(rt.outputTranscript().contains("Concrete living probe"), rt.outputTranscript());
+        // The original descendant retains the same mixed contract as the living base.
+        var monster = rt.load("obj/monster.talk");
+        assertEquals(0, monster.invoke("can_put_and_get", 0));
+        assertEquals(1, monster.invoke("can_put_and_get", "bag"));
+    }
+
+    /** Exercises inherited field writes and reads across separately generated room classes. */
+    @Test
+    void originalRoomBaseSupportsInheritedExitsItemsAndProperties() throws Exception {
+        Path mudlib = UPSTREAM.toAbsolutePath();
+        var boundary = MudlibBoundaryConfigReader.read(mudlib, "jvmud/lp245.config");
+        var rt = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(mudlib).build());
+        CoreEfuns.registerCore(rt, boundary.engineCapabilities());
+        rt.registerMudlibBoundary(boundary);
+        rt.setParserOptions(ParserOptions.features(boundary.languageFeatures()));
+        // Load the parent first so a child cannot conceal an incompatible parent field descriptor.
+        var base = rt.load("room/room");
+        var green = rt.load("room/vill_green");
+        green.invoke("reset", 0);
+        assertEquals(List.of("room/church", "north", "room/hump", "west", "room/vill_track", "east"),
+                green.invoke("query_dest_dir"));
+        assertEquals("Village green", green.invoke("short"));
+        assertEquals("three", green.invoke("convert_number", 3));
+        assertEquals("nine", base.invoke("convert_number", 9));
+        var probe = rt.loadSource("room_probe.c", """
+                inherit "/room/room";
+                void configure() {
+                    items = ({"table", "A wooden table", "window", "An open window"});
+                }
+                void set_property(mixed value) { property = value; }
+                """);
+        probe.invoke("configure");
+        assertEquals(1, probe.invoke("id", "window"));
+        assertEquals(0, probe.invoke("id", "door"));
+        probe.invoke("set_property", List.of("no_fight", "no_steal"));
+        assertEquals(1, probe.invoke("query_property", "no_steal"));
+        assertEquals(0, probe.invoke("query_property", "no_magic"));
+        probe.invoke("set_property", "no_magic");
+        assertEquals(1, probe.invoke("query_property", "no_magic"));
+        assertEquals("no_magic", probe.invoke("query_property", 0));
+    }
+
     @Test
     void originalSourcesMatchArchiveBaseline() throws Exception {
         var hashes = new ObjectMapper().readTree(Path.of("src/test/resources/lp245-lysator/upstream-sha256.json").toFile());

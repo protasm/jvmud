@@ -70,7 +70,8 @@ import java.util.Objects;
 
 /**
  * Semantic type checker that validates expressions, arguments, and returns while refining symbol
- * types when they remain unspecified or {@code mixed}.
+ * value types when they remain unspecified or {@code mixed}. Explicit method return declarations
+ * remain authoritative, including {@code mixed}, so inherited JVM signatures stay stable.
  */
 public final class SemanticTypeChecker {
     private final List<CompilationProblem> problems;
@@ -1160,7 +1161,10 @@ public final class SemanticTypeChecker {
             inferredReturn = mergeReturn(inferredReturn, valueType);
         }
 
+        /** Infer only undeclared returns; a declared mixed type is the method's public contract. */
         void finalizeReturn() {
+            if (method.symbol().declaredType() != null)
+                return;
             LPCType declared = method.symbol().lpcType();
             if ((declared == null || declared == LPCType.LPCMIXED) && inferredReturn != null)
                 method.symbol().setLPCType(inferredReturn);

@@ -1,0 +1,15 @@
+#include <config.h>
+inherit DAEMON;
+
+mapping xverbs;
+
+void
+create()
+{
+	xverbs = ([ '\'' : "say", ':' : "emote" ]);
+}
+
+mapping query_xverbs()
+{
+	return xverbs;
+}

@@ -10,9 +10,9 @@ since been implemented and verified.
 
 | Check | Result |
 | --- | --- |
-| Compile every original `.c` file, with the manifest registered directly | 255 of 286 compile; 31 fail |
-| Compile the actual `room/init_file` list | 4 of 8 compile; 4 fail |
-| Normal `MudInstance.boot` after the propagation fix | Boots to the church; 4 preloads skipped; login remains blocked |
+| Compile every original `.c` file, with the manifest registered directly | 265 of 286 compile; 21 fail |
+| Compile the actual `room/init_file` list | 5 of 8 compile; 3 fail |
+| Normal `MudInstance.boot` with the current bridge | Boots to the church; 3 preloads skipped; login remains blocked |
 | Diagnostic copy with bridge-object declaration merge bypassed | Boots to the church; 4 preloads skipped; login not established |
 | Diagnostic copy additionally declaring `mixed short();` on the living base | 256 of 286 compile; 30 fail; further player and monster errors exposed |
 
@@ -71,25 +71,79 @@ Other syntax/behavior accommodations include:
   Decide and test an explicit legacy calling convention rather than globally
   relaxing strict arity checks.
 
+### Room foundation: checked field overrides implemented
+
+The bridge now translates `room/room.c`'s `dest_dir`, `items`, and `numbers`
+from `string` to `string*`. Their upstream comments and uses define arrays of
+exit pairs, item/description pairs, and number words. `property` becomes `mixed`
+because the original contract explicitly accepts either a string or an array.
+All substitutions remain checked, source-specific rules in `transpilation.json`.
+
+`Lp245BridgeTest.originalRoomBaseSupportsInheritedExitsItemsAndProperties`
+loads the original parent before the original village green, executes its reset,
+and verifies inherited exits, its short description, and shared number lookup.
+A typed test child also verifies item lookup and switching property values between
+an array and a string through a mixed setter. This removes the observed
+`dest_dir` linkage failure on that real-room path without changing the compiler.
+It does not establish generic inherited-field inference correctness: a child
+assigning an array literal and then a string literal directly to a mixed field
+still encounters inferred-array narrowing and requires separate compiler work.
+
+Before enabling implicit self calls, the room-only assessment was **255/286**,
+with hosted boot reaching the
+church and the same four skipped preloads (`after-room-overrides.log` in the
+generated assessment directory). The value of this step is executable
+inherited-room behavior; login is still blocked. All 582 archive checksums match.
+At that stage, 27 focused bridge/transpiler tests passed. The full suite ran 505 tests
+with one failure and 14 errors in retained LP245 compatibility/Telnet tests,
+including stale `source/` paths and unresolved living/array/syntax behavior;
+it is not a passing gameplay acceptance suite.
+
 ## 3. Resolve inheritance and generated-code consistency
 
-`obj/living.c` calls `short()` from `show_stats`, while player and monster classes
-supply the implementation. JVMud analyzes the base independently and rejects
-that call. A typed virtual declaration or a deliberate dynamic-dispatch adapter
-is needed. A disposable-copy experiment adding `mixed short();` resolved this
-first error, but did not make player or monster compilation succeed.
+**Implicit self calls implemented.** `transpilation.implicit_self_calls = true`
+is an independent, default-off manifest option. After normal name resolution,
+`ImplicitSelfCallTranspiler` translates unknown bare calls to required dynamic
+invocations on the current LPC object. Known method/function names retain their
+checks even when called with invalid arity; qualified calls are unchanged.
+This is late binding, not an abstract-class declaration or a relaxed type checker.
+Untyped declarations still require their own flag.
 
-That experiment exposed:
+The original `obj/living.c` now compiles, and an execution regression verifies
+that `show_stats()` dispatches `short()` to a concrete test child. Tests also
+cover multilevel inheritance, argument evaluation once, missing implementation
+errors, global helpers, aliases, strict/default mode, and hosted boot propagation.
 
-- Remaining array-declaration errors in the player object.
-- An incompatible `can_put_and_get` override: the base returns a comparison,
-  while the child returns integer 0/1. Both signatures were transpiled to `mixed`,
-  but inferred signatures differ. Audit stable declared signatures versus inferred
-  implementation types; a well-formed mixed-signature regression should decide
-  whether this is a compiler defect rather than requiring a mudlib exception.
-- More scalar/array mismatches in monster conversation data.
+After implicit self calls, the scan reached **263/286**; boot reaches the church with three skipped preloads.
+Evidence: `after-implicit-self-calls.log` in the generated assessment directory.
+Some additional compile successes merely defer missing services or misspellings
+(e.g. `this_palyer`) to runtime; those objects are not verified playable.
+The source archive remains unchanged.
 
-Retained world-loading tests also expose `NoSuchFieldError` for
+**Declared mixed return contracts fixed.** The type checker now preserves an
+explicit method return declaration instead of replacing `mixed` with a narrower
+type inferred from its body. This keeps parent and child JVM method descriptors
+consistent. The living base's comparison result and the monster's integer
+results satisfy the same declared `mixed` contract.
+
+`MixedReturnContractTest` reproduces the failure with explicitly typed source
+and verifies generated return descriptors, inherited virtual calls across three
+levels, and continued rejection of incompatible narrow signatures and untyped
+methods. `Lp245BridgeTest` also loads the unchanged `obj/monster.talk.c` and
+executes its `can_put_and_get` implementation. Neither a new transpiler flag nor
+an LP245-specific compiler exception is involved.
+
+The scan is now **265/286**, adding `obj/monster.talk.c` and `players/lars/yy.c`.
+Boot still reaches the church with three skipped preloads. Evidence:
+`after-mixed-return-contracts.log` in the generated assessment directory.
+The 341 focused compiler/bridge tests pass; the full suite runs 513 tests with
+one failure and 13 errors in retained LP245 compatibility/Telnet tests.
+
+Remaining player and monster analysis errors concern legacy array declarations
+and local string/integer assignments; the `can_put_and_get` signature error is
+resolved.
+
+Before the room overrides, retained world-loading tests exposed `NoSuchFieldError` for
 `room.room`'s `java.util.List dest_dir`. Parent/child generated field descriptors
 must agree. An accepted compilation should not fail with a JVM linkage error;
 fix consistent field typing/code generation or report a source error before
@@ -157,8 +211,9 @@ write access to the original source tree.
 
 1. **Boot integration — complete:** hosted startup preserves the switch;
    untyped fixtures boot with it on and fail with it off.
-2. **Player and room foundations:** resolve living-base virtual calls, legacy
-   array declarations, and stable inherited field/method types. Compile and load
+2. **Player and room foundations:** living-base late binding and the selected
+   room fields are implemented; resolve remaining legacy array declarations
+   and stable inherited field/method types. Compile and load
    the player, monster, room base, church, and adjacent rooms.
 3. **First playable session:** complete password and player-lookup adapters;
    demonstrate login, look, movement, speech, inventory, combat, death, and quit.
@@ -175,34 +230,24 @@ technical uncertainties. Reassess after the first player-and-room milestone.
 
 ## All-source failures
 
-- `obj/explore_xp.c`
-- `obj/leo.c`
-- `obj/living.c`
-- `obj/mag_stone.c`
 - `obj/marker.c`
 - `obj/master.c`
 - `obj/monster.c`
-- `obj/monster.talk.c`
 - `obj/player.c`
 - `obj/quicktyper.c`
 - `obj/roommaker.c`
 - `obj/shut.c`
-- `obj/simul_efun.c`
 - `obj/team.c`
 - `obj/trace.c`
 - `obj/trace2.c`
 - `players/lars/board.c`
 - `players/lars/rand.c`
-- `players/lars/xx.c`
-- `players/lars/yy.c`
 - `room/adv_guild.c`
 - `room/death/death.c`
 - `room/death/death_room.c`
 - `room/def_castle.c`
 - `room/mine/tunnel3.c`
 - `room/mine/tunnel9.c`
-- `room/port_castle.c`
 - `room/shop.c`
-- `room/south/sforst19.c`
 - `room/storage.c`
 - `room/test.c`

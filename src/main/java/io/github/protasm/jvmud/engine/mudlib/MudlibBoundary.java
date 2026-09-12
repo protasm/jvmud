@@ -63,6 +63,7 @@ public final class MudlibBoundary {
     private final String databasePassword;
     private final List<FieldTypeOverride> fieldTypeOverrides;
     private final boolean transpileUntypedMethods;
+    private final boolean transpileImplicitSelfCalls;
     private final Set<LanguageFeature> languageFeatures;
     private final Set<EngineCapability> engineCapabilities;
     private final String temporalTickMethod;
@@ -101,6 +102,7 @@ public final class MudlibBoundary {
         this.databasePassword = builder.databasePassword != null ? builder.databasePassword : null;
         this.fieldTypeOverrides = List.copyOf(builder.fieldTypeOverrides);
         this.transpileUntypedMethods = builder.transpileUntypedMethods;
+        this.transpileImplicitSelfCalls = builder.transpileImplicitSelfCalls;
         this.languageFeatures = Set.copyOf(builder.languageFeatures);
         this.engineCapabilities = Set.copyOf(builder.engineCapabilities);
         this.temporalTickMethod = normalizeOptionalText(builder.temporalTickMethod);
@@ -269,6 +271,11 @@ public final class MudlibBoundary {
         return fieldTypeOverrides;
     }
 
+    /** Whether unresolved bare calls become dynamic calls on self; disabled by default. */
+    public boolean transpileImplicitSelfCalls() {
+        return transpileImplicitSelfCalls;
+    }
+
     /** Whether to normalize missing method types before strict parsing; disabled by default. */
     public boolean transpileUntypedMethods() {
         return transpileUntypedMethods;
@@ -429,6 +436,7 @@ public final class MudlibBoundary {
                 || databasePassword != null
                 || !fieldTypeOverrides.isEmpty()
                 || transpileUntypedMethods
+                || transpileImplicitSelfCalls
                 || !languageFeatures.isEmpty()
                 || !engineCapabilities.isEmpty()
                 || temporalTickMethod != null
@@ -589,6 +597,7 @@ public final class MudlibBoundary {
         private String databasePassword;
         private final List<FieldTypeOverride> fieldTypeOverrides = new ArrayList<>();
         private boolean transpileUntypedMethods;
+        private boolean transpileImplicitSelfCalls;
         private final EnumSet<LanguageFeature> languageFeatures = EnumSet.noneOf(LanguageFeature.class);
         private final EnumSet<EngineCapability> engineCapabilities = EnumSet.noneOf(EngineCapability.class);
         private String temporalTickMethod;
@@ -766,6 +775,12 @@ public final class MudlibBoundary {
         /** Enables in-memory legacy method typing without changing the compiler language. */
         public Builder transpileUntypedMethods(boolean enabled) {
             this.transpileUntypedMethods = enabled;
+            return this;
+        }
+
+        /** Selects late binding for unknown bare calls without changing declared-call checks. */
+        public Builder transpileImplicitSelfCalls(boolean enabled) {
+            this.transpileImplicitSelfCalls = enabled;
             return this;
         }
 

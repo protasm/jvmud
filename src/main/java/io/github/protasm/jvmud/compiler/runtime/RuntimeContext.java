@@ -501,6 +501,23 @@ public final class RuntimeContext {
         outputTranscript.setLength(0);
     }
 
+    /**
+     * Returns whether a function name exists regardless of call arity, including mfuns and aliases.
+     * Used to keep malformed calls to known functions out of implicit-self translation.
+     */
+    public boolean hasFunctionNamed(String name) {
+        return !name.equals(engineFunctionName(name))
+                || !efunRegistry.signatures(name).isEmpty()
+                || !efunRegistry.signatures(engineFunctionName(name)).isEmpty()
+                || declaredGlobalMethod(mudlibGlobalObjectPath, name, -1) != null
+                || declaredGlobalMethod(compatibilityGlobalObjectPath, name, -1) != null;
+    }
+
+    /** Whether this runtime explicitly enables translation of unresolved bare calls to self. */
+    public boolean transpileImplicitSelfCalls() {
+        return mudlibBoundary.transpileImplicitSelfCalls();
+    }
+
     public Efun resolveEfun(String name, int arity) {
         Efun global = resolveGlobalFunction(name, arity);
         return global != null ? global : lookupEngineEfun(name, arity);
@@ -607,6 +624,7 @@ public final class RuntimeContext {
         return name.equals(engineName) ? null : efunRegistry.lookup(engineName, arity);
     }
 
+    /** A negative arity queries name presence without selecting a callable signature. */
     private ASTMethod declaredGlobalMethod(String objectPath, String name, int arity) {
         return declaredGlobalMethod(objectPath, name, arity, new HashSet<>());
     }
@@ -624,7 +642,7 @@ public final class RuntimeContext {
         }
         ASTObject object = declaration.orElseThrow();
         ASTMethod directMethod = object.methods().getAll(name).stream()
-                .filter(method -> acceptsArity(method, arity))
+                .filter(method -> arity < 0 || acceptsArity(method, arity))
                 .min(Comparator.comparingInt(this::parameterCount))
                 .orElse(null);
         if (directMethod != null) {

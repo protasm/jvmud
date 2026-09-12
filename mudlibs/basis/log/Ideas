@@ -1,0 +1,14 @@
+
+718278379	Shadowhawk	Mon Oct  5 04:46:19 1992	/room/start
+
+How 'bout allowing wildcards like * and ? in filenames for various
+commands like rm, cp, and mv?
+
+718285013	Truilkan	Mon Oct  5 06:36:53 1992	/room/start
+
+allow emotes to end in !, ? etc to override default punctuation
+
+718285071	Shadowhawk	Mon Oct  5 06:37:51 1992	/room/start
+
+It would be nice if emotions did substitution on modifiers given
+as args (for stuff like $S, $N, etc).

@@ -987,7 +987,7 @@ public final class SemanticAnalyzer {
                         dynamicInvoke.line(),
                         resolvedTarget,
                         dynamicInvoke.methodName(),
-                        resolvedArgs);
+                        resolvedArgs, dynamicInvoke.required());
             }
 
             if (expression instanceof ASTExprLocalStore store) {
@@ -1240,6 +1240,16 @@ public final class SemanticAnalyzer {
 
             if (efun != null)
                 return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
+
+            // Resolution must precede translation: declarations, globals and efuns keep their
+            // existing checking, including calls with an invalid argument count.
+            if (runtimeContext.transpileImplicitSelfCalls()
+                    && resolveScopedSymbol(unresolvedCall.name()) == null
+                    && resolveLocal(context, unresolvedCall.name()) == null
+                    && !runtimeContext.hasFunctionNamed(unresolvedCall.name())) {
+                return new io.github.protasm.jvmud.transpiler.ImplicitSelfCallTranspiler()
+                        .transpile(unresolvedCall, resolvedArgs, runtimeContext);
+            }
 
             problems.add(
                     new CompilationProblem(

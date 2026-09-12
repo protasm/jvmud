@@ -1,0 +1,9 @@
+#include <config.h>
+inherit BIN;
+
+int
+do_command(string arg)
+{
+	malloc_status();
+	return 1;
+}

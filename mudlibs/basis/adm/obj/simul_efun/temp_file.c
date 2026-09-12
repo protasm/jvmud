@@ -1,0 +1,6 @@
+
+string
+temp_file(string base, object obj)
+{
+	return "/tmp/" + base + "." + getoid(obj);
+}

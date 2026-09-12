@@ -1,0 +1,15 @@
+/*
+// galias command (globals)
+*/
+
+#include <config.h>
+#include <daemons.h>
+#include <attributes.h>
+
+inherit "/bin/user/shell/unalias";
+
+void
+create()
+{
+	set_global(1);
+}

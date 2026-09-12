@@ -1,0 +1,9 @@
+#include <config.h>
+inherit BIN;
+
+int
+do_command(string arg)
+{
+	dump_file_descriptors();
+	return 1;
+}

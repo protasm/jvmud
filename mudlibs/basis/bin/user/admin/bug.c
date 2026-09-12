@@ -1,0 +1,13 @@
+// mudlib: Basis
+// author: Truilkan
+
+#include <config.h>
+inherit REPORT;
+
+void
+create()
+{
+	set_logfile("Bugs");
+}
+
+int permissions() { return 0; }

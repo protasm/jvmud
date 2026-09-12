@@ -206,6 +206,7 @@ public final class MudlibBoot {
         configBoundary.databasePassword().ifPresent(builder::databasePassword);
         configBoundary.fieldTypeOverrides().forEach(builder::fieldTypeOverride);
         builder.transpileUntypedMethods(configBoundary.transpileUntypedMethods());
+        builder.transpileImplicitSelfCalls(configBoundary.transpileImplicitSelfCalls());
         configBoundary.languageFeatures().forEach(builder::languageFeature);
         configBoundary.engineCapabilities().forEach(builder::engineCapability);
         configBoundary.temporalTickMethod().ifPresent(builder::temporalTickMethod);

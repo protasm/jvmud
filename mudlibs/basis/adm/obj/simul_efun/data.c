@@ -1,0 +1,10 @@
+
+string data_dir(object obj)
+{
+	return DATA_DIR + base_name(obj);
+}
+
+string data_file(object obj)
+{
+	return data_dir(obj) + "/" + (geteuid(obj) ? geteuid(obj) : getuid(obj));
+}

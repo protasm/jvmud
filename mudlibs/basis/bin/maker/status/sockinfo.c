@@ -1,0 +1,9 @@
+#include <config.h>
+inherit BIN;
+
+int
+do_command(string arg)
+{
+	dump_socket_status();
+	return 1;
+}

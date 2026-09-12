@@ -1744,7 +1744,7 @@ public final class IRLowerer {
                     target,
                     dynamicInvoke.methodName(),
                     args,
-                    RuntimeTypes.MIXED);
+                    RuntimeTypes.MIXED, dynamicInvoke.required());
         }
 
         problems.add(

@@ -66,6 +66,7 @@ public final class MudlibBoundaryConfigReader {
             "database.password_env",
             "language_features",
             "transpilation.untyped_methods",
+            "transpilation.implicit_self_calls",
             "transpilation.overrides",
             "engine_capabilities",
             "handled_lifecycle_events",
@@ -172,6 +173,7 @@ public final class MudlibBoundaryConfigReader {
             io.github.protasm.jvmud.transpiler.TranspilationConfigReader.read(overrideFile, activeRoot)
                     .forEach(builder::fieldTypeOverride);
         }
+        addBoolean(builder::transpileImplicitSelfCalls, firstValue(values, "transpilation.implicit_self_calls"));
         addBoolean(builder::transpileUntypedMethods, firstValue(values, "transpilation.untyped_methods"));
         addLanguageFeatures(builder, allValues(values, "language_features"));
         addEngineCapabilities(builder, allValues(values, "engine_capabilities"));

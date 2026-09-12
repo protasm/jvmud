@@ -1,0 +1,8 @@
+adm/std/login/misc.c line 19:Undefined function mud_name
+adm/std/login/misc.c line 19:Undefined function version
+adm/daemon/cmwhod.c line 117:Undefined function version
+adm/daemon/cmwhod.c line 180:Undefined function mud_name
+adm/daemon/cmwhod.c line 193:Function mud_name undefined
+adm/daemon/cmwhod.c line 193:Bad argument 1 type to efun capitalize()
+adm/std/login/misc.c line 19:Undefined function mud_name
+adm/std/login/misc.c line 19:Undefined function version

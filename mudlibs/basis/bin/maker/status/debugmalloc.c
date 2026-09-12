@@ -1,0 +1,16 @@
+#include <config.h>
+inherit BIN;
+
+int
+do_command(string arg)
+{
+        int tag;
+
+        if (!arg) {
+                notify_fail("debugmalloc tag\n");
+                return 0;
+        }
+        sscanf(arg, "%d", tag);
+        debugmalloc(LOG_DIR + "/dumps/malloc_dump", tag);
+        return 1;
+}

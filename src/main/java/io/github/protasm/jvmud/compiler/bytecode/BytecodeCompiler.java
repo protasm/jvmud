@@ -1395,7 +1395,7 @@ public final class BytecodeCompiler {
         mv.visitMethodInsn(
                 INVOKEVIRTUAL,
                 "io/github/protasm/jvmud/compiler/runtime/RuntimeContext",
-                "invokeOptionalObject",
+                dynamicInvoke.required() ? "invokeObject" : "invokeOptionalObject",
                 "(Ljava/lang/Object;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;",
                 false);
         if (dynamicInvoke.type() != null && dynamicInvoke.type().kind() == RuntimeValueKind.VOID) {
