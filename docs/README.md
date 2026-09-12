@@ -35,7 +35,7 @@ From the repository root:
 ```sh
 mvn -Pmanual-docs -DskipTests process-resources
 mvn -Psite-docs -DskipTests javadoc:javadoc
-python3 scripts/check-docs.py
+python3 src/test/scripts/check-docs.py
 python3 -m http.server 8000 --directory docs
 ```
 

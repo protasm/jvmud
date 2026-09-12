@@ -63,7 +63,7 @@ Telnet server. See the User Manual for object loading, inspection, and reload.
 | `src/main/java/io/github/protasm/jvmud/transport/` | Telnet sessions and protocol mechanics |
 | `src/main/java/io/github/protasm/jvmud/persistence/` | Filesystem and JDBC storage adapters |
 | `src/main/java/io/github/protasm/jvmud/cli/` | Local admin shell |
-| `src/test/java/` | Java tests mirroring package ownership |
+| `src/test/` | Java tests, smoke checks, and documentation validation; see [testing guide](src/test/README.md) |
 | `mudlibs/` | LPC content and profiles, separate from the host |
 | `mudlibs/smallmercies/` | Bundled toy mudlib and teaching examples |
 | `manual/` | Editable User Manual sources |

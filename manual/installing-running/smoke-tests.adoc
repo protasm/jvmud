@@ -16,7 +16,7 @@ the walkthrough. Keep it running, then use a second terminal:
 
 [source,shell]
 ----
-python3 mudlibs/smallmercies/jvmud/smoke-play.py
+python3 src/test/scripts/smallmercies/smoke-play.py
 ----
 
 The script connects to loopback port 4000, creates two disposable guests, and

@@ -111,7 +111,7 @@ For a live transport smoke, start a fresh toy server with the launch command
 above, then run in another terminal (Python 3 required):
 
 ```sh
-python3 mudlibs/smallmercies/jvmud/smoke-play.py
+python3 src/test/scripts/smallmercies/smoke-play.py
 ```
 
 This connects two disposable guests, walks the tutorial route, checks chat and

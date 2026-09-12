@@ -113,7 +113,6 @@ recurring ticks to `tick`; there is no filesystem-account policy or database.
 [cols="2,3",options="header"]
 |===
 |Path under `mudlibs/smallmercies/` |What to learn
-|`jvmud/smoke-play.py` |Two-guest live Telnet check of the tutorial route and combat.
 |`jvmud/smallmercies.config` |Explicit source root, preloads, Persona, initial
 Place, lifecycle mappings, and capability grant.
 |`source/lib/room.c` |Shared descriptions, authored exit lookup, and NPC creation.
@@ -128,3 +127,6 @@ These LPC examples use JVMud-native efuns. Game rules stay in the mudlib; the
 host supplies execution, session, location, and scheduling services. Read the
 source before changing behavior, then replay the relevant route after restarting.
 Use a separate copy for experiments you do not intend to keep in the distribution.
+
+The two-guest live Telnet check lives at
+`src/test/scripts/smallmercies/smoke-play.py`.

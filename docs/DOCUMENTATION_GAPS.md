@@ -18,7 +18,7 @@ and expands Java API generation to all six core package families.
 | Medium | Admin argument types | The shell currently passes arguments as strings. The manual documents this limit and uses a no-argument wrapper; richer typed invocation needs an explicit implementation decision. |
 | Medium | Reload contract | Tested state/reference migration examples for object replacement and clones, with limits documented explicitly. |
 | Low | Automatic companion-page synchronization | Generate Principles/Glossary HTML from their controlling Markdown to remove manual synchronization. |
-| Low | Documentation CI | Run manual/API generation and `scripts/check-docs.py` automatically; retain render review for PDF and responsive website changes. |
+| Low | Documentation CI | Run manual/API generation and `src/test/scripts/check-docs.py` automatically; retain render review for PDF and responsive website changes. |
 
 ## Recommended next sequence
 

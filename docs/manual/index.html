@@ -1296,10 +1296,6 @@ recurring ticks to <code>tick</code>; there is no filesystem-account policy or d
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jvmud/smoke-play.py</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Two-guest live Telnet check of the tutorial route and combat.</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jvmud/smallmercies.config</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Explicit source root, preloads, Persona, initial
 Place, lifecycle mappings, and capability grant.</p></td>
@@ -1329,6 +1325,10 @@ deferred recovery.</p></td>
 host supplies execution, session, location, and scheduling services. Read the
 source before changing behavior, then replay the relevant route after restarting.
 Use a separate copy for experiments you do not intend to keep in the distribution.</p>
+</div>
+<div class="paragraph">
+<p>The two-guest live Telnet check lives at
+<code>src/test/scripts/smallmercies/smoke-play.py</code>.</p>
 </div>
 </div>
 </div>
@@ -1403,7 +1403,7 @@ the walkthrough. Keep it running, then use a second terminal:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="shell">python3 mudlibs/smallmercies/jvmud/smoke-play.py</code></pre>
+<pre class="CodeRay highlight"><code data-lang="shell">python3 src/test/scripts/smallmercies/smoke-play.py</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2745,7 +2745,7 @@ flow come from <code>manual/pdf-theme.yml</code>.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="shell">mvn -Psite-docs -DskipTests javadoc:javadoc
-python3 scripts/check-docs.py</code></pre>
+python3 src/test/scripts/check-docs.py</code></pre>
 </div>
 </div>
 <div class="paragraph">

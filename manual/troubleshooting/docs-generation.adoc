@@ -18,7 +18,7 @@ Generate the Java API with:
 [source,shell]
 ----
 mvn -Psite-docs -DskipTests javadoc:javadoc
-python3 scripts/check-docs.py
+python3 src/test/scripts/check-docs.py
 ----
 
 Javadocs live under `docs/api/apidocs/`; `docs/api/index.html` is the authored
