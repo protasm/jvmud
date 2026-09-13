@@ -1,9 +1,0 @@
-#include <config.h>
-inherit BIN;
-
-int
-do_command(string arg)
-{
-	cache_stats();
-	return 1;
-}

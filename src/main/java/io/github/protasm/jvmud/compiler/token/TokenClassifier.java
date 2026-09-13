@@ -22,7 +22,6 @@ public final class TokenClassifier {
                     Map.entry("for", TokenType.T_FOR),
                     Map.entry("foreach", TokenType.T_FOREACH),
                     Map.entry("if", TokenType.T_IF),
-                    Map.entry("in", TokenType.T_IN),
                     Map.entry("inherit", TokenType.T_INHERIT),
                     Map.entry("return", TokenType.T_RETURN),
                     Map.entry("switch", TokenType.T_SWITCH),

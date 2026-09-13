@@ -238,7 +238,9 @@ final class TelnetServerTest {
     @Test
     void lp245WizardHallMissingSouthActionFallsThroughCleanly() throws Exception {
         Path lp245 = lp245TestRoot();
-        Path player = lp245.resolve("source/obj/player.c");
+        Path player = lp245.resolve("obj/player.c");
+        // Only this disposable fixture is patched; the archive copy retains read-only modes.
+        assertTrue(player.toFile().setWritable(true, true));
         Files.writeString(player, Files.readString(player)
                 .replace("move_object(myself, \"room/church\");", "move_object(myself, \"room/wiz_hall\");"));
 

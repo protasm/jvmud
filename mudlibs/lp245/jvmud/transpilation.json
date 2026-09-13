@@ -191,6 +191,108 @@
       "field": "list_history",
       "expected_type": "object",
       "replacement_type": "string*"
+    },
+    {
+      "file": "room/death/death_room.c",
+      "field": "players",
+      "expected_type": "int",
+      "replacement_type": "mixed*"
+    },
+    {
+      "file": "players/lars/board.c",
+      "field": "board",
+      "expected_type": "int",
+      "replacement_type": "mixed*"
+    },
+    {
+      "file": "players/lars/board.c",
+      "field": "mark",
+      "expected_type": "int",
+      "replacement_type": "mixed*"
+    },
+    {
+      "file": "obj/roommaker.c",
+      "field": "room_light",
+      "expected_type": "string",
+      "replacement_type": "int"
+    },
+    {
+      "file": "obj/roommaker.c",
+      "field": "dir_array",
+      "expected_type": "object",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/mine/tunnel3.c",
+      "field": "rope",
+      "expected_type": "string",
+      "replacement_type": "int"
+    },
+    {
+      "file": "room/mine/tunnel9.c",
+      "field": "rope",
+      "expected_type": "string",
+      "replacement_type": "int"
+    },
+    {
+      "file": "room/test.c",
+      "field": "east_door_open",
+      "expected_type": "string",
+      "replacement_type": "int"
+    },
+    {
+      "file": "room/test.c",
+      "field": "amiga_present",
+      "expected_type": "string",
+      "replacement_type": "int"
+    },
+    {
+      "file": "room/test.c",
+      "field": "amiga_power",
+      "expected_type": "string",
+      "replacement_type": "int"
+    },
+    {
+      "file": "room/test.c",
+      "field": "name",
+      "expected_type": "string",
+      "replacement_type": "object"
+    },
+    {
+      "file": "obj/trace.c",
+      "field": "vars",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "obj/trace.c",
+      "field": "stores",
+      "expected_type": "object",
+      "replacement_type": "mixed*"
+    },
+    {
+      "file": "obj/trace.c",
+      "field": "query_list",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "obj/trace2.c",
+      "field": "vars",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "obj/trace2.c",
+      "field": "stores",
+      "expected_type": "object",
+      "replacement_type": "mixed*"
+    },
+    {
+      "file": "obj/trace2.c",
+      "field": "query_list",
+      "expected_type": "string",
+      "replacement_type": "string*"
     }
   ],
   "local_type_overrides": [
@@ -214,6 +316,146 @@
       "local": "weapon",
       "expected_type": "string",
       "replacement_type": "object"
+    },
+    {
+      "file": "players/lars/rand.c",
+      "method": "test_random",
+      "local": "a",
+      "expected_type": "int",
+      "replacement_type": "int*"
+    },
+    {
+      "file": "room/death/death_room.c",
+      "method": "add_player",
+      "local": "oldlist",
+      "expected_type": "int",
+      "replacement_type": "mixed*"
+    },
+    {
+      "file": "room/death/death_room.c",
+      "method": "remove_player",
+      "local": "oldlist",
+      "expected_type": "int",
+      "replacement_type": "mixed*"
+    },
+    {
+      "file": "obj/marker.c",
+      "method": "i_mark",
+      "local": "tmp",
+      "expected_type": "string",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/marker.c",
+      "method": "i_call",
+      "local": "what",
+      "expected_type": "string",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/roommaker.c",
+      "method": "do_file",
+      "local": "longs",
+      "expected_type": "object",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "players/lars/board.c",
+      "method": "start",
+      "local": "name",
+      "expected_type": "string",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/trace.c",
+      "method": "Dump",
+      "local": "tmp",
+      "expected_type": "int",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/trace.c",
+      "method": "Call",
+      "local": "what",
+      "expected_type": "string",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/trace.c",
+      "method": "Call",
+      "local": "ret",
+      "expected_type": "int",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/trace.c",
+      "method": "find_item",
+      "local": "tmp",
+      "expected_type": "string",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/trace.c",
+      "method": "find_item",
+      "local": "u",
+      "expected_type": "object",
+      "replacement_type": "object*"
+    },
+    {
+      "file": "obj/trace2.c",
+      "method": "Dump",
+      "local": "tmp",
+      "expected_type": "int",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/trace2.c",
+      "method": "Call",
+      "local": "what",
+      "expected_type": "string",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/trace2.c",
+      "method": "Call",
+      "local": "ret",
+      "expected_type": "int",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/trace2.c",
+      "method": "find_item",
+      "local": "tmp",
+      "expected_type": "string",
+      "replacement_type": "mixed"
+    },
+    {
+      "file": "obj/trace2.c",
+      "method": "find_item",
+      "local": "u",
+      "expected_type": "object",
+      "replacement_type": "object*"
+    },
+    {
+      "file": "obj/roommaker.c",
+      "method": "check_file_ok",
+      "local": "temp_dir",
+      "expected_type": "object",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "players/lars/board.c",
+      "method": "fill",
+      "local": "b",
+      "expected_type": "int",
+      "replacement_type": "mixed*"
+    },
+    {
+      "file": "players/lars/board.c",
+      "method": "patch",
+      "local": "col",
+      "expected_type": "int",
+      "replacement_type": "mixed"
     }
   ],
   "method_varargs_overrides": [

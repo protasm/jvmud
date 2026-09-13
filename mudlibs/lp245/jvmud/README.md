@@ -308,3 +308,48 @@ commands, `%%` repeats the last command, and `%2` repeats history entry 2.
 `do smile,look,laugh` runs a sequence on heartbeats; `do` pauses it and `resume`
 continues it. `refresh` re-registers the carried tool's actions. Quicktyper's
 original autoload format preserves aliases when the player saves and reloads.
+
+## 10. Check the whole archive, beyond preloads
+
+The bridge also adapts declarations in objects outside `room/init_file`:
+
+| Objects | Adaptation |
+| --- | --- |
+| `obj/trace.c`, `obj/trace2.c` | Variable names and query names become string arrays; stored values and callback results use mixed types; user lists become object arrays |
+| `obj/marker.c` | Locals shared by string and integer `sscanf` captures become mixed |
+| `obj/roommaker.c` | Room lighting becomes an integer; exit and generated-text lists become string arrays |
+| `players/lars/board.c` | Board and mark grids become arrays of rows; the opponent lookup, string/integer color capture, and saved grid retain their actual value types |
+| `players/lars/rand.c` | The distribution counter becomes an integer array |
+| `room/death/death_room.c` | The player/tick pairs and temporary copies become mixed arrays |
+| `room/mine/tunnel3.c`, `room/mine/tunnel9.c`, `room/test.c` | Boolean flags become integers; the computer room's summoned player becomes an object |
+
+These are checked field/local rules in `transpilation.json`. JVMud now treats
+`in` as a contextual foreach delimiter, allowing the tracer's method named
+`in` without renaming it. Both `foreach (int item in values)` and the colon
+form retain their behavior. The bridge also accepts the shop's two-argument
+`add_worth(value, object)` call; driver wealth accounting remains a no-op,
+as it was for the one-argument adapter.
+
+`Lp245BridgeTest` checks all 286 original `.c` files against the archive list:
+283 compile, and 281 initialize in a disposable copy. The following historical
+exceptions are explicit; they are not silently counted as supported:
+
+| Source | Remaining limitation |
+| --- | --- |
+| `obj/master.c` | Old LPmud 3.0 driver master uses unsupported cast syntax. JVMud selects `jvmud/mudlib.c` for its host callbacks. |
+| `obj/team.c` | Unfinished source uses undeclared `vec` and calls its one-parameter `add` with two arguments. |
+| `room/def_castle.c` | A source template requiring `NAME` and `DEST` definitions before compilation. |
+| `obj/explore_xp.c` | Compiles, but initialization calls the undefined `previous_file()` helper in its save-path check. |
+| `players/lars/test.c` | Compiles, but deliberately executes `1/0` during reset (and exit). |
+
+Run the archive and behavior checks with:
+
+```sh
+mvn -Dtest=Lp245BridgeTest,MudlibCompatibilityScanTest test
+scripts/scan-mudlib-preload-compile.sh mudlibs/lp245/jvmud/lp245.config
+```
+
+Initialization coverage does not mean every command or legacy driver facility
+is implemented. The adapters still contain placeholders for facilities such as
+the editor, snooping, filesystem metadata, and driver accounting. The original
+sources remain unchanged, and the archive hash check guards their preservation.

@@ -80,6 +80,10 @@ string capitalize(mixed value) {
 void add_worth(mixed value) {
 }
 
+// The old driver accepted the sold object as an optional accounting argument.
+void add_worth(mixed value, object sold) {
+}
+
 string clear_bit(string flags, int bit) {
   return flags ? flags : "";
 }

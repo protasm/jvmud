@@ -1,9 +1,0 @@
-#include <config.h>
-inherit BIN;
-
-int
-do_command(string arg)
-{
-	dumpallobj(LOG_DIR + "/dumps/obj_dump");
-	return 1;
-}

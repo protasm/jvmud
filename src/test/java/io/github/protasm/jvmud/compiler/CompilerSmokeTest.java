@@ -2000,6 +2000,22 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void inIsContextualInForeachAndCanNameMethodsAndLocals() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        LPCObjectHandle object = runtime.loadSource("smoke/contextual_in.c", """
+                int in(int value) { return value + 1; }
+                int value() {
+                    int total;
+                    foreach (int in in ({1, 2, 3})) total += in;
+                    foreach (int in : ({4, 5})) total += in;
+                    return in(total);
+                }
+                """);
+        assertEquals(16, object.invoke("value"));
+        assertEquals(8, runtime.invokeObject(object.instance(), "in", 7));
+    }
+
+    @Test
     void runtimeSupportsForeachOverArrays() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         LPCObjectHandle object = runtime.loadSource("smoke/foreach_array.c", """

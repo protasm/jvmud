@@ -239,3 +239,24 @@ voice.
 - Verification: `LocalTypeTranspilerTest` covers scope, inherited execution,
   included declarations, malformed rules, ambiguity and hosted boot propagation.
   `Lp245BridgeTest` exercises the unchanged player's user lists and login prompt.
+
+## Contextual foreach delimiter and remaining LP245 declarations
+
+- Motivation: original `obj/trace.c` and `obj/trace2.c` define a method named
+  `in`. Globally reserving that word prevented the legacy declaration translator
+  and strict parser from recognizing the method.
+- Implementation: the scanner classifies `in` as an identifier; the parser
+  recognizes it as a delimiter only after the foreach variable declaration.
+  Explicit method and parameter types remain required by the compiler.
+- Verification: `CompilerSmokeTest.inIsContextualInForeachAndCanNameMethodsAndLocals`
+  executes methods and locals named `in`, alongside both foreach delimiters.
+- Profile adaptations: checked field/local rules cover tracer storage, marker
+  captures, roommaker lists, Go grids and color captures, random-distribution
+  counters, death-room player/tick pairs, and room flags. The shop's two-argument
+  `add_worth` is handled in LPC, preserving the existing accounting no-op.
+- Archive verification: `Lp245BridgeTest` compiles 283 original objects and loads
+  281 in disposable storage, with five explicit historical exceptions documented
+  in `mudlibs/lp245/jvmud/README.md`. Behavior tests exercise tracer value storage
+  and inventory selection, death-room player removal, shop payouts and inventory
+  transfer, and Go-board initialization, patching, scoring and filling. The
+  upstream hash test continues to guard original sources.

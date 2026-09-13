@@ -57,6 +57,121 @@ final class Lp245BridgeTest {
         return rt;
     }
 
+    /** Scan the preserved archive, including objects outside the eight-entry preload file. */
+    @Test
+    void originalArchiveCompilesAndInitializesOutsideDocumentedHistoricalExceptions() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        Set<String> compileExceptions = Set.of("obj/master.c", "obj/team.c", "room/def_castle.c");
+        Set<String> initializationExceptions = Set.of("obj/explore_xp.c", "players/lars/test.c");
+        var hashes = new ObjectMapper().readTree(Path.of("src/test/resources/lp245-lysator/upstream-sha256.json").toFile());
+        List<String> failures = new ArrayList<>();
+        int compiled = 0, loaded = 0;
+        List<String> sourceNames = new ArrayList<>();
+        hashes.fieldNames().forEachRemaining(sourceNames::add);
+        Collections.sort(sourceNames);
+        for (String name : sourceNames) {
+            if (!name.endsWith(".c") || compileExceptions.contains(name)) continue;
+            var result = rt.compile(temp.resolve(name));
+            if (!result.succeeded()) {
+                failures.add(name + ": " + result.getProblems().stream().map(p -> p.getMessage()).toList());
+                continue;
+            }
+            compiled++;
+            if (initializationExceptions.contains(name)) continue;
+            try {
+                rt.load(name.substring(0, name.length() - 2));
+                loaded++;
+            } catch (RuntimeException | LinkageError e) {
+                failures.add(name + ": " + e);
+            }
+        }
+        assertEquals(List.of(), failures);
+        assertEquals(283, compiled);
+        assertEquals(281, loaded);
+    }
+
+    @Test
+    void originalTracerStoresMixedResultsAndSelectsInventoryByNumber() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var tracer = rt.load("obj/trace");
+        var room = rt.loadSource("trace_room.c", "string short() { return \"Probe room\"; }");
+        var first = rt.loadSource("first.c", "string short() { return \"First\"; }");
+        rt.moveObject(first.instance(), room.instance());
+        var actor = rt.loadSource("trace_actor.c", "string query_name() { return \"Visitor\"; }");
+        rt.moveObject(actor.instance(), room.instance());
+        tracer.invoke("assign", "number", 42);
+        assertEquals(42, rt.withCommandActor(actor.instance(), () -> tracer.invoke("parse_list", "$number")));
+        tracer.invoke("assign", "array", List.of(1, 2));
+        assertEquals(List.of(1, 2), rt.withCommandActor(actor.instance(), () -> tracer.invoke("parse_list", "$array")));
+        tracer.invoke("assign", "room", room.instance());
+        assertSame(first.instance(), rt.withCommandActor(actor.instance(), () -> tracer.invoke("parse_list", "$room:#1")));
+    }
+
+    @Test
+    void originalDeathRoomTracksMultipleGhostsAndRemovesOne() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var room = rt.load("room/death/death_room");
+        Object first = rt.cloneObject("obj/player");
+        Object second = rt.cloneObject("obj/player");
+        StringBuilder firstText = new StringBuilder(), secondText = new StringBuilder();
+        rt.bindSession("first-ghost", first, "127.0.0.1", firstText::append);
+        rt.bindSession("second-ghost", second, "127.0.0.1", secondText::append);
+        room.invoke("add_player", first);
+        room.invoke("add_player", second);
+        for (int i = 0; i < 5; i++) room.invoke("heart_beat");
+        assertTrue(firstText.toString().contains("IT IS TIME"));
+        assertTrue(secondText.toString().contains("IT IS TIME"));
+        firstText.setLength(0);
+        secondText.setLength(0);
+        room.invoke("remove_player", first);
+        for (int i = 0; i < 5; i++) room.invoke("heart_beat");
+        assertEquals("", firstText.toString());
+        assertTrue(secondText.toString().contains("NO GLANDS"));
+        room.invoke("remove_player", second);
+        assertDoesNotThrow(() -> room.invoke("heart_beat"));
+    }
+
+    @Test
+    void originalShopPaysForSoldItemAndMovesItIntoStock() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var shop = rt.load("room/shop");
+        var player = rt.load("obj/player");
+        rt.moveObject(player.instance(), shop.instance());
+        var item = rt.loadSource("sale_item.c", """
+                string short() { return "A sale probe"; }
+                int id(string name) { return name == "probe"; }
+                int query_value() { return 25; }
+                int query_weight() { return 1; }
+                int drop() { return 0; }
+                """);
+        rt.moveObject(item.instance(), player.instance());
+        assertEquals(1, rt.withCommandActor(player.instance(), () -> shop.invoke("sell", "probe")));
+        assertEquals(25, player.invoke("query_money"));
+        assertSame(rt.loadOrGetObject("room/store"), rt.environment(item.instance()));
+    }
+
+    @Test
+    void originalGoBoardStartsPatchesAndScoresGrid() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var room = rt.loadSource("go_room.c", "string short() { return \"Go room\"; }");
+        var actor = rt.loadSource("black_player.c", "string query_name() { return \"Black\"; }");
+        var opponent = rt.loadSource("white_player.c", """
+                string query_name() { return "White"; }
+                int id(string name) { return name == "white"; }
+                """);
+        var board = rt.load("players/lars/board");
+        rt.moveObject(board.instance(), room.instance());
+        rt.moveObject(actor.instance(), room.instance());
+        rt.moveObject(opponent.instance(), room.instance());
+        rt.withCommandActor(actor.instance(), () -> board.invoke("start", "white"));
+        assertTrue(rt.outputTranscript().contains("Board initialized."), rt.outputTranscript());
+        assertEquals(1, board.invoke("patch", "4 4 @"));
+        rt.clearOutputTranscript();
+        assertEquals(1, board.invoke("score"));
+        assertTrue(rt.outputTranscript().contains("points to black"), rt.outputTranscript());
+        assertDoesNotThrow(() -> board.invoke("fill"));
+    }
+
     /** Exercises original guild initialization, title tables and actual player advancement. */
     @Test
     void originalGuildInitializesAndAdvancesPlayer() throws Exception {

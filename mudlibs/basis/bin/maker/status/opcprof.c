@@ -1,9 +1,0 @@
-#include <config.h>
-inherit BIN;
-
-int
-do_command(string arg)
-{
-	opcprof(LOG_DIR + "/dumps/opcprof");
-	return 1;
-}

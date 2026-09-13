@@ -848,7 +848,10 @@ public class Parser {
             if (tokens.match(T_COMMA))
                 valueLocal = foreachLocal();
 
-            if (!tokens.match(T_IN) && !tokens.match(T_COLON))
+            // "in" is contextual: it remains a valid method or variable name elsewhere.
+            boolean inDelimiter = tokens.check(T_IDENTIFIER) && "in".equals(tokens.current().lexeme());
+            if (inDelimiter) tokens.advance();
+            if (!inDelimiter && !tokens.match(T_IN) && !tokens.match(T_COLON))
                 throw new ParseException("Expect 'in' or ':' in foreach clause.", tokens.current());
 
             ASTExpression iterable = expression();
