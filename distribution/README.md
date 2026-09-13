@@ -14,8 +14,27 @@ is needed. Linux packages target glibc systems, not Alpine/musl. The runtime-fre
 Maven, a source checkout, and Internet access are not needed to run these packages. A MUD client is needed to play. Native Windows launchers
 are not included.
 
-Extract the entire archive into a writable directory. Keep `scripts/`, `lib/`,
-`mudlibs/`, `jre`, and `vendor-runtime/` together when present. Open a terminal in the extracted `jvmud-<version>` folder.
+## Install in a stable directory
+
+Keep version numbers on downloads and backups, and use `current` for the running
+installation. In the writable folder containing your download, run the following
+Apple Silicon example; substitute your package filename for another platform:
+
+```sh
+mkdir current &&
+tar -xzf jvmud-0.1.0-preview.7-macos-aarch64.tar.gz --strip-components=1 -C current &&
+cd current
+```
+
+`mkdir` deliberately fails if `current` already exists, preventing extraction
+over an existing installation. Use the updater below for subsequent releases.
+For an EC2/Linux server, use a writable parent such as `/opt/jvmud` and the
+`-linux-x64.tar.gz` package for x86-64 instances, or `-linux-aarch64.tar.gz` for
+ARM64. The resulting installation path is `/opt/jvmud/current`.
+
+Keep `scripts/`, `lib/`, `mudlibs/`, `jre`, and `vendor-runtime/` together when
+present. If using the ZIP, rename its extracted `jvmud-<version>` folder to
+`current` before starting any server; do not replace an existing `current`.
 If a ZIP extractor removed executable permissions, run `chmod +x scripts/jvmud-*`.
 
 ## Start and play
@@ -82,8 +101,7 @@ scripts/jvmud-format --help
 ```
 
 The formatter edits the LPC files supplied to it. Back up your world before
-upgrading; extract new distributions into separate folders and copy only the
-worlds and data you intend to retain.
+formatting. Use the updater below to upgrade an installed distribution.
 
 Read the [User Manual](https://jvmud.org/manual/index.html) and
 [Small Mercies walkthrough](https://jvmud.org/manual/index.html#small-mercies).
@@ -92,7 +110,7 @@ to source checkouts only. Source and issues: https://github.com/protasm/jvmud.
 
 ## Update an installed distribution
 
-From the existing distribution directory:
+From your existing `current` directory (on EC2, `cd /opt/jvmud/current`):
 
 ```sh
 scripts/jvmud-update --check
@@ -120,8 +138,12 @@ remain available in the full backup.
 Servers restart with their recorded arguments, working directories, and Java
 settings. Run the updater as the same OS user, with any game-specific environment
 variables still available. Players reconnect after the restart. The installation
-directory keeps its existing name; `jvmud-update --check` reports its installed
-version. The bundled JRE is accessed through `jre`, a symlink into `vendor-runtime`.
+directory keeps its existing name, so `current` remains stable across releases.
+`jvmud-update --check` reports the installed version; the folder name does not.
+Existing version-named installations still work. Do not rename one while servers
+are running: stop every server, confirm clean shutdown and saves, move the folder
+without overwriting another installation, and relaunch from the new location with
+the same options. Update any service definitions or external absolute paths too. The bundled JRE is accessed through `jre`, a symlink into `vendor-runtime`.
 
 Server output is displayed in the terminal and appended to
 `mudlibs/<world>/jvmud/log/server-<port>.log`. Updater restart logs go in that same

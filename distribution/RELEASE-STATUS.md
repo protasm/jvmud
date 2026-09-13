@@ -1,10 +1,18 @@
-# JVMud 0.1.0-preview.6
+# JVMud 0.1.0-preview.7
 
 This experimental preview includes Small Mercies and LP245. The macOS and Linux
 packages include Eclipse Temurin Java 21.0.12.1+1-LTS. A POSIX shell is required;
 Maven is not needed. The separate runtime-free archive requires Java 21 or newer.
 
 ## Changes
+
+Packaged and website installation instructions now create a stable `current`
+directory before starting servers. The commands refuse to extract over an
+existing installation; later releases are installed in place using the updater.
+EC2 examples use `/opt/jvmud/current`. Archive names and roots remain versioned
+for release identification and updater verification. No engine behavior changes.
+
+### Retained from preview.6
 
 The updater now accepts comment-only configuration differences using verified
 release baselines, archives edited Markdown documentation before replacing it,
@@ -17,7 +25,7 @@ custom mudlib content remain preserved.
 The full Java suite passes 563 tests. Update integration checks exercise legacy
 baseline recovery, documentation replacement with backup, player saves, restart,
 and rollback. The new conflict handling applies once this updater is installed;
-the upgrade into this release is performed by the existing installed updater.
+each upgrade is performed by the existing installed updater.
 
 ### Retained from preview.5
 

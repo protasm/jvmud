@@ -58,6 +58,9 @@ build script. Copy only the tar.gz and its checksum into `docs/downloads/` and
 update `docs/downloads.html`. Commit and push the prepared website to `main`;
 GitHub Pages publishes `docs/`. Verify the public archive against its checksum.
 Never overwrite an existing versioned archive with different contents.
+The archive root remains versioned for updater verification; installation examples
+strip that root into a new stable `current` directory before launching servers.
+Keep packaged and website installation examples aligned when changing versions.
 
 The build script creates local artifacts only. It does not publish a release or
 change the live website. Do not label an untested platform as verified.
