@@ -10,11 +10,15 @@ since been implemented and verified.
 
 | Check | Result |
 | --- | --- |
-| Compile every original `.c` file, with the manifest registered directly | 266 of 286 compile; 20 fail |
-| Compile the actual `room/init_file` list | 5 of 8 compile; 3 fail |
-| Normal `MudInstance.boot` with the current bridge | Boots to the church; 3 preloads skipped; login remains blocked |
+| Compile every original `.c` file, with the manifest registered directly | 272 of 286 compile; 14 fail |
+| Compile the actual `room/init_file` list | 8 of 8 compile |
+| Normal `MudInstance.boot` with the current bridge | Boots to the church; no skipped preloads |
 | Diagnostic copy with bridge-object declaration merge bypassed | Boots to the church; 4 preloads skipped; login not established |
 | Diagnostic copy additionally declaring `mixed short();` on the living base | 256 of 286 compile; 30 fail; further player and monster errors exposed |
+
+The user's real Telnet sessions have demonstrated new-character creation,
+movement, item pickup, quitting and reconnecting with an existing password.
+Those observations do not establish all gameplay or server-restart persistence.
 
 The archive's preload file contains only eight objects. Its compile count is not
 an estimate of how much of the world is playable. The all-source scan checks
@@ -176,6 +180,74 @@ fix consistent field typing/code generation or report a source error before
 bytecode emission. This is generic compiler correctness, not permission to accept
 untyped source in native mode.
 
+### Guild and general-purpose monster arrays implemented
+
+`room/adv_guild.c` now has four checked field overrides: its three gender title
+tables use `string*`, and `exp_str` uses `int*`. The scalar `title` remains a
+string. The original room loads and resets; execution covers title selection,
+experience thresholds, initial level/title assignment, insufficient funds, and
+paid advancement from level 1 to 2 (1014 experience and a 1690-gold cost).
+
+`obj/monster.c` has five checked `string` to `string*` overrides: `chat_head`,
+`a_chat_head`, `talk_func`, `talk_type`, and `talk_match`. The reported local
+string/integer assignment errors were caused by indexing scalar strings, which
+produced characters instead of array entries. The local variables were correct;
+no compiler relaxation or local override is needed in the monster.
+
+Integration exposed the same configuration-array mismatch in the direct callers:
+`room/vill_road2.c`, `room/orc_vall.c`, `room/pub2.c`, and `room/yard.c`.
+Checked field overrides preserve arrays passed to the monster rather than
+coercing them to strings. A scoped local override in the yard changes the cloned
+`weapon` from `string` to `object`, allowing its reset to reach NPC creation.
+The fortress obtains its chat array from the corrected orc valley.
+
+Execution coverage loads the original guild and monster, checks guild-derived
+monster experience, conversation callbacks, idle and combat heartbeat chat,
+and initialization of Harry, the valley/fortress orcs, the Go player and beggar.
+Harry responds through the original room's greeting callback. All eleven bridge
+tests pass. The full suite runs 523 tests with six errors: three stale `source/`
+paths and the remaining death-room, rand, and trace compatibility cases.
+
+The source scan is **270/286** and hosted startup skips only `obj/quicktyper`.
+Evidence: `after-guild-monster-overrides.log` in the generated assessment directory.
+All fixes are bridge-owned JSON overrides; the 582 original files are unchanged.
+The running user server was not restarted to pick up the new configuration.
+
+## Quicktyper: declarations, action conventions, and refresh
+
+Quicktyper now compiles and runs with its original source unchanged. Checked
+field rules change `list_ab`, `list_cmd`, and `list_history` from `object` to
+`string*`. A new `method_varargs_overrides` rule selects `room/room.c:init`,
+checks its zero-parameter, non-varargs declaration, and adds the existing
+varargs convention. This accepts storage's `::init(arg)` call without altering
+its body or relaxing ordinary method checks elsewhere.
+
+This path exposed two bytecode errors in existing varargs support: zero-parameter
+calls derived their JVM descriptor from the supplied arguments, and surplus
+argument expressions were omitted entirely. Calls now use the declared signature
+and evaluate extra expressions once in order before discarding their values.
+The scanner also preserves a literal percent before `%d`, as required by the
+original history format `%%d%s`.
+
+Two independent manifest settings select LP245's action conventions:
+`command_actions.newest_first` orders all matching actions by reverse registration
+order, and `command_actions.arguments_only` passes parsed arguments to empty-verb
+handlers. Both default to false. Native exact-first dispatch and whole-line
+catch-all input remain covered by regression checks.
+
+`Lp245BridgeTest` exercises original Quicktyper alias creation, expansion,
+replacement and removal; last-command and numbered-history replay; history
+listing; queue pause/resume and heartbeats; manual and scheduled refresh through
+original storage; and alias autoload serialization. It uses a disposable archive
+and a deterministic scheduler. All 12 bridge tests pass. The full suite reports
+530 tests, zero failures, and the same six existing errors: three obsolete
+`source/` paths plus death-room, rand, and trace compatibility checks.
+
+The scan reaches **272/286** and hosted boot has **zero skipped preloads**.
+Evidence: `after-quicktyper.log` in the generated assessment directory. All 582
+original archive hashes still match. Restart and rebuild the running instance
+to use the changed host code and manifest.
+
 ## 4. Finish the bridge's runtime behavior
 
 Several wrappers compile but are placeholders or only approximate the required
@@ -274,21 +346,15 @@ technical uncertainties. Reassess after the first player-and-room milestone.
 
 - `obj/marker.c`
 - `obj/master.c`
-- `obj/monster.c`
-- `obj/quicktyper.c`
 - `obj/roommaker.c`
-- `obj/shut.c`
 - `obj/team.c`
 - `obj/trace.c`
 - `obj/trace2.c`
 - `players/lars/board.c`
 - `players/lars/rand.c`
-- `room/adv_guild.c`
-- `room/death/death.c`
 - `room/death/death_room.c`
 - `room/def_castle.c`
 - `room/mine/tunnel3.c`
 - `room/mine/tunnel9.c`
 - `room/shop.c`
-- `room/storage.c`
 - `room/test.c`

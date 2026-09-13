@@ -7133,6 +7133,23 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void sscanfPreservesLiteralPercentBeforeRecognizedCapture() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        var object = runtime.loadSource("smoke/sscanf_percent.c", """
+                mixed parse(string text, string format) {
+                    int number = 9;
+                    string suffix = "unchanged";
+                    int count = jvmud_sscanf(text, format, number, suffix);
+                    return ({count, number, suffix});
+                }
+                """);
+        assertEquals(java.util.List.of(2, 12, "tail"), object.invoke("parse", "%12tail", "%%d%s"));
+        assertEquals(java.util.List.of(2, -3, ""), object.invoke("parse", "%q-3", "%q%d%s"));
+        assertEquals(java.util.List.of(0, 9, "unchanged"), object.invoke("parse", "%no", "%%d%s"));
+    }
+
+    @Test
     void sscanfAcceptsAnUnmatchedSuffixAfterTheFormat() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);

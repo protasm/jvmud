@@ -10,7 +10,7 @@ public final class ASTMethod extends ASTNode {
     private final java.util.List<ASTLocal> locals;
     private ASTMethod overrides;
     private final boolean declared;
-    private final DeclarationModifiers modifiers;
+    private DeclarationModifiers modifiers;
     private boolean defined;
 
     public ASTMethod(int line, String ownerName, Symbol symbol) {
@@ -113,6 +113,14 @@ public final class ASTMethod extends ASTNode {
 
     public DeclarationModifiers modifiers() {
         return modifiers;
+    }
+
+    /** Adds the existing varargs calling convention for a checked bridge translation.
+     * Declared parameters, visibility and the method body are preserved.
+     */
+    public void enableVarargs() {
+        modifiers = new DeclarationModifiers(modifiers.visibility(), modifiers.isStatic(),
+                modifiers.isNomask(), true, modifiers.isNosave(), modifiers.isDeprecated());
     }
 
     public boolean isDefined() {

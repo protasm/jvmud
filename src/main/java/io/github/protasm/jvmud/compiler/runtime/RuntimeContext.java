@@ -79,6 +79,7 @@ public final class RuntimeContext {
             Collections.newSetFromMap(new IdentityHashMap<>());
     private final Set<Object> commandEnabledEntities =
             Collections.newSetFromMap(new IdentityHashMap<>());
+    private long commandActionSequence;
     private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
     private final Map<String, String> commandAliases = new LinkedHashMap<>();
     private final Map<Object, ScheduledTask> recurringTickTasks = new IdentityHashMap<>();
@@ -308,8 +309,10 @@ public final class RuntimeContext {
         globalObjectDeclarations.clear();
     }
 
-    /** Applies checked local declarations to a parsed unit before semantic type resolution. */
+    /** Applies checked local types and method varargs declarations before semantic resolution. */
     public void transpileSourceLocals(Path sourcePath, ASTObject object) {
+        new io.github.protasm.jvmud.transpiler.MethodVarargsTranspiler().transpile(sourcePath,
+                mudlibBoundary.mudlibRootPath().orElse(null), object, mudlibBoundary.methodVarargsOverrides());
         new io.github.protasm.jvmud.transpiler.LocalTypeTranspiler().transpile(sourcePath,
                 mudlibBoundary.mudlibRootPath().orElse(null), object, mudlibBoundary.localTypeOverrides());
     }
@@ -2056,7 +2059,7 @@ public final class RuntimeContext {
                 .computeIfAbsent(actor, ignored -> new LinkedHashMap<>())
                 .computeIfAbsent(verb, ignored -> new ArrayList<>())
                 .add(new CommandAction(verb, handler, pendingAction.methodName(), prefixMatch,
-                        pendingAction.persistent()));
+                        pendingAction.persistent(), ++commandActionSequence));
     }
 
     public void clearCommandActions(Object actor) {
@@ -2115,6 +2118,10 @@ public final class RuntimeContext {
         }
     }
 
+    /** Dispatches a snapshot of matching actions. The boundary may select newest-first order
+     * and parsed arguments for catch-alls; default exact-first and whole-line behavior is retained.
+     * Nested commands restore the enclosing verb and failure context on return.
+     */
     public Object dispatchCommand(Object actor, String commandLine) {
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(commandLine, "commandLine");
@@ -2204,6 +2211,8 @@ public final class RuntimeContext {
                 }
             }
         }
+        if (mudlibBoundary.commandActionsNewestFirst())
+            actions.sort(java.util.Comparator.comparingLong(CommandAction::sequence).reversed());
         return actions;
     }
 
@@ -2270,7 +2279,8 @@ public final class RuntimeContext {
     }
 
     private Object invokeCommandAction(CommandAction action, String commandLine, String argument) {
-        String actionArgument = action.verb().isEmpty() ? commandLine : argument;
+        String actionArgument = action.verb().isEmpty() && !mudlibBoundary.commandActionsArgumentsOnly()
+                ? commandLine : argument;
         boolean hasOneArgument = hasMethodAcceptingMissingArguments(
                 action.handler().getClass(), action.methodName(), 1);
         boolean hasNoArguments = hasMethod(action.handler().getClass(), action.methodName(), 0);
@@ -2702,7 +2712,7 @@ public final class RuntimeContext {
     private record PendingAction(String methodName, boolean persistent) {}
 
     private record CommandAction(String verb, Object handler, String methodName, boolean prefixMatch,
-            boolean persistent) {}
+            boolean persistent, long sequence) {}
 
     private record PendingSessionInput(Object handler, String methodName, boolean noEcho, Object[] extraArgs) {
         private PendingSessionInput {

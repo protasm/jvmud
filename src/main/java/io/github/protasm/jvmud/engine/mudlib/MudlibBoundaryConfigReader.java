@@ -68,6 +68,8 @@ public final class MudlibBoundaryConfigReader {
             "transpilation.untyped_methods",
             "transpilation.implicit_self_calls",
             "transpilation.overrides",
+            "command_actions.newest_first",
+            "command_actions.arguments_only",
             "engine_capabilities",
             "handled_lifecycle_events",
             "temporal_tick_method",
@@ -173,7 +175,10 @@ public final class MudlibBoundaryConfigReader {
             var translations = io.github.protasm.jvmud.transpiler.TranspilationConfigReader.readConfig(overrideFile, activeRoot);
             translations.fields().forEach(builder::fieldTypeOverride);
             translations.locals().forEach(builder::localTypeOverride);
+            translations.methods().forEach(builder::methodVarargsOverride);
         }
+        addBoolean(builder::commandActionsNewestFirst, firstValue(values, "command_actions.newest_first"));
+        addBoolean(builder::commandActionsArgumentsOnly, firstValue(values, "command_actions.arguments_only"));
         addBoolean(builder::transpileImplicitSelfCalls, firstValue(values, "transpilation.implicit_self_calls"));
         addBoolean(builder::transpileUntypedMethods, firstValue(values, "transpilation.untyped_methods"));
         addLanguageFeatures(builder, allValues(values, "language_features"));

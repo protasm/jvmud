@@ -29,6 +29,168 @@
       "field": "property",
       "expected_type": "string",
       "replacement_type": "mixed"
+    },
+    {
+      "file": "room/adv_guild.c",
+      "field": "male_title_str",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/adv_guild.c",
+      "field": "fem_title_str",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/adv_guild.c",
+      "field": "neut_title_str",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/adv_guild.c",
+      "field": "exp_str",
+      "expected_type": "int",
+      "replacement_type": "int*"
+    },
+    {
+      "file": "obj/monster.c",
+      "field": "chat_head",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "obj/monster.c",
+      "field": "a_chat_head",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "obj/monster.c",
+      "field": "talk_func",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "obj/monster.c",
+      "field": "talk_match",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "obj/monster.c",
+      "field": "talk_type",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/vill_road2.c",
+      "field": "chat_str",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/vill_road2.c",
+      "field": "a_chat_str",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/vill_road2.c",
+      "field": "function",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/vill_road2.c",
+      "field": "type",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/vill_road2.c",
+      "field": "match",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/orc_vall.c",
+      "field": "chats",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/yard.c",
+      "field": "chat_str",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/yard.c",
+      "field": "a_chat_str",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/yard.c",
+      "field": "function",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/yard.c",
+      "field": "type",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/yard.c",
+      "field": "match",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/pub2.c",
+      "field": "chat_str",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/pub2.c",
+      "field": "function",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/pub2.c",
+      "field": "type",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "room/pub2.c",
+      "field": "match",
+      "expected_type": "string",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "obj/quicktyper.c",
+      "field": "list_ab",
+      "expected_type": "object",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "obj/quicktyper.c",
+      "field": "list_cmd",
+      "expected_type": "object",
+      "replacement_type": "string*"
+    },
+    {
+      "file": "obj/quicktyper.c",
+      "field": "list_history",
+      "expected_type": "object",
+      "replacement_type": "string*"
     }
   ],
   "local_type_overrides": [
@@ -45,6 +207,20 @@
       "local": "list",
       "expected_type": "object",
       "replacement_type": "object*"
+    },
+    {
+      "file": "room/yard.c",
+      "method": "extra_reset",
+      "local": "weapon",
+      "expected_type": "string",
+      "replacement_type": "object"
+    }
+  ],
+  "method_varargs_overrides": [
+    {
+      "file": "room/room.c",
+      "method": "init",
+      "expected_parameter_count": 0
     }
   ]
 }

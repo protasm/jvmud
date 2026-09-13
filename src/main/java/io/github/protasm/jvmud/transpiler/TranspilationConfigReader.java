@@ -15,20 +15,26 @@ import java.util.Set;
 public final class TranspilationConfigReader {
     private TranspilationConfigReader() {}
 
-    /** Reads the field rules from a validated configuration; use readConfig for both families. */
+    /** Reads the field rules from a validated configuration; use readConfig for all families. */
     public static List<FieldTypeOverride> read(Path config, Path mudlibRoot) throws IOException {
         return readConfig(config, mudlibRoot).fields();
     }
 
-    /** Both override families, immutable and validated at manifest load. */
-    public record Overrides(List<FieldTypeOverride> fields, List<LocalTypeOverride> locals) {
+    /** All override families, immutable and validated at manifest load. */
+    public record Overrides(List<FieldTypeOverride> fields, List<LocalTypeOverride> locals, List<MethodVarargsOverride> methods) {
+        /** Preserves construction of field/local-only configurations. */
+        public Overrides(List<FieldTypeOverride> fields, List<LocalTypeOverride> locals) {
+            this(fields, locals, List.of());
+        }
+
         public Overrides {
             fields = List.copyOf(fields);
             locals = List.copyOf(locals);
+            methods = List.copyOf(methods);
         }
     }
 
-    /** Reads field and local overrides together; either family may be omitted. */
+    /** Reads all override families together; individual families may be omitted. */
     public static Overrides readConfig(Path config, Path mudlibRoot) throws IOException {
         ObjectMapper mapper = new ObjectMapper().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
                 .enable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
@@ -38,7 +44,7 @@ public final class TranspilationConfigReader {
         var keys = root.fieldNames();
         while (keys.hasNext()) {
             String key = keys.next();
-            if (!Set.of("field_type_overrides", "local_type_overrides").contains(key))
+            if (!Set.of("field_type_overrides", "local_type_overrides", "method_varargs_overrides").contains(key))
                 throw new IllegalArgumentException("Unknown override operation: " + key);
         }
         JsonNode rules = root.has("field_type_overrides") ? root.get("field_type_overrides") : mapper.createArrayNode();
@@ -70,7 +76,23 @@ public final class TranspilationConfigReader {
                 throw new IllegalArgumentException("Override source file does not exist: " + override.file());
             locals.add(override);
         }
-        return new Overrides(List.copyOf(result), List.copyOf(locals));
+        JsonNode methodRules = root.has("method_varargs_overrides") ? root.get("method_varargs_overrides") : mapper.createArrayNode();
+        if (!methodRules.isArray()) throw new IllegalArgumentException("method_varargs_overrides must be an array: " + config);
+        List<MethodVarargsOverride> methods = new ArrayList<>();
+        Set<String> methodTargets = new HashSet<>();
+        for (JsonNode rule : methodRules) {
+            requireKeys(rule, Set.of("file", "method", "expected_parameter_count"), config.toString());
+            JsonNode count = rule.get("expected_parameter_count");
+            if (!count.isIntegralNumber() || !count.canConvertToInt())
+                throw new IllegalArgumentException("expected_parameter_count must be an integer");
+            var override = new MethodVarargsOverride(text(rule, "file"), text(rule, "method"), count.intValue());
+            String target = override.file() + ":" + override.method();
+            if (!methodTargets.add(target)) throw new IllegalArgumentException("Duplicate method varargs override: " + target);
+            if (!Files.isRegularFile(mudlibRoot.resolve(override.file())))
+                throw new IllegalArgumentException("Override source file does not exist: " + override.file());
+            methods.add(override);
+        }
+        return new Overrides(result, locals, methods);
     }
 
     private static void requireKeys(JsonNode node, Set<String> keys, String location) {

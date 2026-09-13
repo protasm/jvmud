@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.ArrayList;
 import io.github.protasm.jvmud.transpiler.FieldTypeOverride;
 import io.github.protasm.jvmud.transpiler.LocalTypeOverride;
+import io.github.protasm.jvmud.transpiler.MethodVarargsOverride;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -64,8 +65,11 @@ public final class MudlibBoundary {
     private final String databasePassword;
     private final List<FieldTypeOverride> fieldTypeOverrides;
     private final List<LocalTypeOverride> localTypeOverrides;
+    private final List<MethodVarargsOverride> methodVarargsOverrides;
     private final boolean transpileUntypedMethods;
     private final boolean transpileImplicitSelfCalls;
+    private final boolean commandActionsNewestFirst;
+    private final boolean commandActionsArgumentsOnly;
     private final Set<LanguageFeature> languageFeatures;
     private final Set<EngineCapability> engineCapabilities;
     private final String temporalTickMethod;
@@ -104,8 +108,11 @@ public final class MudlibBoundary {
         this.databasePassword = builder.databasePassword != null ? builder.databasePassword : null;
         this.fieldTypeOverrides = List.copyOf(builder.fieldTypeOverrides);
         this.localTypeOverrides = List.copyOf(builder.localTypeOverrides);
+        this.methodVarargsOverrides = List.copyOf(builder.methodVarargsOverrides);
         this.transpileUntypedMethods = builder.transpileUntypedMethods;
         this.transpileImplicitSelfCalls = builder.transpileImplicitSelfCalls;
+        this.commandActionsNewestFirst = builder.commandActionsNewestFirst;
+        this.commandActionsArgumentsOnly = builder.commandActionsArgumentsOnly;
         this.languageFeatures = Set.copyOf(builder.languageFeatures);
         this.engineCapabilities = Set.copyOf(builder.engineCapabilities);
         this.temporalTickMethod = normalizeOptionalText(builder.temporalTickMethod);
@@ -271,6 +278,20 @@ public final class MudlibBoundary {
 
     /** Checked local declaration transformations, disabled when empty. */
     public List<LocalTypeOverride> localTypeOverrides() { return localTypeOverrides; }
+
+    /** Checked method definitions that accept and discard surplus arguments using varargs semantics. */
+    public List<MethodVarargsOverride> methodVarargsOverrides() { return methodVarargsOverrides; }
+
+    /** Whether all matching actions, including catch-alls, dispatch in reverse registration order.
+     * Defaults to false, retaining native exact-action precedence.
+     */
+    public boolean commandActionsNewestFirst() { return commandActionsNewestFirst; }
+
+    /** Whether empty-verb actions receive only parsed arguments instead of the whole command line.
+     * Defaults to false; query_verb still exposes the verb under either convention.
+     */
+    public boolean commandActionsArgumentsOnly() { return commandActionsArgumentsOnly; }
+
 
     /** Checked, explicitly configured field transformations; empty by default. */
     public List<FieldTypeOverride> fieldTypeOverrides() {
@@ -442,6 +463,9 @@ public final class MudlibBoundary {
                 || databasePassword != null
                 || !fieldTypeOverrides.isEmpty()
                 || !localTypeOverrides.isEmpty()
+                || !methodVarargsOverrides.isEmpty()
+                || commandActionsNewestFirst
+                || commandActionsArgumentsOnly
                 || transpileUntypedMethods
                 || transpileImplicitSelfCalls
                 || !languageFeatures.isEmpty()
@@ -604,8 +628,11 @@ public final class MudlibBoundary {
         private String databasePassword;
         private final List<FieldTypeOverride> fieldTypeOverrides = new ArrayList<>();
         private final List<LocalTypeOverride> localTypeOverrides = new ArrayList<>();
+        private final List<MethodVarargsOverride> methodVarargsOverrides = new ArrayList<>();
         private boolean transpileUntypedMethods;
         private boolean transpileImplicitSelfCalls;
+        private boolean commandActionsNewestFirst;
+        private boolean commandActionsArgumentsOnly;
         private final EnumSet<LanguageFeature> languageFeatures = EnumSet.noneOf(LanguageFeature.class);
         private final EnumSet<EngineCapability> engineCapabilities = EnumSet.noneOf(EngineCapability.class);
         private String temporalTickMethod;
@@ -774,7 +801,25 @@ public final class MudlibBoundary {
             return this;
         }
 
-        /** Adds a checked file/method/local declaration transformation. */
+        /** Selects reverse registration order across exact and prefix actions. */
+        public Builder commandActionsNewestFirst(boolean enabled) {
+            commandActionsNewestFirst = enabled;
+            return this;
+        }
+
+        /** Selects parsed arguments for empty-verb handlers rather than the complete line. */
+        public Builder commandActionsArgumentsOnly(boolean enabled) {
+            commandActionsArgumentsOnly = enabled;
+            return this;
+        }
+
+        /** Adds a checked method opt-in to the existing varargs calling convention. */
+        public Builder methodVarargsOverride(MethodVarargsOverride rule) {
+            methodVarargsOverrides.add(Objects.requireNonNull(rule, "rule"));
+            return this;
+        }
+
+        /** Adds a checked local-variable type replacement. */
         public Builder localTypeOverride(LocalTypeOverride rule) {
             localTypeOverrides.add(Objects.requireNonNull(rule, "rule"));
             return this;

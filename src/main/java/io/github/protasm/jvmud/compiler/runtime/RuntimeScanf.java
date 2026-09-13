@@ -14,6 +14,8 @@ public final class RuntimeScanf {
      *
      * <p>A successful match need not consume the entire input. A final {@code %s} capture does,
      * however, receive the remaining input while earlier string captures remain minimal.
+     * Only {@code %s} and {@code %d} introduce captures; other characters are literal, so
+     * {@code %%d} is a literal percent followed by an integer capture.
      *
      * @param inputValue value to scan
      * @param formatValue LPC {@code sscanf} format
@@ -57,8 +59,9 @@ public final class RuntimeScanf {
         for (int i = 0; i < format.length(); i++) {
             char ch = format.charAt(i);
             if (ch == '%' && i + 1 < format.length()) {
-                char specifier = format.charAt(++i);
+                char specifier = format.charAt(i + 1);
                 if (specifier == 's' || specifier == 'd') {
+                    i++;
                     appendLiteral(regex, literal);
                     captureTypes.add(specifier == 'd' ? CaptureType.INT : CaptureType.STRING);
                     regex.append(specifier == 'd'
@@ -66,8 +69,6 @@ public final class RuntimeScanf {
                             : hasFollowingFormatContent(format, i + 1) ? "(.*?)" : "(.*)");
                     continue;
                 }
-                literal.append('%').append(specifier);
-                continue;
             }
             literal.append(ch);
         }

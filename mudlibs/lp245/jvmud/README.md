@@ -21,7 +21,7 @@ The bridge consists of four files:
 | File | Purpose |
 | --- | --- |
 | [lp245.config](lp245.config) | Selects the mudlib, language options, function aliases, and lifecycle mappings |
-| [transpilation.json](transpilation.json) | Records explicit corrections to legacy field and local-variable types |
+| [transpilation.json](transpilation.json) | Records checked declaration adaptations |
 | [mfuns.c](mfuns.c) | Provides legacy functions through typed LPC adapters |
 | [mudlib.c](mudlib.c) | Supplies host lifecycle and diagnostic handlers |
 
@@ -102,7 +102,7 @@ for untyped declarations.
 JVMud applies the manifest settings before loading the bridge object and retains
 them for subsequent compilation of the mudlib.
 
-## 5. Correct specific variable declarations without editing their sources
+## 5. Correct specific declarations without editing their sources
 
 Some legacy fields are declared with a type that does not match their use.
 The bridge records those corrections explicitly:
@@ -133,11 +133,29 @@ corrections are:
 | `room/room.c` | `items` | `string*` | Items are name/description pairs |
 | `room/room.c` | `numbers` | `string*` | Number words are stored in an array |
 | `room/room.c` | `property` | `mixed` | A room property may be a string or an array |
+| `room/adv_guild.c` | `male_title_str`, `fem_title_str`, `neut_title_str` | `string*` | Titles are selected from arrays by level |
+| `room/adv_guild.c` | `exp_str` | `int*` | Experience thresholds are selected from an array by level |
+| `obj/quicktyper.c` | `list_ab`, `list_cmd`, `list_history` | `string*` | Aliases, their expansions, and command history are arrays of strings |
+| `obj/monster.c` | `chat_head`, `a_chat_head` | `string*` | Idle and combat chat select messages from arrays |
+| `obj/monster.c` | `talk_func`, `talk_type`, `talk_match` | `string*` | Conversation matching uses parallel arrays of callback names and text |
+| `room/vill_road2.c`, `room/yard.c` | `chat_str`, `a_chat_str`, `function`, `type`, `match` | `string*` | Rooms pass chat and conversation arrays to their monsters |
+| `room/pub2.c` | `chat_str`, `function`, `type`, `match` | `string*` | The Go player's configuration uses message and conversation arrays |
+| `room/orc_vall.c` | `chats` | `string*` | Orcs in the valley and fortress share combat messages |
 
-All five fields originally declare `string`. Each rule checks that the named
-field has the expected declaration before applying the replacement in memory.
+These fields originally declare `string`, except for the guild's `exp_str`,
+which declares `int`, and Quicktyper's lists, which declare `object`. Each rule checks that the named field has the expected
+declaration before applying the replacement in memory.
 An unexpected type, missing field, or duplicate declaration produces a
 translation error. Neighboring fields and local variables retain their types.
+
+The guild's title and experience tables supply character advancement and the
+experience values assigned to monsters. Giving those tables their array types
+lets both uses retain LP245's original calculations and title selection.
+
+In the monster, indexing the original string declarations was interpreted as
+reading individual characters. Declaring those fields as arrays makes each
+lookup retrieve a complete message or callback name. The correction belongs to
+the array fields; the local strings receiving those entries keep their types.
 
 The player object also declares local variables named `list` as `object` in
 `list_peoples()` and `who()`, then assigns the array returned by `users()` to
@@ -162,6 +180,28 @@ Parameters, fields, and matching names in other methods retain their declaration
 An unexpected type or ambiguous target, including repeated local names in nested
 blocks, produces a translation error.
 
+The yard's `extra_reset()` also stores a cloned weapon in a local originally
+declared `string`. A local override changes that declaration to `object`, so
+room initialization can move the weapon and continue configuring the beggar.
+
+Quicktyper refreshes its actions by briefly moving through `room/storage`.
+That room calls `::init(arg)`, although the room base declares `init()` with no
+parameters. A checked method rule opts the base method into JVMud's existing
+`varargs` convention:
+
+```json
+"method_varargs_overrides": [
+  { "file": "room/room.c", "method": "init", "expected_parameter_count": 0 }
+]
+```
+
+The translation requires exactly one defined, non-varargs method with the
+expected parameter count, then adds the modifier in memory. The body and
+parameters remain unchanged. Extra argument expressions are evaluated once in
+order and their values discarded. This also required correcting JVMud's bytecode
+emission for surplus arguments and calls to methods with no declared parameters.
+Other methods keep their ordinary argument checks.
+
 The JSON file path is relative to the manifest; source paths inside its rules
 are relative to `mudlib_root`. Restart the instance after changing these rules.
 
@@ -178,6 +218,10 @@ engine_function.jvmud_sscanf = sscanf
 
 These aliases retain the native signatures, including `sscanf`'s output-parameter
 captures. The `write_file` alias supplies the two-argument append operation.
+Quicktyper's numbered history uses `sscanf(verb, "%%d%s", ...)`: a literal percent,
+an integer capture, and a string capture. JVMud's scanner was corrected to
+recognize `%d` after the preceding literal percent. Its supported conversions
+remain `%d` and `%s`.
 
 Other adaptations are written in LPC in `mfuns.c`. The manifest's
 `mfun_object = jvmud/mfuns` setting makes those functions globally available to
@@ -214,6 +258,20 @@ objects to the enclosing location, or destroys them when no enclosing location
 exists. It also supplies compiler, runtime, heartbeat, and shutdown diagnostic
 handlers, which write beneath `jvmud/log/`.
 
+Quicktyper's history hook also needs LP245's action conventions:
+
+```properties
+command_actions.newest_first = true
+command_actions.arguments_only = true
+```
+
+The first setting runs matching actions in reverse registration order across
+both exact verbs and prefix matches. This lets the newly registered history
+hook observe a command before its ordinary handler consumes it. The second
+passes only the command arguments to empty-verb hooks; `query_verb()` supplies
+the verb separately. Both settings default to false, preserving JVMud's native
+exact-action precedence and whole-line input for empty-verb handlers.
+
 ## 8. Allow player saves alongside the preserved sources
 
 LP245 saves characters as `players/<name>.o` beneath the mudlib root. The
@@ -233,3 +291,20 @@ subdirectories retain their permissions. Newly created character files remain
 writable for subsequent saves. Generated player saves are excluded from Git.
 
 Use `jvmud/lp245.config` as the manifest when selecting this mudlib in JVMud.
+
+## 9. Use the carried Quicktyper
+
+Once a character carries `obj/quicktyper`, aliases can supply direction shortcuts:
+
+```text
+alias s south
+alias w west
+s
+w
+```
+
+`alias` lists the current aliases; `alias s` removes one. `history` lists recent
+commands, `%%` repeats the last command, and `%2` repeats history entry 2.
+`do smile,look,laugh` runs a sequence on heartbeats; `do` pauses it and `resume`
+continues it. `refresh` re-registers the carried tool's actions. Quicktyper's
+original autoload format preserves aliases when the player saves and reloads.

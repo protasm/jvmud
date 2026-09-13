@@ -35,7 +35,8 @@ import org.objectweb.asm.Type;
  * Emits JVM bytecode from the typed IR.
  *
  * <p>This emitter assumes the IR has already been semantically validated; it does not perform
- * additional semantic checks or fallbacks.</p>
+ * additional semantic checks or fallbacks. Calls use their declared JVM signature; surplus
+ * varargs expressions execute once from left to right and their values are discarded.</p>
  */
 public final class BytecodeCompiler {
     private static final String INIT_METHOD_NAME = "$lpc$init";
@@ -1340,6 +1341,13 @@ public final class BytecodeCompiler {
             }
         }
 
+        // Varargs permits surplus values, but their expressions must still execute once in order.
+        for (int i = emittedArgumentCount; i < arguments.size(); i++) {
+            IRExpression argument = arguments.get(i);
+            emitExpression(mv, internalName, method, argument);
+            if (argument.type().kind() != RuntimeValueKind.VOID) mv.visitInsn(POP);
+        }
+
         if (parameterTypes != null) {
             for (int i = emittedArgumentCount; i < parameterTypes.size(); i++) {
                 emitDefaultArgument(mv, parameterTypes.get(i));
@@ -2201,25 +2209,14 @@ public final class BytecodeCompiler {
     }
 
     private String buildCallDescriptor(IRInstanceCall call) {
-        if (call.parameterTypes() != null && !call.parameterTypes().isEmpty())
-            return buildCallDescriptor(call.parameterTypes(), call.type());
-
-        return buildCallDescriptorFromArgs(call.arguments(), call.type());
+        // An empty declared signature is meaningful, including when varargs accepts extra values.
+        return buildCallDescriptor(call.parameterTypes(), call.type());
     }
 
     private String buildCallDescriptor(List<RuntimeType> parameterTypes, RuntimeType returnType) {
         StringBuilder sb = new StringBuilder("(");
         for (RuntimeType parameterType : parameterTypes)
             sb.append(descriptor(parameterType));
-        sb.append(")");
-        sb.append(descriptor(returnType));
-        return sb.toString();
-    }
-
-    private String buildCallDescriptorFromArgs(List<IRExpression> args, RuntimeType returnType) {
-        StringBuilder sb = new StringBuilder("(");
-        for (IRExpression arg : args)
-            sb.append(descriptor(arg.type()));
         sb.append(")");
         sb.append(descriptor(returnType));
         return sb.toString();

@@ -32,9 +32,7 @@ final class Lp245BridgeTest {
         return runtime;
     }
 
-    /** New player saves live beside preserved sources and restore in an independent runtime. */
-    @Test
-    void originalPlayerSaveRestoresAcrossRuntimeRestart() throws Exception {
+    private com.fasterxml.jackson.databind.JsonNode copyOriginalArchive() throws Exception {
         var hashes = new ObjectMapper().readTree(Path.of("src/test/resources/lp245-lysator/upstream-sha256.json").toFile());
         var names = hashes.fieldNames();
         while (names.hasNext()) {
@@ -46,6 +44,164 @@ final class Lp245BridgeTest {
         Files.createDirectories(temp.resolve("jvmud"));
         for (String name : List.of("lp245.config", "mfuns.c", "mudlib.c", "transpilation.json"))
             Files.copy(UPSTREAM.resolve("jvmud").resolve(name), temp.resolve("jvmud").resolve(name));
+        return hashes;
+    }
+
+    private LPCRuntime isolatedArchiveRuntime() throws Exception {
+        copyOriginalArchive();
+        var boundary = MudlibBoundaryConfigReader.read(temp, "jvmud/lp245.config");
+        var rt = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(temp).build());
+        CoreEfuns.registerCore(rt, boundary.engineCapabilities());
+        rt.registerMudlibBoundary(boundary);
+        rt.setParserOptions(ParserOptions.features(boundary.languageFeatures()));
+        return rt;
+    }
+
+    /** Exercises original guild initialization, title tables and actual player advancement. */
+    @Test
+    void originalGuildInitializesAndAdvancesPlayer() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var guild = rt.load("room/adv_guild");
+        guild.invoke("reset", 0);
+        assertEquals(676, guild.invoke("get_next_exp", 0));
+        assertEquals(1000000, guild.invoke("get_next_exp", 19));
+        var player = rt.load("obj/player");
+        player.invoke("reset", 0);
+        String[] expected = {"the shadow", "the experienced fighter", "the charming siren"};
+        for (int gender = 0; gender < 3; gender++) {
+            player.invoke("set_gender", gender);
+            rt.withCommandActor(player.instance(), () -> guild.invoke("query_cost", 5));
+            assertEquals(expected[gender], guild.invoke("get_new_title", 5));
+            assertEquals("the apprentice Wizard", guild.invoke("get_new_title", 19));
+        }
+        player.invoke("set_gender", 1);
+        assertEquals(1, rt.withCommandActor(player.instance(), () -> guild.invoke("advance", 0)));
+        assertEquals(1, player.invoke("query_level"));
+        assertEquals("the utter novice", player.invoke("query_title"));
+        assertEquals(0, player.invoke("query_money"));
+        rt.withCommandActor(player.instance(), () -> guild.invoke("advance", "level"));
+        assertEquals(1, player.invoke("query_level")); // Insufficient funds do not advance.
+        player.invoke("add_money", 2000);
+        rt.withCommandActor(player.instance(), () -> guild.invoke("advance", "level"));
+        assertEquals(2, player.invoke("query_level"));
+        assertEquals("the simple wanderer", player.invoke("query_title"));
+        assertEquals(1014, player.invoke("query_exp"));
+        assertEquals(310, player.invoke("query_money"));
+    }
+
+    /** Uses the original monster's configuration, conversation matching and heartbeat paths. */
+    @Test
+    void originalMonsterUsesChatArraysAndGuildExperience() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var room = rt.loadSource("arena.c", "string short() { return \"Arena\"; }");
+        var actor = rt.loadSource("actor.c", """
+                inherit "/obj/player";
+                void activate() { enable_commands(); hit_point = 1000; max_hp = 1000; }
+                """);
+        actor.invoke("reset", 0);
+        actor.invoke("activate");
+        rt.bindSession("monster-actor", actor.instance(), "127.0.0.1", text -> {});
+        rt.moveObject(actor.instance(), room.instance());
+        var monster = rt.load("obj/monster");
+        monster.invoke("reset", 0);
+        monster.invoke("set_name", "probe");
+        monster.invoke("set_level", 3);
+        assertEquals(3, monster.invoke("query_level"));
+        assertEquals(1522, monster.invoke("query_exp"));
+        assertEquals(66, monster.invoke("query_hp"));
+        rt.moveObject(monster.instance(), room.instance());
+        var listener = rt.loadSource("listener.c", """
+                string message;
+                int matched(string text) { message = text; return 73; }
+                string received() { return message; }
+                """);
+        monster.invoke("set_match", listener.instance(), List.of("matched"), List.of("says: "), List.of("hello"));
+        assertEquals(73, monster.invoke("test_match", "Visitor says: hello\n"));
+        assertEquals("Visitor says: hello\n", listener.invoke("received"));
+        monster.invoke("load_chat", 100, List.of("Idle chat marker\n"));
+        monster.invoke("heart_beat");
+        assertTrue(rt.outputTranscript().contains("Idle chat marker"), rt.outputTranscript());
+        monster.invoke("load_a_chat", 100, List.of("Combat chat marker\n"));
+        monster.invoke("attack_object", actor.instance());
+        monster.invoke("heart_beat");
+        assertTrue(rt.outputTranscript().contains("Combat chat marker"), rt.outputTranscript());
+    }
+
+    /** Original rooms pass array configuration into the monster and expose their NPCs. */
+    @Test
+    void originalRoomsConfigureMonstersWithChatArrays() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        String[][] cases = {{"room/vill_road2", "harry"}, {"room/orc_vall", "orc"},
+                {"room/fortress", "orc"}, {"room/pub2", "player"}, {"room/yard", "beggar"}};
+        for (String[] entry : cases) {
+            var room = rt.load(entry[0]);
+            assertNotNull(rt.present(entry[1], room.instance()), entry[0]);
+        }
+        Object harry = rt.present("harry", rt.loadOrGetObject("room/vill_road2"));
+        rt.clearOutputTranscript();
+        rt.invokeObject(harry, "test_match", "Alice says: hello\n");
+        assertTrue(rt.outputTranscript().contains("Harry says: Pleased to meet you!"), rt.outputTranscript());
+    }
+
+    /** Exercises commands registered by the original carried Quicktyper, including storage refresh. */
+    @Test
+    void originalQuicktyperAliasesHistoryQueueRefreshAndAutoload() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var scheduler = new io.github.protasm.jvmud.engine.time.WorldScheduler();
+        rt.setScheduler(scheduler);
+        var actor = rt.loadSource("quicktyper_actor.c", """
+                string seen = "";
+                void activate() { enable_commands(); }
+                string query_name() { return "Visitor"; }
+                int query_level() { return 1; }
+                void init() { add_action("record", "mark"); }
+                int record(string text) { seen += text + ";"; return 1; }
+                string recorded() { return seen; }
+                """);
+        actor.invoke("activate");
+        rt.bindSession("quicktyper-actor", actor.instance(), "127.0.0.1", text -> {});
+        rt.moveObject(actor.instance(), rt.load("room/church").instance());
+        var quicktyper = rt.load("obj/quicktyper");
+        rt.moveObject(quicktyper.instance(), actor.instance());
+        rt.refreshCommandActions(actor.instance());
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "alias m mark"));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "m hello"));
+        assertEquals("hello;", actor.invoke("recorded"));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "%%"));
+        assertEquals("hello;hello;", actor.invoke("recorded"));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "%2"));
+        assertEquals("hello;hello;hello;", actor.invoke("recorded"));
+        rt.clearOutputTranscript();
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "history"));
+        assertTrue(rt.outputTranscript().contains("mark hello"), rt.outputTranscript());
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "do mark first,mark second,mark third"));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "do"));
+        scheduler.advanceBy(2);
+        assertEquals("hello;hello;hello;first;", actor.invoke("recorded"));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "resume"));
+        scheduler.advanceBy(1);
+        assertEquals("hello;hello;hello;first;second;third;", actor.invoke("recorded"));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "refresh"));
+        assertSame(actor.instance(), rt.environment(quicktyper.instance()));
+        scheduler.advanceBy(30);
+        assertSame(actor.instance(), rt.environment(quicktyper.instance()));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "m refreshed"));
+        String saved = (String) quicktyper.invoke("query_auto_load");
+        assertEquals("obj/quicktyper:1;m mark;.X.Z;", saved);
+        Object restored = rt.cloneObject("obj/quicktyper");
+        rt.invokeObject(restored, "init_arg", saved.substring(saved.indexOf(':') + 1));
+        assertEquals(saved, rt.invokeObject(restored, "query_auto_load"));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "alias m mark replaced"));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "m"));
+        assertTrue(((String) actor.invoke("recorded")).endsWith("refreshed;replaced;"));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "alias m"));
+        assertEquals(0, rt.dispatchCommand(actor.instance(), "m"));
+    }
+
+    /** New player saves live beside preserved sources and restore in an independent runtime. */
+    @Test
+    void originalPlayerSaveRestoresAcrossRuntimeRestart() throws Exception {
+        var hashes = copyOriginalArchive();
         String source = """
                 inherit "/obj/player";
                 void identify(string value) { name = value; }
