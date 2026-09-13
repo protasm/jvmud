@@ -308,6 +308,12 @@ public final class RuntimeContext {
         globalObjectDeclarations.clear();
     }
 
+    /** Applies checked local declarations to a parsed unit before semantic type resolution. */
+    public void transpileSourceLocals(Path sourcePath, ASTObject object) {
+        new io.github.protasm.jvmud.transpiler.LocalTypeTranspiler().transpile(sourcePath,
+                mudlibBoundary.mudlibRootPath().orElse(null), object, mudlibBoundary.localTypeOverrides());
+    }
+
     /** Applies only the source translations explicitly selected by this mudlib's bridge. */
     public TokenList transpileSourceTokens(Path sourcePath, TokenList tokens) {
         tokens = new io.github.protasm.jvmud.transpiler.FieldTypeTranspiler().transpile(

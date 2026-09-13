@@ -225,3 +225,17 @@ voice.
   missing implementations, single evaluation of arguments, strict mode,
   known-function/alias checks and hosted startup. `Lp245BridgeTest` executes
   the unchanged living base's `show_stats()` against a concrete child.
+
+## Checked local-type overrides
+
+- Motivation: LP245's `obj/player.c` stores `users()` in locals declared `object`
+  and indexes them as arrays in `list_peoples()` and `who()`.
+- Configuration: `local_type_overrides` entries in the selected
+  `transpilation.overrides` JSON file identify a file, method, local, expected
+  type and replacement type. Either local or field rules may appear alone.
+- Implementation: `LocalTypeTranspiler` validates parsed local declarations before
+  semantic analysis, excluding parameters and fields and rejecting ambiguous
+  names. Replacing the declaration preserves local identity and initializer order.
+- Verification: `LocalTypeTranspilerTest` covers scope, inherited execution,
+  included declarations, malformed rules, ambiguity and hosted boot propagation.
+  `Lp245BridgeTest` exercises the unchanged player's user lists and login prompt.

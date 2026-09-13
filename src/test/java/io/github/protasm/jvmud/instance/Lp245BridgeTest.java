@@ -32,6 +32,26 @@ final class Lp245BridgeTest {
         return runtime;
     }
 
+    /** Loads the original player and exercises the two adapted methods and initial login prompt. */
+    @Test
+    void originalPlayerUsesLocalArraysAndStartsLogon() throws Exception {
+        Path mudlib = UPSTREAM.toAbsolutePath();
+        var boundary = MudlibBoundaryConfigReader.read(mudlib, "jvmud/lp245.config");
+        var rt = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(mudlib).build());
+        CoreEfuns.registerCore(rt, boundary.engineCapabilities());
+        rt.registerMudlibBoundary(boundary);
+        rt.setParserOptions(ParserOptions.features(boundary.languageFeatures()));
+        var player = rt.load("obj/player");
+        player.invoke("reset", 0);
+        rt.bindSession("local-override-player", player.instance(), "127.0.0.1", text -> {});
+        player.invoke("who");
+        player.invoke("list_peoples");
+        assertTrue(rt.outputTranscript().contains("There are now 1 players"), rt.outputTranscript());
+        assertEquals(1, player.invoke("logon"));
+        assertTrue(rt.outputTranscript().contains("What is your name: "), rt.outputTranscript());
+        assertTrue(rt.hasCapturedSessionInput(player.instance()));
+    }
+
     /** Runs the unchanged living base against a concrete implementation of its implicit hook. */
     @Test
     void originalLivingStatsDispatchToConcreteShort() throws Exception {

@@ -1,7 +1,7 @@
 package io.github.protasm.jvmud.compiler.parser.ast;
 
 public final class ASTLocal extends ASTNode {
-    private final Symbol symbol;
+    private Symbol symbol;
     private int slot;
     private int scopeDepth;
     private int scopeId;
@@ -18,6 +18,16 @@ public final class ASTLocal extends ASTNode {
 
     public Symbol symbol() {
         return symbol;
+    }
+
+    /**
+     * Replaces this local's declaration before semantic analysis for checked source translation.
+     * References retain the same local identity, scope and source location.
+     */
+    public void replaceDeclaredType(String typeName) {
+        if (symbol.declaredType() != null)
+            throw new IllegalStateException("Cannot translate a local after type resolution");
+        symbol = new Symbol(typeName, symbol.name());
     }
 
     public int slot() {

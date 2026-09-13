@@ -159,6 +159,17 @@ public final class CompilationPipeline {
             return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
         }
 
+        try {
+            observer.stageStarted(unit, CompilationStage.TRANSPILE);
+            runtimeContext.transpileSourceLocals(unit.sourcePath(), astObject);
+            observer.stageSucceeded(unit, CompilationStage.TRANSPILE);
+        } catch (io.github.protasm.jvmud.transpiler.TranspilationException e) {
+            CompilationProblem problem = new CompilationProblem(CompilationStage.TRANSPILE, e.getMessage(), e.line(), e);
+            problems.add(problem);
+            observer.stageFailed(unit, CompilationStage.TRANSPILE, problem);
+            return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
+        }
+
         if (!astObject.inherits().isEmpty()) {
             List<CompilationUnit> parentUnits =
                     resolveAndAnalyzeParents(unit, parserOptions, inheritanceStack, problems);

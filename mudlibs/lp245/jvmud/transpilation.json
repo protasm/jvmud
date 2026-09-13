@@ -30,5 +30,21 @@
       "expected_type": "string",
       "replacement_type": "mixed"
     }
+  ],
+  "local_type_overrides": [
+    {
+      "file": "obj/player.c",
+      "method": "list_peoples",
+      "local": "list",
+      "expected_type": "object",
+      "replacement_type": "object*"
+    },
+    {
+      "file": "obj/player.c",
+      "method": "who",
+      "local": "list",
+      "expected_type": "object",
+      "replacement_type": "object*"
+    }
   ]
 }

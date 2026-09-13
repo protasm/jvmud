@@ -170,8 +170,9 @@ public final class MudlibBoundaryConfigReader {
         if (overrides != null) {
             Path overrideFile = configFile.getParent().resolve(overrides).normalize();
             Path activeRoot = resolveMudlibRootPath(configFile, mudlibRoot, firstValue(values, "mudlib_root"));
-            io.github.protasm.jvmud.transpiler.TranspilationConfigReader.read(overrideFile, activeRoot)
-                    .forEach(builder::fieldTypeOverride);
+            var translations = io.github.protasm.jvmud.transpiler.TranspilationConfigReader.readConfig(overrideFile, activeRoot);
+            translations.fields().forEach(builder::fieldTypeOverride);
+            translations.locals().forEach(builder::localTypeOverride);
         }
         addBoolean(builder::transpileImplicitSelfCalls, firstValue(values, "transpilation.implicit_self_calls"));
         addBoolean(builder::transpileUntypedMethods, firstValue(values, "transpilation.untyped_methods"));

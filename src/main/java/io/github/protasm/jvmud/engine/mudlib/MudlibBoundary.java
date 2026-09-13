@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.ArrayList;
 import io.github.protasm.jvmud.transpiler.FieldTypeOverride;
+import io.github.protasm.jvmud.transpiler.LocalTypeOverride;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -62,6 +63,7 @@ public final class MudlibBoundary {
     private final String databaseUser;
     private final String databasePassword;
     private final List<FieldTypeOverride> fieldTypeOverrides;
+    private final List<LocalTypeOverride> localTypeOverrides;
     private final boolean transpileUntypedMethods;
     private final boolean transpileImplicitSelfCalls;
     private final Set<LanguageFeature> languageFeatures;
@@ -101,6 +103,7 @@ public final class MudlibBoundary {
         this.databaseUser = normalizeOptionalText(builder.databaseUser);
         this.databasePassword = builder.databasePassword != null ? builder.databasePassword : null;
         this.fieldTypeOverrides = List.copyOf(builder.fieldTypeOverrides);
+        this.localTypeOverrides = List.copyOf(builder.localTypeOverrides);
         this.transpileUntypedMethods = builder.transpileUntypedMethods;
         this.transpileImplicitSelfCalls = builder.transpileImplicitSelfCalls;
         this.languageFeatures = Set.copyOf(builder.languageFeatures);
@@ -265,6 +268,9 @@ public final class MudlibBoundary {
     public Optional<String> databasePassword() {
         return Optional.ofNullable(databasePassword);
     }
+
+    /** Checked local declaration transformations, disabled when empty. */
+    public List<LocalTypeOverride> localTypeOverrides() { return localTypeOverrides; }
 
     /** Checked, explicitly configured field transformations; empty by default. */
     public List<FieldTypeOverride> fieldTypeOverrides() {
@@ -435,6 +441,7 @@ public final class MudlibBoundary {
                 || databaseUser != null
                 || databasePassword != null
                 || !fieldTypeOverrides.isEmpty()
+                || !localTypeOverrides.isEmpty()
                 || transpileUntypedMethods
                 || transpileImplicitSelfCalls
                 || !languageFeatures.isEmpty()
@@ -596,6 +603,7 @@ public final class MudlibBoundary {
         private String databaseUser;
         private String databasePassword;
         private final List<FieldTypeOverride> fieldTypeOverrides = new ArrayList<>();
+        private final List<LocalTypeOverride> localTypeOverrides = new ArrayList<>();
         private boolean transpileUntypedMethods;
         private boolean transpileImplicitSelfCalls;
         private final EnumSet<LanguageFeature> languageFeatures = EnumSet.noneOf(LanguageFeature.class);
@@ -763,6 +771,12 @@ public final class MudlibBoundary {
         /** Sets the JDBC password used by JVMud-native database efuns. */
         public Builder databasePassword(String databasePassword) {
             this.databasePassword = databasePassword;
+            return this;
+        }
+
+        /** Adds a checked file/method/local declaration transformation. */
+        public Builder localTypeOverride(LocalTypeOverride rule) {
+            localTypeOverrides.add(Objects.requireNonNull(rule, "rule"));
             return this;
         }
 

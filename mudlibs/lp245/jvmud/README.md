@@ -21,7 +21,7 @@ The bridge consists of four files:
 | File | Purpose |
 | --- | --- |
 | [lp245.config](lp245.config) | Selects the mudlib, language options, function aliases, and lifecycle mappings |
-| [transpilation.json](transpilation.json) | Records explicit corrections to legacy field types |
+| [transpilation.json](transpilation.json) | Records explicit corrections to legacy field and local-variable types |
 | [mfuns.c](mfuns.c) | Provides legacy functions through typed LPC adapters |
 | [mudlib.c](mudlib.c) | Supplies host lifecycle and diagnostic handlers |
 
@@ -102,7 +102,7 @@ for untyped declarations.
 JVMud applies the manifest settings before loading the bridge object and retains
 them for subsequent compilation of the mudlib.
 
-## 5. Correct specific field declarations without editing their sources
+## 5. Correct specific variable declarations without editing their sources
 
 Some legacy fields are declared with a type that does not match their use.
 The bridge records those corrections explicitly:
@@ -138,6 +138,29 @@ All five fields originally declare `string`. Each rule checks that the named
 field has the expected declaration before applying the replacement in memory.
 An unexpected type, missing field, or duplicate declaration produces a
 translation error. Neighboring fields and local variables retain their types.
+
+The player object also declares local variables named `list` as `object` in
+`list_peoples()` and `who()`, then assigns the array returned by `users()` to
+them. The bridge translates each declaration to `object*` with a rule in the
+same file's `local_type_overrides` array:
+
+```json
+{
+  "file": "obj/player.c",
+  "method": "who",
+  "local": "list",
+  "expected_type": "object",
+  "replacement_type": "object*"
+}
+```
+
+A second rule selects `list_peoples()` with the same local name and types.
+Local rules identify a source file, a defined method, and exactly one local
+variable within that method. They are applied after parsing, before type
+checking, so grouped declarations and initializer order are preserved.
+Parameters, fields, and matching names in other methods retain their declarations.
+An unexpected type or ambiguous target, including repeated local names in nested
+blocks, produces a translation error.
 
 The JSON file path is relative to the manifest; source paths inside its rules
 are relative to `mudlib_root`. Restart the instance after changing these rules.

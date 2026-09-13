@@ -10,7 +10,7 @@ since been implemented and verified.
 
 | Check | Result |
 | --- | --- |
-| Compile every original `.c` file, with the manifest registered directly | 265 of 286 compile; 21 fail |
+| Compile every original `.c` file, with the manifest registered directly | 266 of 286 compile; 20 fail |
 | Compile the actual `room/init_file` list | 5 of 8 compile; 3 fail |
 | Normal `MudInstance.boot` with the current bridge | Boots to the church; 3 preloads skipped; login remains blocked |
 | Diagnostic copy with bridge-object declaration merge bypassed | Boots to the church; 4 preloads skipped; login not established |
@@ -49,7 +49,8 @@ still fail. Evidence: `after-field-override.log` under the assessment directory.
 
 This archive also uses scalar-looking declarations for arrays:
 
-- `obj/player.c`: `object list` receives `users()` and is indexed.
+- `obj/player.c`: the two local `object list` declarations now have checked
+  `object*` overrides in `list_peoples()` and `who()`.
 - `obj/quicktyper.c`: `object list_ab` and `list_cmd` hold arrays.
 - `room/room.c`: `string dest_dir`, `items`, and `numbers` hold array values.
 - `room/adv_guild.c`, `room/death/death_room.c`, boards, and tools have similar cases.
@@ -70,6 +71,31 @@ Other syntax/behavior accommodations include:
 - `room/storage.c` passes an argument to a zero-argument inherited `init` method.
   Decide and test an explicit legacy calling convention rather than globally
   relaxing strict arity checks.
+
+### Player locals: checked local overrides implemented
+
+The JSON configuration now accepts `local_type_overrides`, independently of
+field overrides. Each rule specifies `file`, `method`, `local`, `expected_type`,
+and `replacement_type`. The two rules for `obj/player.c` select `list` in
+`list_peoples()` and `who()`, translating `object` to `object*`.
+
+Local overrides run on parsed declarations before semantic analysis. Parameters
+and fields are excluded; ambiguous method/local names, missing declarations,
+and unexpected original types fail at `TRANSPILE`. All selected rules are
+validated before any local is changed. Grouped declarations, initializer order,
+nested scopes, and included declarations retain their parsed identities.
+
+The original player now compiles and loads. An execution regression invokes
+`reset(0)`, binds a session, exercises both adapted methods against the nonempty
+user list, and invokes `logon()`. The name prompt appears and its input handler
+is registered. This establishes initial login setup, not completed account login,
+authentication, or persistence.
+
+The current scan is **266/286**, with the same three skipped preloads. Evidence:
+`after-local-overrides.log` in the generated assessment directory. The local
+transpiler and bridge suites pass all 12 tests. The full suite runs 519 tests
+with 11 errors in retained LP245 compatibility/Telnet cases, including a login
+flow timeout and stale source paths. All 582 original archive files are unchanged.
 
 ### Room foundation: checked field overrides implemented
 
@@ -133,14 +159,14 @@ methods. `Lp245BridgeTest` also loads the unchanged `obj/monster.talk.c` and
 executes its `can_put_and_get` implementation. Neither a new transpiler flag nor
 an LP245-specific compiler exception is involved.
 
-The scan is now **265/286**, adding `obj/monster.talk.c` and `players/lars/yy.c`.
+After the return-contract fix, the scan reached **265/286**, adding `obj/monster.talk.c` and `players/lars/yy.c`.
 Boot still reaches the church with three skipped preloads. Evidence:
 `after-mixed-return-contracts.log` in the generated assessment directory.
 The 341 focused compiler/bridge tests pass; the full suite runs 513 tests with
 one failure and 13 errors in retained LP245 compatibility/Telnet tests.
 
-Remaining player and monster analysis errors concern legacy array declarations
-and local string/integer assignments; the `can_put_and_get` signature error is
+At that stage, player and monster analysis errors concerned legacy array
+declarations and local string/integer assignments; the `can_put_and_get` signature error is
 resolved.
 
 Before the room overrides, retained world-loading tests exposed `NoSuchFieldError` for
@@ -233,7 +259,6 @@ technical uncertainties. Reassess after the first player-and-room milestone.
 - `obj/marker.c`
 - `obj/master.c`
 - `obj/monster.c`
-- `obj/player.c`
 - `obj/quicktyper.c`
 - `obj/roommaker.c`
 - `obj/shut.c`
