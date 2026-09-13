@@ -32,6 +32,58 @@ final class Lp245BridgeTest {
         return runtime;
     }
 
+    /** New player saves live beside preserved sources and restore in an independent runtime. */
+    @Test
+    void originalPlayerSaveRestoresAcrossRuntimeRestart() throws Exception {
+        var hashes = new ObjectMapper().readTree(Path.of("src/test/resources/lp245-lysator/upstream-sha256.json").toFile());
+        var names = hashes.fieldNames();
+        while (names.hasNext()) {
+            String name = names.next();
+            Path destination = temp.resolve(name);
+            Files.createDirectories(destination.getParent());
+            Files.copy(UPSTREAM.resolve(name), destination);
+        }
+        Files.createDirectories(temp.resolve("jvmud"));
+        for (String name : List.of("lp245.config", "mfuns.c", "mudlib.c", "transpilation.json"))
+            Files.copy(UPSTREAM.resolve("jvmud").resolve(name), temp.resolve("jvmud").resolve(name));
+        String source = """
+                inherit "/obj/player";
+                void identify(string value) { name = value; }
+                int restore_saved(string path) { return restore_object(path); }
+                """;
+        for (int restart = 0; restart < 2; restart++) {
+            var boundary = MudlibBoundaryConfigReader.read(temp, "jvmud/lp245.config");
+            var rt = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(temp).build());
+            CoreEfuns.registerCore(rt, boundary.engineCapabilities());
+            rt.registerMudlibBoundary(boundary);
+            rt.setParserOptions(ParserOptions.features(boundary.languageFeatures()));
+            var player = rt.loadSource("persistence_probe.c", source);
+            player.invoke("reset", 0);
+            if (restart == 0) {
+                player.invoke("identify", "persistenceprobe");
+                player.invoke("add_money", 37);
+                player.invoke("save_me", 0);
+                assertTrue(Files.isRegularFile(temp.resolve("players/persistenceprobe.o")));
+            } else {
+                assertEquals(1, player.invoke("restore_saved", "players/persistenceprobe"));
+                assertEquals("persistenceprobe", player.invoke("query_real_name"));
+                assertEquals(37, player.invoke("query_money"));
+                // Subsequent saves replace the character's own file, preserving updated state.
+                player.invoke("add_money", 5);
+                player.invoke("save_me", 0);
+                player.invoke("add_money", 100);
+                assertEquals(1, player.invoke("restore_saved", "players/persistenceprobe"));
+                assertEquals(42, player.invoke("query_money"));
+            }
+        }
+        var entries = hashes.fields();
+        while (entries.hasNext()) {
+            var entry = entries.next();
+            assertEquals(entry.getValue().asText(), HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(Files.readAllBytes(temp.resolve(entry.getKey())))), entry.getKey());
+        }
+    }
+
     /** Loads the original player and exercises the two adapted methods and initial login prompt. */
     @Test
     void originalPlayerUsesLocalArraysAndStartsLogon() throws Exception {

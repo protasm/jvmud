@@ -214,4 +214,22 @@ objects to the enclosing location, or destroys them when no enclosing location
 exists. It also supplies compiler, runtime, heartbeat, and shutdown diagnostic
 handlers, which write beneath `jvmud/log/`.
 
+## 8. Allow player saves alongside the preserved sources
+
+LP245 saves characters as `players/<name>.o` beneath the mudlib root. The
+`save_object` and `restore_object` adapters retain those paths and use JVMud's
+object-state storage format.
+
+The source freeze must leave the `players/` directory writable by the account
+running JVMud so the server can create and update character files. From the
+repository root, set the directory permission with:
+
+```sh
+chmod u+w mudlibs/lp245/players
+```
+
+This changes the directory permission only; the original files and source
+subdirectories retain their permissions. Newly created character files remain
+writable for subsequent saves. Generated player saves are excluded from Git.
+
 Use `jvmud/lp245.config` as the manifest when selecting this mudlib in JVMud.

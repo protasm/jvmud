@@ -218,6 +218,22 @@ from the archive or silently ignored during the all-source scan.
 
 ## 6. Enable and verify persistence deliberately
 
+**Player save-directory permissions corrected.** A real Telnet character creation
+and movement session succeeded, but the next connection treated the same name as
+new. The live `players/` directory had mode 0555 and no corresponding character
+save existed. The legacy player prints its saving message without checking the
+save result. Adding owner-write permission to the directory allows new character
+files at the existing `players/<name>.o` paths; no storage redirection is used.
+Every original file retains its read-only permissions and archive checksum.
+
+`Lp245BridgeTest.originalPlayerSaveRestoresAcrossRuntimeRestart` exercises the
+original player's save routine in an isolated archive copy, restores its name
+and gold in an independent runtime, and confirms subsequent saves update the
+same file. The bridge suite passes eight tests. Live reconnect/authentication
+with the user's character remains to be confirmed after an actual save. The
+permission setup is documented in the bridge README because directory modes
+are not carried by Git.
+
 The originals are still read-only. Needed data locations include player saves,
 banishment records, post/mail data, bulletin boards, and logs. Select writable
 data destinations or bridge-owned routing while protecting source files.
