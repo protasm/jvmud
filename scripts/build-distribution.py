@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build and smoke-test local runtime archives, then generate their checksums."""
+import argparse
 import hashlib
 from pathlib import Path
 import subprocess
@@ -8,6 +9,9 @@ import xml.etree.ElementTree as ET
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--with-jre", action="store_true", help="Also build all pinned macOS and Linux JRE packages")
+    args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     version = ET.parse(root / "pom.xml").getroot().findtext(
         "{http://maven.apache.org/POM/4.0.0}version")
@@ -26,6 +30,9 @@ def main():
         archive.with_name(archive.name + ".sha256").write_text(
             f"{digest}  {archive.name}\n", encoding="utf-8")
         print(f"Verified: {archive}")
+
+    if args.with_jre:
+        subprocess.run([sys.executable, str(root / "scripts/bundle-distributions.py")], cwd=root, check=True)
 
 
 if __name__ == "__main__":

@@ -7,13 +7,15 @@ See `RELEASE-STATUS.md` for this preview's validation and licensing status.
 
 ## Requirements
 
-Install Java 21 or newer and use a POSIX terminal on macOS, Linux, or Windows WSL.
-Check `java -version`. Maven, a source checkout, and Internet access are not needed
-to run this package. A MUD client is needed to play. Native Windows launchers
+Use a POSIX terminal and the package matching your operating system and processor.
+The macOS and Linux packages bundle Eclipse Temurin Java 21; no Java installation
+is needed. Linux packages target glibc systems, not Alpine/musl. The runtime-free
+`-bin` archive instead requires Java 21 or newer (also usable in Windows WSL).
+Maven, a source checkout, and Internet access are not needed to run these packages. A MUD client is needed to play. Native Windows launchers
 are not included.
 
 Extract the entire archive into a writable directory. Keep `scripts/`, `lib/`,
-and `mudlibs/` together. Open a terminal in the extracted `jvmud-<version>` folder.
+`mudlibs/`, `runtime`, and `vendor-runtime/` together when present. Open a terminal in the extracted `jvmud-<version>` folder.
 If a ZIP extractor removed executable permissions, run `chmod +x scripts/jvmud-*`.
 
 ## Start and play
@@ -66,8 +68,9 @@ under `players/` and upstream name reservations in `banish/` are retained.
 
 Pass its manifest to `scripts/jvmud-start`. Launchers preserve your working
 directory: relative arguments resolve from the terminal's current directory.
-Use absolute paths when launching from elsewhere. `JAVA_HOME` selects a particular
-Java installation; otherwise the launchers use `java` on `PATH`. Use Java's
+Use absolute paths when launching from elsewhere. Bundled packages use their own
+runtime, ignoring `JAVA_HOME`. Set `JVMUD_JAVA_HOME` to explicitly override it.
+Runtime-free packages use `JVMUD_JAVA_HOME`, then `JAVA_HOME`, then `java` on `PATH`. Use Java's
 `JAVA_TOOL_OPTIONS` for JVM options such as `-Xmx1g`.
 
 ```sh

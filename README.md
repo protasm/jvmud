@@ -16,8 +16,8 @@ installation). Java and Maven must be available in your terminal. The launch
 scripts compile the engine and resolve its dependencies automatically; the first
 run needs access to Maven repositories. A binary distribution can also be built
 with precompiled JARs, runtime dependencies, Small Mercies, and LP245; see
-[building a distribution](distribution/BUILDING.md). Its launchers require only
-Java 21 or newer and a POSIX shell. The experimental [preview download](https://jvmud.org/downloads.html) is available
+[building a distribution](distribution/BUILDING.md). Bundled macOS and Linux packages include Java 21 and require a POSIX shell;
+the runtime-free archive requires an existing Java 21 or newer installation. The experimental [preview download](https://jvmud.org/downloads.html) is available
 as a tar.gz package.
 
 Run the commands below from the repository root, the folder containing this

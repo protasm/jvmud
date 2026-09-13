@@ -128,7 +128,10 @@ def main():
                 for entry in source.getmembers():
                     member = PurePosixPath(entry.name)
                     assert not member.is_absolute() and ".." not in member.parts
-                    assert entry.isfile() or entry.isdir(), "Unexpected archive entry"
+                    assert entry.isfile() or entry.isdir() or entry.issym(), "Unexpected archive entry"
+                    if entry.issym():
+                        target = (work / entry.name).parent / entry.linkname
+                        assert target.resolve().is_relative_to(work.resolve()), "Unsafe symlink"
                 source.extractall(work)
         root, = work.glob("jvmud-*")
         assert not list(root.rglob("*.java")), "Runtime archive contains Java source"
@@ -144,17 +147,25 @@ def main():
         # An intentionally minimal PATH proves these launchers do not call Maven.
         path = work / "tools"
         path.mkdir()
-        for tool in ("sh", "dirname", "sed", "java"):
+        bundled = (root / "runtime").is_dir()
+        for tool in (("sh", "dirname", "sed") if bundled else ("sh", "dirname", "sed", "java")):
             executable = shutil.which(tool)
             assert executable, f"Missing test prerequisite: {tool}"
             (path / tool).symlink_to(executable)
         env = dict(os.environ, PATH=str(path))
+        env.pop("JVMUD_JAVA_HOME", None)
+        if bundled:
+            env["JAVA_HOME"] = str(work / "ignored-system-java")
+            assert not shutil.which("java", path=str(path))
+            settings = subprocess.run([str(root / "runtime/bin/java"), "-XshowSettings:properties", "-version"],
+                                      capture_output=True, text=True, check=True)
+            assert "java.specification.version = 21" in settings.stderr
         cwd = work / "caller directory"
         cwd.mkdir()
         for launcher in ("jvmud-start", "jvmud-cli", "jvmud-format"):
             subprocess.run([str(root / "scripts" / launcher), "--help"],
                            cwd=cwd, env=env, capture_output=True, check=True, timeout=15)
-        invalid = dict(env, JAVA_HOME=str(work / "missing-java"))
+        invalid = dict(env, JVMUD_JAVA_HOME=str(work / "missing-java"))
         result = subprocess.run([str(root / "scripts/jvmud-start"), "--help"],
                                 cwd=cwd, env=invalid, capture_output=True, text=True)
         assert result.returncode != 0 and "Java 21" in result.stderr

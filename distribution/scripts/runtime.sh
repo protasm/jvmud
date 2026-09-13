@@ -1,17 +1,21 @@
 # Shared by the distribution launchers; paths supplied by users stay relative
 # to their current directory, even when the launcher lives elsewhere.
 JVMUD_ROOT=$(dirname -- "$JVMUD_SCRIPT_DIR")
-if [ -n "${JAVA_HOME:-}" ]; then
+if [ -n "${JVMUD_JAVA_HOME:-}" ]; then
+    JVMUD_JAVA="$JVMUD_JAVA_HOME/bin/java"
+elif [ -d "$JVMUD_ROOT/runtime" ]; then
+    JVMUD_JAVA="$JVMUD_ROOT/runtime/bin/java"
+elif [ -n "${JAVA_HOME:-}" ]; then
     JVMUD_JAVA="$JAVA_HOME/bin/java"
 else
     JVMUD_JAVA=$(command -v java || true)
 fi
 if [ -z "$JVMUD_JAVA" ] || [ ! -x "$JVMUD_JAVA" ]; then
-    echo "JVMud requires Java 21 or newer. Install Java and set JAVA_HOME or add java to PATH." >&2
+    echo "JVMud requires Java 21 or newer. Extract the matching bundled package, set JVMUD_JAVA_HOME, or install Java." >&2
     exit 1
 fi
 if ! JVMUD_JAVA_SETTINGS=$("$JVMUD_JAVA" -XshowSettings:properties -version 2>&1); then
-    echo "Unable to run Java. Check JAVA_HOME and your Java installation." >&2
+    echo "Unable to run Java. Check the package platform and JVMUD_JAVA_HOME." >&2
     exit 1
 fi
 JVMUD_JAVA_VERSION=$(printf '%s\n' "$JVMUD_JAVA_SETTINGS" | sed -n 's/^[[:space:]]*java.specification.version = //p')

@@ -27,20 +27,27 @@
 
   <main id="main">
     <h1>Download JVMud</h1>
-    <p>JVMud 0.1.0-preview.2 is an experimental end-user distribution. It includes
-    the compiled engine, runtime dependencies, launchers, and editable LPC source
-    for both Small Mercies and LP245.</p>
-    <p><a class="button-link" href="downloads/jvmud-0.1.0-preview.2-bin.tar.gz">Download tar.gz · 7.1 MB</a></p>
-    <p><a href="downloads/jvmud-0.1.0-preview.2-bin.tar.gz.sha256">SHA-256 checksum</a></p>
+    <p>JVMud 0.1.0-preview.3 includes the compiled engine, launchers, and editable
+    LPC source for Small Mercies and LP245. The macOS and Linux packages include
+    Eclipse Temurin Java 21.0.12.1; no separate Java installation is needed.</p>
+    <ul>
+    <li><a href="downloads/jvmud-0.1.0-preview.3-macos-aarch64.tar.gz">macOS · Apple Silicon · 53.0 MiB</a> · <a href="downloads/jvmud-0.1.0-preview.3-macos-aarch64.tar.gz.sha256">SHA-256</a></li>
+    <li><a href="downloads/jvmud-0.1.0-preview.3-macos-x64.tar.gz">macOS · Intel · 47.2 MiB</a> · <a href="downloads/jvmud-0.1.0-preview.3-macos-x64.tar.gz.sha256">SHA-256</a></li>
+    <li><a href="downloads/jvmud-0.1.0-preview.3-linux-x64.tar.gz">Linux · x86-64 · 56.8 MiB</a> · <a href="downloads/jvmud-0.1.0-preview.3-linux-x64.tar.gz.sha256">SHA-256</a></li>
+    <li><a href="downloads/jvmud-0.1.0-preview.3-linux-aarch64.tar.gz">Linux · ARM64 · 55.9 MiB</a> · <a href="downloads/jvmud-0.1.0-preview.3-linux-aarch64.tar.gz.sha256">SHA-256</a></li>
+    <li><a href="downloads/jvmud-0.1.0-preview.3-bin.tar.gz">Runtime-free · Java installed separately · 7.2 MiB</a> · <a href="downloads/jvmud-0.1.0-preview.3-bin.tar.gz.sha256">SHA-256</a></li>
+    </ul>
 
     <h2>Requirements</h2>
-    <p>Java 21 or newer and a POSIX shell on macOS, Linux, or Windows WSL.
-    Maven is not needed. Java and a MUD client are installed separately.</p>
+    <p>Choose the package matching your operating system and processor. A POSIX
+    terminal and a separate MUD client are needed; Maven is not. Linux packages
+    require glibc (not Alpine/musl). The runtime-free package requires Java 21 or
+    newer and can also be used in Windows WSL.</p>
 
     <h2>Start your first world</h2>
-    <p>In a terminal, go to the writable folder containing your download and run:</p>
-    <pre><code>tar -xzf jvmud-0.1.0-preview.2-bin.tar.gz
-cd jvmud-0.1.0-preview.2
+    <p>In a terminal, go to the writable folder containing your download. For Apple Silicon, run the commands below; for another platform, replace the archive filename with your download:</p>
+    <pre><code>tar -xzf jvmud-0.1.0-preview.3-macos-aarch64.tar.gz
+cd jvmud-0.1.0-preview.3
 scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config</code></pre>
     <p>Wait for <code>JVMud mudlib listening on</code>, then connect a Telnet-capable
     MUD client to <code>127.0.0.1:4000</code> with SSL/TLS disabled. Choose a guest
@@ -55,12 +62,13 @@ scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config</code></pre>
     files. Existing player saves and old logs are excluded.</p>
 
     <h2>Preview status</h2>
-    <p>This update fixes the missing quicktyper in LP245’s storage room. The
-    gameplay check now obtains the tool and uses an alias.</p>
-    <p>All 541 Maven tests passed. Both extracted mudlibs passed login, movement,
-    and administration checks on macOS with OpenJDK 25. JVMud targets Java 21;
-    Java 21 itself, Linux, and Windows WSL have not yet been validated for this
-    preview. LP245 compatibility remains experimental.</p>
+    <p>All 541 Maven tests passed. The bundled macOS packages passed launcher,
+    formatter, login, movement, and administration checks for both worlds:
+    Apple Silicon natively and Intel under Rosetta. Native Intel hardware has
+    not been tested. Linux packages passed archive and runtime-integrity checks
+    but have not been executed on Linux. LP245 compatibility remains experimental.</p>
+    <p>Launchers use the bundled Java runtime by default. Set
+    <code>JVMUD_JAVA_HOME</code> to explicitly select another Java installation.</p>
     <p>The package's README covers launch options, administration, and upgrades.
     <code>RELEASE-STATUS.md</code> records validation and licensing status; no
     project license has yet been declared for JVMud or Small Mercies.</p>
