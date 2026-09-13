@@ -293,6 +293,18 @@
       "field": "query_list",
       "expected_type": "string",
       "replacement_type": "string*"
+    },
+    {
+      "file": "obj/armour.c",
+      "field": "weight",
+      "expected_type": "string",
+      "replacement_type": "int"
+    },
+    {
+      "file": "obj/armour.c",
+      "field": "value",
+      "expected_type": "string",
+      "replacement_type": "int"
     }
   ],
   "local_type_overrides": [

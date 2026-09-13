@@ -1492,13 +1492,38 @@ public final class RuntimeContext {
                             + objectIdOrDescription(destination) + " because it would create a containment cycle.");
         }
 
-        if (worldProjection.environment(object) == destination) {
+        Object previousLocation = worldProjection.environment(object);
+        if (previousLocation == destination) {
             return;
         }
 
         worldProjection.move(object, destination);
-        if (destination != null) {
+        if (previousLocation != null
+                && (sessionsByPersona.containsKey(object) || commandEnabledEntities.contains(object))) {
+            invokeDepartureLifecycle(object, previousLocation);
+        }
+        // Departure cleanup may destroy or redirect the actor. Do not deliver a stale arrival.
+        if (destination != null && !destroyedObjects.contains(object)
+                && worldProjection.environment(object) == destination) {
             invokeArrivalLifecycle(object, destination);
+        }
+    }
+
+    private void invokeDepartureLifecycle(Object actor, Object previousLocation) {
+        String methodName = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.ENTITY_DEPARTED_FROM_PLACE)
+                .orElse(null);
+        if (methodName == null) return;
+        boolean acceptsActor = hasMethod(previousLocation.getClass(), methodName, 1);
+        if (!acceptsActor && !hasMethod(previousLocation.getClass(), methodName, 0)) return;
+
+        RuntimeContext previous = RuntimeContextHolder.current();
+        RuntimeContextHolder.setCurrent(this);
+        try {
+            withCommandActor(actor, () -> acceptsActor
+                    ? invokeObject(previousLocation, methodName, actor)
+                    : invokeObject(previousLocation, methodName));
+        } finally {
+            RuntimeContextHolder.setCurrent(previous);
         }
     }
 

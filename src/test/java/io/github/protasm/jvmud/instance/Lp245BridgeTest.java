@@ -108,6 +108,36 @@ final class Lp245BridgeTest {
     }
 
     @Test
+    void originalDeathSequenceReturnsGhostsToChurchAndClearsItsQueue() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var scheduler = new io.github.protasm.jvmud.engine.time.WorldScheduler();
+        rt.setScheduler(scheduler);
+        var room = rt.load("room/death/death_room");
+        var ghost = rt.loadSource("death_probe.c", """
+                inherit "/obj/player";
+                void prepare() { ghost = 1; enable_commands(); }
+                """);
+        ghost.invoke("prepare");
+        rt.bindSession("death-probe", ghost.instance(), "127.0.0.1", text -> {});
+        rt.moveObject(ghost.instance(), room.instance());
+        Object second = rt.cloneObject("death_probe");
+        rt.invokeObject(second, "prepare");
+        rt.bindSession("second-death-probe", second, "127.0.0.1", text -> {});
+        rt.moveObject(second, room.instance());
+        scheduler.advanceBy(69);
+        assertSame(room.instance(), rt.environment(ghost.instance()));
+        scheduler.advanceBy(1);
+        assertSame(rt.loadOrGetObject("room/church"), rt.environment(ghost.instance()));
+        assertSame(rt.loadOrGetObject("room/church"), rt.environment(second));
+        assertFalse(rt.outputTranscript().contains("You have no heart beat"), rt.outputTranscript());
+        assertFalse(Files.exists(temp.resolve("jvmud/log/HEART_BEAT")));
+        rt.clearOutputTranscript();
+        // A completed queue must not emit the scene again or recurse on another tick.
+        room.invoke("heart_beat");
+        assertEquals("", rt.outputTranscript());
+    }
+
+    @Test
     void originalDeathRoomTracksMultipleGhostsAndRemovesOne() throws Exception {
         var rt = isolatedArchiveRuntime();
         var room = rt.load("room/death/death_room");
@@ -129,6 +159,35 @@ final class Lp245BridgeTest {
         assertTrue(secondText.toString().contains("NO GLANDS"));
         room.invoke("remove_player", second);
         assertDoesNotThrow(() -> room.invoke("heart_beat"));
+    }
+
+    @Test
+    void originalForestJacketCanBePickedUpWornDroppedAndSold() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var forest = rt.load("room/forest1");
+        Object jacket = rt.present("jacket", forest.instance());
+        assertNotNull(jacket);
+        Object player = rt.cloneObject("obj/player");
+        rt.withCommandActor(player, () -> rt.invokeObject(player, "logon2", "jacketprobe"));
+        rt.withCommandActor(player, () -> rt.invokeObject(player, "move_player_to_start3", "room/forest1"));
+        rt.moveObject(player, forest.instance());
+        rt.refreshCommandActions(player);
+        assertEquals(1, rt.dispatchCommand(player, "get jacket"));
+        assertSame(player, rt.environment(jacket));
+        assertEquals(2, rt.invokeObject(jacket, "query_weight"));
+        assertEquals(50, rt.invokeObject(jacket, "query_value"));
+        assertEquals(1, rt.dispatchCommand(player, "wear jacket"));
+        assertEquals(1, rt.invokeObject(jacket, "query_worn"));
+        assertEquals(1, rt.dispatchCommand(player, "drop jacket"));
+        assertEquals(0, rt.invokeObject(jacket, "query_worn"));
+        assertSame(forest.instance(), rt.environment(jacket));
+        assertEquals(1, rt.dispatchCommand(player, "get jacket"));
+        Object shop = rt.loadOrGetObject("room/shop");
+        rt.moveObject(player, shop);
+        rt.refreshCommandActions(player);
+        assertEquals(1, rt.dispatchCommand(player, "sell jacket"));
+        assertEquals(50, rt.invokeObject(player, "query_money"));
+        assertSame(rt.loadOrGetObject("room/store"), rt.environment(jacket));
     }
 
     @Test

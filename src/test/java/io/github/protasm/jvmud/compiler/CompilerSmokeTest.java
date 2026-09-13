@@ -5701,6 +5701,72 @@ final class CompilerSmokeTest {
     }
 
     @Test
+    void departureLifecycleRunsForActorsBeforeArrivalAndSkipsItemsAndNoOpMoves() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .lifecycleMethod(MudlibLifecycleEvent.ENTITY_DEPARTED_FROM_PLACE, "depart")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "arrive")
+                .build());
+        var actor = runtime.loadSource("depart_actor.c", "void activate() { jvmud_enable_commands(); }");
+        var item = runtime.loadSource("depart_item.c", "int value() { return 1; }");
+        var origin = runtime.loadSource("depart_origin.c", """
+                int calls;
+                object seen;
+                void depart(object who) {
+                    calls += 1;
+                    seen = jvmud_current_actor();
+                    if (who != seen) jvmud_write("wrong actor");
+                    jvmud_write("depart;");
+                }
+                int count() { return calls; }
+                object actor() { return seen; }
+                """);
+        var destination = runtime.loadSource("depart_destination.c", """
+                void arrive() { jvmud_write("arrive;"); }
+                """);
+        actor.invoke("activate");
+        runtime.moveObject(actor.instance(), origin.instance());
+        runtime.moveObject(item.instance(), origin.instance());
+        runtime.moveObject(item.instance(), destination.instance());
+        runtime.moveObject(actor.instance(), origin.instance());
+        assertEquals(0, origin.invoke("count"));
+        runtime.bindSession("depart-actor", actor.instance(), "127.0.0.1", text -> {});
+        runtime.clearOutputTranscript();
+        runtime.moveObject(actor.instance(), destination.instance());
+        assertEquals("depart;arrive;", runtime.outputTranscript());
+        assertSame(actor.instance(), origin.invoke("actor"));
+        assertEquals(1, origin.invoke("count"));
+        // Missing departure methods are optional, including on movement to no location.
+        runtime.moveObject(actor.instance(), null);
+        assertEquals(null, runtime.environment(actor.instance()));
+    }
+
+    @Test
+    void zeroArgumentDepartureCanRedirectWithoutStaleArrival() {
+        LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
+        CoreEfuns.registerCore(runtime);
+        runtime.registerMudlibBoundary(MudlibBoundary.builder()
+                .lifecycleMethod(MudlibLifecycleEvent.ENTITY_DEPARTED_FROM_PLACE, "depart")
+                .lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, "arrive")
+                .build());
+        var actor = runtime.loadSource("redirect_actor.c", "int value() { return 1; }");
+        var target = runtime.loadSource("redirect_target.c", "void arrive() { jvmud_write(\"target;\"); }");
+        var requested = runtime.loadSource("redirect_requested.c", "void arrive() { jvmud_write(\"stale;\"); }");
+        var origin = runtime.loadSource("redirect_origin.c", """
+                void depart() {
+                    jvmud_move_entity(jvmud_current_actor(), "redirect_target");
+                }
+                """);
+        runtime.bindSession("redirect-actor", actor.instance(), "127.0.0.1", text -> {});
+        runtime.moveObject(actor.instance(), origin.instance());
+        runtime.clearOutputTranscript();
+        runtime.moveObject(actor.instance(), requested.instance());
+        assertSame(target.instance(), runtime.environment(actor.instance()));
+        assertEquals("target;", runtime.outputTranscript());
+    }
+
+    @Test
     void connectedActorMovementImmediatelyInvokesTheDestinationLifecycle() throws Exception {
         Files.createDirectories(tempDir.resolve("jvmud"));
         Files.createDirectories(tempDir.resolve("room"));

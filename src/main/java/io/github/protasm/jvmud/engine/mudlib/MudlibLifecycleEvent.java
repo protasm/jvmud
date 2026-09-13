@@ -85,10 +85,15 @@ public enum MudlibLifecycleEvent {
     ENTITY_ARRIVED_AT_PLACE,
 
     /**
-     * An entity is leaving a Place.
+     * An interactive or command-enabled entity has left its previous location.
      *
-     * <p>Current delivery: reserved. This event is paired with {@link #ENTITY_ARRIVED_AT_PLACE} for
-     * future movement policy and notification hooks.</p>
+     * <p>Current delivery: implemented after containment changes, before destination interaction
+     * callbacks. The mapped method runs on the previous location with the departing entity as
+     * command actor and one argument. A zero-argument method is also supported. Ordinary items,
+     * initial placement, and moves to the same location do not deliver this event. If cleanup
+     * redirects or destroys the actor, the original destination receives no arrival callback.</p>
+     *
+     * <p>Example compatibility mapping: {@code lifecycle.entity_departed_from_place = exit}.</p>
      */
     ENTITY_DEPARTED_FROM_PLACE,
 

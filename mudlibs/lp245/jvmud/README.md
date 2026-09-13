@@ -316,6 +316,7 @@ The bridge also adapts declarations in objects outside `room/init_file`:
 | Objects | Adaptation |
 | --- | --- |
 | `obj/trace.c`, `obj/trace2.c` | Variable names and query names become string arrays; stored values and callback results use mixed types; user lists become object arrays |
+| `obj/armour.c` | Weight and sale value become integers so configured armour can be picked up and sold |
 | `obj/marker.c` | Locals shared by string and integer `sscanf` captures become mixed |
 | `obj/roommaker.c` | Room lighting becomes an integer; exit and generated-text lists become string arrays |
 | `players/lars/board.c` | Board and mark grids become arrays of rows; the opponent lookup, string/integer color capture, and saved grid retain their actual value types |
@@ -353,3 +354,19 @@ Initialization coverage does not mean every command or legacy driver facility
 is implemented. The adapters still contain placeholders for facilities such as
 the editor, snooping, filesystem metadata, and driver accounting. The original
 sources remain unchanged, and the archive hash check guards their preservation.
+
+
+## 11. Run room departure cleanup
+
+The manifest maps `lifecycle.entity_departed_from_place = exit`. JVMud calls the
+previous room's optional `exit` after relocating an interactive or
+command-enabled actor, before running arrival callbacks. The departing object is
+both the callback argument and `this_player()`; zero-argument hooks such as the
+post office's `exit()` also work. Ordinary item moves do not invoke this hook.
+
+The original death room relies on `exit(player)` to remove a finished ghost
+from its queue. Without it, the 70th heartbeat moved the ghost to the church,
+then recursively retried the same queue entry until the JVM stack overflowed.
+The complete two-ghost sequence is covered by `Lp245BridgeTest`, including
+return to the church and an empty queue afterward. Cleanup that redirects or
+destroys an actor prevents arrival callbacks at the original destination.

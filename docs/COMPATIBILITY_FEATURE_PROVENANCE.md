@@ -260,3 +260,36 @@ voice.
   and inventory selection, death-room player removal, shop payouts and inventory
   transfer, and Go-board initialization, patching, scoring and filling. The
   upstream hash test continues to guard original sources.
+
+
+## LP245 armour weight and value
+
+- Motivation: `room/forest1.c` configures its leather jacket with weight 2 and
+  value 50, but `obj/armour.c` declares both fields as strings. Pickup fails
+  when the player reads the resulting string weight into an integer local;
+  sale has the same mismatch for value.
+- Adaptation: checked `field_type_overrides` change only those two declarations
+  from `string` to `int`, preserving the original armour source.
+- Verification: `Lp245BridgeTest.originalForestJacketCanBePickedUpWornDroppedAndSold`
+  reproduces the String-to-Number failure without the overrides, then verifies
+  actual command dispatch for pickup, wear, drop, repeat pickup, and a 50-coin
+  sale into shop inventory with the overrides enabled.
+
+
+## Location departure lifecycle delivery
+
+- Motivation: `room/death/death_room.c` recursively drains its completed-player
+  queue on heartbeat 70, expecting `move_object` to invoke `exit(player)`.
+  Without departure delivery, the queue never shrank and raised StackOverflowError.
+- Implementation: deliver the existing `ENTITY_DEPARTED_FROM_PLACE` event on the
+  old location after moving a connected or command-enabled actor, before arrival
+  callbacks. Bind the departing actor; accept one-argument or zero-argument
+  methods. Same-location moves, initial placement, ordinary items, and absent
+  mappings or methods do not invoke cleanup. Skip stale arrival if cleanup
+  redirects or destroys the actor.
+- Profile mapping: LP245 selects `exit`; its original source remains unchanged.
+- Verification: `Lp245BridgeTest.originalDeathSequenceReturnsGhostsToChurchAndClearsItsQueue`
+  reproduced the scheduled-tick overflow before the fix and now completes the
+  full 70-tick sequence for two ghosts. `CompilerSmokeTest` checks callback
+  ordering, actor identity, excluded moves, missing methods, zero-argument hooks,
+  and movement redirected during cleanup.

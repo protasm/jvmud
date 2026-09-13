@@ -95,7 +95,7 @@ The currently defined JVMud lifecycle events are:
 | `object_destruction_requested` | Implemented, optional mapping | Boundary object | target object | An object is about to be removed and mudlib policy may perform pre-destruction cleanup. |
 | `object_destroyed` | Reserved | Destroyed object or boundary object | none yet | Post-destruction notification for future policies that require it. |
 | `entity_arrived_at_place` | Reserved | Arriving entity or destination place | source place, destination place, movement action | An entity has completed movement into a place. |
-| `entity_departed_from_place` | Reserved | Departing entity or source place | source place, destination place, movement action | An entity is leaving a place. |
+| `entity_departed_from_place` | Implemented, optional mapping | Previous location | departing actor (zero-argument methods also accepted) | After an interactive or command-enabled entity changes location, before arrival callbacks. Initial placement, ordinary items, and same-location moves are excluded. |
 | `entity_added_to_entity` | Reserved | Added entity or containing entity | container entity | An entity has entered another entity's containment. |
 | `entity_removed_from_entity` | Reserved | Removed entity or containing entity | previous container entity | An entity has left another entity's containment. |
 | `player_session_connected` | Implemented, optional mapping | Player object | none currently | A Session has connected and JVMud has created a Player endpoint for that Session; compatibility mudlibs may use this to start login input. |
