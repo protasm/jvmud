@@ -1,6 +1,6 @@
 [[_status]]
 [.lead]
-JVMud is an experimental LPC/LPMud engine for the JVM. This manual explains how
+JVMud is an LPC/LPMud engine for the JVM. This manual explains how
 to understand its design, run a local world, inspect LPC objects, and develop
 mudlib content against the current repository.
 
