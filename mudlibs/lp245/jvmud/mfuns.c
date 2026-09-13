@@ -349,7 +349,12 @@ int save_object(string path) {
 }
 
 void say(mixed value) {
-  jvmud_emit_perceivable(jvmud_current_actor(), value);
+  object source;
+  source = jvmud_current_actor();
+  if (jvmud_entity_location(source))
+    jvmud_emit_perceivable(source, value);
+  else
+    jvmud_emit_perceivable_at(source, value);
 }
 
 void say(mixed value, object excluded) {
@@ -430,7 +435,7 @@ int test_bit(string flags, int bit) {
 }
 
 void tell_object(object target, mixed value) {
-  jvmud_write_to_lpc_object(target, value);
+  jvmud_deliver_world_event(target, "text", value, value);
 }
 
 void tell_room(mixed room, mixed value) {

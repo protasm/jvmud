@@ -36,7 +36,16 @@ def until(sock, marker):
 
 def command(sock, value, marker):
     sock.sendall((value + "\n").encode())
-    return until(sock, marker)
+    text = until(sock, marker)
+    # Finish reading this command's response before sending the next command.
+    while True:
+        try:
+            data = sock.recv(8192)
+        except socket.timeout:
+            return text
+        if not data:
+            return text
+        text += data.decode("utf-8", errors="replace")
 
 
 def check_world(root, cwd, env, world):
@@ -46,12 +55,15 @@ def check_world(root, cwd, env, world):
     token = cwd / f"{world}.token"
     log = cwd / f"{world}.log"
     manifest = root / f"mudlibs/{world}/jvmud/{world}.config"
+    # Exercise both explicit manifests from another directory and the short name.
+    launch_argument = world if world == "lp245" else str(manifest)
+    launch_cwd = root if world == "lp245" else cwd
     with log.open("w") as output:
         server = subprocess.Popen([
             str(root / "scripts/jvmud-start"), "--bind", "127.0.0.1",
             "--port", str(port), "--admin-port", str(admin_port),
-            "--admin-token-file", str(token), str(manifest)],
-            cwd=cwd, env=env, stdout=output, stderr=subprocess.STDOUT)
+            "--admin-token-file", str(token), launch_argument],
+            cwd=launch_cwd, env=env, stdout=output, stderr=subprocess.STDOUT)
         try:
             deadline = time.monotonic() + 45
             while "JVMud mudlib listening on" not in log.read_text():
@@ -87,6 +99,12 @@ def check_world(root, cwd, env, world):
                     command(sock, "alias qlook look", "Ok.")
                     command(sock, "qlook", "You are in a small and dusty storage room.")
                     command(sock, "east", "You are in a shop.")
+                    command(sock, "south", "There are stairs going down.")
+                    command(sock, "west", "A long road going east through the village.")
+                    command(sock, "north", "A small yard surrounded by houses.")
+                    command(sock, "east", "You are in the local pub.")
+                    command(sock, "say play b1", "You feel that you have gained some experience.")
+                    command(sock, "look at board", "7|.......")
             result = subprocess.run([
                 str(root / "scripts/jvmud-cli"), "--port", str(admin_port),
                 "--token-file", str(token)], input="objects\nquit\n", text=True,
@@ -147,7 +165,7 @@ def main():
         # An intentionally minimal PATH proves these launchers do not call Maven.
         path = work / "tools"
         path.mkdir()
-        bundled = (root / "runtime").is_dir()
+        bundled = (root / "jre").is_dir()
         for tool in (("sh", "dirname", "sed") if bundled else ("sh", "dirname", "sed", "java")):
             executable = shutil.which(tool)
             assert executable, f"Missing test prerequisite: {tool}"
@@ -157,7 +175,7 @@ def main():
         if bundled:
             env["JAVA_HOME"] = str(work / "ignored-system-java")
             assert not shutil.which("java", path=str(path))
-            settings = subprocess.run([str(root / "runtime/bin/java"), "-XshowSettings:properties", "-version"],
+            settings = subprocess.run([str(root / "jre/bin/java"), "-XshowSettings:properties", "-version"],
                                       capture_output=True, text=True, check=True)
             assert "java.specification.version = 21" in settings.stderr
         cwd = work / "caller directory"

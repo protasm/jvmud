@@ -17,6 +17,12 @@ package io.github.protasm.jvmud.engine.mudlib;
  * concepts such as applies, rooms, heartbeats, or master objects.</p>
  */
 public enum MudlibLifecycleEvent {
+    /** Delivered on each observer with one structured perception mapping. */
+    PERCEPTION_RECEIVED,
+
+    /** Optional boundary adapter, called with the observer and perception mapping. */
+    PERCEPTION_DELIVERY,
+
     /**
      * A mudlib object has been loaded or cloned and may initialize its own state.
      *

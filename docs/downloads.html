@@ -27,7 +27,7 @@
 
   <main id="main">
     <h1>Download JVMud</h1>
-    <p>JVMud 0.1.0-preview.3 includes the compiled engine, launchers, and editable
+    <p>JVMud 0.1.0-preview.4 includes the compiled engine, launchers, and editable
     LPC source for Small Mercies and LP245. The macOS and Linux packages include
     Eclipse Temurin Java 21.0.12.1; no separate Java installation is needed.</p>
     <div class="downloads-table-wrap" role="region" aria-label="JVMud downloads" tabindex="0">
@@ -38,37 +38,37 @@
         <tbody>
           <tr>
             <td>macOS</td>
-            <td><a href="downloads/jvmud-0.1.0-preview.3-macos-aarch64.tar.gz">Apple Silicon</a></td>
+            <td><a href="downloads/jvmud-0.1.0-preview.4-macos-aarch64.tar.gz">Apple Silicon</a></td>
             <td>53.0 MiB</td>
-            <td><a href="downloads/jvmud-0.1.0-preview.3-macos-aarch64.tar.gz.sha256">SHA-256</a></td>
+            <td><a href="downloads/jvmud-0.1.0-preview.4-macos-aarch64.tar.gz.sha256">SHA-256</a></td>
             <td>Java included</td>
           </tr>
           <tr>
             <td>macOS</td>
-            <td><a href="downloads/jvmud-0.1.0-preview.3-macos-x64.tar.gz">Intel</a></td>
-            <td>47.2 MiB</td>
-            <td><a href="downloads/jvmud-0.1.0-preview.3-macos-x64.tar.gz.sha256">SHA-256</a></td>
+            <td><a href="downloads/jvmud-0.1.0-preview.4-macos-x64.tar.gz">Intel</a></td>
+            <td>47.3 MiB</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.4-macos-x64.tar.gz.sha256">SHA-256</a></td>
             <td>Java included</td>
           </tr>
           <tr>
             <td>Linux</td>
-            <td><a href="downloads/jvmud-0.1.0-preview.3-linux-x64.tar.gz">x86-64</a></td>
+            <td><a href="downloads/jvmud-0.1.0-preview.4-linux-x64.tar.gz">x86-64</a></td>
             <td>56.8 MiB</td>
-            <td><a href="downloads/jvmud-0.1.0-preview.3-linux-x64.tar.gz.sha256">SHA-256</a></td>
+            <td><a href="downloads/jvmud-0.1.0-preview.4-linux-x64.tar.gz.sha256">SHA-256</a></td>
             <td>Bundled Java runtime requires glibc</td>
           </tr>
           <tr>
             <td>Linux</td>
-            <td><a href="downloads/jvmud-0.1.0-preview.3-linux-aarch64.tar.gz">ARM64</a></td>
-            <td>55.9 MiB</td>
-            <td><a href="downloads/jvmud-0.1.0-preview.3-linux-aarch64.tar.gz.sha256">SHA-256</a></td>
+            <td><a href="downloads/jvmud-0.1.0-preview.4-linux-aarch64.tar.gz">ARM64</a></td>
+            <td>56.0 MiB</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.4-linux-aarch64.tar.gz.sha256">SHA-256</a></td>
             <td>Bundled Java runtime requires glibc</td>
           </tr>
           <tr>
             <td>macOS / Linux / WSL</td>
-            <td><a href="downloads/jvmud-0.1.0-preview.3-bin.tar.gz">Runtime-free</a></td>
+            <td><a href="downloads/jvmud-0.1.0-preview.4-bin.tar.gz">Runtime-free</a></td>
             <td>7.2 MiB</td>
-            <td><a href="downloads/jvmud-0.1.0-preview.3-bin.tar.gz.sha256">SHA-256</a></td>
+            <td><a href="downloads/jvmud-0.1.0-preview.4-bin.tar.gz.sha256">SHA-256</a></td>
             <td>Java 21 or newer installed separately</td>
           </tr>
         </tbody>
@@ -81,17 +81,32 @@
 
     <h2>Start your first world</h2>
     <p>In a terminal, go to the writable folder containing your download. For Apple Silicon, run the commands below; for another platform, replace the archive filename with your download:</p>
-    <pre><code>tar -xzf jvmud-0.1.0-preview.3-macos-aarch64.tar.gz
-cd jvmud-0.1.0-preview.3
-scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config</code></pre>
+    <pre><code>tar -xzf jvmud-0.1.0-preview.4-macos-aarch64.tar.gz
+cd jvmud-0.1.0-preview.4
+scripts/jvmud-start smallmercies</code></pre>
     <p>Wait for <code>JVMud mudlib listening on</code>, then connect a Telnet-capable
     MUD client to <code>127.0.0.1:4000</code> with SSL/TLS disabled. Choose a guest
     name, gender, and class. Try <code>help</code>, <code>look</code>, and
     <code>north</code>. Stop the server with Ctrl+C.</p>
 
+    <h2>Update an installation</h2>
+    <p>From an installation that includes the updater:</p>
+    <pre><code>scripts/jvmud-update --check
+scripts/jvmud-update</code></pre>
+    <p>The updater verifies the latest matching download, stops this installation's
+    servers cleanly, and creates a full backup in <code>../backup/</code>, beside
+    the distribution folder. It updates JVMud and shipped mudlib
+    <code>jvmud/</code> files, then restarts the servers. Other mudlib content and
+    saved data remain in place. Conflicting local adapter or configuration edits
+    stop the update before downtime. External files and databases need separate backups.</p>
+    <p>The installation folder keeps its name. The bundled Java runtime is available
+    through <code>jre</code>; server logs live in each mudlib's <code>jvmud/log/</code>
+    directory. Players must reconnect after an update. Earlier previews without the
+    updater require a manual migration; see the package README for recovery and migration details.</p>
+
     <h2>Run LP245</h2>
     <p>To start the bundled LP245 world on a separate port:</p>
-    <pre><code>scripts/jvmud-start --port 4001 mudlibs/lp245/jvmud/lp245.config</code></pre>
+    <pre><code>scripts/jvmud-start --port 4001 lp245</code></pre>
     <p>Connect to <code>127.0.0.1:4001</code> and follow the character creation
     prompts. The package retains LP245's LPC source and JVMud compatibility
     files. Existing player saves and old logs are excluded.</p>

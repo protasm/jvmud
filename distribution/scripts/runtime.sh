@@ -3,8 +3,8 @@
 JVMUD_ROOT=$(dirname -- "$JVMUD_SCRIPT_DIR")
 if [ -n "${JVMUD_JAVA_HOME:-}" ]; then
     JVMUD_JAVA="$JVMUD_JAVA_HOME/bin/java"
-elif [ -d "$JVMUD_ROOT/runtime" ]; then
-    JVMUD_JAVA="$JVMUD_ROOT/runtime/bin/java"
+elif [ -d "$JVMUD_ROOT/jre" ]; then
+    JVMUD_JAVA="$JVMUD_ROOT/jre/bin/java"
 elif [ -n "${JAVA_HOME:-}" ]; then
     JVMUD_JAVA="$JAVA_HOME/bin/java"
 else

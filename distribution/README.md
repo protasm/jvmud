@@ -15,13 +15,13 @@ Maven, a source checkout, and Internet access are not needed to run these packag
 are not included.
 
 Extract the entire archive into a writable directory. Keep `scripts/`, `lib/`,
-`mudlibs/`, `runtime`, and `vendor-runtime/` together when present. Open a terminal in the extracted `jvmud-<version>` folder.
+`mudlibs/`, `jre`, and `vendor-runtime/` together when present. Open a terminal in the extracted `jvmud-<version>` folder.
 If a ZIP extractor removed executable permissions, run `chmod +x scripts/jvmud-*`.
 
 ## Start and play
 
 ```sh
-scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config
+scripts/jvmud-start smallmercies
 ```
 
 Wait for `JVMud mudlib listening on`, then connect a Telnet-capable MUD client to
@@ -54,7 +54,7 @@ the server is stopped before removing a stale token file.
 Stop Small Mercies first, or choose another port:
 
 ```sh
-scripts/jvmud-start --port 4001 mudlibs/lp245/jvmud/lp245.config
+scripts/jvmud-start --port 4001 lp245
 ```
 
 Connect to `127.0.0.1:4001` and follow LP245's character creation prompts.
@@ -66,7 +66,9 @@ under `players/` and upstream name reservations in `banish/` are retained.
 
 ## Use your own world
 
-Pass its manifest to `scripts/jvmud-start`. Launchers preserve your working
+Pass its manifest to `scripts/jvmud-start`. The argument is resolved as a config
+file first, then as `mudlibs/<arg>/jvmud/<arg>.config`; if neither file exists,
+startup stops with an error. Launchers preserve your working
 directory: relative arguments resolve from the terminal's current directory.
 Use absolute paths when launching from elsewhere. Bundled packages use their own
 runtime, ignoring `JAVA_HOME`. Set `JVMUD_JAVA_HOME` to explicitly override it.
@@ -87,3 +89,45 @@ Read the [User Manual](https://jvmud.org/manual/index.html) and
 [Small Mercies walkthrough](https://jvmud.org/manual/index.html#small-mercies).
 Manual commands prefixed with `scripts/` work here; Maven build commands apply
 to source checkouts only. Source and issues: https://github.com/protasm/jvmud.
+
+## Update an installed distribution
+
+From the existing distribution directory:
+
+```sh
+scripts/jvmud-update --check
+scripts/jvmud-update
+```
+
+The updater downloads the latest matching package over HTTPS and checks its
+SHA-256 before stopping anything. It gracefully stops servers started by this
+installation's launcher, waits for their player-save hooks to finish, and makes
+a verified full backup in `../backup/<installation-name>-<timestamp>/`.
+It replaces JVMud engine files, launchers, bundled Java, and shipped files under
+each mudlib's `jvmud/` directory. All other mudlib content and saved files stay in
+place. Local changes to an adapter/configuration file are retained if the release
+has not changed it; conflicting changes stop the update before servers stop.
+
+Servers restart with their recorded arguments, working directories, and Java
+settings. Run the updater as the same OS user, with any game-specific environment
+variables still available. Players reconnect after the restart. The installation
+directory keeps its existing name; `jvmud-update --check` reports its installed
+version. The bundled JRE is accessed through `jre`, a symlink into `vendor-runtime`.
+
+Server output is displayed in the terminal and appended to
+`mudlibs/<world>/jvmud/log/server-<port>.log`. Updater restart logs go in that same
+mudlib log directory. Backups include the installation's files, including saves,
+configuration and logs; external files, mounted worlds and external databases need
+separate backups. External mudlib symlinks require a manual update.
+
+A failed installation or restart restores the previous JVMud files and attempts
+to restart the prior servers. An interrupted update leaves recovery details in
+`.jvmud/update-in-progress.json`; use the listed backup and paths to restore only
+the affected engine/adapter files before removing that marker. Do not overwrite
+newer player saves during recovery. Never run two updaters at once or update
+under a service supervisor that automatically respawns stopped processes.
+
+Older previews without `jvmud-update` need one manual migration: stop their
+servers, extract the new package, and transfer your saved data and local changes.
+Future updates can then use the command above. Backups are retained until you
+choose to remove them.

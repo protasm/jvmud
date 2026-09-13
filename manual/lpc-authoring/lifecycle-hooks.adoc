@@ -17,3 +17,39 @@ role. Verify the mapped method's signature in the profile and corresponding
 Java dispatch code before adding a hook. Test normal entry, failed input, and
 disconnect paths; recognizing a method name does not establish its invocation
 order or error behavior.
+
+==== Perception
+
+World communication is separate from private session output. An emitted perception
+reaches the source's location and its immediate contents, excluding the source
+and any explicitly excluded recipient. It does not recursively reach carried
+objects or apply sensory rules such as hearing distance or line of sight.
+Recipients are snapshotted before callbacks; destroyed recipients are skipped.
+
+[source,lpc]
+----
+// Emit structured speech with text for connected observers.
+jvmud_emit_world_event(this_object(), "speech", "mellon", "A voice says: mellon\n");
+// Address one observer without broadcasting to its neighbors.
+jvmud_deliver_world_event(target, "speech", "mellon", "A voice whispers: mellon\n");
+----
+
+These native functions take `(mixed source_or_target, string kind, mixed content,
+string text)`. The existing `jvmud_emit_perceivable*` functions emit `text` events
+with their original message as content. `jvmud_write_to_lpc_object` remains private
+output and does not notify world observers.
+
+Map `lifecycle.perception_received` to an observer method taking one mapping.
+Each observer receives its own mapping containing `actor`, `source`, `location`,
+`kind`, `content`, `text`, and `directed` (0 or 1). Missing object references are 0.
+The originating command actor is preserved during synchronous delivery; events
+outside a command may have no actor. The receiver is the current object.
+Text is delivered once to each connected recipient, independently of its hook.
+
+A mudlib may also map `lifecycle.perception_delivery` to a boundary-object method
+with `(object observer, mapping event)`. It runs after the observer method and
+can adapt observations to the mudlib's conventions. LP245 uses this to call the
+optional `catch_tell` method with exact, unwrapped legacy text. Neither hook is
+required. Callbacks may emit further events; nesting beyond 64 deliveries raises
+an error and unwinds the delivery. Callback errors propagate to the existing
+command/scheduler error handling and can interrupt the remaining recipients.

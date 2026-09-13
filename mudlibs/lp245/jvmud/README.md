@@ -370,3 +370,14 @@ then recursively retried the same queue entry until the JVM stack overflowed.
 The complete two-ghost sequence is covered by `Lp245BridgeTest`, including
 return to the church and an empty queue afterward. Cleanup that redirects or
 destroys an actor prevents arrival callbacks at the original destination.
+
+### World perception
+
+`lifecycle.perception_delivery = deliver_perception` connects native JVMud world
+observations to the original objects' optional `catch_tell(text)` methods. The
+adapter passes exact legacy text; it does not parse commands or implement quests.
+Room broadcasts now reach objects as well as connected players. `tell_object`
+uses directed world delivery, while JVMud's private output primitive remains
+private. Room-originated `say` calls outside a player command broadcast at the
+room itself. This supports the Go player's deferred puzzle response and Leo's
+quest hand-in without modifying either upstream object.

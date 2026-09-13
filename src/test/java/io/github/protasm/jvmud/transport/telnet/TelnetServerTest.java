@@ -65,6 +65,37 @@ final class TelnetServerTest {
     Path tempDir;
 
     @Test
+    void telnetServerLaunchOptionsAcceptMudlibName() {
+        var options = TelnetServer.parseLaunchOptions(new String[] {"--port", "4567", "smallmercies"});
+        assertEquals(repositoryRoot().resolve("mudlibs/smallmercies"), options.mudlibRoot());
+        assertEquals("jvmud/smallmercies.config", options.configObjectPath());
+        assertEquals(4567, options.port());
+    }
+
+    @Test
+    void launchConfigResolutionPrefersDirectFileThenFallsBack() throws IOException {
+        Path direct = tempDir.resolve("example");
+        Path fallback = tempDir.resolve("mudlibs/example/jvmud/example.config");
+        Files.createDirectories(fallback.getParent());
+        Files.writeString(fallback, "");
+        Files.writeString(direct, "");
+        assertEquals(direct, TelnetServer.resolveLaunchConfigFile(Path.of("example"), tempDir));
+        assertEquals(direct, TelnetServer.resolveLaunchConfigFile(direct, tempDir));
+        Files.delete(direct);
+        assertEquals(fallback, TelnetServer.resolveLaunchConfigFile(Path.of("example"), tempDir));
+        Files.createDirectory(direct);
+        assertEquals(fallback, TelnetServer.resolveLaunchConfigFile(Path.of("example"), tempDir));
+    }
+
+    @Test
+    void launchConfigResolutionReportsBothMissingPaths() {
+        var error = assertThrows(IllegalArgumentException.class, () ->
+                TelnetServer.resolveLaunchConfigFile(Path.of("missing"), tempDir));
+        assertTrue(error.getMessage().contains(tempDir.resolve("missing").toString()));
+        assertTrue(error.getMessage().contains(tempDir.resolve("mudlibs/missing/jvmud/missing.config").toString()));
+    }
+
+    @Test
     void bootRequiresAnExplicitExistingManifest() {
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         assertThrows(
@@ -162,6 +193,62 @@ final class TelnetServerTest {
 
         assertTrue(options.help());
         assertFalse(options.traceStartupLoads());
+    }
+
+    @Test
+    void lp245GoPuzzleRespondsToSpokenMoveOverTelnet() throws Exception {
+        Path lp245 = lp245TestRoot();
+
+        try (TelnetServer server = new TelnetServer(
+                "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
+            server.start();
+
+            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+                socket.setSoTimeout(5000);
+                assertTrue(readUntilQuietAfterContains(socket, "What is your name: ")
+                        .contains("What is your name: "));
+
+                socket.getOutputStream().write("gotest\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password: ").contains("Password: "));
+
+                socket.getOutputStream().write("secret1\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Password: (again) ")
+                        .contains("Password: (again) "));
+
+                socket.getOutputStream().write("secret1\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Please enter your email address")
+                        .contains("Please enter your email address"));
+
+                socket.getOutputStream().write("none\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "Are you, male, female or other")
+                        .contains("Are you, male, female or other"));
+
+                socket.getOutputStream().write("o\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                assertTrue(readUntilQuietAfterContains(socket, "> ").contains("Welcome, Creature!"));
+
+                socket.getOutputStream().write("south\neast\neast\nnorth\neast\nlook at board\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String board = readUntilQuietAfterContains(socket, "5|.......");
+                assertTrue(board.contains("It is black"), board);
+                socket.getOutputStream().write("say play b1\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String reply = readUntilQuietAfterContains(socket, "You feel that you have gained some experience.");
+                assertTrue(reply.contains("Right !"), reply);
+                assertFalse(reply.contains("wrongness"), reply);
+                socket.getOutputStream().write("look at board\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                String next = readUntilQuietAfterContains(socket, "7|.......");
+                assertTrue(next.contains("6|......."), next);
+                socket.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().flush();
+                readUntilSocketClosed(socket);
+            }
+        }
     }
 
     @Test

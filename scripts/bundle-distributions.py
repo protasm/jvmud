@@ -67,11 +67,11 @@ def main():
             # Preserve the complete vendor bundle, including macOS signature/resources.
             shutil.copytree(vendor_root, app / 'vendor-runtime', symlinks=True)
             runtime_target = 'vendor-runtime/Contents/Home' if item['os'] == 'mac' else 'vendor-runtime'
-            (app / 'runtime').symlink_to(runtime_target, target_is_directory=True)
-            assert (app / 'runtime/bin/java').is_file()
-            assert (app / 'runtime/bin/java').stat().st_mode & 0o111
-            assert (app / 'runtime/legal').is_dir()
-            release = (app / 'runtime/release').read_text()
+            (app / 'jre').symlink_to(runtime_target, target_is_directory=True)
+            assert (app / 'jre/bin/java').is_file()
+            assert (app / 'jre/bin/java').stat().st_mode & 0o111
+            assert (app / 'jre/legal').is_dir()
+            release = (app / 'jre/release').read_text()
             assert 'JAVA_VERSION="21.' in release
             assert f'OS_ARCH="{item["architecture"] if item["architecture"] != "x64" else "x86_64"}"' in release
             metadata = dict(item, target=target, runtime_path=runtime_target)
@@ -92,6 +92,8 @@ def main():
                       'archive_contents_verified': True, 'runtime_smoke_test': 'not run: requires matching host'}
             if target == host:
                 subprocess.run([sys.executable, str(root / 'src/test/scripts/distribution-smoke.py'), str(output)], check=True)
+                subprocess.run([sys.executable, str(root / 'src/test/scripts/update-smoke.py'), str(output)], check=True)
+                report['update_smoke_test'] = 'passed: two servers, player save, backup, preservation, restart and rollback'
                 report['runtime_smoke_test'] = 'passed: launchers, formatter, both worlds, login, movement, administration'
             report_path.write_text(json.dumps(report, indent=2) + '\n')
             checksum.write_text(f'{digest(output)}  {output.name}\n')

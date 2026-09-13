@@ -896,6 +896,10 @@ public final class LPCRuntime {
     }
 
     /** Removes a host session binding. */
+    public void disconnectPlayerSessions(String method) {
+        withRuntimeContext(() -> { runtimeContext.disconnectPlayerSessions(method); return null; });
+    }
+
     public void unbindSession(String sessionId) {
         runtimeContext.unbindSession(sessionId);
     }

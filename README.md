@@ -26,7 +26,7 @@ README and `pom.xml`.
 ## Start the engine with Small Mercies
 
 ```sh
-scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config
+scripts/jvmud-start smallmercies
 ```
 
 This starts the engine and **Small Mercies**, the bundled five-room example
@@ -35,7 +35,10 @@ needed. Wait for `JVMud mudlib listening on` and the address before connecting.
 The default is localhost, TCP port **4000**, accessible from this computer only.
 Leave the terminal running; press **Ctrl+C** there to stop the server.
 
-To start another compatible world, replace the manifest path:
+The argument is resolved as a config file first, then as
+`mudlibs/<arg>/jvmud/<arg>.config`. If neither file exists, startup stops with an error.
+
+To start another compatible world, provide its manifest path:
 
 ```sh
 scripts/jvmud-start /absolute/path/to/world/jvmud/world.config

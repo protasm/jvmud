@@ -63,6 +63,10 @@ import javax.crypto.spec.PBEKeySpec;
  *       target object's bound session, when it has one.</li>
  *   <li>{@code jvmud_rebind_session_lpc_object(object newObject, object oldObject) : status}
  *       moves an interactive session binding from one LPC object to another.</li>
+ *   <li>{@code jvmud_emit_world_event(mixed source, string kind, mixed content, string text) : void}
+ *       delivers a structured observation to the source's location and neighboring entities.</li>
+ *   <li>{@code jvmud_deliver_world_event(mixed target, string kind, mixed content, string text) : void}
+ *       delivers a directed world observation, separate from private session output.</li>
  *   <li>{@code jvmud_emit_perceivable(mixed emitter, mixed message) : void} emits near an entity
  *       or path-resolved object.</li>
  *   <li>{@code jvmud_emit_perceivable_except(mixed emitter, mixed message, mixed excluded) : void}
@@ -480,6 +484,18 @@ public final class CoreEfuns {
                         currentInteractive(runtime),
                         "GMCP",
                         GmcpCodec.encode(String.valueOf(args[0]), args[1], true)) ? 1 : 0));
+        efuns.add(efun("jvmud_emit_world_event", LPCType.LPCVOID,
+                List.of(LPCType.LPCMIXED, LPCType.LPCSTRING, LPCType.LPCMIXED, LPCType.LPCSTRING),
+                (runtime, args) -> {
+                    runtime.emitWorldEvent(resolveTarget(runtime, args[0]), (String) args[1], args[2], (String) args[3]);
+                    return null;
+                }));
+        efuns.add(efun("jvmud_deliver_world_event", LPCType.LPCVOID,
+                List.of(LPCType.LPCMIXED, LPCType.LPCSTRING, LPCType.LPCMIXED, LPCType.LPCSTRING),
+                (runtime, args) -> {
+                    runtime.deliverWorldEvent(resolveTarget(runtime, args[0]), (String) args[1], args[2], (String) args[3]);
+                    return null;
+                }));
         efuns.add(efun("jvmud_emit_perceivable", LPCType.LPCVOID, List.of(LPCType.LPCMIXED, LPCType.LPCMIXED),
                 (runtime, args) -> emitPerceivable(runtime, args[0], args[1])));
         efuns.add(efun("jvmud_emit_perceivable_except", LPCType.LPCVOID,

@@ -17,6 +17,7 @@ import io.github.protasm.jvmud.compiler.preproc.Preprocessor;
 import io.github.protasm.jvmud.compiler.scanner.Scanner;
 import io.github.protasm.jvmud.compiler.token.TokenList;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
+import io.github.protasm.jvmud.engine.world.PerceptionEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
 import io.github.protasm.jvmud.engine.output.OutgoingTextFormatter;
@@ -415,26 +416,67 @@ public final class RuntimeContext {
     }
 
     public void emitPerceivable(Object emitter, Object value) {
-        emitPerceivableAtExcept(environment(emitter), value, emitter);
+        emitWorldEvent(emitter, "text", value, messageText(value));
     }
 
     public void emitPerceivableExcept(Object emitter, Object value, Object excluded) {
-        emitPerceivableAtExcept(environment(emitter), value, emitter, excluded);
+        emitAt(environment(emitter), new PerceptionEvent(currentCommandActor(), emitter,
+                environment(emitter), "text", value, messageText(value), false), emitter, excluded);
     }
 
     public void emitPerceivableAt(Object location, Object value) {
-        emitPerceivableAtExcept(location, value);
+        emitAt(location, new PerceptionEvent(currentCommandActor(), currentObject(), location,
+                "text", value, messageText(value), false));
     }
 
-    private void emitPerceivableAtExcept(Object location, Object value, Object... excluded) {
-        if (location == null) {
-            return;
-        }
+    /** Emits a structured event to the location and its immediate contents, excluding the source. */
+    public void emitWorldEvent(Object source, String kind, Object content, String text) {
+        Object location = environment(source);
+        emitAt(location, new PerceptionEvent(currentCommandActor(), source, location,
+                kind, content, text, false), source);
+    }
 
-        for (Object target : List.copyOf(inventoryFor(location))) {
-            if (!isExcluded(target, excluded) && sessionsByPersona.containsKey(target)) {
-                writeToProjection(target, value, true);
-            }
+    /** Directed world communication, distinct from private interface output. */
+    public void deliverWorldEvent(Object target, String kind, Object content, String text) {
+        if (target != null) {
+            perceive(target, new PerceptionEvent(currentCommandActor(), currentObject(), environment(target),
+                    kind, content, text, true));
+        }
+    }
+
+    private void emitAt(Object location, PerceptionEvent event, Object... excluded) {
+        if (location == null) return;
+        List<Object> observers = new ArrayList<>();
+        observers.add(location);
+        observers.addAll(List.copyOf(inventoryFor(location)));
+        for (Object observer : observers) {
+            if (!isExcluded(observer, excluded)) perceive(observer, event);
+        }
+    }
+
+    // Nested speech is legitimate. Bound cycles explicitly instead of suppressing responses.
+    private int perceptionDepth;
+
+    private void perceive(Object observer, PerceptionEvent event) {
+        if (destroyedObjects.contains(observer)) return;
+        if (perceptionDepth >= 64) throw new IllegalStateException("Perception callback nesting exceeds 64");
+        perceptionDepth++;
+        try {
+            if (sessionsByPersona.containsKey(observer)) writeToProjection(observer, event.text(), true);
+            Supplier<Object> delivery = () -> {
+                String receiver = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.PERCEPTION_RECEIVED).orElse(null);
+                if (receiver != null) invokeOptionalObject(observer, receiver, event.toMapping());
+                String adapter = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.PERCEPTION_DELIVERY).orElse(null);
+                if (adapter != null && !destroyedObjects.contains(observer)) {
+                    Object boundary = mudlibBoundary.boundaryObjectPath().map(this::loadOrGetObject).orElse(null);
+                    if (boundary != null) invokeOptionalObject(boundary, adapter, observer, event.toMapping());
+                }
+                return null;
+            };
+            if (event.actor() == null) delivery.get();
+            else withCommandActor(event.actor(), delivery);
+        } finally {
+            perceptionDepth--;
         }
     }
 
@@ -1081,6 +1123,23 @@ public final class RuntimeContext {
             throw new IllegalArgumentException("Client protocol name must not be blank.");
         }
         return protocol.trim().toUpperCase(java.util.Locale.ROOT);
+    }
+
+    /** Runs disconnect/save policy before shutdown; a failed save prevents a clean-shutdown record. */
+    public void disconnectPlayerSessions(String method) {
+        RuntimeException failure = null;
+        for (Object persona : List.copyOf(users())) {
+            SessionBinding binding = sessionsByPersona.get(persona);
+            if (binding == null) continue;
+            try {
+                if (method != null) withCommandActor(persona, () -> invokeOptionalObject(persona, method));
+                unbindSession(binding.sessionRecord().id().value());
+            } catch (RuntimeException e) {
+                if (failure == null) failure = new IllegalStateException("Player shutdown/save failed");
+                failure.addSuppressed(e);
+            }
+        }
+        if (failure != null) throw failure;
     }
 
     public void unbindSession(String sessionId) {

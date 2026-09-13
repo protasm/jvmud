@@ -268,6 +268,7 @@ public final class MudInstance implements InstanceHost {
 
     @Override
     public synchronized void shutdown(Object reason) {
+        runtime.disconnectPlayerSessions(playerSessionDisconnectedMethod);
         String methodName = bootResult.mudlibBoundary().lifecycleMethod(MudlibLifecycleEvent.SERVER_SHUTDOWN).orElse(null);
         if (methodName == null) {
             return;

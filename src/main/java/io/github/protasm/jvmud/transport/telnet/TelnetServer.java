@@ -1,6 +1,7 @@
 package io.github.protasm.jvmud.transport.telnet;
 
 import io.github.protasm.jvmud.compiler.exec.LPCObjectLoadObserver;
+import io.github.protasm.jvmud.cli.update.InstallationServers;
 import io.github.protasm.jvmud.instance.InstanceHost;
 import io.github.protasm.jvmud.instance.MudlibBoot;
 import io.github.protasm.jvmud.instance.MudlibBootProgress;
@@ -81,6 +82,7 @@ public final class TelnetServer implements AutoCloseable {
             return;
         }
 
+        MudlibServerLog.install(options.mudlibRoot(), options.port());
         StartupObjectLoadTrace startupLoadTrace = commandLineObjectLoadTrace(options.traceStartupLoads());
         TelnetServer server = new TelnetServer(
                 options.bindAddress(),
@@ -89,6 +91,7 @@ public final class TelnetServer implements AutoCloseable {
                 options.configObjectPath(),
                 commandLineBootProgress(),
                 startupLoadTrace);
+        InstallationServers registration = InstallationServers.register(args, options.mudlibRoot());
         try {
             server.start();
             if (options.adminPort() != null) {
@@ -106,7 +109,12 @@ public final class TelnetServer implements AutoCloseable {
         System.out.println(server.preloadSummary());
         startupLoadTrace.printSummaryIfEnabled();
         System.out.println("JVMud mudlib listening on " + server.bindAddress() + ":" + server.port());
-        Runtime.getRuntime().addShutdownHook(new Thread(server::close, "jvmud-start-shutdown"));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            server.close();
+            try { registration.close(); }
+            catch (IOException e) { System.err.println("Unable to record clean shutdown: " + e.getMessage()); }
+        }, "jvmud-start-shutdown"));
+        registration.ready();
         server.await();
     }
 
@@ -177,7 +185,7 @@ public final class TelnetServer implements AutoCloseable {
     private static LaunchOptions optionsForConfigFile(
             Path configFile, int port, String bindAddress, boolean traceStartupLoads,
             Integer adminPort, Path adminTokenFile) {
-        Path resolvedConfigFile = resolveConfigFile(configFile);
+        Path resolvedConfigFile = resolveLaunchConfigFile(configFile, launchRoot());
         Path mudlibRoot = mudlibRootForConfigFile(resolvedConfigFile);
         String configObjectPath = mudlibRoot.relativize(resolvedConfigFile).toString()
                 .replace('\\', '/');
@@ -208,6 +216,18 @@ public final class TelnetServer implements AutoCloseable {
         return launchRoot().resolve(configFile).normalize();
     }
 
+    static Path resolveLaunchConfigFile(Path argument, Path root) {
+        Path direct = root.resolve(argument).normalize();
+        if (Files.isRegularFile(direct)) {
+            return direct;
+        }
+        Path fallback = root.resolve("mudlibs/" + argument + "/jvmud/" + argument + ".config").normalize();
+        if (Files.isRegularFile(fallback)) {
+            return fallback;
+        }
+        throw new IllegalArgumentException("Mudlib config file not found. Tried: " + direct + " and " + fallback);
+    }
+
     private static Path launchRoot() {
         Path current = Path.of("").toAbsolutePath().normalize();
         while (current != null) {
@@ -225,7 +245,8 @@ public final class TelnetServer implements AutoCloseable {
 
     private static String usage() {
         return "Usage: scripts/jvmud-start [--bind <address>] [--port <port>] "
-                + "[--admin-port <port>] [--admin-token-file <path>] [--trace-startup-loads] <mudlib-config-file>\n"
+                + "[--admin-port <port>] [--admin-token-file <path>] [--trace-startup-loads] <mudlib-config-file-or-name>\n"
+                + "Resolves the config path first, then mudlibs/<name>/jvmud/<name>.config.\n"
                 + "Options: --bind selects a listener address (default localhost).\n"
                 + "         --port selects a TCP port from 1 to 65535 (default 4000).\n"
                 + "         --admin-port enables authenticated local administration on a separate port.\n"

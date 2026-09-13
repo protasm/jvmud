@@ -64,3 +64,8 @@ void notify_shutdown(mixed crash_reason) {
     jvmud_append_mudlib_text("/jvmud/log/SHUTDOWN", "LPmud shutting down immediately.\n");
   }
 }
+
+// Preserve the original LP text and let each object decide whether it reacts.
+void deliver_perception(object observer, mapping event) {
+  jvmud_invoke_lpc_object(observer, "catch_tell", event["text"]);
+}
