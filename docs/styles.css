@@ -312,6 +312,33 @@ code {
   margin-top: 30px;
 }
 
+.downloads-table-wrap {
+  overflow-x: auto;
+}
+
+.downloads-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+}
+
+.downloads-table th,
+.downloads-table td {
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.downloads-table th {
+  background: var(--panel-strong);
+}
+
+.downloads-table td:nth-child(3),
+.downloads-table td:nth-child(4) {
+  white-space: nowrap;
+}
+
 .efun-table {
   width: 100%;
   border-collapse: collapse;

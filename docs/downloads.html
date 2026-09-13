@@ -30,19 +30,54 @@
     <p>JVMud 0.1.0-preview.3 includes the compiled engine, launchers, and editable
     LPC source for Small Mercies and LP245. The macOS and Linux packages include
     Eclipse Temurin Java 21.0.12.1; no separate Java installation is needed.</p>
-    <ul>
-    <li><a href="downloads/jvmud-0.1.0-preview.3-macos-aarch64.tar.gz">macOS · Apple Silicon · 53.0 MiB</a> · <a href="downloads/jvmud-0.1.0-preview.3-macos-aarch64.tar.gz.sha256">SHA-256</a></li>
-    <li><a href="downloads/jvmud-0.1.0-preview.3-macos-x64.tar.gz">macOS · Intel · 47.2 MiB</a> · <a href="downloads/jvmud-0.1.0-preview.3-macos-x64.tar.gz.sha256">SHA-256</a></li>
-    <li><a href="downloads/jvmud-0.1.0-preview.3-linux-x64.tar.gz">Linux · x86-64 · 56.8 MiB</a> · <a href="downloads/jvmud-0.1.0-preview.3-linux-x64.tar.gz.sha256">SHA-256</a></li>
-    <li><a href="downloads/jvmud-0.1.0-preview.3-linux-aarch64.tar.gz">Linux · ARM64 · 55.9 MiB</a> · <a href="downloads/jvmud-0.1.0-preview.3-linux-aarch64.tar.gz.sha256">SHA-256</a></li>
-    <li><a href="downloads/jvmud-0.1.0-preview.3-bin.tar.gz">Runtime-free · Java installed separately · 7.2 MiB</a> · <a href="downloads/jvmud-0.1.0-preview.3-bin.tar.gz.sha256">SHA-256</a></li>
-    </ul>
+    <div class="downloads-table-wrap" role="region" aria-label="JVMud downloads" tabindex="0">
+      <table class="downloads-table">
+        <thead>
+          <tr><th scope="col">Platform</th><th scope="col">Variant</th><th scope="col">Size</th><th scope="col">SHA</th><th scope="col">Requirements</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>macOS</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.3-macos-aarch64.tar.gz">Apple Silicon</a></td>
+            <td>53.0 MiB</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.3-macos-aarch64.tar.gz.sha256">SHA-256</a></td>
+            <td>Java included</td>
+          </tr>
+          <tr>
+            <td>macOS</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.3-macos-x64.tar.gz">Intel</a></td>
+            <td>47.2 MiB</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.3-macos-x64.tar.gz.sha256">SHA-256</a></td>
+            <td>Java included</td>
+          </tr>
+          <tr>
+            <td>Linux</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.3-linux-x64.tar.gz">x86-64</a></td>
+            <td>56.8 MiB</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.3-linux-x64.tar.gz.sha256">SHA-256</a></td>
+            <td>Bundled Java runtime requires glibc</td>
+          </tr>
+          <tr>
+            <td>Linux</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.3-linux-aarch64.tar.gz">ARM64</a></td>
+            <td>55.9 MiB</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.3-linux-aarch64.tar.gz.sha256">SHA-256</a></td>
+            <td>Bundled Java runtime requires glibc</td>
+          </tr>
+          <tr>
+            <td>macOS / Linux / WSL</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.3-bin.tar.gz">Runtime-free</a></td>
+            <td>7.2 MiB</td>
+            <td><a href="downloads/jvmud-0.1.0-preview.3-bin.tar.gz.sha256">SHA-256</a></td>
+            <td>Java 21 or newer installed separately</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <h2>Requirements</h2>
     <p>Choose the package matching your operating system and processor. A POSIX
-    terminal and a separate MUD client are needed; Maven is not. Linux packages
-    require glibc (not Alpine/musl). The runtime-free package requires Java 21 or
-    newer and can also be used in Windows WSL.</p>
+    terminal and a separate MUD client are needed; Maven is not.</p>
 
     <h2>Start your first world</h2>
     <p>In a terminal, go to the writable folder containing your download. For Apple Silicon, run the commands below; for another platform, replace the archive filename with your download:</p>
