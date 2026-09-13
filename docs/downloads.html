@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Download JVMud</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="JVMud is an experimental LPC/LPMud text-world engine for the JVM, with explicit hosting profiles and a native world model.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <nav class="side-nav" aria-label="Documentation">
+<a class="brand" href="index.html">JVMud</a>
+<a href="downloads.html" aria-current="page">Downloads</a>
+<a href="documentation.html">Documentation</a>
+<a href="principles.html">Design philosophy</a>
+<a href="architecture.html">Architecture</a>
+<a href="packages.html">Core packages</a>
+<a href="manual/index.html">User Manual</a>
+<a href="lpc.html">LPC language</a>
+<a href="efuns.html">Efun reference</a>
+<a href="lifecycle-events.html">Lifecycle events</a>
+<a href="glossary.html">Glossary</a>
+<a href="api/index.html">Java API</a>
+<a href="https://github.com/protasm/jvmud">GitHub ↗</a>
+</nav>
+
+  <main id="main">
+    <h1>Download JVMud</h1>
+    <p>JVMud 0.1.0-preview.1 is an experimental end-user distribution. It includes
+    the compiled engine, runtime dependencies, launchers, and editable LPC source
+    for both Small Mercies and LP245.</p>
+    <p><a class="button-link" href="downloads/jvmud-0.1.0-preview.1-bin.tar.gz">Download tar.gz · 7.1 MB</a></p>
+    <p><a href="downloads/jvmud-0.1.0-preview.1-bin.tar.gz.sha256">SHA-256 checksum</a></p>
+
+    <h2>Requirements</h2>
+    <p>Java 21 or newer and a POSIX shell on macOS, Linux, or Windows WSL.
+    Maven is not needed. Java and a MUD client are installed separately.</p>
+
+    <h2>Start your first world</h2>
+    <p>In a terminal, go to the writable folder containing your download and run:</p>
+    <pre><code>tar -xzf jvmud-0.1.0-preview.1-bin.tar.gz
+cd jvmud-0.1.0-preview.1
+scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config</code></pre>
+    <p>Wait for <code>JVMud mudlib listening on</code>, then connect a Telnet-capable
+    MUD client to <code>127.0.0.1:4000</code> with SSL/TLS disabled. Choose a guest
+    name, gender, and class. Try <code>help</code>, <code>look</code>, and
+    <code>north</code>. Stop the server with Ctrl+C.</p>
+
+    <h2>Run LP245</h2>
+    <p>To start the bundled LP245 world on a separate port:</p>
+    <pre><code>scripts/jvmud-start --port 4001 mudlibs/lp245/jvmud/lp245.config</code></pre>
+    <p>Connect to <code>127.0.0.1:4001</code> and follow the character creation
+    prompts. The package retains LP245's LPC source and JVMud compatibility
+    files. Existing player saves and old logs are excluded.</p>
+
+    <h2>Preview status</h2>
+    <p>All 540 Maven tests passed. Both extracted mudlibs passed login, movement,
+    and administration checks on macOS with OpenJDK 25. JVMud targets Java 21;
+    Java 21 itself, Linux, and Windows WSL have not yet been validated for this
+    preview. LP245 compatibility remains experimental.</p>
+    <p>The package's README covers launch options, administration, and upgrades.
+    <code>RELEASE-STATUS.md</code> records validation and licensing status; no
+    project license has yet been declared for JVMud or Small Mercies.</p>
+    <p><a href="manual/index.html">Read the User Manual</a> ·
+    <a href="manual/index.html#small-mercies">Small Mercies walkthrough</a></p>
+    <footer class="site-footer">JVMud · Experimental LPC/LPMud engine</footer>
+  </main>
+</body>
+</html>

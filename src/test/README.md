@@ -7,6 +7,9 @@ Production mudlibs contain playable content and runtime profiles.
 - `scripts/lp245/smoke-start`: starts a disposable LP245 copy, checks login and movement, and stops it.
 - `scripts/smallmercies/smoke-play.py`: checks two guests against an already running Small Mercies server on port 4000.
 - `scripts/check-docs.py`: checks generated documentation links and anchors.
+- `scripts/distribution-smoke.py`: checks an extracted binary archive without Maven,
+  including Small Mercies and LP245 login/movement and attached administration.
+  Run through `python3 scripts/build-distribution.py` from the repository root.
 
 Run from the repository root:
 

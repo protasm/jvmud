@@ -14,8 +14,11 @@ This source checkout currently requires a Java 21-capable JDK, Maven, and a
 POSIX shell (for example, macOS/Linux, or a suitably configured Windows WSL
 installation). Java and Maven must be available in your terminal. The launch
 scripts compile the engine and resolve its dependencies automatically; the first
-run needs access to Maven repositories. A self-contained release is not yet
-included.
+run needs access to Maven repositories. A binary distribution can also be built
+with precompiled JARs, runtime dependencies, Small Mercies, and LP245; see
+[building a distribution](distribution/BUILDING.md). Its launchers require only
+Java 21 or newer and a POSIX shell. The experimental [preview download](https://jvmud.org/downloads.html) is available
+as a tar.gz package.
 
 Run the commands below from the repository root, the folder containing this
 README and `pom.xml`.
