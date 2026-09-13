@@ -314,6 +314,7 @@ code {
 
 .downloads-table-wrap {
   overflow-x: auto;
+  margin-bottom: 32px;
 }
 
 .downloads-table {
