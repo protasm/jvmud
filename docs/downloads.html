@@ -88,16 +88,14 @@ cd current &amp;&amp;
 scripts/jvmud-start smallmercies</code></pre>
     <p>Keep the installation in <code>current</code> across releases. These commands
     stop if that directory already exists; use the updater below for an existing
-    installation. On EC2, start in a writable <code>/opt/jvmud</code> directory
-    and select the Linux package matching your instance architecture. Your running
-    installation will be <code>/opt/jvmud/current</code>.</p>
+    installation.</p>
     <p>Wait for <code>JVMud mudlib listening on</code>, then connect a Telnet-capable
     MUD client to <code>127.0.0.1:4000</code> with SSL/TLS disabled. Choose a guest
     name, gender, and class. Try <code>help</code>, <code>look</code>, and
     <code>north</code>. Stop the server with Ctrl+C.</p>
 
     <h2>Update an installation</h2>
-    <p>From your existing <code>current</code> directory (on EC2, <code>cd /opt/jvmud/current</code>):</p>
+    <p>From your existing <code>current</code> directory:</p>
     <pre><code>scripts/jvmud-update --check
 scripts/jvmud-update</code></pre>
     <p>The updater verifies the latest matching download, stops this installation's
