@@ -28,7 +28,7 @@ def main():
     subprocess.run(["mvn", "-B", "-Pdistribution", "verify"], cwd=root, check=True)
     # Ship a baseline for conflict detection in the explicitly updatable adapters.
     for archive in archives:
-        index = {"version": version, "adapters": {}}
+        index = {"version": version, "adapters": {}, "configBaselines": {}}
         member_name = f"jvmud-{version}/metadata/update-index.json"
         rebuilt = archive.with_name(archive.name + ".indexed")
         if archive.name.endswith(".tar.gz"):
@@ -39,6 +39,8 @@ def main():
                     if member.isfile() and relative.startswith("mudlibs/") and "/jvmud/" in relative:
                         data = stream.read()
                         index["adapters"][relative] = hashlib.sha256(data).hexdigest()
+                        if relative.endswith(".config"):
+                            index["configBaselines"][relative] = data.decode("utf-8")
                         stream = io.BytesIO(data)
                     output.addfile(member, stream)
                 data = json.dumps(index, indent=2).encode()
@@ -51,6 +53,8 @@ def main():
                     relative = member.filename.removeprefix(f"jvmud-{version}/")
                     if not member.is_dir() and relative.startswith("mudlibs/") and "/jvmud/" in relative:
                         index["adapters"][relative] = hashlib.sha256(data).hexdigest()
+                        if relative.endswith(".config"):
+                            index["configBaselines"][relative] = data.decode("utf-8")
                     output.writestr(member, data)
                 output.writestr(member_name, json.dumps(index, indent=2))
         rebuilt.replace(archive)

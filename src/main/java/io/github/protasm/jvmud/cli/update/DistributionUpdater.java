@@ -95,6 +95,7 @@ public final class DistributionUpdater {
             for (String required : List.of("lib", "scripts/jvmud-start", "scripts/jvmud-update")) {
                 if (!Files.exists(stage.resolve(required))) throw new IOException("Incomplete archive: " + required);
             }
+            installed = configurationBaselines(root, work, installed, replacement, archiveUri);
             List<String> adapters = adapterChanges(root, stage, installed, replacement);
             rejectExternalLinks(root.resolve("mudlibs"), root);
             // Fetching and conflict checks finish before downtime begins.
@@ -225,6 +226,7 @@ public final class DistributionUpdater {
     static List<String> adapterChanges(Path root, Path stage, JsonNode oldIndex, JsonNode newIndex) throws IOException {
         Set<String> paths = new TreeSet<>(); oldIndex.path("adapters").fieldNames().forEachRemaining(paths::add); newIndex.path("adapters").fieldNames().forEachRemaining(paths::add);
         List<String> changes = new ArrayList<>();
+        List<String> conflicts = new ArrayList<>();
         for (String name : paths) {
             if (!name.matches("mudlibs/[^/]+/jvmud/.+") || name.contains("..") || name.contains("\\")) throw new IOException("Invalid adapter path: " + name);
             String oldHash = oldIndex.path("adapters").path(name).asText("");
@@ -234,10 +236,99 @@ public final class DistributionUpdater {
             if (oldHash.equals(newHash)) continue;
             String localHash = Files.exists(local, LinkOption.NOFOLLOW_LINKS) ? (Files.isRegularFile(local, LinkOption.NOFOLLOW_LINKS) ? digest(local) : "non-file") : "";
             if (localHash.equals(newHash)) continue;
-            if (!localHash.equals(oldHash)) throw new IOException("Local adapter/configuration conflicts with release: " + name + ". Merge it manually before updating; nothing was stopped.");
+            if (!localHash.equals(oldHash)) {
+                if (Files.isRegularFile(local, LinkOption.NOFOLLOW_LINKS) && name.endsWith(".md")) {
+                    System.out.println("Replacing locally edited documentation after full backup: " + name);
+                    changes.add(name);
+                    continue;
+                }
+                if (!configurationMatchesBaseline(local, name, oldHash, oldIndex)) {
+                    conflicts.add(name);
+                    continue;
+                }
+            }
             changes.add(name);
         }
+        if (!conflicts.isEmpty()) throw new IOException("Local adapter/configuration conflicts with release:\n  "
+                + String.join("\n  ", conflicts)
+                + "\nMerge these files before updating; nothing was stopped.");
         return changes;
+    }
+
+    private static boolean configurationMatchesBaseline(Path local, String name, String oldHash, JsonNode index) throws IOException {
+        if (!name.endsWith(".config") || !Files.isRegularFile(local, LinkOption.NOFOLLOW_LINKS)) return false;
+        JsonNode baseline = index.path("configBaselines").path(name);
+        if (!baseline.isTextual() || !textDigest(baseline.asText()).equals(oldHash)) return false;
+        List<String> original = configurationLines(baseline.asText());
+        return original != null && original.equals(configurationLines(Files.readString(local)));
+    }
+
+    // Conservative normalization follows the manifest reader's comment/separator rules.
+    // Keep values and repeated-key ordering intact; never normalize whitespace inside values.
+    static List<String> configurationLines(String text) {
+        List<String> result = new ArrayList<>();
+        for (String line : text.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
+            int separator = trimmed.indexOf('=');
+            if (separator < 0) separator = trimmed.indexOf(':');
+            if (separator <= 0) return null;
+            String value = trimmed.substring(separator + 1);
+            int comment = value.indexOf('#');
+            if (comment >= 0) value = value.substring(0, comment);
+            result.add(trimmed.substring(0, separator).trim() + "=" + value.trim());
+        }
+        return result;
+    }
+
+    // Hash-only releases need their original configuration text for a safe comparison.
+    // The installed index authenticates each recovered file independently of the archive.
+    static JsonNode configurationBaselines(Path root, Path work, JsonNode installed, JsonNode replacement, URI archiveUri) throws IOException {
+        List<String> missing = new ArrayList<>();
+        Iterator<String> names = installed.path("adapters").fieldNames();
+        while (names.hasNext()) {
+            String name = names.next();
+            if (!name.matches("mudlibs/[^/]+/jvmud/.+\\.config") || name.contains("..") || name.contains("\\")) continue;
+            String oldHash = installed.path("adapters").path(name).asText();
+            String newHash = replacement.path("adapters").path(name).asText("");
+            Path local = root.resolve(name);
+            if (oldHash.equals(newHash) || !Files.isRegularFile(local, LinkOption.NOFOLLOW_LINKS)) continue;
+            String localHash = digest(local);
+            if (localHash.equals(oldHash) || localHash.equals(newHash)) continue;
+            JsonNode baseline = installed.path("configBaselines").path(name);
+            if (!baseline.isTextual() || !textDigest(baseline.asText()).equals(oldHash)) missing.add(name);
+        }
+        if (missing.isEmpty()) return installed;
+        String version = installed.path("version").asText();
+        if (!version.matches("[A-Za-z0-9][A-Za-z0-9._-]*")) return installed;
+        URI previous = archiveUri.resolve("jvmud-" + version + "-bin.tar.gz");
+        try {
+            System.out.println("Recovering configuration baseline from " + previous);
+            Path archive = work.resolve("previous.tar.gz");
+            download(previous, archive);
+            Path stage = extract(archive, work.resolve("previous"), "jvmud-" + version);
+            var enriched = (com.fasterxml.jackson.databind.node.ObjectNode) installed.deepCopy();
+            var baselines = enriched.withObject("/configBaselines");
+            for (String name : missing) {
+                Path file = stage.resolve(name);
+                if (Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
+                        && digest(file).equals(installed.path("adapters").path(name).asText()))
+                    baselines.put(name, Files.readString(file));
+            }
+            return enriched;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Configuration baseline download interrupted", e);
+        } catch (Exception e) {
+            System.out.println("Could not recover configuration baseline; unresolved differences will remain conflicts: " + e.getMessage());
+            return installed;
+        }
+    }
+
+    private static String textDigest(String text) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
 
     static Path extract(Path archive, Path destination, String expectedRoot) throws Exception {

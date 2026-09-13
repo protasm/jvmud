@@ -106,7 +106,16 @@ a verified full backup in `../backup/<installation-name>-<timestamp>/`.
 It replaces JVMud engine files, launchers, bundled Java, and shipped files under
 each mudlib's `jvmud/` directory. All other mudlib content and saved files stay in
 place. Local changes to an adapter/configuration file are retained if the release
-has not changed it; conflicting changes stop the update before servers stop.
+has not changed it. Locally edited Markdown documentation is archived in the full backup and replaced
+with the release copy without blocking updates. Configuration comparisons ignore comments, blank lines, and
+spacing around setting separators, while preserving setting values and order.
+New packages include verified configuration baselines; for older hash-only
+packages the updater tries the previous version's `-bin.tar.gz` in the same
+download directory and checks recovered files against the installed hashes.
+If that baseline is unavailable, ambiguous configuration changes still require
+manual review. All conflicting adapter/configuration paths are reported together
+before servers stop. Replaced files, including local configuration comments,
+remain available in the full backup.
 
 Servers restart with their recorded arguments, working directories, and Java
 settings. Run the updater as the same OS user, with any game-specific environment

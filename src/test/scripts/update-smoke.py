@@ -50,7 +50,20 @@ def main():
         adapter='mudlibs/lp245/jvmud/mfuns.c'
         with (root/adapter).open('a') as f:f.write('\n// Previous shipped bridge revision.\n')
         installed['adapters'][adapter]=sha(root/adapter)
+        # A hash-only old release with a real vendor configuration change.
+        config_name='mudlibs/lp245/jvmud/lp245.config'
+        with (root/config_name).open('a') as f:f.write('\n# Old vendor default\nplayer_prompt = "> "\n')
+        installed['adapters'][config_name]=sha(root/config_name)
+        installed.pop('configBaselines', None)
+        documentation='mudlibs/lp245/jvmud/README.md'
+        with (root/documentation).open('a') as f:f.write('\nOld vendor documentation.\n')
+        installed['adapters'][documentation]=sha(root/documentation)
         (root/'metadata/update-index.json').write_text(json.dumps(installed))
+        # Only the indexed config is needed to authenticate this legacy baseline.
+        with tarfile.open(work/'jvmud-0.1.0-test-old-bin.tar.gz','w:gz') as tar:
+            tar.add(root/config_name,arcname='jvmud-0.1.0-test-old/'+config_name)
+        with (root/documentation).open('a') as f:f.write('My local documentation.\n')
+        local_documentation=(root/documentation).read_bytes()
         config=root/'mudlibs/lp245/jvmud/lp245.config'
         with config.open('a') as f:f.write('\n# My local configuration\n')
         custom=root/'mudlibs/lp245/room/local-area.c'; custom.write_text('local world content')
@@ -93,12 +106,16 @@ def main():
                 assert updated.returncode==0,updated.stdout+updated.stderr
             for p in processes:p.wait(timeout=10)
             assert len(live_records(root))==2
-            assert config.read_bytes()==expected_config
+            assert config.read_bytes()==(fresh/config_name).read_bytes()
             assert custom.read_text()=='local world content'
             assert local_log.read_text()=='keep my log'
             assert sha(root/adapter)==sha(fresh/adapter)
             backups=list((root.parent/'backup').iterdir()); assert len(backups)==1
             assert (backups[0]/custom.relative_to(root)).read_text()=='local world content'
+            assert (backups[0]/config_name).read_bytes()==expected_config
+            assert (backups[0]/documentation).read_bytes()==local_documentation
+            assert (root/documentation).read_bytes()==(fresh/documentation).read_bytes()
+            expected_config=config.read_bytes()
             save=root/'mudlibs/lp245/players/updatetest.o'
             assert save.exists(),'Connected player was not saved before backup'
             assert save.read_bytes()!=before_save,'Shutdown did not persist the live player changes'
