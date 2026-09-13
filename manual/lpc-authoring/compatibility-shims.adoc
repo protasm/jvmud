@@ -26,6 +26,29 @@ source locations. The compiler still rejects missing explicit method types when
 transpilation is disabled. This accommodation does not imply support for every
 legacy LPC dialect feature and never rewrites imported files.
 
+==== Opt-In Dynamic Value Typing
+
+Set `compiler.dynamic_types = true` when a mudlib's value declarations are
+documentary. The default is false. The compiler retains written type names but
+uses stable `mixed` storage for fields, locals, parameters, return values, and
+typed function literal declarations. Array declarations impose no restriction.
+Includes, inheritance, global helpers, and hosted bridge objects use the same
+policy. Assignments cannot narrow storage after compilation.
+
+Modifiers, argument structure, native function contracts, explicit conversions,
+and runtime operation checks remain in effect. Duplicate methods of the same
+arity remain errors. Missing declarations require the separate untyped-method
+switch. Mixed defaults and empty returns use LPC zero. Existing unsupported
+syntax, including legacy casts, remains unsupported.
+
+LP245 selects this policy instead of its former 51 field and 24 local type
+overrides. Its JSON file retains only the method-varargs rule for `room/room.c:init`.
+Remove field/local type overrides before enabling dynamic typing; combining them
+is rejected. Checked overrides remain available for mudlibs using strict typing.
+
+Restart the instance when changing typing policy so every object is recompiled
+under the same policy.
+
 ==== Checked Field-Type Overrides
 
 Select a bridge-owned JSON file explicitly in the manifest:
@@ -63,7 +86,8 @@ missing field, or duplicate declaration stops compilation at the `TRANSPILE`
 stage. Invalid JSON, unknown keys, duplicate rules, missing source files, and
 unsupported field types are errors. Fields can use `int`, `float`, `string`,
 `object`, `mixed`, `mapping`, `function`, or `status`, with optional array stars.
-The JSON vocabulary currently supports only `field_type_overrides`.
+The JSON vocabulary also supports `local_type_overrides` and
+`method_varargs_overrides`; those adaptations are separate from field rules.
 
 Grouped declarations are split when necessary to preserve neighboring fields'
 types, modifiers, and initializer order. Locals, parameters, method bodies, and

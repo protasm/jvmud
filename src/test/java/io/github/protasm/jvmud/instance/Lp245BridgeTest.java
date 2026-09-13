@@ -191,6 +191,31 @@ final class Lp245BridgeTest {
     }
 
     @Test
+    void originalShopValuesFrogCrownInInventoryAndOnFloorBeforeSelling() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var plain = rt.load("room/plane9");
+        Object frog = rt.present("frog", plain.instance());
+        Object crown = rt.present("crown", frog);
+        assertNotNull(crown);
+        var shop = rt.load("room/shop");
+        var player = rt.load("obj/player");
+        rt.moveObject(player.instance(), shop.instance());
+        rt.refreshCommandActions(player.instance());
+        for (Object location : List.of(player.instance(), shop.instance())) {
+            rt.moveObject(crown, location);
+            rt.clearOutputTranscript();
+            assertEquals(1, rt.dispatchCommand(player.instance(), "value crown"));
+            assertTrue(rt.outputTranscript().contains("You would get 30 gold coins."), rt.outputTranscript());
+            assertSame(location, rt.environment(crown));
+            assertEquals(0, player.invoke("query_money"));
+        }
+        rt.moveObject(crown, player.instance());
+        assertEquals(1, rt.dispatchCommand(player.instance(), "sell crown"));
+        assertEquals(30, player.invoke("query_money"));
+        assertSame(rt.loadOrGetObject("room/store"), rt.environment(crown));
+    }
+
+    @Test
     void originalShopPaysForSoldItemAndMovesItIntoStock() throws Exception {
         var rt = isolatedArchiveRuntime();
         var shop = rt.load("room/shop");
@@ -590,7 +615,7 @@ final class Lp245BridgeTest {
         runtime.moveObject(bag.instance(), room.instance());
         runtime.moveObject(coin.instance(), box.instance());
         assertEquals(List.of(box.instance(), room.instance()), coin.invoke("parents"));
-        assertNull(room.invoke("parents"));
+        assertEquals(0, room.invoke("parents")); // Dynamic LPC helpers return the mixed zero sentinel.
         assertEquals(1, room.invoke("no_parent"));
         assertEquals(List.of(box.instance(), bag.instance(), coin.instance()), room.invoke("descendants"));
         assertEquals(List.of(box.instance(), bag.instance()), room.invoke("level", 1));

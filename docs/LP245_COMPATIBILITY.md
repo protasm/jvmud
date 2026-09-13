@@ -6,7 +6,22 @@ Experiments used disposable copies under `target/test-artifacts/lp245-assessment
 Original source was not changed. The boot-propagation fix described below has
 since been implemented and verified.
 
-## Verified current state
+## Current typing policy
+
+LP245 now opts into `compiler.dynamic_types = true`. All declared value types
+use mixed storage; all 51 field and 24 local type overrides have been removed.
+The remaining JSON rule enables varargs for `room/room.c:init`. Missing method
+declarations and implicit self calls remain separate opt-ins. Original mudlib
+files remain unchanged. See [the bridge guide](../mudlibs/lp245/jvmud/README.md)
+for current behavior and the full-archive regression coverage.
+
+## Historical assessment
+
+The sections below record earlier implementation stages and their test results.
+Their field/local override recommendations and intermediate counts are historical,
+not the current LP245 configuration.
+
+### Earlier verified state
 
 | Check | Result |
 | --- | --- |

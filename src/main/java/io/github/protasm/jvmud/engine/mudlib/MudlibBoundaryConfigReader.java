@@ -66,6 +66,7 @@ public final class MudlibBoundaryConfigReader {
             "database.password_env",
             "language_features",
             "transpilation.untyped_methods",
+            "compiler.dynamic_types",
             "transpilation.implicit_self_calls",
             "transpilation.overrides",
             "command_actions.newest_first",
@@ -180,6 +181,7 @@ public final class MudlibBoundaryConfigReader {
         addBoolean(builder::commandActionsNewestFirst, firstValue(values, "command_actions.newest_first"));
         addBoolean(builder::commandActionsArgumentsOnly, firstValue(values, "command_actions.arguments_only"));
         addBoolean(builder::transpileImplicitSelfCalls, firstValue(values, "transpilation.implicit_self_calls"));
+        addBoolean(builder::dynamicTypes, firstValue(values, "compiler.dynamic_types"));
         addBoolean(builder::transpileUntypedMethods, firstValue(values, "transpilation.untyped_methods"));
         addLanguageFeatures(builder, allValues(values, "language_features"));
         addEngineCapabilities(builder, allValues(values, "engine_capabilities"));

@@ -1,25 +1,25 @@
 {
-  "version": "0.1.0-preview.4",
+  "version": "0.1.0-preview.5",
   "artifacts": {
     "bin": {
-      "url": "jvmud-0.1.0-preview.4-bin.tar.gz",
-      "sha256": "bc02fb36dd46a0c272678d549d182dac6ad9d2f5e14e493e5c1de12853fd57a4"
+      "url": "jvmud-0.1.0-preview.5-bin.tar.gz",
+      "sha256": "b4060086749cdbdcafd3ffe031424bd29966b0b547729388bb64d3143b4a5706"
     },
     "macos-aarch64": {
-      "url": "jvmud-0.1.0-preview.4-macos-aarch64.tar.gz",
-      "sha256": "05c0dd9e6517c578053eaa1509dd7f9625aef2896b7f264a91c95b619d48f02a"
+      "url": "jvmud-0.1.0-preview.5-macos-aarch64.tar.gz",
+      "sha256": "a46bc4383708671b53ddcd0abbd87cc464790f8573ed04c86fd3025952d66a1a"
     },
     "macos-x64": {
-      "url": "jvmud-0.1.0-preview.4-macos-x64.tar.gz",
-      "sha256": "9f7c038bc038f678b0d9e28ae1fed030c21c5b46bcc0e6d9fd98dc90da281244"
+      "url": "jvmud-0.1.0-preview.5-macos-x64.tar.gz",
+      "sha256": "fc31d1d191dad4085b1f7b0a2a0177526f7218af84c8c5d23c8fc4632143a1ed"
     },
     "linux-x64": {
-      "url": "jvmud-0.1.0-preview.4-linux-x64.tar.gz",
-      "sha256": "9a8c07b26383da1c648c8040e2f2ca4a53f4bb32e71bafed470c99b9693762a3"
+      "url": "jvmud-0.1.0-preview.5-linux-x64.tar.gz",
+      "sha256": "d12a815dd2c1ec7f44ddecbba9db72ef92962a58293d9936167e401eed5434b5"
     },
     "linux-aarch64": {
-      "url": "jvmud-0.1.0-preview.4-linux-aarch64.tar.gz",
-      "sha256": "f0c357d384ad66576e936a5ef650a4e281ae83104152e6b76253c1609b0f3e57"
+      "url": "jvmud-0.1.0-preview.5-linux-aarch64.tar.gz",
+      "sha256": "52deef08788dfb7616e3d4bdf2a8ac965654520d97f3f0f6aa1d41882824da61"
     }
   }
 }

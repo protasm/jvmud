@@ -66,6 +66,7 @@ public final class MudlibBoundary {
     private final List<FieldTypeOverride> fieldTypeOverrides;
     private final List<LocalTypeOverride> localTypeOverrides;
     private final List<MethodVarargsOverride> methodVarargsOverrides;
+    private final boolean dynamicTypes;
     private final boolean transpileUntypedMethods;
     private final boolean transpileImplicitSelfCalls;
     private final boolean commandActionsNewestFirst;
@@ -109,6 +110,7 @@ public final class MudlibBoundary {
         this.fieldTypeOverrides = List.copyOf(builder.fieldTypeOverrides);
         this.localTypeOverrides = List.copyOf(builder.localTypeOverrides);
         this.methodVarargsOverrides = List.copyOf(builder.methodVarargsOverrides);
+        this.dynamicTypes = builder.dynamicTypes;
         this.transpileUntypedMethods = builder.transpileUntypedMethods;
         this.transpileImplicitSelfCalls = builder.transpileImplicitSelfCalls;
         this.commandActionsNewestFirst = builder.commandActionsNewestFirst;
@@ -303,6 +305,9 @@ public final class MudlibBoundary {
         return transpileImplicitSelfCalls;
     }
 
+    /** Whether source declarations use mixed values regardless of their written types. */
+    public boolean dynamicTypes() { return dynamicTypes; }
+
     /** Whether to normalize missing method types before strict parsing; disabled by default. */
     public boolean transpileUntypedMethods() {
         return transpileUntypedMethods;
@@ -466,6 +471,7 @@ public final class MudlibBoundary {
                 || !methodVarargsOverrides.isEmpty()
                 || commandActionsNewestFirst
                 || commandActionsArgumentsOnly
+                || dynamicTypes
                 || transpileUntypedMethods
                 || transpileImplicitSelfCalls
                 || !languageFeatures.isEmpty()
@@ -629,6 +635,7 @@ public final class MudlibBoundary {
         private final List<FieldTypeOverride> fieldTypeOverrides = new ArrayList<>();
         private final List<LocalTypeOverride> localTypeOverrides = new ArrayList<>();
         private final List<MethodVarargsOverride> methodVarargsOverrides = new ArrayList<>();
+        private boolean dynamicTypes;
         private boolean transpileUntypedMethods;
         private boolean transpileImplicitSelfCalls;
         private boolean commandActionsNewestFirst;
@@ -831,6 +838,12 @@ public final class MudlibBoundary {
             return this;
         }
 
+        /** Opts into mixed storage for declared values; strict typing remains the default. */
+        public Builder dynamicTypes(boolean enabled) {
+            this.dynamicTypes = enabled;
+            return this;
+        }
+
         /** Enables in-memory legacy method typing without changing the compiler language. */
         public Builder transpileUntypedMethods(boolean enabled) {
             this.transpileUntypedMethods = enabled;
@@ -996,6 +1009,8 @@ public final class MudlibBoundary {
 
         /** Builds an immutable, normalized boundary declaration. */
         public MudlibBoundary build() {
+            if (dynamicTypes && (!fieldTypeOverrides.isEmpty() || !localTypeOverrides.isEmpty()))
+                throw new IllegalArgumentException("compiler.dynamic_types cannot be combined with field/local type overrides; remove the redundant overrides.");
             return new MudlibBoundary(this);
         }
     }

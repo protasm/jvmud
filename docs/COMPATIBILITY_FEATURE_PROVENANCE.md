@@ -293,3 +293,21 @@ voice.
   full 70-tick sequence for two ghosts. `CompilerSmokeTest` checks callback
   ordering, actor identity, excluded moves, missing methods, zero-argument hooks,
   and movement redirected during cleanup.
+
+## Optional dynamic value typing
+
+- Configuration: `compiler.dynamic_types = true`, default false, selected per
+  mudlib and preserved through hosted bridge declaration merging.
+- Motivation: LP245's documentary declarations repeatedly disagree with actual
+  values. Its 51 field and 24 local overrides are replaced by this policy.
+- Implementation: declaration symbols retain written type names but use stable
+  mixed storage throughout parsing, analysis, inheritance, and code generation.
+  This is a compiler policy, not a token substitution. Typed literal declarations
+  follow the same policy. No new casts or syntax are introduced.
+- Preserved contracts: explicit conversions, visibility/storage modifiers,
+  argument structure, native function signatures, and runtime operation errors.
+  Duplicate methods of the same arity remain errors; absent declarations still
+  need the separate untyped-method opt-in. Mixed defaults/empty returns use zero.
+- Verification: `DynamicTypesTest`, `MudlibBootTranspilationTest`, and the original
+  LP245 archive/gameplay tests. The generic checked override facilities remain
+  available to strict mudlibs; LP245 retains only its method-varargs rule.

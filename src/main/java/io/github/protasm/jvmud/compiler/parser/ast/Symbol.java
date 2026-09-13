@@ -8,6 +8,7 @@ public class Symbol {
     private final String declaredTypeName;
     private LPCType declaredType;
     private LPCType lpcType;
+    private boolean dynamicStorage;
     private final String name;
 
     public Symbol(LPCType lpcType, String name) {
@@ -52,8 +53,15 @@ public class Symbol {
     }
 
     public void setLPCType(LPCType lpcType) {
-        if (lpcType != null)
+        if (lpcType != null && !dynamicStorage)
             this.lpcType = lpcType;
+    }
+
+    /** Keep dynamic declarations stable even when assignments offer narrower inference candidates. */
+    public void useDynamicStorage() {
+        dynamicStorage = true;
+        declaredType = LPCType.LPCMIXED;
+        lpcType = LPCType.LPCMIXED;
     }
 
     public String name() {

@@ -1,10 +1,23 @@
-# JVMud 0.1.0-preview.4
+# JVMud 0.1.0-preview.5
 
 This experimental preview includes Small Mercies and LP245. The macOS and Linux
 packages include Eclipse Temurin Java 21.0.12.1+1-LTS. A POSIX shell is required;
 Maven is not needed. The separate runtime-free archive requires Java 21 or newer.
 
 ## Changes
+
+Adds explicitly opt-in `compiler.dynamic_types = true`: declared value types use
+stable mixed storage while strict typing remains the default. LP245 selects this
+policy, replacing all 51 field and 24 local type overrides. Its original source
+remains unchanged. One method-varargs rule and separate legacy syntax settings
+remain. Shop valuation now correctly prices the frog's crown at 30 gold coins.
+
+The full Java suite passes 560 tests, including strict/dynamic policy isolation,
+hosted startup, original LP245 archive checks, Telnet gameplay, and saved-player
+restore. Configurations combining dynamic typing with field/local overrides are
+rejected; update the LP245 configuration and override file together.
+
+### Retained from preview.4
 
 Adds `jvmud-update`: verified downloads, clean server shutdown and restart,
 full installation backups beside the distribution in `backup/`, and rollback

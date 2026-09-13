@@ -2236,6 +2236,12 @@ are compiler errors. Use <code>mixed</code> when a value intentionally varies, a
 when a method returns no value.</p>
 </div>
 <div class="paragraph">
+<p>These are the default typing rules. A mudlib can explicitly select
+<code>compiler.dynamic_types = true</code> to treat all declared value types as <code>mixed</code>.
+This does not allow missing method declarations; legacy declaration syntax
+requires its own opt-in. See the compatibility section for the policy boundaries.</p>
+</div>
+<div class="paragraph">
 <p>For a disposable authoring exercise, save this as <code>example/counter.c</code> beneath
 the selected mudlib source root (create the directory if needed):</p>
 </div>
@@ -2368,6 +2374,47 @@ Java dispatch code before adding a hook. Test normal entry, failed input, and
 disconnect paths; recognizing a method name does not establish its invocation
 order or error behavior.</p>
 </div>
+<div class="sect3">
+<h4 id="_perception"><a class="anchor" href="#_perception"></a><a class="link" href="#_perception">Perception</a></h4>
+<div class="paragraph">
+<p>World communication is separate from private session output. An emitted perception
+reaches the source&#8217;s location and its immediate contents, excluding the source
+and any explicitly excluded recipient. It does not recursively reach carried
+objects or apply sensory rules such as hearing distance or line of sight.
+Recipients are snapshotted before callbacks; destroyed recipients are skipped.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="lpc">// Emit structured speech with text for connected observers.
+jvmud_emit_world_event(this_object(), &quot;speech&quot;, &quot;mellon&quot;, &quot;A voice says: mellon\n&quot;);
+// Address one observer without broadcasting to its neighbors.
+jvmud_deliver_world_event(target, &quot;speech&quot;, &quot;mellon&quot;, &quot;A voice whispers: mellon\n&quot;);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>These native functions take <code>(mixed source_or_target, string kind, mixed content,
+string text)</code>. The existing <code>jvmud_emit_perceivable*</code> functions emit <code>text</code> events
+with their original message as content. <code>jvmud_write_to_lpc_object</code> remains private
+output and does not notify world observers.</p>
+</div>
+<div class="paragraph">
+<p>Map <code>lifecycle.perception_received</code> to an observer method taking one mapping.
+Each observer receives its own mapping containing <code>actor</code>, <code>source</code>, <code>location</code>,
+<code>kind</code>, <code>content</code>, <code>text</code>, and <code>directed</code> (0 or 1). Missing object references are 0.
+The originating command actor is preserved during synchronous delivery; events
+outside a command may have no actor. The receiver is the current object.
+Text is delivered once to each connected recipient, independently of its hook.</p>
+</div>
+<div class="paragraph">
+<p>A mudlib may also map <code>lifecycle.perception_delivery</code> to a boundary-object method
+with <code>(object observer, mapping event)</code>. It runs after the observer method and
+can adapt observations to the mudlib&#8217;s conventions. LP245 uses this to call the
+optional <code>catch_tell</code> method with exact, unwrapped legacy text. Neither hook is
+required. Callbacks may emit further events; nesting beyond 64 deliveries raises
+an error and unwinds the delivery. Callback errors propagate to the existing
+command/scheduler error handling and can interrupt the remaining recipients.</p>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_compatibility_shims"><a class="anchor" href="#_compatibility_shims"></a><a class="link" href="#_compatibility_shims">Compatibility Shims</a></h3>
@@ -2387,6 +2434,100 @@ explicit typing to accommodate an untyped legacy declaration.</p>
 <p>Record the motivating source and test in <code>docs/COMPATIBILITY_FEATURE_PROVENANCE.md</code>
 when changing compatibility features. The result should remain usable without
 hardcoding a particular game into shared Java or launch scripts.</p>
+</div>
+<div class="sect3">
+<h4 id="_opt_in_legacy_method_transpilation"><a class="anchor" href="#_opt_in_legacy_method_transpilation"></a><a class="link" href="#_opt_in_legacy_method_transpilation">Opt-In Legacy Method Transpilation</a></h4>
+<div class="paragraph">
+<p>A bridge manifest may explicitly set <code>transpilation.untyped_methods = true</code>.
+The default is false. JVMud&#8217;s sibling <code>io.github.protasm.jvmud.transpiler</code> package
+adds explicit <code>mixed</code> return and parameter types to untyped method signatures
+in memory after preprocessing and before parsing. Includes, inherited objects,
+and global helper objects use the same profile setting. Existing explicit types
+and method bodies remain unchanged, and inserted tokens retain the original
+source locations. The compiler still rejects missing explicit method types when
+transpilation is disabled. This accommodation does not imply support for every
+legacy LPC dialect feature and never rewrites imported files.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_opt_in_dynamic_value_typing"><a class="anchor" href="#_opt_in_dynamic_value_typing"></a><a class="link" href="#_opt_in_dynamic_value_typing">Opt-In Dynamic Value Typing</a></h4>
+<div class="paragraph">
+<p>Set <code>compiler.dynamic_types = true</code> when a mudlib&#8217;s value declarations are
+documentary. The default is false. The compiler retains written type names but
+uses stable <code>mixed</code> storage for fields, locals, parameters, return values, and
+typed function literal declarations. Array declarations impose no restriction.
+Includes, inheritance, global helpers, and hosted bridge objects use the same
+policy. Assignments cannot narrow storage after compilation.</p>
+</div>
+<div class="paragraph">
+<p>Modifiers, argument structure, native function contracts, explicit conversions,
+and runtime operation checks remain in effect. Duplicate methods of the same
+arity remain errors. Missing declarations require the separate untyped-method
+switch. Mixed defaults and empty returns use LPC zero. Existing unsupported
+syntax, including legacy casts, remains unsupported.</p>
+</div>
+<div class="paragraph">
+<p>LP245 selects this policy instead of its former 51 field and 24 local type
+overrides. Its JSON file retains only the method-varargs rule for <code>room/room.c:init</code>.
+Remove field/local type overrides before enabling dynamic typing; combining them
+is rejected. Checked overrides remain available for mudlibs using strict typing.</p>
+</div>
+<div class="paragraph">
+<p>Restart the instance when changing typing policy so every object is recompiled
+under the same policy.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_checked_field_type_overrides"><a class="anchor" href="#_checked_field_type_overrides"></a><a class="link" href="#_checked_field_type_overrides">Checked Field-Type Overrides</a></h4>
+<div class="paragraph">
+<p>Select a bridge-owned JSON file explicitly in the manifest:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="properties">transpilation.overrides = transpilation.json</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The override file path is relative to the manifest directory. This setting is
+independent of <code>transpilation.untyped_methods</code>; neither enables the other.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">field_type_overrides</span><span class="delimiter">&quot;</span></span>: [
+    {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">file</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">obj/torch.c</span><span class="delimiter">&quot;</span></span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">field</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">amount_of_fuel</span><span class="delimiter">&quot;</span></span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">expected_type</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">string</span><span class="delimiter">&quot;</span></span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">replacement_type</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">int</span><span class="delimiter">&quot;</span></span>
+    }
+  ]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>file</code> identifies a filesystem compilation unit relative to <code>mudlib_root</code>.
+Rules apply after preprocessing, so declarations expanded from its headers are
+part of that unit. They also apply when the unit is loaded as an inherited
+object, global helper, or bridge object. In-memory snippets without a source
+file path are not matched by file overrides.</p>
+</div>
+<div class="paragraph">
+<p>The named field must occur exactly once with the expected type. A mismatch,
+missing field, or duplicate declaration stops compilation at the <code>TRANSPILE</code>
+stage. Invalid JSON, unknown keys, duplicate rules, missing source files, and
+unsupported field types are errors. Fields can use <code>int</code>, <code>float</code>, <code>string</code>,
+<code>object</code>, <code>mixed</code>, <code>mapping</code>, <code>function</code>, or <code>status</code>, with optional array stars.
+The JSON vocabulary also supports <code>local_type_overrides</code> and
+<code>method_varargs_overrides</code>; those adaptations are separate from field rules.</p>
+</div>
+<div class="paragraph">
+<p>Grouped declarations are split when necessary to preserve neighboring fields'
+types, modifiers, and initializer order. Locals, parameters, method bodies, and
+string values are not field override targets. Source locations are retained for
+diagnostics and original files are never rewritten. Rules are read at manifest
+load; restart the instance to load changed configuration.</p>
+</div>
 </div>
 </div>
 </div>
@@ -3078,6 +3219,27 @@ port 4000; passing a port as a second positional argument fails.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>language_features</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Optional syntax gates: <code>protected_evaluation</code>,
 <code>typed_function_literals</code>, <code>inline_callables</code>, <code>multi_value_mappings</code>, <code>varargs</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>compiler.dynamic_types</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional dynamic value typing, default false. Treat
+declared fields, locals, parameters, and returns as stable <code>mixed</code> values.
+Cannot be combined with field/local type overrides.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>transpilation.untyped_methods</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supply missing method return and parameter
+types in memory; default false and independent of dynamic typing.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>transpilation.implicit_self_calls</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Resolve unknown bare calls on the current
+object at runtime; default false.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>transpilation.overrides</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manifest-relative JSON file containing checked field,
+local, or method-varargs adaptations. LP245 retains only a method-varargs rule.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>engine_capabilities</code></p></td>

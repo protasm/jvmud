@@ -43,6 +43,19 @@ class MudlibBootTranspilationTest {
         assertTrue(mud.bootResult().skippedPreloads().isEmpty());
     }
 
+    @Test void dynamicTypesApplyToBridgeAndSurviveHostedBoundaryMerge() throws Exception {
+        fixture("compiler.dynamic_types = true\n", false);
+        Files.writeString(root.resolve("jvmud/mudlib.c"), "int player_prompt() { return \"dynamic> \"; }");
+        Files.writeString(root.resolve("start.c"), "int answer(string arg) { return arg; }");
+        Files.writeString(root.resolve("preload.c"), "int value() { return \"preloaded\"; }");
+        MudInstance mud = MudInstance.boot(root, "jvmud/test.config");
+        assertTrue(mud.bootResult().mudlibBoundary().dynamicTypes());
+        assertEquals("dynamic> ", mud.bootResult().mudlibBoundary().playerPrompt().orElseThrow());
+        assertTrue(mud.bootResult().skippedPreloads().isEmpty());
+        assertEquals("unchanged", mud.<Object>administer(runtime -> runtime.invokeObject(runtime.loadOrGetObject("start"), "answer", "unchanged")));
+        assertEquals("preloaded", mud.<Object>administer(runtime -> runtime.invokeObject(runtime.loadOrGetObject("preload"), "value")));
+    }
+
     @Test void absentAndDisabledSettingsRejectLegacyObjectsAfterTypedBridge() throws Exception {
         for (String setting : new String[] {"", "transpilation.untyped_methods = false\n"}) {
             fixture(setting, false);

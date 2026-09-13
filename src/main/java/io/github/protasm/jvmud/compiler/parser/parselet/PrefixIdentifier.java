@@ -97,7 +97,7 @@ public class PrefixIdentifier implements PrefixParselet {
      * It is deliberately narrower than full statement-bodied compatibility closures.</p>
      */
     private ASTExpression typedFunctionLiteral(Parser parser, int line) {
-        Symbol returnSymbol = new Symbol(typeName(parser, "Expect function literal return type."), "$function_return");
+        Symbol returnSymbol = parser.valueSymbol(typeName(parser, "Expect function literal return type."), "$function_return");
         parser.tokens().consume(T_LEFT_PAREN, "Expect '(' after function literal return type.");
         ASTParameters parameters = typedFunctionParameters(parser);
         parser.tokens().consume(T_LEFT_BRACE, "Expect '{' before function literal body.");
@@ -117,7 +117,7 @@ public class PrefixIdentifier implements PrefixParselet {
             int line = parser.currLine();
             String typeName = typeName(parser, "Expect function literal parameter type.");
             Token<String> nameToken = parser.tokens().consume(T_IDENTIFIER, "Expect function literal parameter name.");
-            parameters.add(new ASTParameter(line, new Symbol(typeName, nameToken.lexeme())));
+            parameters.add(new ASTParameter(line, parser.valueSymbol(typeName, nameToken.lexeme())));
         } while (parser.tokens().match(T_COMMA));
 
         parser.tokens().consume(T_RIGHT_PAREN, "Expect ')' after function literal parameters.");

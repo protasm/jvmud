@@ -57,6 +57,15 @@ port 4000; passing a port as a second positional argument fails.
 |Key |Meaning
 |`language_features` |Optional syntax gates: `protected_evaluation`,
 `typed_function_literals`, `inline_callables`, `multi_value_mappings`, `varargs`.
+|`compiler.dynamic_types` |Optional dynamic value typing, default false. Treat
+declared fields, locals, parameters, and returns as stable `mixed` values.
+Cannot be combined with field/local type overrides.
+|`transpilation.untyped_methods` |Supply missing method return and parameter
+types in memory; default false and independent of dynamic typing.
+|`transpilation.implicit_self_calls` |Resolve unknown bare calls on the current
+object at runtime; default false.
+|`transpilation.overrides` |Manifest-relative JSON file containing checked field,
+local, or method-varargs adaptations. LP245 retains only a method-varargs rule.
 |`engine_capabilities` |Capability grants: `mudlib_files`, `database`,
 `session_control`, `host_control`.
 |`engine_function.<native-name>` |One or more mudlib aliases for a native engine function.

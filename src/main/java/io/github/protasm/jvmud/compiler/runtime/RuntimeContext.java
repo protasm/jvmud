@@ -310,6 +310,8 @@ public final class RuntimeContext {
         globalObjectDeclarations.clear();
     }
 
+    public boolean dynamicTypes() { return mudlibBoundary.dynamicTypes(); }
+
     /** Applies checked local types and method varargs declarations before semantic resolution. */
     public void transpileSourceLocals(Path sourcePath, ASTObject object) {
         new io.github.protasm.jvmud.transpiler.MethodVarargsTranspiler().transpile(sourcePath,

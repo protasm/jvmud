@@ -209,6 +209,7 @@ public final class MudlibBoot {
         configBoundary.methodVarargsOverrides().forEach(builder::methodVarargsOverride);
         builder.commandActionsNewestFirst(configBoundary.commandActionsNewestFirst());
         builder.commandActionsArgumentsOnly(configBoundary.commandActionsArgumentsOnly());
+        builder.dynamicTypes(configBoundary.dynamicTypes());
         builder.transpileUntypedMethods(configBoundary.transpileUntypedMethods());
         builder.transpileImplicitSelfCalls(configBoundary.transpileImplicitSelfCalls());
         configBoundary.languageFeatures().forEach(builder::languageFeature);

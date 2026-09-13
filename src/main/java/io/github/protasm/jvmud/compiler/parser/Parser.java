@@ -284,6 +284,14 @@ public class Parser {
         return new DeclarationModifiers(visibility, isStatic, isNomask, isVarargs, isNosave, isDeprecated);
     }
 
+    /** Resolve declaration storage policy without rewriting tokens or changing explicit casts. */
+    public Symbol valueSymbol(String declaredType, String name) {
+        Symbol symbol = new Symbol(declaredType, name);
+        if (runtimeContext.dynamicTypes())
+            symbol.useDynamicStorage();
+        return symbol;
+    }
+
     private Symbol declarationSymbol() {
         if (!tokens.check(T_IDENTIFIER))
             throw new ParseException("Expect property type or name.", tokens.current());
@@ -294,7 +302,7 @@ public class Parser {
         if (tokens.check(T_IDENTIFIER)) {
             Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect property name.");
             String declaredTypeName = firstToken.lexeme() + arraySuffix;
-            return new Symbol(declaredTypeName, nameToken.lexeme());
+            return valueSymbol(declaredTypeName, nameToken.lexeme());
         }
 
         return new Symbol((String) null, firstToken.lexeme());
@@ -372,7 +380,7 @@ public class Parser {
             String declaredTypeName = symbol.declaredTypeName();
             if (!arraySuffix.isEmpty() && declaredTypeName != null && !declaredTypeName.endsWith("*"))
                 declaredTypeName = declaredTypeName + arraySuffix;
-            Symbol additionalSymbol = new Symbol(declaredTypeName, nameToken.lexeme());
+            Symbol additionalSymbol = valueSymbol(declaredTypeName, nameToken.lexeme());
 
             declarators.add(fieldDeclarator(additionalSymbol));
         }
@@ -480,7 +488,7 @@ public class Parser {
                 nameToken = firstToken;
             }
 
-            Symbol symbol = new Symbol(declaredType, nameToken.lexeme());
+            Symbol symbol = valueSymbol(declaredType, nameToken.lexeme());
 
             ASTParameter param = new ASTParameter(currLine(), symbol, parameterVarargs);
             ASTLocal local = new ASTLocal(currLine(), symbol);
@@ -580,7 +588,7 @@ public class Parser {
             String arraySuffix = arrayDeclaratorSuffix();
             Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect local variable name.");
             String declaredType = typeToken.lexeme() + arraySuffix;
-            Symbol symbol = new Symbol(declaredType, nameToken.lexeme());
+            Symbol symbol = valueSymbol(declaredType, nameToken.lexeme());
 
             ASTLocal local = new ASTLocal(currLine(), symbol);
 
@@ -820,7 +828,7 @@ public class Parser {
         String arraySuffix = arrayDeclaratorSuffix();
         Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect for initializer local name.");
         String declaredType = typeToken.lexeme() + arraySuffix;
-        Symbol symbol = new Symbol(declaredType, nameToken.lexeme());
+        Symbol symbol = valueSymbol(declaredType, nameToken.lexeme());
         ASTLocal local = new ASTLocal(currLine(), symbol);
 
         locals.add(local);
@@ -868,7 +876,7 @@ public class Parser {
         String arraySuffix = arrayDeclaratorSuffix();
         Token<String> nameToken = tokens.consume(T_IDENTIFIER, "Expect foreach variable name.");
         String declaredType = typeToken.lexeme() + arraySuffix;
-        Symbol symbol = new Symbol(declaredType, nameToken.lexeme());
+        Symbol symbol = valueSymbol(declaredType, nameToken.lexeme());
         ASTLocal local = new ASTLocal(typeToken.line(), symbol);
 
         locals.add(local);

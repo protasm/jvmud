@@ -21,7 +21,7 @@ The bridge consists of four files:
 | File | Purpose |
 | --- | --- |
 | [lp245.config](lp245.config) | Selects the mudlib, language options, function aliases, and lifecycle mappings |
-| [transpilation.json](transpilation.json) | Records checked declaration adaptations |
+| [transpilation.json](transpilation.json) | Records the remaining method-varargs adaptation |
 | [mfuns.c](mfuns.c) | Provides legacy functions through typed LPC adapters |
 | [mudlib.c](mudlib.c) | Supplies host lifecycle and diagnostic handlers |
 
@@ -102,87 +102,31 @@ for untyped declarations.
 JVMud applies the manifest settings before loading the bridge object and retains
 them for subsequent compilation of the mudlib.
 
-## 5. Correct specific declarations without editing their sources
-
-Some legacy fields are declared with a type that does not match their use.
-The bridge records those corrections explicitly:
+## 5. Use dynamic values for documentary declarations
 
 ```properties
+compiler.dynamic_types = true
 transpilation.overrides = transpilation.json
 ```
 
-For example, the torch declares its fuel amount as a string but uses it in
-numeric calculations. Its override is:
+The compiler treats declared fields, locals, parameters, and return values as
+`mixed`, including array declarations and typed function literals. Written type
+names remain available in the parsed source, but they do not coerce values or
+restrict storage. Assignments cannot narrow the inferred storage type. This
+policy also applies to includes, inherited objects, and global helpers.
 
-```json
-{
-  "file": "obj/torch.c",
-  "field": "amount_of_fuel",
-  "expected_type": "string",
-  "replacement_type": "int"
-}
-```
+Strict typing remains the default for other mudlibs. This flag does not accept
+missing declarations; `transpilation.untyped_methods` handles those separately.
+Combining dynamic typing with field/local type overrides is rejected; remove
+those redundant rules when enabling the policy.
+It preserves modifiers, argument structure, native function contracts, and
+runtime operation checks. Same-arity duplicate methods remain errors. Explicit
+conversion functions retain their behavior; this feature does not add support
+for the old driver's cast syntax. Mixed defaults and empty returns use LPC zero.
 
-Each entry belongs to the JSON file's `field_type_overrides` array. The configured
-corrections are:
-
-| Source | Field | Adapted type | Reason |
-| --- | --- | --- | --- |
-| `obj/torch.c` | `amount_of_fuel` | `int` | Fuel and value calculations use numbers |
-| `room/room.c` | `dest_dir` | `string*` | Exits are destination/direction pairs |
-| `room/room.c` | `items` | `string*` | Items are name/description pairs |
-| `room/room.c` | `numbers` | `string*` | Number words are stored in an array |
-| `room/room.c` | `property` | `mixed` | A room property may be a string or an array |
-| `room/adv_guild.c` | `male_title_str`, `fem_title_str`, `neut_title_str` | `string*` | Titles are selected from arrays by level |
-| `room/adv_guild.c` | `exp_str` | `int*` | Experience thresholds are selected from an array by level |
-| `obj/quicktyper.c` | `list_ab`, `list_cmd`, `list_history` | `string*` | Aliases, their expansions, and command history are arrays of strings |
-| `obj/monster.c` | `chat_head`, `a_chat_head` | `string*` | Idle and combat chat select messages from arrays |
-| `obj/monster.c` | `talk_func`, `talk_type`, `talk_match` | `string*` | Conversation matching uses parallel arrays of callback names and text |
-| `room/vill_road2.c`, `room/yard.c` | `chat_str`, `a_chat_str`, `function`, `type`, `match` | `string*` | Rooms pass chat and conversation arrays to their monsters |
-| `room/pub2.c` | `chat_str`, `function`, `type`, `match` | `string*` | The Go player's configuration uses message and conversation arrays |
-| `room/orc_vall.c` | `chats` | `string*` | Orcs in the valley and fortress share combat messages |
-
-These fields originally declare `string`, except for the guild's `exp_str`,
-which declares `int`, and Quicktyper's lists, which declare `object`. Each rule checks that the named field has the expected
-declaration before applying the replacement in memory.
-An unexpected type, missing field, or duplicate declaration produces a
-translation error. Neighboring fields and local variables retain their types.
-
-The guild's title and experience tables supply character advancement and the
-experience values assigned to monsters. Giving those tables their array types
-lets both uses retain LP245's original calculations and title selection.
-
-In the monster, indexing the original string declarations was interpreted as
-reading individual characters. Declaring those fields as arrays makes each
-lookup retrieve a complete message or callback name. The correction belongs to
-the array fields; the local strings receiving those entries keep their types.
-
-The player object also declares local variables named `list` as `object` in
-`list_peoples()` and `who()`, then assigns the array returned by `users()` to
-them. The bridge translates each declaration to `object*` with a rule in the
-same file's `local_type_overrides` array:
-
-```json
-{
-  "file": "obj/player.c",
-  "method": "who",
-  "local": "list",
-  "expected_type": "object",
-  "replacement_type": "object*"
-}
-```
-
-A second rule selects `list_peoples()` with the same local name and types.
-Local rules identify a source file, a defined method, and exactly one local
-variable within that method. They are applied after parsing, before type
-checking, so grouped declarations and initializer order are preserved.
-Parameters, fields, and matching names in other methods retain their declarations.
-An unexpected type or ambiguous target, including repeated local names in nested
-blocks, produces a translation error.
-
-The yard's `extra_reset()` also stores a cloned weapon in a local originally
-declared `string`. A local override changes that declaration to `object`, so
-room initialization can move the weapon and continue configuring the beggar.
+This replaces all 51 field and 24 local type overrides, including the shop's
+crown valuation correction. The JSON file now contains only one method-varargs
+rule; it changes a calling convention, not a value type.
 
 Quicktyper refreshes its actions by briefly moving through `room/storage`.
 That room calls `::init(arg)`, although the room base declares `init()` with no
@@ -311,25 +255,11 @@ original autoload format preserves aliases when the player saves and reloads.
 
 ## 10. Check the whole archive, beyond preloads
 
-The bridge also adapts declarations in objects outside `room/init_file`:
-
-| Objects | Adaptation |
-| --- | --- |
-| `obj/trace.c`, `obj/trace2.c` | Variable names and query names become string arrays; stored values and callback results use mixed types; user lists become object arrays |
-| `obj/armour.c` | Weight and sale value become integers so configured armour can be picked up and sold |
-| `obj/marker.c` | Locals shared by string and integer `sscanf` captures become mixed |
-| `obj/roommaker.c` | Room lighting becomes an integer; exit and generated-text lists become string arrays |
-| `players/lars/board.c` | Board and mark grids become arrays of rows; the opponent lookup, string/integer color capture, and saved grid retain their actual value types |
-| `players/lars/rand.c` | The distribution counter becomes an integer array |
-| `room/death/death_room.c` | The player/tick pairs and temporary copies become mixed arrays |
-| `room/mine/tunnel3.c`, `room/mine/tunnel9.c`, `room/test.c` | Boolean flags become integers; the computer room's summoned player becomes an object |
-
-These are checked field/local rules in `transpilation.json`. JVMud now treats
-`in` as a contextual foreach delimiter, allowing the tracer's method named
-`in` without renaming it. Both `foreach (int item in values)` and the colon
-form retain their behavior. The bridge also accepts the shop's two-argument
-`add_worth(value, object)` call; driver wealth accounting remains a no-op,
-as it was for the one-argument adapter.
+Dynamic typing covers documentary declarations throughout the archive, including
+tools, armour, boards, and the death-room queue. The compiler also treats `in`
+as a contextual foreach delimiter, allowing the tracer's method named `in`.
+The bridge accepts the shop's two-argument `add_worth(value, object)` call;
+driver wealth accounting remains a no-op.
 
 `Lp245BridgeTest` checks all 286 original `.c` files against the archive list:
 283 compile, and 281 initialize in a disposable copy. The following historical
@@ -370,6 +300,14 @@ then recursively retried the same queue entry until the JVM stack overflowed.
 The complete two-ghost sequence is covered by `Lp245BridgeTest`, including
 return to the church and an empty queue afterward. Cleanup that redirects or
 destroys an actor prevents arrival callbacks at the original destination.
+
+### Shop valuation
+
+The original shop's `value` method declares `name_of_item` as a string but uses
+it to hold an object returned by inventory lookup. Dynamic typing preserves the
+object reference, so `value crown` reports 30 gold coins, matching its sale price.
+The regression test checks valuation in inventory and on the shop floor, then
+verifies payment and stock transfer.
 
 ### World perception
 

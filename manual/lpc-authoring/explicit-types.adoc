@@ -4,6 +4,11 @@ Declare return types and every parameter type. Untyped methods and parameters
 are compiler errors. Use `mixed` when a value intentionally varies, and `void`
 when a method returns no value.
 
+These are the default typing rules. A mudlib can explicitly select
+`compiler.dynamic_types = true` to treat all declared value types as `mixed`.
+This does not allow missing method declarations; legacy declaration syntax
+requires its own opt-in. See the compatibility section for the policy boundaries.
+
 For a disposable authoring exercise, save this as `example/counter.c` beneath
 the selected mudlib source root (create the directory if needed):
 
