@@ -316,6 +316,10 @@ code {
   padding-inline: 24px;
 }
 
+.downloads-page pre {
+  margin-bottom: 24px;
+}
+
 .downloads-table-wrap {
   overflow-x: auto;
   margin-bottom: 32px;
