@@ -1051,7 +1051,7 @@ public final class LPCRuntime {
             return;
         }
 
-        withRuntimeContext(() -> runtimeContext.invokeOptionalObject(object, methodName, args));
+        withRuntimeContext(() -> runtimeContext.invokeLifecycleObject(object, methodName, args));
     }
 
     private Class<?>[] parameterTypes(Object[] args) {

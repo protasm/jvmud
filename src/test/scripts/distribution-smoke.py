@@ -78,6 +78,15 @@ def check_world(root, cwd, env, world):
                     command(sock, "o", "Welcome, Creature!")
                     command(sock, "look", "You are in the local village church.")
                     command(sock, "south", "You are at an open green place")
+                    command(sock, "east", "A track going into the village.")
+                    command(sock, "east", "A long road going east through the village.")
+                    command(sock, "east", "There are stairs going down.")
+                    command(sock, "north", "You are in a shop.")
+                    command(sock, "west", "You are in a small and dusty storage room.")
+                    command(sock, "get quicktyper", "Quicktyper....")
+                    command(sock, "alias qlook look", "Ok.")
+                    command(sock, "qlook", "You are in a small and dusty storage room.")
+                    command(sock, "east", "You are in a shop.")
             result = subprocess.run([
                 str(root / "scripts/jvmud-cli"), "--port", str(admin_port),
                 "--token-file", str(token)], input="objects\nquit\n", text=True,

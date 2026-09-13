@@ -1372,6 +1372,19 @@ public final class RuntimeContext {
     }
 
     public Object invokeOptionalObject(Object target, String methodName, Object... args) {
+        return invokeOptionalObject(target, methodName, args, false);
+    }
+
+    /**
+     * Invokes a configured lifecycle hook on its most-derived declaring class.
+     * Lifecycle arguments are padded or trimmed as with optional calls, but an
+     * inherited exact-arity method must not bypass a descendant's hook.
+     */
+    public Object invokeLifecycleObject(Object target, String methodName, Object... args) {
+        return invokeOptionalObject(target, methodName, args, true);
+    }
+
+    private Object invokeOptionalObject(Object target, String methodName, Object[] args, boolean lifecycle) {
         Object resolvedTarget = resolveInvocationTarget(target);
         if (resolvedTarget == null) {
             return 0;
@@ -1379,7 +1392,9 @@ public final class RuntimeContext {
 
         Object[] actualArgs = args == null ? new Object[0] : args;
         try {
-            InvocationPlan invocation = findOptionalInvocation(resolvedTarget.getClass(), methodName, actualArgs);
+            InvocationPlan invocation = lifecycle
+                    ? findLifecycleInvocation(resolvedTarget.getClass(), methodName, actualArgs)
+                    : findOptionalInvocation(resolvedTarget.getClass(), methodName, actualArgs);
             return withCurrentObject(resolvedTarget, () -> {
                 try {
                     return invocation.method().invoke(resolvedTarget, invocation.arguments());
@@ -1560,7 +1575,7 @@ public final class RuntimeContext {
 
     private void invokeInteractionLifecycle(Object actor, Object handler) {
         String methodName = mudlibBoundary.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElse(null);
-        if (methodName == null || !hasMethod(handler.getClass(), methodName, 0)) {
+        if (methodName == null) {
             return;
         }
 
@@ -1568,7 +1583,7 @@ public final class RuntimeContext {
         RuntimeContextHolder.setCurrent(this);
         try {
             withCommandActor(actor, () -> withScopedCommandRegistration(() -> {
-                invokeObject(handler, methodName);
+                invokeLifecycleObject(handler, methodName);
                 return null;
             }));
         } finally {
@@ -2396,6 +2411,21 @@ public final class RuntimeContext {
             System.arraycopy(args, 0, trimmed, 0, trimmed.length);
             return new InvocationPlan(best, adaptArguments(best, trimmed));
         }
+    }
+
+    private InvocationPlan findLifecycleInvocation(Class<?> targetClass, String methodName, Object[] args)
+            throws NoSuchMethodException {
+        Method method = java.util.Arrays.stream(targetClass.getMethods())
+                .filter(candidate -> candidate.getName().equals(methodName))
+                .min(java.util.Comparator
+                        .comparingInt((Method candidate) -> inheritanceDistance(targetClass, candidate.getDeclaringClass()))
+                        .thenComparingInt(candidate -> candidate.getParameterCount() >= args.length ? 0 : 1)
+                        .thenComparingInt(candidate -> Math.abs(candidate.getParameterCount() - args.length)))
+                .orElseThrow(() -> new NoSuchMethodException(targetClass.getName() + "." + methodName));
+        Object[] supplied = method.getParameterCount() >= args.length
+                ? padMissingArguments(method, args)
+                : java.util.Arrays.copyOf(args, method.getParameterCount());
+        return new InvocationPlan(method, adaptArguments(method, supplied));
     }
 
     private boolean declaredCloserToTarget(Method candidate, Method current, Class<?> targetClass) {

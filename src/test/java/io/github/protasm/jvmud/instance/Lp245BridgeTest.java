@@ -317,6 +317,33 @@ final class Lp245BridgeTest {
         assertTrue(rt.outputTranscript().contains("Harry says: Pleased to meet you!"), rt.outputTranscript());
     }
 
+    /** Storage's init(arg) must run instead of its inherited room init() hook. */
+    @Test
+    void enteringOriginalStorageCreatesQuicktyperWithoutDuplicates() throws Exception {
+        var rt = isolatedArchiveRuntime();
+        var actor = rt.loadSource("storage_visitor.c", """
+                void activate() { enable_commands(); }
+                string query_name() { return "Visitor"; }
+                int query_level() { return 1; }
+                void move_player(string route) {
+                    string direction;
+                    string destination;
+                    sscanf(route, "%s#%s", direction, destination);
+                    move_object(this_object(), destination);
+                }
+                """);
+        actor.invoke("activate");
+        rt.bindSession("storage-visitor", actor.instance(), "127.0.0.1", text -> {});
+        var storage = rt.load("room/storage");
+        rt.moveObject(actor.instance(), storage.instance());
+        Object quicktyper = rt.present("tech_quicktyper", storage.instance());
+        assertNotNull(quicktyper);
+        rt.refreshCommandActions(actor.instance());
+        assertSame(quicktyper, rt.present("tech_quicktyper", storage.instance()));
+        assertEquals(1, rt.dispatchCommand(actor.instance(), "east"));
+        assertEquals("room/shop", rt.objectId(rt.environment(actor.instance())));
+    }
+
     /** Exercises commands registered by the original carried Quicktyper, including storage refresh. */
     @Test
     void originalQuicktyperAliasesHistoryQueueRefreshAndAutoload() throws Exception {
