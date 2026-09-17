@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.transport.telnet;
+package io.github.protasm.jvmud.engine;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,31 +34,39 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-final class TelnetServerTest {
+final class EngineTest {
+    /** Chooses the only menu entry before exercising the mudlib's existing login tests. */
+    private static Socket connectToOnlyMudlib(Engine engine) throws IOException {
+        Socket socket = new Socket("127.0.0.1", engine.port());
+        socket.getOutputStream().write("1\n".getBytes(StandardCharsets.UTF_8));
+        socket.getOutputStream().flush();
+        return socket;
+    }
+
     private static final String DEFAULT_CONFIG_PATH = "jvmud/test.config";
     private static final String LP245_CONFIG_PATH = "jvmud/lp245.config";
 
     @Test
     void telnetServerLaunchOptionsAcceptStartupLoadTraceFlag() {
-        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {
+        EngineLauncher.LaunchOptions options = EngineLauncher.parseLaunchOptions(new String[] {
                 "--trace-startup-loads", "mudlibs/smallmercies/jvmud/smallmercies.config"
         });
 
-        assertEquals(repositoryRoot().resolve("mudlibs/smallmercies"), options.mudlibRoot());
-        assertEquals("jvmud/smallmercies.config", options.configObjectPath());
+        assertEquals(repositoryRoot().resolve("mudlibs/smallmercies"), options.mudlibs().getFirst().root());
+        assertEquals("jvmud/smallmercies.config", options.mudlibs().getFirst().configPath());
         assertTrue(options.traceStartupLoads());
     }
 
     @Test
     void telnetServerLaunchOptionsRejectBadFlags() {
         assertThrows(IllegalArgumentException.class, () ->
-                TelnetServer.parseLaunchOptions(new String[] {"-port"}));
+                EngineLauncher.parseLaunchOptions(new String[] {"-port"}));
         assertThrows(IllegalArgumentException.class, () ->
-                TelnetServer.parseLaunchOptions(new String[] {"mudlibs/smallmercies/jvmud/smallmercies.config", "extra"}));
+                EngineLauncher.parseLaunchOptions(new String[] {"mudlibs/smallmercies/jvmud/smallmercies.config", "extra"}));
         assertThrows(IllegalArgumentException.class, () ->
-                TelnetServer.parseLaunchOptions(new String[] {"-bogus", "value"}));
+                EngineLauncher.parseLaunchOptions(new String[] {"-bogus", "value"}));
         assertThrows(IllegalArgumentException.class, () ->
-                TelnetServer.parseLaunchOptions(new String[] {"--trace-startup-loads", "one", "two"}));
+                EngineLauncher.parseLaunchOptions(new String[] {"--trace-startup-loads", "one", "two"}));
     }
 
     @TempDir
@@ -66,9 +74,9 @@ final class TelnetServerTest {
 
     @Test
     void telnetServerLaunchOptionsAcceptMudlibName() {
-        var options = TelnetServer.parseLaunchOptions(new String[] {"--port", "4567", "smallmercies"});
-        assertEquals(repositoryRoot().resolve("mudlibs/smallmercies"), options.mudlibRoot());
-        assertEquals("jvmud/smallmercies.config", options.configObjectPath());
+        var options = EngineLauncher.parseLaunchOptions(new String[] {"--port", "4567", "smallmercies"});
+        assertEquals(repositoryRoot().resolve("mudlibs/smallmercies"), options.mudlibs().getFirst().root());
+        assertEquals("jvmud/smallmercies.config", options.mudlibs().getFirst().configPath());
         assertEquals(4567, options.port());
     }
 
@@ -79,18 +87,18 @@ final class TelnetServerTest {
         Files.createDirectories(fallback.getParent());
         Files.writeString(fallback, "");
         Files.writeString(direct, "");
-        assertEquals(direct, TelnetServer.resolveLaunchConfigFile(Path.of("example"), tempDir));
-        assertEquals(direct, TelnetServer.resolveLaunchConfigFile(direct, tempDir));
+        assertEquals(direct, EngineLauncher.resolveLaunchConfigFile(Path.of("example"), tempDir));
+        assertEquals(direct, EngineLauncher.resolveLaunchConfigFile(direct, tempDir));
         Files.delete(direct);
-        assertEquals(fallback, TelnetServer.resolveLaunchConfigFile(Path.of("example"), tempDir));
+        assertEquals(fallback, EngineLauncher.resolveLaunchConfigFile(Path.of("example"), tempDir));
         Files.createDirectory(direct);
-        assertEquals(fallback, TelnetServer.resolveLaunchConfigFile(Path.of("example"), tempDir));
+        assertEquals(fallback, EngineLauncher.resolveLaunchConfigFile(Path.of("example"), tempDir));
     }
 
     @Test
     void launchConfigResolutionReportsBothMissingPaths() {
         var error = assertThrows(IllegalArgumentException.class, () ->
-                TelnetServer.resolveLaunchConfigFile(Path.of("missing"), tempDir));
+                EngineLauncher.resolveLaunchConfigFile(Path.of("missing"), tempDir));
         assertTrue(error.getMessage().contains(tempDir.resolve("missing").toString()));
         assertTrue(error.getMessage().contains(tempDir.resolve("mudlibs/missing/jvmud/missing.config").toString()));
     }
@@ -127,33 +135,33 @@ final class TelnetServerTest {
     void telnetServerLaunchOptionsRequireExplicitMudlibConfig() {
         IllegalArgumentException error = assertThrows(
                 IllegalArgumentException.class,
-                () -> TelnetServer.parseLaunchOptions(new String[0]));
+                () -> EngineLauncher.parseLaunchOptions(new String[0]));
 
         assertEquals("Missing mudlib config file.", error.getMessage());
     }
 
     @Test
     void telnetServerLaunchOptionsAcceptSingleConfigFileArgument() {
-        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {
+        EngineLauncher.LaunchOptions options = EngineLauncher.parseLaunchOptions(new String[] {
                 "mudlibs/lp245/jvmud/lp245.config"
         });
 
-        assertEquals(repositoryRoot().resolve("mudlibs/lp245"), options.mudlibRoot());
+        assertEquals(repositoryRoot().resolve("mudlibs/lp245"), options.mudlibs().getFirst().root());
         assertEquals(4000, options.port());
         assertEquals("localhost", options.bindAddress());
-        assertEquals("jvmud/lp245.config", options.configObjectPath());
+        assertEquals("jvmud/lp245.config", options.mudlibs().getFirst().configPath());
         assertFalse(options.traceStartupLoads());
     }
 
     @Test
     void telnetServerLaunchOptionsAcceptNetworkSettings() {
-        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {
+        EngineLauncher.LaunchOptions options = EngineLauncher.parseLaunchOptions(new String[] {
                 "--bind", "0.0.0.0", "mudlibs/smallmercies/jvmud/smallmercies.config",
                 "--port", "4567", "--trace-startup-loads"
         });
         assertEquals("0.0.0.0", options.bindAddress());
         assertEquals(4567, options.port());
-        assertEquals("jvmud/smallmercies.config", options.configObjectPath());
+        assertEquals("jvmud/smallmercies.config", options.mudlibs().getFirst().configPath());
         assertTrue(options.traceStartupLoads());
     }
 
@@ -164,15 +172,15 @@ final class TelnetServerTest {
                 {"--port"}, {"--port", "abc"}, {"--port", "0"},
                 {"--port", "-1"}, {"--port", "65536"}, {"--port", "999999999999"}
         }) {
-            assertThrows(IllegalArgumentException.class, () -> TelnetServer.parseLaunchOptions(args));
+            assertThrows(IllegalArgumentException.class, () -> EngineLauncher.parseLaunchOptions(args));
         }
     }
 
     @Test
     void telnetServerLaunchOptionsKeepAdminSeparateAndOptIn() {
         String config = "mudlibs/smallmercies/jvmud/smallmercies.config";
-        assertEquals(null, TelnetServer.parseLaunchOptions(new String[] {config}).adminPort());
-        var options = TelnetServer.parseLaunchOptions(new String[] {
+        assertEquals(null, EngineLauncher.parseLaunchOptions(new String[] {config}).adminPort());
+        var options = EngineLauncher.parseLaunchOptions(new String[] {
                 "--port", "4500", "--admin-port", "4600", "--admin-token-file", "target/admin.token", config
         });
         assertEquals(4500, options.port());
@@ -183,13 +191,13 @@ final class TelnetServerTest {
                 {"--admin-port", "65536", config}, {"--admin-port", "bad", config},
                 {"--admin-port"}, {"--admin-token-file", "key", config}
         }) {
-            assertThrows(IllegalArgumentException.class, () -> TelnetServer.parseLaunchOptions(args));
+            assertThrows(IllegalArgumentException.class, () -> EngineLauncher.parseLaunchOptions(args));
         }
     }
 
     @Test
     void telnetServerLaunchOptionsAcceptHelp() {
-        TelnetServer.LaunchOptions options = TelnetServer.parseLaunchOptions(new String[] {"--help"});
+        EngineLauncher.LaunchOptions options = EngineLauncher.parseLaunchOptions(new String[] {"--help"});
 
         assertTrue(options.help());
         assertFalse(options.traceStartupLoads());
@@ -199,11 +207,11 @@ final class TelnetServerTest {
     void lp245GoPuzzleRespondsToSpokenMoveOverTelnet() throws Exception {
         Path lp245 = lp245TestRoot();
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 assertTrue(readUntilQuietAfterContains(socket, "What is your name: ")
                         .contains("What is your name: "));
@@ -255,11 +263,11 @@ final class TelnetServerTest {
     void lp245TrollHuntKeepsHeartbeatAfterExaminingMonster() throws Exception {
         Path lp245 = lp245TestRoot();
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 assertTrue(readUntilQuietAfterContains(socket, "What is your name: ")
                         .contains("What is your name: "));
@@ -331,11 +339,11 @@ final class TelnetServerTest {
         Files.writeString(player, Files.readString(player)
                 .replace("move_object(myself, \"room/church\");", "move_object(myself, \"room/wiz_hall\");"));
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 assertTrue(readUntilQuietAfterContains(socket, "What is your name: ")
                         .contains("What is your name: "));
@@ -367,9 +375,9 @@ final class TelnetServerTest {
 
                 socket.getOutputStream().write("south\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
-                String south = readUntilQuietAfterContains(socket, "You can't do that.");
+                String south = readUntilQuietAfterContains(socket, "> ");
                 assertFalse(south.contains("Your sensitive mind notices a wrongness"), south);
-                assertTrue(south.contains("You can't do that."), south);
+                assertFalse(south.contains("You can't do that."), south);
 
                 socket.getOutputStream().write("north\n".getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().flush();
@@ -420,9 +428,9 @@ final class TelnetServerTest {
                 void offer_interactions() {}
                 """);
 
-        try (TelnetServer server = new TelnetServer("127.0.0.1", 0, tempDir, "jvmud/test.config")) {
+        try (Engine server = new Engine("127.0.0.1", 0, tempDir, "jvmud/test.config")) {
             server.start();
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 String initial = readUntilQuietAfterContains(socket, "Attached player 1");
                 assertTrue(containsTelnetCommand(initial, 251, 201), printable(initial));
@@ -470,13 +478,13 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             assertEquals(
                     "preload manifest init_file: compiled 1 object(s), skipped 1 object(s). Skipped: obj/broken",
-                    server.preloadSummary());
+                    Engine.preloadSummary(server.mudlibs().getFirst().bootResult()));
         }
     }
 
@@ -514,11 +522,11 @@ final class TelnetServerTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 String initial = readUntilContains(socket, "Attached player 1");
                 assertTrue(initial.contains("JVMud telnet."));
@@ -556,11 +564,11 @@ final class TelnetServerTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 readUntilContains(socket, "Attached player 1");
 
@@ -603,11 +611,11 @@ final class TelnetServerTest {
                 """);
         installMinimalMudlibPlayer(mudlibRoot, "room/village/vill_green");
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, mudlibRoot, DEFAULT_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 readUntilContains(socket, "Attached player 1");
 
@@ -662,11 +670,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
 
                 String tick = readUntilContains(socket, "world tick delivered");
@@ -764,11 +772,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 assertTrue(readUntilContains(socket, "Attached player 1 as obj/test_player#clone1")
                         .contains("Attached player 1 as obj/test_player#clone1"));
@@ -829,11 +837,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 assertTrue(readUntilContains(socket, "Attached player 1").contains("Attached player 1"));
 
@@ -901,11 +909,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 assertTrue(readUntilContains(socket, "Attached player 1").contains("Attached player 1"));
 
@@ -954,7 +962,7 @@ final class TelnetServerTest {
                 }
                 """);
 
-        TelnetServer server = new TelnetServer("127.0.0.1", 0, tempDir, LP245_CONFIG_PATH);
+        Engine server = new Engine("127.0.0.1", 0, tempDir, LP245_CONFIG_PATH);
         server.start();
         server.close();
         server.close();
@@ -1029,11 +1037,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 readUntilContains(socket, "Attached player 1");
 
@@ -1118,11 +1126,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 String greeting = readUntilQuietAfterContains(socket, "What is your name: ");
                 assertTrue(greeting.contains("Welcome login."), greeting);
@@ -1172,11 +1180,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 String greeting = readUntilQuietAfterContains(socket, "Please enter your login name: ");
                 assertTrue(greeting.contains("JVMud telnet."), greeting);
@@ -1236,11 +1244,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 assertTrue(readUntilQuietAfterContains(socket, "Name: ").contains("Name: "));
 
@@ -1257,7 +1265,7 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
             }
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 String nextLogin = readUntilQuietAfterContains(socket, "Name: ");
                 assertTrue(nextLogin.contains("Name: "), nextLogin);
@@ -1294,11 +1302,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 String output = readUntilSocketClosed(socket);
                 assertTrue(output.contains("Could not attach player:"), output);
@@ -1324,11 +1332,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 String output = readUntilSocketClosed(socket);
                 assertTrue(output.contains("Mudlib config must define player_object"), output);
@@ -1369,11 +1377,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 String prompt = readUntilQuietAfterContains(socket, "Code: ");
                 assertTrue(prompt.contains("Code: "), prompt);
@@ -1491,11 +1499,11 @@ final class TelnetServerTest {
                 }
                 """);
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 String firstNamePrompt = readUntilQuietAfterContains(socket, "Name: ");
                 assertTrue(firstNamePrompt.contains("Name: "));
@@ -1536,7 +1544,7 @@ final class TelnetServerTest {
             assertTrue(savedPlayer.contains("\"value\""), savedPlayer);
             assertTrue(savedPlayer.contains("\"alice\""), savedPlayer);
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 assertTrue(readUntilContains(socket, "Name: ").contains("Name: "));
 
@@ -1557,7 +1565,7 @@ final class TelnetServerTest {
                 socket.getOutputStream().flush();
             }
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 assertTrue(readUntilContains(socket, "Name: ").contains("Name: "));
 
@@ -1589,7 +1597,7 @@ final class TelnetServerTest {
                 assertFalse(closeTail.contains("You can't do that."), closeTail);
             }
 
-            try (Socket socket = new Socket("127.0.0.1", server.port())) {
+            try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
                 String reattached = readUntilContains(socket, "Name: ");
                 assertFalse(reattached.contains("Attached player"), reattached);
@@ -1621,15 +1629,15 @@ final class TelnetServerTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, DEFAULT_CONFIG_PATH)) {
             server.start();
 
-            try (Socket first = new Socket("127.0.0.1", server.port())) {
+            try (Socket first = connectToOnlyMudlib(server)) {
                 first.setSoTimeout(5000);
                 assertTrue(readUntilContains(first, "Attached player 1").contains("Attached player 1"));
 
-                try (Socket second = new Socket("127.0.0.1", server.port())) {
+                try (Socket second = connectToOnlyMudlib(server)) {
                     second.setSoTimeout(5000);
                     assertTrue(readUntilContains(second, "Attached player 2").contains("Attached player 2"));
 
@@ -1678,12 +1686,12 @@ final class TelnetServerTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (TelnetServer server = new TelnetServer(
+        try (Engine server = new Engine(
                 "127.0.0.1", 0, tempDir, DEFAULT_CONFIG_PATH)) {
             server.start();
 
-            try (Socket first = new Socket("127.0.0.1", server.port());
-                    Socket second = new Socket("127.0.0.1", server.port())) {
+            try (Socket first = connectToOnlyMudlib(server);
+                    Socket second = connectToOnlyMudlib(server)) {
                 first.setSoTimeout(5000);
                 second.setSoTimeout(5000);
                 assertTrue(readUntilContains(first, "Attached player 1").contains("Attached player 1"));
@@ -1942,7 +1950,7 @@ final class TelnetServerTest {
 
     @Test
     void startupObjectLoadTraceSummarizesUniqueObjectsAndAttempts() {
-        TelnetServer.StartupObjectLoadTrace trace = TelnetServer.commandLineObjectLoadTrace(true);
+        EngineLauncher.StartupObjectLoadTrace trace = EngineLauncher.commandLineObjectLoadTrace(true);
         PrintStream originalOut = System.out;
         try {
             System.setOut(new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8));
@@ -1979,7 +1987,7 @@ final class TelnetServerTest {
 
     @Test
     void startupObjectLoadTracePrintsFailureCause() {
-        TelnetServer.StartupObjectLoadTrace trace = TelnetServer.commandLineObjectLoadTrace(true);
+        EngineLauncher.StartupObjectLoadTrace trace = EngineLauncher.commandLineObjectLoadTrace(true);
         PrintStream originalOut = System.out;
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
@@ -2401,9 +2409,6 @@ final class TelnetServerTest {
                     return jvmud_current_actor();
                 }
 
-                int transfer_player_to_game(string game_id) {
-                    return jvmud_transfer_player_to_game(game_id);
-                }
 
                 mixed call_other(mixed target, string method) {
                     return jvmud_invoke_lpc_object(target, method);

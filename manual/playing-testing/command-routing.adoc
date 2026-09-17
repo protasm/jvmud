@@ -8,7 +8,7 @@ escaped namespace for connection controls; its default is `//`.
 * `look` and movement verbs go to the mudlib after login.
 * Ordinary single-slash commands remain available to mudlib code.
 * `load`, `inspect`, and `reload` run through the authenticated admin connection
-  against the live primary world. They are not player Telnet commands.
+  against the selected live mudlib. They are not player Telnet commands.
 
 If a command is unrecognized, first identify which of these contexts received it.
 Then check the active profile's lifecycle mappings and command registration.

@@ -78,7 +78,6 @@ public final class MudlibBoundaryConfigReader {
     private static final java.util.List<String> KEY_PREFIXES = java.util.List.of(
             "lifecycle.",
             "engine_function.",
-            "mount.",
             "compatibility.predefine.",
             "compatibility.function_predefine.");
 
@@ -186,7 +185,6 @@ public final class MudlibBoundaryConfigReader {
         addLanguageFeatures(builder, allValues(values, "language_features"));
         addEngineCapabilities(builder, allValues(values, "engine_capabilities"));
         addEngineFunctions(builder, values);
-        addMountedMudlibs(builder, values);
         addCompatibilityPredefines(builder, values);
         addCompatibilityFunctionPredefines(builder, values);
         addLifecycleEvents(builder, allValues(values, "handled_lifecycle_events"));
@@ -403,18 +401,6 @@ public final class MudlibBoundaryConfigReader {
         for (String value : values) {
             builder.languageFeature(LanguageFeature.valueOf(normalizeEnumName(value)));
         }
-    }
-
-    private static void addMountedMudlibs(MudlibBoundary.Builder builder, Map<String, List<String>> values) {
-        values.forEach((key, declaredValues) -> {
-            if (!key.startsWith("mount.")) {
-                return;
-            }
-            String gameId = key.substring("mount.".length()).trim();
-            for (String configPath : declaredValues) {
-                builder.mountedMudlib(gameId, configPath);
-            }
-        });
     }
 
     private static void addEngineCapabilities(MudlibBoundary.Builder builder, List<String> values) {

@@ -1301,8 +1301,12 @@ recurring ticks to <code>tick</code>; there is no filesystem-account policy or d
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jvmud/smallmercies.config</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Explicit source root, preloads, Persona, initial
+<td class="tableblock halign-left valign-top"><p class="tableblock">Explicit source root, preload manifest path, Persona, initial
 Place, lifecycle mappings, and capability grant.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>source/preload_objects</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Startup object paths, one per line in load order.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>source/lib/room.c</code></p></td>
@@ -1418,10 +1422,18 @@ or stop the server. Use a dedicated development listener so another player&#8217
 sparring match or a resting NPC does not interfere.</p>
 </div>
 <div class="paragraph">
-<p>The shared preload-scan script expects <code>preload_file</code>; Small Mercies declares
-<code>preload_objects</code> inline. Use the focused test rather than that scanner for this
-profile.
-A host smoke test should prove the complete route from launch to interaction,
+<p>To compile every object in Small Mercies' <code>source/preload_objects</code> manifest:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">scripts/scan-mudlib-preload-compile.sh mudlibs/smallmercies/jvmud/smallmercies.config</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The scanner checks compilation; the focused test above also exercises gameplay.</p>
+</div>
+<div class="paragraph">
+<p>A host smoke test should prove the complete route from launch to interaction,
 using the profile you intend to run:</p>
 </div>
 <div class="olist arabic">
@@ -3132,7 +3144,10 @@ takes precedence over the legacy spelling when both are present.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>preload_file</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Profile preload-list file.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Startup object manifest, relative to <code>mudlib_root</code> (for example,
+<code>preload_objects</code>). List one object path per line in load order; blank lines and
+lines beginning with <code>#</code> are ignored. Object paths are relative to <code>mudlib_root</code>,
+with an optional <code>.c</code> extension. Prefer this manifest for the startup list.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>preload_objects</code></p></td>

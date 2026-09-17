@@ -8,6 +8,14 @@ The project is one Maven artifact with six core Java package families. Mudlibs
 own fiction, rules, commands, presentation, and compatibility policy. Shared
 engine and launcher code remains independent of any bundled game.
 
+## Top priority: the code is the product
+
+**The point of JVMud's code is to BE the product, rather than become the product.**
+Reading, learning from, extending, and contributing to the source are primary
+ways of using JVMud. Clarity, architecture, naming, documentation, and
+consistency are product qualities alongside correct behavior. This principle
+governs all project work; see the [guiding principles](docs/PRINCIPLES.md).
+
 ## Requirements
 
 This source checkout currently requires a Java 21-capable JDK, Maven, and a
@@ -31,7 +39,7 @@ scripts/jvmud-start smallmercies
 
 This starts the engine and **Small Mercies**, the bundled five-room example
 world, in one process. No separate engine daemon, database, or account setup is
-needed. Wait for `JVMud mudlib listening on` and the address before connecting.
+needed. Wait for `JVMud engine listening on` and the address before connecting.
 The default is localhost, TCP port **4000**, accessible from this computer only.
 Leave the terminal running; press **Ctrl+C** there to stop the server.
 
@@ -44,8 +52,24 @@ To start another compatible world, provide its manifest path:
 scripts/jvmud-start /absolute/path/to/world/jvmud/world.config
 ```
 
-The engine always requires a world manifest. The repository includes Small
-Mercies and LP245; other mudlibs are maintained outside this checkout.
+The engine requires one or more explicit world manifests. To offer both bundled
+mudlibs through one listener:
+
+```sh
+scripts/jvmud-start smallmercies lp245
+```
+
+Every connection receives a menu, even when only one mudlib is configured. Select
+by number or game id to enter that mudlib's login flow. There is no default world
+and no travel between worlds; reconnect to choose another mudlib.
+
+`engine.Engine` owns application startup and shutdown and starts `TelnetServer`
+as a transport component. Each `MudInstance` owns its own execution queue and
+clock. Player input, administration, and scheduled work execute serially on that
+instance's thread, using its `temporal_tick_interval`. A slow world does not
+hold up another world's commands or ticks. A zero interval disables automatic
+ticks for that instance. Tick intervals are delays between completed ticks;
+busy worlds do not accumulate catch-up ticks.
 
 ## Connect and play
 
@@ -172,11 +196,15 @@ Players use ports 4000 and 4001; administration uses 4100 and 4101. Each process
 has its own runtime and shutdown lifecycle. Use separate writable world data for
 independent copies of a persistent mudlib.
 
-A manifest can already mount worlds for player transfers, but this is distinct
-from hosting independently configured player listeners. Administration currently
-targets the primary world of the selected server; it does not select mounted
-worlds. Multiple independent listeners in one process are not provided by these
-launch commands.
+For several mudlibs on one player listener, explicitly select the mudlib exposed
+by the optional admin endpoint:
+
+```sh
+scripts/jvmud-start --admin-port 4100 --admin-game lp245 smallmercies lp245
+```
+
+`--admin-game` is required with multiple mudlibs. The endpoint serves only that
+mudlib. Engine logs are stored in `.jvmud/log` under the launch directory.
 
 ## Documentation
 

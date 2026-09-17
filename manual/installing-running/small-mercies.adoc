@@ -15,7 +15,7 @@ From the repository root:
 scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config
 ----
 
-Wait for `JVMud mudlib listening on 127.0.0.1:4000`. In a second terminal or
+Wait for `JVMud engine listening on 127.0.0.1:4000`. In a second terminal or
 Telnet-capable MUD client, connect to `127.0.0.1` on port `4000`:
 
 [source,shell]
@@ -113,8 +113,9 @@ recurring ticks to `tick`; there is no filesystem-account policy or database.
 [cols="2,3",options="header"]
 |===
 |Path under `mudlibs/smallmercies/` |What to learn
-|`jvmud/smallmercies.config` |Explicit source root, preloads, Persona, initial
+|`jvmud/smallmercies.config` |Explicit source root, preload manifest path, Persona, initial
 Place, lifecycle mappings, and capability grant.
+|`source/preload_objects` |Startup object paths, one per line in load order.
 |`source/lib/room.c` |Shared descriptions, authored exit lookup, and NPC creation.
 |`source/room/*.c` |Small Place definitions with prose, exits, and resident NPCs.
 |`source/player/adventurer.c` |Guest creation, command registration, movement,

@@ -840,11 +840,6 @@ public final class LPCRuntime {
         runtimeContext.registerEfun(efun);
     }
 
-    /** Sets the server-owned handler for moving the active Player between hosted games. */
-    public void setPlayerTransferHandler(BiFunction<Object, String, Integer> playerTransferHandler) {
-        runtimeContext.setPlayerTransferHandler(playerTransferHandler);
-    }
-
     /** Sets the default output sink used for runtime text delivery. */
     public void setOutputSink(Consumer<String> outputSink) {
         runtimeContext.setOutputSink(outputSink);

@@ -22,9 +22,11 @@ takes precedence over the legacy spelling when both are present.
 |`mudlib_object` |Optional boundary-declaration LPC object.
 |`mfun_object` |Mudlib-global function object.
 |`include_paths` |Comma-separated source include search paths.
-|`preload_file` |Profile preload-list file.
+|`preload_file` |Startup object manifest, relative to `mudlib_root` (for example,
+`preload_objects`). List one object path per line in load order; blank lines and
+lines beginning with `#` are ignored. Object paths are relative to `mudlib_root`,
+with an optional `.c` extension. Prefer this manifest for the startup list.
 |`preload_objects` |Additional comma-separated startup object paths.
-|`mount.<game-id>` |Mounted profile config, relative to this manifest's directory.
 |===
 
 Use mudlib-rooted object paths such as `room/church`; Java package paths are not

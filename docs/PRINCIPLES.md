@@ -2,6 +2,21 @@ JVMud
 Master Statement of Guiding Principles
 ======================================
 
+Top Priority: The Code Is the Product
+------------------------------------
+
+**The point of JVMud's code is to BE the product, rather than become the product.**
+
+JVMud is a public-facing software project. Reading, learning from, extending,
+and contributing to its source are primary ways of using the product.
+Clarity, architecture, naming, documentation, and consistency are product
+qualities, alongside correct behavior.
+
+This is a top priority for all project work. Every change must be judged both
+by what it does and by the quality of the implementation it leaves for others
+to understand and maintain. Source quality is part of completing the work,
+not optional polish deferred until after a feature works.
+
 Purpose
 -------
 
@@ -471,7 +486,22 @@ architectural commitments.
 
 One Engine
 
-    Hosts one Game.
+    Owns application startup, transport components, and the lifetime of
+    independently running mudlib instances. Offers a menu of peer mudlibs;
+    no mudlib is a default world or a gateway to another world.
+
+One MudInstance
+
+    Hosts one Game, with its own command queue, clock, and configurable
+    tick interval. Player input and scheduled work execute serially on
+    that instance's thread. Worlds do not share a tick rate or wait for
+    each other's ticks.
+
+One MudlibRouter
+
+    Offers the mudlib menu and resolves a connection's selection.
+    The selected instance receives input directly. The router neither
+    executes worlds nor advances their clocks. World-hopping is unsupported.
 
 One Game
 
@@ -488,8 +518,8 @@ One Persistence Model
 
 One Temporality Model
 
-    Provides authoritative progression of time
-    and events.
+    Provides authoritative progression of time and events within each
+    world, independently of every other world.
 
 One Player Population
 
@@ -562,6 +592,14 @@ The engine should own general world services.
 The mudlib should own world meaning.
 
 The bridge should translate, not dominate.
+
+Input Interpretation
+--------------------
+
+The mudlib interprets player input and produces command-result messages.
+Transport delivers input and handles connection and protocol state. It does
+not interpret LPC return values as player success or failure, or invent
+responses such as "You can't do that."
 
 Architectural Principles
 ------------------------

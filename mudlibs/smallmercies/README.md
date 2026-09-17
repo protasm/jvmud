@@ -49,6 +49,7 @@ The cellar is down from the lane. Every exit has a return route.
 | `talk <npc>` | Hear the mayor, innkeeper, goose, or rat's very limited wisdom. |
 | `smile`, `wave`, `bow`, `laugh` | Perform a room-local emote. |
 | `score` | Show name, gender, class, STR/INT/DEX, HP, victories, and opponent. |
+| `roll` | Roll two six-sided dice for everyone in the room to see. |
 | `attack <npc>` / `kill <npc>` | Begin repeated sparring with the goose or rat. |
 | `stop` | End your bout immediately. Movement also ends combat. |
 | `rest` | Recover all HP at the inn. |
@@ -63,7 +64,8 @@ The cellar is down from the lane. Every exit has a return route.
 
 Every two seconds, warriors swing for `2 + STR / 3` damage; mages cast a
 spark for `2 + INT / 3`. Division is integer division. If the opponent remains
-standing, it retaliates; `DEX / 30` is the chance to dodge. Gender has no
+standing, it retaliates. Dodge checks roll twice from 0–29 and keep the lower
+result; a result below DEX dodges. At DEX 9 this gives a 51% dodge chance. Gender has no
 mechanical effect. There are no additional attributes or mana points.
 
 The goose has 16 HP and hits for 4; the rat has 20 HP and hits for 5.
@@ -78,9 +80,11 @@ Type `rest` for tea, toast, and full recovery. Nobody dies permanently.
 All gameplay is typed LPC using native JVMud functions; no compatibility mudlib,
 account service, database, or other world is required.
 
-- `jvmud/smallmercies.config`: boot profile, seven preloads, lifecycle mappings,
+- `jvmud/smallmercies.config`: boot profile, preload manifest path, lifecycle mappings,
   session input capability, and a one-second world tick.
+- `source/preload_objects`: seven startup object paths, one per line in load order.
 - `source/lib/room.c`: room descriptions, exit mappings, and NPC placement.
+- `source/lib/mercies.c`: shared mudlib functions selected by `mfun_object`.
 - `source/room/*.c`: the five rooms, their reciprocal routes, and residents.
 - `source/player/adventurer.c`: character creation, commands, and a two-second
   recurring combat callback. Output from timed callbacks targets the player's
@@ -89,9 +93,33 @@ account service, database, or other world is required.
   and a delayed recovery callback.
 
 To add a room, inherit `lib/room`, set the title, description, routes and exit
-text in `create`, add a return exit in its neighbor, and add it to the profile's
-`preload_objects`. Change the two class stat assignments in `choose_class` to
+text in `create`, add a return exit in its neighbor, and add it to
+`source/preload_objects`. Change the two class stat assignments in `choose_class` to
 experiment with combat balance. The engine code needs no changes.
+
+## Mudlib functions
+
+`mfun_object = lib/mercies` makes the typed functions in `source/lib/mercies.c`
+available to other objects without inheritance or explicit object calls. The
+shared object is stateless; pass the source object explicitly when an operation
+needs its location.
+
+- `roll_dice(count, sides)` adds independent rolls. It accepts 1–100 dice with
+  1–1000 sides; invalid requests return zero. The `roll` command uses `roll_dice(2, 6)`.
+- `health_description(health, maximum)` supplies the same gently heroic condition
+  descriptions for `score`, looking at adventurers, and looking at villagers.
+- `announce_near(source, message)` adds a newline and delivers to everyone at the
+  source's location. Chat, emotes, dice rolls, and timed NPC recovery use it.
+  An absent source or location produces no announcement.
+- `mercy_random(limit)` rolls twice and keeps the lower
+  result, giving adventurers a small mercy on dodge checks. Nonpositive limits
+  return zero. Both this helper and `roll_dice` call the engine's
+  `jvmud_random(limit)` primitive. Dice stay fair; dodge checks explicitly choose
+  the merciful game rule. The `jvmud_` prefix is reserved for engine symbols and
+  cannot be used in mudlib declarations.
+
+These are mudlib rules written in LPC. NPC recovery demonstrates that announcements also work
+from a timed callback, without relying on a current player.
 
 ## Verification
 
@@ -102,7 +130,7 @@ mvn -Dtest=SmallMerciesTest test
 mvn test
 ```
 
-The three focused integration tests boot the real profile and exercise session
+The focused integration tests boot the real profile and exercise session
 input validation, both classes, room-local chat and emotes, every route, NPC
 contention, scheduled victory/recovery, stop/movement/disconnect cleanup,
 defeat-to-inn, and healing.

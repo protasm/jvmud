@@ -121,7 +121,6 @@ public final class RuntimeContext {
     private BiFunction<String, String, Integer> mudlibTextRenamer = (source, destination) -> -1;
     private Function<String, Integer> mudlibDirectoryCreator = path -> 0;
     private Function<String, Integer> mudlibDirectoryRemover = path -> 0;
-    private BiFunction<Object, String, Integer> playerTransferHandler = (actor, gameId) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateSaver = (path, object) -> 0;
     private BiFunction<String, Object, Integer> lpcObjectStateRestorer = (path, object) -> 0;
     private TimedRuntimeErrorHandler timedRuntimeErrorHandler = (target, context, operation, error) -> {};
@@ -251,12 +250,6 @@ public final class RuntimeContext {
 
     public void setMudlibDirectoryRemover(Function<String, Integer> mudlibDirectoryRemover) {
         this.mudlibDirectoryRemover = (mudlibDirectoryRemover != null) ? mudlibDirectoryRemover : path -> 0;
-    }
-
-    public void setPlayerTransferHandler(BiFunction<Object, String, Integer> playerTransferHandler) {
-        this.playerTransferHandler = (playerTransferHandler != null)
-                ? playerTransferHandler
-                : (actor, gameId) -> 0;
     }
 
     public void setLPCObjectStateSaver(BiFunction<String, Object, Integer> lpcObjectStateSaver) {
@@ -584,6 +577,17 @@ public final class RuntimeContext {
      */
     public Efun resolveEngineEfun(String name, int arity) {
         return efunRegistry.lookup(name, arity);
+    }
+
+    /**
+     * Invokes a resolved native name for an explicit {@code efun::} or {@code jvmud::}
+     * call, bypassing mudlib shadowing even when the mfun uses the native name itself.
+     */
+    public Object invokeEngineEfun(String name, int arity, Object[] args) {
+        Efun efun = resolveEngineEfun(name, arity);
+        if (efun == null)
+            throw new IllegalArgumentException("Unknown engine function '" + name + "' with arity " + arity);
+        return efun.invoke(this, args);
     }
 
     /**
@@ -1308,15 +1312,6 @@ public final class RuntimeContext {
         return mudlibDirectoryRemover.apply(path);
     }
 
-    public int transferCurrentPlayerToGame(String gameId) {
-        String normalizedGameId = normalizeRegistryText(gameId);
-        if (normalizedGameId == null) {
-            return 0;
-        }
-        Object actor = outputTarget();
-        return actor != null ? playerTransferHandler.apply(actor, normalizedGameId) : 0;
-    }
-
     /** Opens a configured JDBC database connection and returns a JVMud database handle. */
     public int dbConnect(String databaseName) {
         return databaseService.connect(databaseName, null, null);
@@ -1718,9 +1713,19 @@ public final class RuntimeContext {
         }
 
         aliases.put(normalizedNamespace, normalizedAlias);
-        entityAliases
+        Object previousOwner = entityAliases
                 .computeIfAbsent(normalizedNamespace, ignored -> new LinkedHashMap<>())
                 .put(normalizedAlias, object);
+        // A replaced object must no longer own this alias, including during later cleanup.
+        if (previousOwner != null && previousOwner != object) {
+            Map<String, String> previousAliases = aliasesByEntity.get(previousOwner);
+            if (previousAliases != null) {
+                previousAliases.remove(normalizedNamespace);
+                if (previousAliases.isEmpty()) {
+                    aliasesByEntity.remove(previousOwner);
+                }
+            }
+        }
     }
 
     public Object findEntityAlias(Object namespace, Object alias) {

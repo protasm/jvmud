@@ -43,7 +43,7 @@ If a ZIP extractor removed executable permissions, run `chmod +x scripts/jvmud-*
 scripts/jvmud-start smallmercies
 ```
 
-Wait for `JVMud mudlib listening on`, then connect a Telnet-capable MUD client to
+Wait for `JVMud engine listening on`, then connect a Telnet-capable MUD client to
 `127.0.0.1`, port `4000`, with SSL/TLS disabled. Choose a guest name (2–16 letters),
 `male` or `female`, and `warrior` or `mage`. Try `help`, `look`, `score`, and `north`.
 Type `quit` to disconnect. Guests last for one connection. Stop the server with

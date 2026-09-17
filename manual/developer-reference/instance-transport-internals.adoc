@@ -1,9 +1,21 @@
 === Instance And Transport Internals
 
-`MudlibBoot` reads profile metadata, assembles runtime configuration, and loads
-startup content. `MudInstance` coordinates the running world, LPC objects,
-Personas, lifecycle dispatch, and scheduled work. `MudlibRouter` coordinates
-explicitly mounted worlds. `TelnetServer` owns the listener and connection path.
+`engine.Engine` is the application entry point. It boots explicit peer mudlibs,
+starts their independent execution, and owns the Telnet and optional admin
+components. `MudlibBoot` reads each manifest and loads startup content.
+`MudlibRouter` provides a menu and resolves a connection's selection before
+any player is attached. It has no default world or world-hopping behavior.
+`TelnetServer` owns socket mechanics, not engine startup or world clocks.
+
+Each `MudInstance` owns a `MudlibExecution`: one thread serving its command queue
+and clock. Player input, protocol callbacks, administration, and scheduled work
+run serially there. Each manifest supplies its own `temporal_tick_interval`;
+zero disables automatic ticks. Ticks use a delay after the preceding tick
+completes, without accumulating catch-up ticks. No router-wide tick loop or
+cross-world execution lock exists.
+
+Telnet delivers input without interpreting LPC command results or generating
+rejected-command messages. The selected mudlib owns that meaning and output.
 
 Follow an input from transport to instance to LPC command handling when debugging
 player behavior. Follow an efun from its catalog through runtime context and
@@ -12,7 +24,7 @@ support; `engine.world` owns the engine's world model.
 
 `AdminClient` connects to the authenticated loopback `AdminServer`; each client
 gets an attached `AdminCli` command session. `InstanceHost.administer` serializes
-commands against the primary world with the same router/instance locks used by
+commands on the explicitly selected mudlib's execution queue alongside
 player dispatch and ticks. Admin socket reads and response writes occur outside
 those locks. The client never boots a runtime.
 Storage adapters live under `persistence`. Concurrency hardening and alignment

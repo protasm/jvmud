@@ -7,7 +7,7 @@ Before hosting content, check these responsibilities against your source tree:
 * lifecycle mappings name methods with the expected signatures;
 * optional language features and engine capabilities match actual requirements;
 * writable stores exist where the persistence policy expects them;
-* mounted worlds boot independently before you exercise transfer.
+* each configured world boots independently and can be selected directly from the engine menu.
 
 For a load failure, reproduce the same object under the same manifest in the
 admin shell with `verbosity watch`. Changes to includes, syntax flags, or adapters

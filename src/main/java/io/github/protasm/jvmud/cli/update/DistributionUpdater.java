@@ -148,7 +148,7 @@ public final class DistributionUpdater {
         } finally { deleteTree(work); }
     }
 
-    record Server(Path record, long pid, String started, Path cwd, Path mudlibRoot, List<String> args, Map<String, String> environment) {}
+    record Server(Path record, long pid, String started, Path cwd, Path logDirectory, List<String> args, Map<String, String> environment) {}
 
     static List<Server> runningServers(Path root) throws IOException {
         List<Server> result = new ArrayList<>();
@@ -166,7 +166,8 @@ public final class DistributionUpdater {
                     if (!data.path("state").asText().equals("ready")) throw new IOException("Server is still starting: " + pid);
                     List<String> args = new ArrayList<>(); data.path("args").forEach(v -> args.add(v.asText()));
                     Map<String, String> env = new LinkedHashMap<>(); data.path("javaEnvironment").fields().forEachRemaining(e -> env.put(e.getKey(), e.getValue().asText()));
-                    result.add(new Server(record, pid, started, Path.of(data.path("cwd").asText()), Path.of(data.path("mudlibRoot").asText()), args, env));
+                    result.add(new Server(record, pid, started, Path.of(data.path("cwd").asText()), (data.has("engineRoot") ? Path.of(data.path("engineRoot").asText()).resolve(".jvmud/log")
+                            : Path.of(data.path("mudlibRoot").asText()).resolve("jvmud/log")), args, env));
                 }
             }
         }
@@ -181,7 +182,8 @@ public final class DistributionUpdater {
 
     private static boolean belongsTo(Path root, ProcessHandle process) throws IOException {
         List<String> args = Arrays.asList(process.info().arguments().orElse(new String[0]));
-        if (!args.contains("io.github.protasm.jvmud.transport.telnet.TelnetServer")) return false;
+        if (!args.contains("io.github.protasm.jvmud.engine.Engine")
+                && !args.contains("io.github.protasm.jvmud.transport.telnet.TelnetServer")) return false;
         for (int i = 0; i + 1 < args.size(); i++) {
             if (!Set.of("-cp", "-classpath", "--class-path").contains(args.get(i))) continue;
             for (String entry : args.get(i + 1).split(java.io.File.pathSeparator)) {
@@ -204,7 +206,7 @@ public final class DistributionUpdater {
     }
 
     private static void restart(Path root, Server server, List<Process> launched) throws Exception {
-        Path logs = server.mudlibRoot().resolve("jvmud/log"); Files.createDirectories(logs);
+        Path logs = server.logDirectory(); Files.createDirectories(logs);
         Path log = logs.resolve("server-" + server.pid() + "-" + System.nanoTime() + ".log");
         Files.createFile(log, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
         List<String> command = new ArrayList<>(List.of(root.resolve("scripts/jvmud-start").toString())); command.addAll(server.args());

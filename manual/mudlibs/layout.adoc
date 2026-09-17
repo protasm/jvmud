@@ -16,9 +16,10 @@ writable state. This is an illustrative convention, not a required game:
 before choosing, moving, or cleaning state paths; not every store uses a sibling
 state directory.
 
-Mounts use `mount.<game-id> = <config-path>`; the manifest explicitly names each
-mounted world. Paths resolve relative to the declaring manifest. Do not rely on
-sibling-directory discovery or any bundled game identity.
+Supply peer manifests to `scripts/jvmud-start <manifest> <manifest> ...`.
+The engine offers them in a connection menu. Each must have a unique game id.
+`mount.*` declarations and world-hopping are unsupported. No manifest owns or
+implicitly discovers other worlds.
 
 Small Mercies follows this separation under `mudlibs/smallmercies/`. Its guest
 characters are transient; it does not demonstrate durable account storage.

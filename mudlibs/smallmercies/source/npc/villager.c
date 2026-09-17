@@ -33,7 +33,7 @@ int id(string value) {
 }
 
 void describe(object viewer) {
-  jvmud_write_to_lpc_object(viewer, prose + "\n");
+  jvmud_write_to_lpc_object(viewer, prose + "\n" + name + " looks " + health_description(health, maximum) + ".\n");
 }
 
 string talk() {
@@ -79,5 +79,5 @@ void recover() {
 
   resting = 0;
 
-  jvmud_emit_perceivable(jvmud_current_lpc_object(), name + " returns to duty, pretending nothing happened.\n");
+  announce_near(jvmud_current_lpc_object(), name + " returns to duty, pretending nothing happened.");
 }

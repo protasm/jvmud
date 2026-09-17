@@ -217,8 +217,6 @@ import javax.crypto.spec.PBEKeySpec;
  *       been negotiated for the current or supplied interactive object.</li>
  *   <li>{@code jvmud_send_gmcp(string package[, mixed payload]) : status} JSON-encodes and sends
  *       a GMCP message to the current interactive object.</li>
- *   <li>{@code jvmud_transfer_player_to_game(string gameId) : status} asks the host to transfer
- *       the current player to another registered game.</li>
  *   <li>{@code jvmud_save_lpc_object_state(string path) : status} persists the current object's LPC
  *       fields.</li>
  *   <li>{@code jvmud_restore_lpc_object_state(string path) : status} restores the current object's
@@ -448,7 +446,7 @@ public final class CoreEfuns {
                 .contains(name)) {
             return capabilities.contains(EngineCapability.SESSION_CONTROL);
         }
-        if (Set.of("jvmud_shutdown", "jvmud_transfer_player_to_game").contains(name)) {
+        if ("jvmud_shutdown".equals(name)) {
             return capabilities.contains(EngineCapability.HOST_CONTROL);
         }
         return true;
@@ -627,8 +625,6 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.createMudlibDirectory(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_remove_mudlib_directory", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.removeMudlibDirectory(String.valueOf(args[0]))));
-        efuns.add(efun("jvmud_transfer_player_to_game", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
-                (runtime, args) -> runtime.transferCurrentPlayerToGame(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_save_lpc_object_state", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> runtime.saveCurrentLPCObjectState(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_restore_lpc_object_state", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),

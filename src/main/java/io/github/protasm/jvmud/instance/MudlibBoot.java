@@ -226,7 +226,6 @@ public final class MudlibBoot {
                 builder.engineFunction(engineName, mudlibName));
         configBoundary.engineFunctionAliases().forEach((mudlibName, engineName) ->
                 builder.engineFunction(engineName, mudlibName));
-        configBoundary.mountedMudlibConfigs().forEach(builder::mountedMudlib);
         objectBoundary.compatibilityPredefines().forEach(builder::compatibilityPredefine);
         configBoundary.compatibilityPredefines().forEach(builder::compatibilityPredefine);
         objectBoundary.compatibilityFunctionPredefines().forEach((macroName, replacements) ->

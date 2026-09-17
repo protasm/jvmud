@@ -78,7 +78,6 @@ public final class MudlibBoundary {
     private final Set<MudlibLifecycleEvent> lifecycleEvents;
     private final Map<MudlibLifecycleEvent, String> lifecycleMethods;
     private final Map<String, String> engineFunctionAliases;
-    private final Map<String, String> mountedMudlibConfigs;
     private final Map<String, String> compatibilityPredefines;
     private final Map<String, Map<String, String>> compatibilityFunctionPredefines;
 
@@ -122,7 +121,6 @@ public final class MudlibBoundary {
         this.lifecycleEvents = immutableCopy(builder.lifecycleEvents);
         this.lifecycleMethods = immutableCopy(builder.lifecycleMethods);
         this.engineFunctionAliases = normalizeTextMap(builder.engineFunctionAliases);
-        this.mountedMudlibConfigs = normalizeTextMap(builder.mountedMudlibConfigs);
         this.compatibilityPredefines = normalizeTextMap(builder.compatibilityPredefines);
         this.compatibilityFunctionPredefines = normalizeNestedTextMap(builder.compatibilityFunctionPredefines);
     }
@@ -377,11 +375,6 @@ public final class MudlibBoundary {
         return engineFunctionAliases;
     }
 
-    /** Returns game-id to config-file declarations for additional worlds mounted by the host. */
-    public Map<String, String> mountedMudlibConfigs() {
-        return mountedMudlibConfigs;
-    }
-
     /** Returns the JVMud-native engine function name for a mudlib-visible spelling, if one is declared. */
     public Optional<String> engineFunction(String mudlibName) {
         return Optional.ofNullable(engineFunctionAliases.get(normalizeRequiredText(mudlibName, "Engine function name")));
@@ -481,7 +474,6 @@ public final class MudlibBoundary {
                 || !lifecycleEvents.isEmpty()
                 || !lifecycleMethods.isEmpty()
                 || !engineFunctionAliases.isEmpty()
-                || !mountedMudlibConfigs.isEmpty()
                 || !compatibilityPredefines.isEmpty()
                 || !compatibilityFunctionPredefines.isEmpty();
     }
@@ -649,8 +641,6 @@ public final class MudlibBoundary {
         private final EnumMap<MudlibLifecycleEvent, String> lifecycleMethods =
                 new EnumMap<>(MudlibLifecycleEvent.class);
         private final java.util.LinkedHashMap<String, String> engineFunctionAliases =
-                new java.util.LinkedHashMap<>();
-        private final java.util.LinkedHashMap<String, String> mountedMudlibConfigs =
                 new java.util.LinkedHashMap<>();
         private final java.util.LinkedHashMap<String, String> compatibilityPredefines =
                 new java.util.LinkedHashMap<>();
@@ -933,23 +923,18 @@ public final class MudlibBoundary {
             return this;
         }
 
-        /** Maps a JVMud-native engine function name to a mudlib-visible function spelling. */
+        /** Maps a native function to a mudlib spelling without repurposing a reserved engine name. */
         public Builder engineFunction(String engineName, String mudlibName) {
             String normalizedMudlibName = normalizeRequiredText(mudlibName, "Mudlib-visible engine function name");
             String normalizedEngineName = normalizeOptionalText(engineName);
+            if (normalizedMudlibName.startsWith("jvmud_") && normalizedEngineName != null
+                    && !normalizedMudlibName.equals(normalizedEngineName))
+                throw new IllegalArgumentException("Cannot remap reserved engine name '" + normalizedMudlibName + "'.");
             if (normalizedEngineName == null) {
                 engineFunctionAliases.remove(normalizedMudlibName);
             } else {
                 engineFunctionAliases.put(normalizedMudlibName, normalizedEngineName);
             }
-            return this;
-        }
-
-        /** Declares another mudlib configuration to mount under its stable game id. */
-        public Builder mountedMudlib(String gameId, String configPath) {
-            mountedMudlibConfigs.put(
-                    normalizeRequiredText(gameId, "Mounted mudlib game id"),
-                    normalizeRequiredText(configPath, "Mounted mudlib config path"));
             return this;
         }
 

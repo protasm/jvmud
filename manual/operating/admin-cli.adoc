@@ -16,7 +16,7 @@ scripts/jvmud-cli --port 4100
 ----
 
 The CLI displays the selected server's admin port and world path. Commands act on
-that server's primary world, sharing its actual objects and execution lock with
+the selected mudlib, sharing its actual objects and execution queue with
 player input and ticks. No new world is booted. Mounted worlds are not selected
 by this interface. Every input line is an admin command, not a player command.
 

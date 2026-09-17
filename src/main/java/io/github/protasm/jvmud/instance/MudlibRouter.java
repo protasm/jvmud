@@ -1,279 +1,32 @@
 package io.github.protasm.jvmud.instance;
 
-import io.github.protasm.jvmud.compiler.exec.LPCObjectLoadObserver;
-import java.io.PrintWriter;
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.List;
+import java.util.Optional;
 
-/** Routes one hosted entrypoint across mounted mudlib worlds. */
-public final class MudlibRouter implements InstanceHost {
-    private final Map<String, MudInstance> mudsByGameId = new LinkedHashMap<>();
-    private final Map<String, InstancePersona> suspendedDefaultPersonasBySession = new HashMap<>();
-    private final Map<String, BiConsumer<String, String>> protocolSinksBySession = new HashMap<>();
-    private final Map<String, Set<String>> enabledProtocolsBySession = new HashMap<>();
-    private final MudInstance defaultMud;
-    private int nextSessionId = 1;
+/** Menu and selection of peer mudlibs; owns no world, persona, execution queue, or shared clock. */
+public final class MudlibRouter {
+    private final List<MudInstance> mudlibs;
 
-    private MudlibRouter(MudInstance defaultMud) {
-        this.defaultMud = Objects.requireNonNull(defaultMud, "defaultMud");
-        register(defaultMud);
-    }
-
-    public static MudlibRouter boot(Path defaultMudlibRoot, String defaultConfigPath) {
-        return boot(defaultMudlibRoot, defaultConfigPath, MudlibBootProgress.none(), LPCObjectLoadObserver.NONE);
-    }
-
-    /**
-     * Boots the default mudlib router and reports host-visible progress while startup objects load.
-     *
-     * @param defaultMudlibRoot filesystem root of the default mudlib
-     * @param defaultConfigPath mudlib-relative JVMud configuration path for the default mudlib
-     * @param progress callback for local startup progress events
-     * @return router with the default mudlib, and any automatic sibling mounts, registered
-     */
-    public static MudlibRouter boot(Path defaultMudlibRoot, String defaultConfigPath, MudlibBootProgress progress) {
-        return boot(defaultMudlibRoot, defaultConfigPath, progress, LPCObjectLoadObserver.NONE);
-    }
-
-    /**
-     * Boots the default mudlib router with host-visible preload and object-load diagnostics.
-     *
-     * @param defaultMudlibRoot filesystem root of the default mudlib
-     * @param defaultConfigPath mudlib-relative JVMud configuration path for the default mudlib
-     * @param progress callback for local startup progress events
-     * @param objectLoadObserver observer for each shared LPC object load attempt
-     * @return router with the default mudlib, and any automatic sibling mounts, registered
-     */
-    public static MudlibRouter boot(
-            Path defaultMudlibRoot,
-            String defaultConfigPath,
-            MudlibBootProgress progress,
-            LPCObjectLoadObserver objectLoadObserver) {
-        MudInstance defaultMud = MudInstance.boot(defaultMudlibRoot, defaultConfigPath, progress, objectLoadObserver);
-        MudlibRouter host = new MudlibRouter(defaultMud);
-        Path defaultConfigFile = defaultMudlibRoot.resolve(defaultConfigPath).toAbsolutePath().normalize();
-        defaultMud.bootResult().mudlibBoundary().mountedMudlibConfigs().forEach((gameId, declaredConfig) -> {
-            Path mountedConfig = defaultConfigFile.getParent().resolve(declaredConfig).normalize();
-            Path configDirectory = mountedConfig.getParent();
-            if (configDirectory == null) {
-                throw new IllegalStateException("Mounted mudlib config has no parent: " + mountedConfig);
-            }
-            Path mountedRoot = "jvmud".equals(String.valueOf(configDirectory.getFileName()))
-                    ? configDirectory.getParent()
-                    : configDirectory;
-            if (mountedRoot == null) {
-                throw new IllegalStateException("Could not determine mounted mudlib root: " + mountedConfig);
-            }
-            String mountedConfigPath = mountedRoot.relativize(mountedConfig).toString().replace('\\', '/');
-            MudInstance mounted = MudInstance.boot(mountedRoot, mountedConfigPath, progress, objectLoadObserver);
-            if (!gameId.equals(mounted.gameId())) {
-                throw new IllegalStateException(
-                        "Mounted mudlib id " + mounted.gameId() + " does not match manifest key " + gameId + ".");
-            }
-            host.register(mounted);
-        });
-        return host;
-    }
-
-    private void register(MudInstance mud) {
-        mud.setTransferHandler(this::requestTransfer);
-        if (mudsByGameId.putIfAbsent(mud.gameId(), mud) != null) {
-            throw new IllegalStateException("Duplicate mounted mudlib game id: " + mud.gameId());
+    /** Creates a stable menu in engine configuration order. */
+    public MudlibRouter(List<MudInstance> mudlibs) {
+        this.mudlibs = List.copyOf(mudlibs);
+        if (this.mudlibs.isEmpty()) throw new IllegalArgumentException("The mudlib menu cannot be empty.");
+        if (this.mudlibs.stream().map(MudInstance::gameId).distinct().count() != this.mudlibs.size()) {
+            throw new IllegalArgumentException("Mudlib game ids must be unique.");
         }
     }
 
-    private int requestTransfer(MudInstance sourceMud, Object actor, String gameId) {
-        if (!mudsByGameId.containsKey(gameId)) {
-            return 0;
-        }
-        sourceMud.requestTransfer(actor, gameId);
-        return 1;
-    }
+    /** Returns the available menu entries, with no default selection. */
+    public List<MudInstance> mudlibs() { return mudlibs; }
 
-    /** Serializes trusted administration with player dispatch and world ticks. */
-    @Override
-    public synchronized <T> T administer(
-            java.util.function.Function<io.github.protasm.jvmud.compiler.exec.LPCRuntime, T> action) {
-        return defaultMud.administer(action);
-    }
-
-    @Override
-    public Path mudlibRoot() {
-        return defaultMud.mudlibRoot();
-    }
-
-    @Override
-    public MudlibBootResult bootResult() {
-        return defaultMud.bootResult();
-    }
-
-    @Override
-    public Duration worldTickInterval() {
-        return defaultMud.worldTickInterval();
-    }
-
-    @Override
-    public synchronized void advanceWorldTick() {
-        for (MudInstance mud : mudsByGameId.values()) {
-            mud.advanceWorldTick();
-        }
-    }
-
-    @Override
-    public synchronized void shutdown(Object reason) {
-        for (MudInstance mud : mudsByGameId.values()) {
-            mud.shutdown(reason);
-        }
-    }
-
-    @Override
-    public synchronized InstancePersona attachPersona(PrintWriter out, String remoteAddress) {
-        return defaultMud.attachPersona("telnet/" + nextSessionId++, out, remoteAddress, true);
-    }
-
-    @Override
-    public synchronized void bindClientProtocolSink(
-            InstancePersona persona, BiConsumer<String, String> protocolOutputSink) {
-        if (persona != null) {
-            protocolSinksBySession.put(persona.sessionId(), protocolOutputSink);
-            persona.mud().bindClientProtocolSink(persona, protocolOutputSink);
-        }
-    }
-
-    @Override
-    public synchronized void setClientProtocolEnabled(
-            InstancePersona persona, String protocol, boolean enabled) {
-        if (persona != null) {
-            Set<String> enabledProtocols = enabledProtocolsBySession.computeIfAbsent(
-                    persona.sessionId(), ignored -> new HashSet<>());
-            if (enabled) {
-                enabledProtocols.add(protocol);
-            } else {
-                enabledProtocols.remove(protocol);
-            }
-            persona.mud().setClientProtocolEnabled(persona, protocol, enabled);
-        }
-    }
-
-    @Override
-    public synchronized void receiveClientProtocolMessage(
-            InstancePersona persona, String protocol, String message) {
-        if (persona != null) {
-            persona.mud().receiveClientProtocolMessage(persona, protocol, message);
-        }
-    }
-
-    @Override
-    public synchronized void detachPersona(InstancePersona persona) {
-        if (persona != null) {
-            persona.mud().detachPersona(persona);
-            protocolSinksBySession.remove(persona.sessionId());
-            enabledProtocolsBySession.remove(persona.sessionId());
-        }
-    }
-
-    @Override
-    public synchronized Object dispatch(InstancePersona persona, PrintWriter out, String commandLine) {
-        MudInstance sourceMud = persona.mud();
-        Object result = sourceMud.dispatch(persona, out, commandLine);
-        String destinationGameId = sourceMud.consumeRequestedTransfer(persona);
-        if (destinationGameId != null) {
-            transfer(persona, out, destinationGameId);
-        }
-        return result;
-    }
-
-    private void transfer(InstancePersona persona, PrintWriter out, String destinationGameId) {
-        MudInstance destinationMud = mudsByGameId.get(destinationGameId);
-        if (destinationMud == null) {
-            out.println("The transfer destination is unavailable.");
-            return;
-        }
-
-        MudInstance sourceMud = persona.mud();
-        if (destinationMud == defaultMud && sourceMud != defaultMud) {
-            InstancePersona suspended = suspendedDefaultPersonasBySession.remove(persona.sessionId());
-            if (suspended == null) {
-                out.println("The suspended Persona for this session is unavailable.");
-                return;
-            }
-            sourceMud.detachPersona(persona, true);
-            out.println("Returning to the previous world.");
-            persona.replaceWith(defaultMud.resumePersona(suspended, out, persona.remoteAddress()));
-            restoreClientProtocols(persona);
-            return;
-        }
-
-        if (sourceMud == defaultMud) {
-            suspendedDefaultPersonasBySession.put(persona.sessionId(), snapshot(persona));
-            sourceMud.suspendPersonaForTransfer(persona);
-        } else {
-            sourceMud.detachPersona(persona, false);
-        }
-        out.println("Transferring to " + destinationGameId + ".");
-        InstancePersona replacement = destinationMud.attachVisitingPersona(
-                persona.sessionId(),
-                out,
-                persona.remoteAddress(),
-                persona.userId(),
-                persona.gender());
-        persona.replaceWith(replacement);
-        restoreClientProtocols(persona);
-    }
-
-    private void restoreClientProtocols(InstancePersona persona) {
-        BiConsumer<String, String> sink = protocolSinksBySession.get(persona.sessionId());
-        if (sink != null) {
-            persona.mud().bindClientProtocolSink(persona, sink);
-        }
-        for (String protocol : enabledProtocolsBySession.getOrDefault(persona.sessionId(), Set.of())) {
-            persona.mud().setClientProtocolEnabled(persona, protocol, true);
-        }
-    }
-
-    private InstancePersona snapshot(InstancePersona persona) {
-        return new InstancePersona(
-                persona.mud(),
-                persona.sessionId(),
-                persona.objectId(),
-                persona.name(),
-                persona.userId(),
-                persona.gender(),
-                persona.actor(),
-                persona.remoteAddress());
-    }
-
-    @Override
-    public synchronized void printPromptIfReady(InstancePersona persona, PrintWriter out) {
-        if (persona != null) {
-            persona.mud().printPromptIfReady(persona, out);
-        }
-    }
-
-    @Override
-    public synchronized boolean isCapturingInput(InstancePersona persona) {
-        return persona != null && persona.mud().isCapturingInput(persona);
-    }
-
-    @Override
-    public synchronized boolean isCapturingNoEchoInput(InstancePersona persona) {
-        return persona != null && persona.mud().isCapturingNoEchoInput(persona);
-    }
-
-    @Override
-    public synchronized boolean isAttached(InstancePersona persona) {
-        return persona != null && persona.mud().isAttached(persona);
-    }
-
-    @Override
-    public String transportControlPrefix() {
-        return defaultMud.transportControlPrefix();
+    /** Resolves an exact game id or a one-based menu number; invalid input stays at the menu. */
+    public Optional<MudInstance> select(String selection) {
+        Optional<MudInstance> byId = mudlibs.stream().filter(mud -> mud.gameId().equals(selection)).findFirst();
+        if (byId.isPresent()) return byId;
+        try {
+            int index = Integer.parseInt(selection) - 1;
+            if (index >= 0 && index < mudlibs.size()) return Optional.of(mudlibs.get(index));
+        } catch (NumberFormatException ignored) { /* Not a menu number. */ }
+        return Optional.empty();
     }
 }

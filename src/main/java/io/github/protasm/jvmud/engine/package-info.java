@@ -1,5 +1,9 @@
 /**
- * Engine-owned JVMud runtime model.
+ * JVMud application lifetime and engine-owned runtime model.
+ *
+ * <p>{@link io.github.protasm.jvmud.engine.Engine} is the application entry point. It owns
+ * independent mudlib instances and starts transport components. Each instance queues input
+ * and scheduled work on its own execution thread and clock.</p>
  *
  * <p>This package contains the concepts that belong to JVMud itself rather than to LPC, a specific
  * mudlib, Telnet hosting, or compiler internals. The subpackages are organized around concrete
@@ -33,7 +37,8 @@
  *
  * <p>World time is deterministic by default. {@link io.github.protasm.jvmud.engine.time.WorldScheduler}
  * owns scheduled work in ticks, while {@link io.github.protasm.jvmud.engine.time.WorldClock} is the
- * wall-clock adapter that can advance a scheduler for a hosted world.</p>
+ * standalone wall-clock adapter. Hosted mudlibs own their clock through their instance
+ * execution queue so ticks and commands cannot run concurrently.</p>
  *
  * <p>{@link io.github.protasm.jvmud.engine.output} keeps engine-owned text presentation separate
  * from server transport code and mudlib-authored prose. Persistence is currently represented by the

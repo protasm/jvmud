@@ -20,7 +20,8 @@ public final class InstallationServers implements AutoCloseable {
         this.values = values;
     }
 
-    public static InstallationServers register(String[] args, Path mudlibRoot) throws IOException {
+    /** Records engine launch arguments and its log root so an installation update can restart it. */
+    public static InstallationServers register(String[] args, Path engineRoot) throws IOException {
         String configured = System.getenv("JVMUD_INSTALL_ROOT");
         if (configured == null) return new InstallationServers(null, Map.of());
         Path root = Path.of(configured).toRealPath();
@@ -47,7 +48,7 @@ public final class InstallationServers implements AutoCloseable {
             values.put("cwd", Path.of("").toAbsolutePath().toString());
             values.put("args", List.of(args));
             values.put("javaEnvironment", javaEnvironment);
-            values.put("mudlibRoot", mudlibRoot.toAbsolutePath().normalize().toString());
+            values.put("engineRoot", engineRoot.toAbsolutePath().normalize().toString());
             values.put("state", "starting");
             InstallationServers result = new InstallationServers(directory.resolve(self.pid() + ".json"), values);
             result.write();
@@ -55,11 +56,11 @@ public final class InstallationServers implements AutoCloseable {
         }
     }
 
-    public void ready() throws IOException {
+    public synchronized void ready() throws IOException {
         if (record != null) { values.put("state", "ready"); write(); }
     }
 
-    @Override public void close() throws IOException {
+    @Override public synchronized void close() throws IOException {
         if (record != null) { values.put("state", "stopped"); write(); }
     }
 

@@ -1136,7 +1136,7 @@ public final class SemanticAnalyzer {
                 ASTArguments resolvedArgs = resolveArguments(callEfun.arguments(), context);
                 if (resolvedArgs == callEfun.arguments())
                     return callEfun;
-                return new ASTExprCallEfun(callEfun.line(), callEfun.efun(), resolvedArgs);
+                return new ASTExprCallEfun(callEfun.line(), callEfun.efun(), resolvedArgs, callEfun.engineOnly());
             }
 
             if (expression instanceof ASTExprInvokeLocal invokeLocal) {
@@ -1285,7 +1285,7 @@ public final class SemanticAnalyzer {
                 Efun efun = resolveQualifiedEngineFunction(unresolvedCall.name(), resolvedArgs.size());
 
                 if (efun != null)
-                    return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
+                    return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs, true);
 
                 problems.add(
                         new CompilationProblem(
@@ -1299,7 +1299,7 @@ public final class SemanticAnalyzer {
                 Efun efun = resolveJvmudEngineFunction(unresolvedCall.name(), resolvedArgs.size());
 
                 if (efun != null)
-                    return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs);
+                    return new ASTExprCallEfun(unresolvedCall.line(), efun, resolvedArgs, true);
 
                 problems.add(
                         new CompilationProblem(

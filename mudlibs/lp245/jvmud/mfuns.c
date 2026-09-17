@@ -226,7 +226,7 @@ object find_living(mixed name) {
   return jvmud_find_entity_alias("living", name);
 }
 
-string jvmud_mfun_status() {
+string lp245_mfun_status() {
   return "ok";
 }
 

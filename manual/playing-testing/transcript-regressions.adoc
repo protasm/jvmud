@@ -3,7 +3,7 @@
 For a useful regression report, record the repository revision, manifest path,
 startup summary, client input, expected result, actual output, and server error.
 Use a small route with known starting state. A successful login is a different
-assertion from successful movement, persistence, or transfer between worlds.
+assertion from successful movement, persistence, or selection from the mudlib menu.
 
 Start with the Small Mercies walkthrough and the relevant tests under
 `src/test/java/io/github/protasm/jvmud/instance/` and `transport/`. Add a focused

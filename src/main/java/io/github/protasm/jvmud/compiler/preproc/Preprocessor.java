@@ -101,6 +101,11 @@ public final class Preprocessor {
       Map<String, Map<String, String>> compatibilityFunctionPredefines) {
     this.resolver = Objects.requireNonNull(resolver);
 
+    if (compatibilityPredefines != null)
+      compatibilityPredefines.keySet().forEach(this::rejectReservedPredefine);
+    if (compatibilityFunctionPredefines != null)
+      compatibilityFunctionPredefines.keySet().forEach(this::rejectReservedPredefine);
+
     // predefineds you may want:
     defineObject("__LPC__", "1");
     if (compatibilityPredefines != null) {
@@ -328,6 +333,7 @@ public final class Preprocessor {
     String name = readIdent(cc);
 
     if (name == null) throw error("expected macro name after #define", cc, cc.line());
+    rejectReservedMacroName(name, cc);
 
     // function-like?
     List<String> params = null;
@@ -344,6 +350,7 @@ public final class Preprocessor {
           String p = readIdent(cc);
 
           if (p == null) throw error("expected parameter name in macro", cc, cc.line());
+          rejectReservedMacroName(p, cc);
 
           params.add(p);
 
@@ -372,10 +379,18 @@ public final class Preprocessor {
     String name = readIdent(cc);
 
     if (name == null) throw error("expected macro name after #undef", cc, cc.line());
+    rejectReservedMacroName(name, cc);
 
     macros.remove(name);
 
     skipRestOfLine(cc, out); // drop to EOL
+  }
+
+  /** Prevents source macros from declaring or rewriting names in the engine namespace. */
+  private void rejectReservedMacroName(String name, CharCursor cc) {
+    if (name.startsWith("jvmud_"))
+      throw error("Identifier '" + name + "' uses the reserved 'jvmud_' prefix. "
+          + "The 'jvmud_' namespace is reserved for JVMud engine symbols.", cc, cc.line());
   }
 
   private void doIfdef(
@@ -751,6 +766,13 @@ public final class Preprocessor {
   }
 
   /* ========================= macros ========================== */
+
+  /** Applies namespace protection to profile macros as well as source directives. */
+  private void rejectReservedPredefine(String name) {
+    if (name != null && name.trim().startsWith("jvmud_"))
+      throw new IllegalArgumentException("Identifier '" + name + "' uses the reserved 'jvmud_' prefix. "
+          + "The 'jvmud_' namespace is reserved for JVMud engine symbols.");
+  }
 
   private void defineObject(String name, String body) {
     macros.put(name, new Macro(name, null, List.of(syntheticToken(body))));

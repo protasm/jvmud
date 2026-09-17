@@ -1,15 +1,16 @@
-package io.github.protasm.jvmud.transport.telnet;
+package io.github.protasm.jvmud.engine;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermissions;
 
-/** Keeps command-line server diagnostics with the selected mudlib, while retaining console output. */
-final class MudlibServerLog {
-    private MudlibServerLog() {}
-    static void install(Path mudlibRoot, int port) throws IOException {
-        Path directory = mudlibRoot.resolve("jvmud/log");
+/** Keeps command-line server diagnostics with the engine installation, while retaining console output. */
+final class EngineLog {
+    private EngineLog() {}
+    /** Mirrors engine diagnostics to the installation log while retaining console output. */
+    static void install(Path applicationRoot, int port) throws IOException {
+        Path directory = applicationRoot.resolve(".jvmud/log");
         Files.createDirectories(directory);
         Path file = directory.resolve("server-" + port + ".log");
         if (!Files.exists(file)) Files.createFile(file, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));

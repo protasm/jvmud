@@ -18,7 +18,7 @@ Replace `<mudlib-config-file>` with the absolute path to your manifest, or a pat
 relative to the repository root. Do not type the angle brackets. The script
 compiles Java, resolves the dependency classpath, and runs the Telnet server in
 the foreground. Wait for the preload summary followed by
-`JVMud mudlib listening on 127.0.0.1:4000` before connecting.
+`JVMud engine listening on 127.0.0.1:4000` before connecting.
 
 The launcher defaults to loopback port 4000. Use `--bind 0.0.0.0 --port 4000`
 to accept incoming connections on all IPv4 interfaces, or choose a specific
@@ -42,3 +42,20 @@ Ctrl+C runs the server's shutdown path. Persistence is profile-specific; shuttin
 down does not promise a snapshot of every loaded object's state. Add `--admin-port 4100` to enable the authenticated local admin listener, then
 connect with `scripts/jvmud-cli --port 4100`. The CLI controls this live primary
 world; its port is separate from the player port.
+
+==== Offer several mudlibs
+
+Pass each manifest or mudlib name as a separate argument:
+
+[source,sh]
+----
+scripts/jvmud-start smallmercies lp245
+----
+
+The engine presents a selection menu before login, including for a single
+mudlib. Enter the menu number or game id. Mudlibs are peers; reconnect to choose
+another. Each instance has its own clock, configured by `temporal_tick_interval`,
+and serializes input and scheduled work on its own execution thread.
+
+When enabling administration for several mudlibs, use `--admin-game <game-id>`
+to choose the mudlib served by that admin endpoint.

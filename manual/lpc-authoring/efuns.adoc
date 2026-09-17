@@ -1,5 +1,17 @@
 === Efuns
 
+The `jvmud_` identifier prefix is reserved for JVMud engine symbols. Mudlib code
+may call `jvmud_*` efuns, but may not declare names with that prefix, including
+functions, fields, parameters, locals, or macros. This also applies to mfuns and
+compatibility shims. The compiler rejects violations even when the particular
+name is not yet an engine efun. Strings and comments are unaffected.
+Profile predefines and engine-function aliases cannot repurpose reserved names
+either; an alias may retain an engine function's identical native spelling.
+
+Name game policy separately: Small Mercies uses `mercy_random(n)` for favorable
+dodge rolls and `jvmud_random(n)` for the engine's uniform random primitive.
+Explicit `efun::` and `jvmud::` calls still bypass mudlib function resolution.
+
 Efuns expose host operations to LPC. Ordinary calls may resolve through mudlib
 functions or the active boundary's translation table. `efun::name(...)` selects
 that efun surface; `jvmud::name(...)` requires an exact native JVMud efun name.

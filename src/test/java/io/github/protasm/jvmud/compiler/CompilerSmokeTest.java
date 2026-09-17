@@ -1798,10 +1798,29 @@ final class CompilerSmokeTest {
                 int sizeof(mixed value) {
                     return 99;
                 }
+
+                int sample_size(mixed value) {
+                    return 10 + efun::sample_size(value);
+                }
                 """);
 
         LPCRuntime runtime = new LPCRuntime(LPCRuntimeConfig.builder().baseIncludePath(tempDir).build());
         CoreEfuns.registerCore(runtime);
+        // An unreserved native name still permits mfun shadowing and tests the runtime bypass.
+        runtime.registerEfun(new io.github.protasm.jvmud.compiler.efun.Efun() {
+            @Override
+            public io.github.protasm.jvmud.compiler.efun.EfunSignature signature() {
+                return new io.github.protasm.jvmud.compiler.efun.EfunSignature(
+                        new io.github.protasm.jvmud.compiler.parser.ast.Symbol(
+                                io.github.protasm.jvmud.compiler.parser.type.LPCType.LPCINT, "sample_size"),
+                        List.of(io.github.protasm.jvmud.compiler.parser.type.LPCType.LPCMIXED));
+            }
+
+            @Override
+            public Object call(RuntimeContext context, Object[] args) {
+                return 7;
+            }
+        });
         runtime.registerMudlibBoundary(MudlibBoundary.builder()
                 .mfunObjectPath("jvmud/mfuns")
                 .engineFunction("jvmud_size", "sizeof")
@@ -1816,11 +1835,15 @@ final class CompilerSmokeTest {
                     return efun::sizeof(({1, 2, 3}));
                 }
 
-                int jvmud_full_name() {
+                int native_shadowed() {
+                    return sample_size(({1, 2, 3}));
+                }
+
+                int native_full_name() {
                     return jvmud::jvmud_size(({1, 2}));
                 }
 
-                string jvmud_text_helper() {
+                string native_text_helper() {
                     return jvmud::jvmud_lowercase_text("LOUD");
                 }
 
@@ -1830,9 +1853,10 @@ final class CompilerSmokeTest {
                 """);
 
         assertEquals(99, object.invoke("shadowed"));
+        assertEquals(17, object.invoke("native_shadowed"));
         assertEquals(3, object.invoke("direct"));
-        assertEquals(2, object.invoke("jvmud_full_name"));
-        assertEquals("loud", object.invoke("jvmud_text_helper"));
+        assertEquals(2, object.invoke("native_full_name"));
+        assertEquals("loud", object.invoke("native_text_helper"));
         assertEquals("loud", object.invoke("fallback_alias"));
     }
 

@@ -284,8 +284,11 @@ public class Parser {
         return new DeclarationModifiers(visibility, isStatic, isNomask, isVarargs, isNosave, isDeprecated);
     }
 
-    /** Resolve declaration storage policy without rewriting tokens or changing explicit casts. */
+    /** Reject reserved mudlib names and resolve declaration storage without rewriting tokens. */
     public Symbol valueSymbol(String declaredType, String name) {
+        if (name.startsWith("jvmud_"))
+            throw new ParseException("Identifier '" + name + "' uses the reserved 'jvmud_' prefix. "
+                    + "The 'jvmud_' namespace is reserved for JVMud engine symbols.", tokens.previous());
         Symbol symbol = new Symbol(declaredType, name);
         if (runtimeContext.dynamicTypes())
             symbol.useDynamicStorage();
@@ -305,7 +308,7 @@ public class Parser {
             return valueSymbol(declaredTypeName, nameToken.lexeme());
         }
 
-        return new Symbol((String) null, firstToken.lexeme());
+        return valueSymbol(null, firstToken.lexeme());
     }
 
     /**

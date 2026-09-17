@@ -1211,7 +1211,7 @@ public final class BytecodeCompiler {
         mv.visitMethodInsn(
                 INVOKEVIRTUAL,
                 "io/github/protasm/jvmud/compiler/runtime/RuntimeContext",
-                "invokeEfun",
+                efunCall.engineOnly() ? "invokeEngineEfun" : "invokeEfun",
                 "(Ljava/lang/String;I[Ljava/lang/Object;)Ljava/lang/Object;",
                 false);
 

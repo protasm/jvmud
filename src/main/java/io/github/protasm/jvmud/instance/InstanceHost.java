@@ -5,11 +5,11 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.function.BiConsumer;
 
-/** Interactive host behind one telnet listener. */
+/** Interactive operations on one hosted mudlib, independent of its player transport. */
 public interface InstanceHost {
     /**
-     * Executes trusted administrative work against the primary world's runtime while holding
-     * the same locks used for player dispatch and ticks. The callback must not use
+     * Executes trusted administrative work on the selected mudlib's execution queue,
+     * serialized with player dispatch and ticks. The callback must not use
      * the runtime outside an administer call, and must not wait for network input or write to a socket.
      */
     default <T> T administer(java.util.function.Function<io.github.protasm.jvmud.compiler.exec.LPCRuntime, T> action) {
@@ -40,7 +40,8 @@ public interface InstanceHost {
 
     void detachPersona(InstancePersona persona);
 
-    Object dispatch(InstancePersona persona, PrintWriter out, String commandLine);
+    /** Delivers input; player-facing command meaning and responses belong to the mudlib. */
+    void dispatch(InstancePersona persona, PrintWriter out, String commandLine);
 
     void printPromptIfReady(InstancePersona persona, PrintWriter out);
 

@@ -17,4 +17,4 @@ mudlib's package emission. GMCP is not required for ordinary text play.
 |===
 
 For mounted-world issues, first prove each profile can boot directly, then test
-the mount configuration and transfer route. Capture the first failing transition.
+the engine menu selection and the selected mudlib manifest. Capture the first failing transition.

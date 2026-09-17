@@ -1700,7 +1700,7 @@ public final class IRLowerer {
         if (expression instanceof ASTExprCallEfun callEfun) {
             List<IRExpression> args = lowerArguments(callEfun.arguments(), context, problems);
             RuntimeType returnType = runtimeType(callEfun.lpcType());
-            return new IREfunCall(callEfun.line(), callEfun.signature().name(), args, returnType);
+            return new IREfunCall(callEfun.line(), callEfun.signature().name(), args, returnType, callEfun.engineOnly());
         }
 
         if (expression instanceof ASTExprCallMethod callMethod) {

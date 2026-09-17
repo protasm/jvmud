@@ -32,7 +32,7 @@ int receives_player_bound_messages() {
 }
 
 void describe(object viewer) {
-  jvmud_write_to_lpc_object(viewer, name + ", a " + gender + " " + profession + ", looks cautiously heroic.\n");
+  jvmud_write_to_lpc_object(viewer, name + ", a " + gender + " " + profession + ", looks " + health_description(health, maximum) + ".\n");
 }
 
 void connect() {
@@ -146,6 +146,7 @@ void init() {
   jvmud_add_action("look", "look");
   jvmud_add_action("look", "l");
   jvmud_add_action("score", "score");
+  jvmud_add_action("roll", "roll");
   jvmud_add_action("help", "help");
   jvmud_add_action("go", "go");
   jvmud_add_action("direction", "north");
@@ -199,13 +200,15 @@ int score(mixed ignored) {
 
   jvmud_write("HP " + health + "/" + maximum + "  Victories " + victories + "\n");
 
+  jvmud_write("You are " + health_description(health, maximum) + ".\n");
+
   if (opponent) jvmud_write("Fighting: " + jvmud_invoke_lpc_object(opponent, "short") + "\n");
 
   return 1;
 }
 
 int help(mixed ignored) {
-  jvmud_write("look [name], score, who, say <message>, talk <npc>\n");
+  jvmud_write("look [name], score, who, say <message>, talk <npc>, roll\n");
 
   jvmud_write("north/south/east/west/up/down (n/s/e/w/u/d), go <direction>\n");
 
@@ -262,7 +265,7 @@ int go(mixed way) {
 int say(mixed text) {
   if (!text) jvmud_write("Say what?\n");
 
-  else jvmud_emit_perceivable_at(jvmud_entity_location(jvmud_current_lpc_object()), name + " says: " + text + "\n");
+  else announce_near(jvmud_current_lpc_object(), name + " says: " + text);
 
   return 1;
 }
@@ -280,7 +283,18 @@ int social(mixed ignored) {
 
   if (action == "laugh") action = "laughs in the face of mild inconvenience";
 
-  jvmud_emit_perceivable_at(jvmud_entity_location(jvmud_current_lpc_object()), name + " " + action + ".\n");
+  announce_near(jvmud_current_lpc_object(), name + " " + action + ".");
+
+  return 1;
+}
+
+// A small visible example combining two mudlib functions.
+int roll(mixed ignored) {
+  int result;
+
+  result = roll_dice(2, 6);
+
+  announce_near(jvmud_current_lpc_object(), name + " rolls two dice: " + result + ". The goose requests an audit.");
 
   return 1;
 }
@@ -393,7 +407,7 @@ void tick() {
     return;
   }
 
-  if (jvmud_random(30) < dexterity) {
+  if (mercy_random(30) < dexterity) {
     jvmud_write_to_lpc_object(
       jvmud_current_lpc_object(), "You dodge with surprising dignity.\n"
     );

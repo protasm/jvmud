@@ -121,11 +121,35 @@ final class SmallMerciesTest {
             assertTrue(alice.text().toString().contains("wheelbarrow"), alice.text().toString());
             assertTrue(command(mud, alice, "look").contains("The Resting Hero"));
             assertTrue(command(mud, alice, "score").contains("HP 1/26"));
+            assertTrue(command(mud, alice, "score").contains("heroically in need of a sit-down"));
             command(mud, alice, "rest");
             assertTrue(command(mud, alice, "score").contains("HP 26/26"));
             alice.text().getBuffer().setLength(0);
             for (int i = 0; i < 6; i++) mud.advanceWorldTick();
             assertFalse(alice.text().toString().contains("damage"));
+        } finally { mud.shutdown(null); }
+    }
+
+    /** Proves shared dice output stays local and health prose is shared by creatures. */
+    @Test
+    void mudlibFunctionsRollAndDescribe() {
+        MudInstance mud = MudInstance.boot(Path.of("mudlibs/smallmercies"), "jvmud/smallmercies.config");
+        try {
+            Guest alice = login(mud, "Alice", "female", "warrior");
+            Guest bob = login(mud, "Bob", "male", "mage");
+            assertTrue(command(mud, alice, "look bob").contains("in excellent spirits"));
+            assertTrue(command(mud, alice, "look mayor").contains("blissfully above the fray"));
+            bob.text().getBuffer().setLength(0);
+            String roll = command(mud, alice, "roll");
+            var match = java.util.regex.Pattern.compile("rolls two dice: (\\d+)\\.").matcher(roll);
+            assertTrue(match.find(), roll);
+            int result = Integer.parseInt(match.group(1));
+            assertTrue(result >= 2 && result <= 12, roll);
+            assertEquals(roll, bob.text().toString());
+            command(mud, bob, "east");
+            bob.text().getBuffer().setLength(0);
+            command(mud, alice, "roll");
+            assertEquals("", bob.text().toString());
         } finally { mud.shutdown(null); }
     }
 

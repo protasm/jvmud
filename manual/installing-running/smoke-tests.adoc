@@ -25,9 +25,15 @@ rest, and quit. Success prints `PASS: live guest login...`. It does not launch
 or stop the server. Use a dedicated development listener so another player's
 sparring match or a resting NPC does not interfere.
 
-The shared preload-scan script expects `preload_file`; Small Mercies declares
-`preload_objects` inline. Use the focused test rather than that scanner for this
-profile.
+To compile every object in Small Mercies' `source/preload_objects` manifest:
+
+[source,shell]
+----
+scripts/scan-mudlib-preload-compile.sh mudlibs/smallmercies/jvmud/smallmercies.config
+----
+
+The scanner checks compilation; the focused test above also exercises gameplay.
+
 A host smoke test should prove the complete route from launch to interaction,
 using the profile you intend to run:
 
