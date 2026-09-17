@@ -63,7 +63,7 @@ Every connection receives a menu, even when only one mudlib is configured. Selec
 by number or game id to enter that mudlib's login flow. There is no default world
 and no travel between worlds; reconnect to choose another mudlib.
 
-`engine.Engine` owns application startup and shutdown and starts `TelnetServer`
+`engine.JVMud` owns application startup and shutdown and starts `TelnetServer`
 as a transport component. Each `MudInstance` owns its own execution queue and
 clock. Player input, administration, and scheduled work execute serially on that
 instance's thread, using its `temporal_tick_interval`. A slow world does not

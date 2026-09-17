@@ -1,6 +1,6 @@
 === Instance And Transport Internals
 
-`engine.Engine` is the application entry point. It boots explicit peer mudlibs,
+`engine.JVMud` is the application entry point. It boots explicit peer mudlibs,
 starts their independent execution, and owns the Telnet and optional admin
 components. `MudlibBoot` reads each manifest and loads startup content.
 `MudlibRouter` provides a menu and resolves a connection's selection before

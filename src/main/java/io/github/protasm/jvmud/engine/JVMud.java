@@ -20,7 +20,7 @@ import java.util.Objects;
  * Each mudlib owns its clock and execution queue; no engine tick visits all worlds.
  * Connections choose a mudlib before any player or persona is created.
  */
-public final class Engine implements AutoCloseable {
+public final class JVMud implements AutoCloseable {
     private final String bindAddress;
     private final int requestedPort;
     private final List<MudlibSpec> specifications;
@@ -32,17 +32,17 @@ public final class Engine implements AutoCloseable {
     private boolean closed;
 
     /** Creates an engine offering one explicitly configured mudlib in its menu. */
-    public Engine(String bindAddress, int port, Path root, String configPath) {
+    public JVMud(String bindAddress, int port, Path root, String configPath) {
         this(bindAddress, port, List.of(new MudlibSpec(root, configPath)));
     }
 
     /** Creates an engine offering the supplied mudlibs as peers, in declaration order. */
-    public Engine(String bindAddress, int port, List<MudlibSpec> specifications) {
+    public JVMud(String bindAddress, int port, List<MudlibSpec> specifications) {
         this(bindAddress, port, specifications, MudlibBootProgress.none(), LPCObjectLoadObserver.NONE);
     }
 
     /** Creates an engine with startup diagnostics; construction does not boot worlds or bind sockets. */
-    Engine(String bindAddress, int port, List<MudlibSpec> specifications,
+    JVMud(String bindAddress, int port, List<MudlibSpec> specifications,
             MudlibBootProgress progress, LPCObjectLoadObserver loadObserver) {
         this.bindAddress = Objects.requireNonNull(bindAddress, "bindAddress");
         this.requestedPort = port;
@@ -59,7 +59,7 @@ public final class Engine implements AutoCloseable {
 
     /** Boots all configured worlds, starts their individual clocks, and opens the menu listener. */
     public synchronized void start() throws IOException {
-        if (closed) throw new IllegalStateException("Engine is closed.");
+        if (closed) throw new IllegalStateException("JVMud is closed.");
         if (telnet != null) return;
         try {
             var ids = new HashSet<String>();
@@ -96,7 +96,7 @@ public final class Engine implements AutoCloseable {
     public void await() throws IOException {
         TelnetServer listener;
         synchronized (this) { listener = telnet; }
-        if (listener == null) throw new IllegalStateException("Engine has not started.");
+        if (listener == null) throw new IllegalStateException("JVMud has not started.");
         listener.await();
     }
 

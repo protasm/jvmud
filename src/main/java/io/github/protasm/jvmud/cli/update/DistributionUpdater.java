@@ -182,7 +182,9 @@ public final class DistributionUpdater {
 
     private static boolean belongsTo(Path root, ProcessHandle process) throws IOException {
         List<String> args = Arrays.asList(process.info().arguments().orElse(new String[0]));
-        if (!args.contains("io.github.protasm.jvmud.engine.Engine")
+        // Recognize current and earlier entry points when checking running installations.
+        if (!args.contains("io.github.protasm.jvmud.engine.JVMud")
+                && !args.contains("io.github.protasm.jvmud.engine.Engine")
                 && !args.contains("io.github.protasm.jvmud.transport.telnet.TelnetServer")) return false;
         for (int i = 0; i + 1 < args.size(); i++) {
             if (!Set.of("-cp", "-classpath", "--class-path").contains(args.get(i))) continue;

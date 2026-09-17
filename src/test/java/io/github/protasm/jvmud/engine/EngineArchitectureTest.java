@@ -20,7 +20,7 @@ class EngineArchitectureTest {
 
     @Test
     void menuAttachesOnlyTheChosenMudlibAndRejectsInvalidSelections() throws Exception {
-        try (Engine engine = engine(spec("first", "0"), spec("second", "0"))) {
+        try (JVMud engine = engine(spec("first", "0"), spec("second", "0"))) {
             engine.start();
             try (Socket socket = connect(engine)) {
                 String menu = readUntil(socket, "(or quit): ");
@@ -45,7 +45,7 @@ class EngineArchitectureTest {
 
     @Test
     void aSingleMudlibStillRequiresSelectionAndMenuQuitCreatesNoPlayer() throws Exception {
-        try (Engine engine = engine(spec("only", "0"))) {
+        try (JVMud engine = engine(spec("only", "0"))) {
             engine.start();
             try (Socket socket = connect(engine)) {
                 readUntil(socket, "(or quit): ");
@@ -63,7 +63,7 @@ class EngineArchitectureTest {
         CountDownLatch otherTick = new CountDownLatch(1);
         AtomicReference<String> firstThread = new AtomicReference<>();
         AtomicReference<String> secondThread = new AtomicReference<>();
-        try (Engine engine = engine(spec("slow", "0.01"), spec("fast", "0.02"), spec("manual", "0"))) {
+        try (JVMud engine = engine(spec("slow", "0.01"), spec("fast", "0.02"), spec("manual", "0"))) {
             engine.start();
             var slow = engine.mudlibs().get(0);
             var fast = engine.mudlibs().get(1);
@@ -101,7 +101,7 @@ class EngineArchitectureTest {
     @Test
     void duplicateIdsFailStartupAndShutdownAlreadyBootedMudlibs() throws Exception {
         MudlibSpec first = spec("duplicate", "0");
-        try (Engine engine = engine(first, first)) {
+        try (JVMud engine = engine(first, first)) {
             assertThrows(IllegalArgumentException.class, engine::start);
             assertEquals(2, engine.mudlibs().size());
             for (var mud : engine.mudlibs()) {
@@ -113,7 +113,7 @@ class EngineArchitectureTest {
 
     @Test
     void engineClosesConnectionsWaitingAtTheMenu() throws Exception {
-        try (Engine engine = engine(spec("only", "0"))) {
+        try (JVMud engine = engine(spec("only", "0"))) {
             engine.start();
             try (Socket socket = connect(engine)) {
                 readUntil(socket, "(or quit): ");
@@ -135,8 +135,8 @@ class EngineArchitectureTest {
         assertEquals("second", options.adminGame());
     }
 
-    private Engine engine(MudlibSpec... specifications) {
-        return new Engine("127.0.0.1", 0, List.of(specifications));
+    private JVMud engine(MudlibSpec... specifications) {
+        return new JVMud("127.0.0.1", 0, List.of(specifications));
     }
 
     private MudlibSpec spec(String id, String interval) throws IOException {
@@ -171,12 +171,12 @@ class EngineArchitectureTest {
         return new MudlibSpec(root, "world.config");
     }
 
-    private int connections(Engine engine, int index) {
+    private int connections(JVMud engine, int index) {
         return (Integer) engine.mudlibs().get(index).administer(runtime ->
                 runtime.invokeObject(runtime.loadOrGetObject("hub"), "query_connections"));
     }
 
-    private Socket connect(Engine engine) throws IOException {
+    private Socket connect(JVMud engine) throws IOException {
         Socket socket = new Socket("127.0.0.1", engine.port());
         socket.setSoTimeout(3000);
         return socket;

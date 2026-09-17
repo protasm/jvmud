@@ -1,7 +1,7 @@
 /**
  * JVMud application lifetime and engine-owned runtime model.
  *
- * <p>{@link io.github.protasm.jvmud.engine.Engine} is the application entry point. It owns
+ * <p>{@link io.github.protasm.jvmud.engine.JVMud} is the application entry point. It owns
  * independent mudlib instances and starts transport components. Each instance queues input
  * and scheduled work on its own execution thread and clock.</p>
  *

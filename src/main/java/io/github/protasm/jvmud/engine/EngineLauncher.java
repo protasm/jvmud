@@ -38,7 +38,7 @@ final class EngineLauncher {
         EngineLog.install(applicationRoot, options.port());
         StartupObjectLoadTrace trace = commandLineObjectLoadTrace(options.traceStartupLoads());
         try (InstallationServers registration = InstallationServers.register(args, applicationRoot);
-                Engine engine = new Engine(options.bindAddress(), options.port(), options.mudlibs(),
+                JVMud engine = new JVMud(options.bindAddress(), options.port(), options.mudlibs(),
                         commandLineBootProgress(), trace)) {
             Thread shutdown = new Thread(() -> {
                 engine.close();
@@ -57,7 +57,7 @@ final class EngineLauncher {
                 }
                 trace.finishStartup();
                 for (var mud : engine.mudlibs()) {
-                    System.out.println(mud.gameId() + ": " + Engine.preloadSummary(mud.bootResult()));
+                    System.out.println(mud.gameId() + ": " + JVMud.preloadSummary(mud.bootResult()));
                 }
                 trace.printSummaryIfEnabled();
                 System.out.println("JVMud engine listening on " + engine.bindAddress() + ":" + engine.port());

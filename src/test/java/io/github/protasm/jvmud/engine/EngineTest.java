@@ -36,7 +36,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 final class EngineTest {
     /** Chooses the only menu entry before exercising the mudlib's existing login tests. */
-    private static Socket connectToOnlyMudlib(Engine engine) throws IOException {
+    private static Socket connectToOnlyMudlib(JVMud engine) throws IOException {
         Socket socket = new Socket("127.0.0.1", engine.port());
         socket.getOutputStream().write("1\n".getBytes(StandardCharsets.UTF_8));
         socket.getOutputStream().flush();
@@ -207,7 +207,7 @@ final class EngineTest {
     void lp245GoPuzzleRespondsToSpokenMoveOverTelnet() throws Exception {
         Path lp245 = lp245TestRoot();
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -263,7 +263,7 @@ final class EngineTest {
     void lp245TrollHuntKeepsHeartbeatAfterExaminingMonster() throws Exception {
         Path lp245 = lp245TestRoot();
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -339,7 +339,7 @@ final class EngineTest {
         Files.writeString(player, Files.readString(player)
                 .replace("move_object(myself, \"room/church\");", "move_object(myself, \"room/wiz_hall\");"));
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -428,7 +428,7 @@ final class EngineTest {
                 void offer_interactions() {}
                 """);
 
-        try (Engine server = new Engine("127.0.0.1", 0, tempDir, "jvmud/test.config")) {
+        try (JVMud server = new JVMud("127.0.0.1", 0, tempDir, "jvmud/test.config")) {
             server.start();
             try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
@@ -478,13 +478,13 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             assertEquals(
                     "preload manifest init_file: compiled 1 object(s), skipped 1 object(s). Skipped: obj/broken",
-                    Engine.preloadSummary(server.mudlibs().getFirst().bootResult()));
+                    JVMud.preloadSummary(server.mudlibs().getFirst().bootResult()));
         }
     }
 
@@ -522,7 +522,7 @@ final class EngineTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -564,7 +564,7 @@ final class EngineTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -611,7 +611,7 @@ final class EngineTest {
                 """);
         installMinimalMudlibPlayer(mudlibRoot, "room/village/vill_green");
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, mudlibRoot, DEFAULT_CONFIG_PATH)) {
             server.start();
 
@@ -670,7 +670,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -772,7 +772,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -837,7 +837,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -909,7 +909,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -962,7 +962,7 @@ final class EngineTest {
                 }
                 """);
 
-        Engine server = new Engine("127.0.0.1", 0, tempDir, LP245_CONFIG_PATH);
+        JVMud server = new JVMud("127.0.0.1", 0, tempDir, LP245_CONFIG_PATH);
         server.start();
         server.close();
         server.close();
@@ -1037,7 +1037,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1126,7 +1126,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1180,7 +1180,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1244,7 +1244,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1302,7 +1302,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1332,7 +1332,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1377,7 +1377,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1499,7 +1499,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1629,7 +1629,7 @@ final class EngineTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, DEFAULT_CONFIG_PATH)) {
             server.start();
 
@@ -1686,7 +1686,7 @@ final class EngineTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (Engine server = new Engine(
+        try (JVMud server = new JVMud(
                 "127.0.0.1", 0, tempDir, DEFAULT_CONFIG_PATH)) {
             server.start();
 

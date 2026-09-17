@@ -47,7 +47,7 @@ static docs.
 
 ## Application Operation
 
-- `engine.Engine` owns `main()`, application lifetime, and transport startup.
+- `engine.JVMud` owns `main()`, application lifetime, and transport startup.
   `TelnetServer` is an engine-owned component.
 - The engine offers explicitly configured mudlibs as peers through a menu.
   There is no default world, mounted-world hierarchy, or world-hopping API.
