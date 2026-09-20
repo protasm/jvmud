@@ -17,12 +17,13 @@ Generate the Java API with:
 
 [source,shell]
 ----
-mvn -Psite-docs -DskipTests javadoc:javadoc
+python3 scripts/build-api-docs.py
 python3 src/test/scripts/check-docs.py
 ----
 
-Javadocs live under `docs/api/apidocs/`; `docs/api/index.html` is the authored
-package guide. The checker verifies local HTML links, fragment targets, and
+Javadocs live under `docs/api/apidocs/`; `docs/api/index.html` is the generated
+package directory. The build script runs Javadoc, derives package descriptions
+from its output, and adds shared site navigation to the detailed reference. The checker verifies local HTML links, fragment targets, and
 manual placeholders. It does not check external URLs or prove visual quality.
 
 Preview the static site with `python3 -m http.server 8000 --directory docs` and

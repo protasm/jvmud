@@ -535,7 +535,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <a href="../downloads.html">Downloads</a>
 <a href="../documentation.html">Documentation</a>
 <a href="index.html" aria-current="page">User Manual</a>
-<a href="../api/apidocs/index.html">Java API</a>
+<a href="../api/index.html">Java API</a>
 <a href="jvmud-user-manual.pdf">PDF</a>
 </nav>
 <div id="header">
@@ -3706,13 +3706,14 @@ flow come from <code>manual/pdf-theme.yml</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="shell">mvn -Psite-docs -DskipTests javadoc:javadoc
+<pre class="CodeRay highlight"><code data-lang="shell">python3 scripts/build-api-docs.py
 python3 src/test/scripts/check-docs.py</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Javadocs live under <code>docs/api/apidocs/</code>; <code>docs/api/index.html</code> is the authored
-package guide. The checker verifies local HTML links, fragment targets, and
+<p>Javadocs live under <code>docs/api/apidocs/</code>; <code>docs/api/index.html</code> is the generated
+package directory. The build script runs Javadoc, derives package descriptions
+from its output, and adds shared site navigation to the detailed reference. The checker verifies local HTML links, fragment targets, and
 manual placeholders. It does not check external URLs or prove visual quality.</p>
 </div>
 <div class="paragraph">
