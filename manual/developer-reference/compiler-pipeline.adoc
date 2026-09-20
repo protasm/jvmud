@@ -48,11 +48,11 @@ stages and reports `CompilationProblem` values when a source unit cannot move
 forward. `efun` defines the LPC-facing function contract, and
 `efun.builtin.CoreEfuns` provides JVMud's built-in catalog.
 
-The package `io.github.protasm.jvmud.compiler.runtime` is support code for
+The package `io.github.protasm.jvmud.language.runtime` is support code for
 compiled LPC bytecode: active execution context, truthiness, coercions,
 indexing, strings, arrays, and runtime type descriptors. It is not the JVMud
-engine ontology. Engine-owned concepts live under `io.github.protasm.jvmud.engine`
-with `engine.world` for `WorldRuntime`,
-`Place`, and `Entity`; `engine.identity` for `Player`, `Session`, and `Persona`
-records; `engine.time` for scheduling; and `engine.mudlib` for mudlib lifecycle
+engine ontology. Engine-owned concepts live under `io.github.protasm.jvmud.execution.application`
+with `execution.model.world` for `WorldRuntime`,
+`Place`, and `Entity`; `execution.model.identity` for `Player`, `Session`, and `Persona`
+records; `execution.model.time` for scheduling; and `execution.model.mudlib` for mudlib lifecycle
 boundaries.

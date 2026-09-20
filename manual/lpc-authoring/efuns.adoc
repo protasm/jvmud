@@ -29,7 +29,7 @@ Legacy aliases belong in the profile. A recognized efun can still require an
 or `host_control`.
 
 Use <<efun-catalog,the efun catalog>> for signatures and categories, and
-`compiler.efun.builtin.CoreEfuns` for implementation details. Do not duplicate the
+`language.efun.builtin.CoreEfuns` for implementation details. Do not duplicate the
 catalog in a mudlib guide. When a call fails, check its spelling, argument types,
 profile mapping, and required capability.
 

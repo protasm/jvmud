@@ -14,4 +14,4 @@ mvn -q compile dependency:build-classpath \
   -Dmdep.outputFile=target/jvmud-maintenance-classpath.txt >/dev/null
 
 CP="target/classes:$(cat target/jvmud-maintenance-classpath.txt)"
-exec java -cp "$CP" io.github.protasm.jvmud.maintenance.MudlibPreloadCompileScan "$@"
+exec java -cp "$CP" io.github.protasm.jvmud.language.diagnostics.MudlibPreloadCompileScan "$@"

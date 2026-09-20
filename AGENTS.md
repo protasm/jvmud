@@ -23,24 +23,17 @@ static docs.
 
 ## Top-Level Areas
 
-- `src/main/java/io/github/protasm/jvmud/compiler/`: JVMud compiler Java source. Work here for scanner,
-  preprocessor, parser, semantic analysis, IR, bytecode generation, efun APIs,
-  and the current host-facing runtime/classloading helpers.
-- `src/main/java/io/github/protasm/jvmud/engine/`: JVMud engine code. Do not assume this package is
-  the same thing as `src/main/java/io/github/protasm/jvmud/compiler/runtime/`,
-  which contains compiler helper classes used by generated code.
-- `src/main/java/io/github/protasm/jvmud/instance/`: JVMud hosted-instance code.
-  Work here for mudlib boot, shared runtime/world assembly, lifecycle hooks,
-  player/persona attachment, per-mudlib execution, and the worker entry point.
-- `src/main/java/io/github/protasm/jvmud/transport/`: JVMud player transport
-  code. Work here for Telnet sockets, sessions, protocol mechanics, line I/O,
-  and connection lifecycle.
-- `src/main/java/io/github/protasm/jvmud/persistence/`: JVMud durable storage
-  adapters for filesystem, JDBC, and future persistence backends.
-- `src/main/java/io/github/protasm/jvmud/admin/`: Administrative command interpretation
-  and per-administrator session state.
-- `src/main/java/io/github/protasm/jvmud/console/`: Shared interactive administration console.
-- `src/main/java/io/github/protasm/jvmud/maintenance/`: Standalone updates and compilation diagnostics.
+- `src/main/java/io/github/protasm/jvmud/language/`: LPC compilation, efuns,
+  language runtime and generated-code support, formatting, and compilation diagnostics.
+- `src/main/java/io/github/protasm/jvmud/execution/`: Three distinct responsibilities:
+  `application/` owns startup, public endpoints, worker supervision, and installation
+  updating; `model/` owns worlds, identities, time, and mudlib contracts; `instance/`
+  assembles and executes one mudlib inside its worker JVM.
+- `src/main/java/io/github/protasm/jvmud/communication/`: `transport/` owns sockets,
+  Telnet, and administration protocols; `admin/` interprets administrative commands;
+  `console/` owns the terminal client; `protocol/` and `output/` handle messages and text.
+- `src/main/java/io/github/protasm/jvmud/storage/`: Durable filesystem, JDBC,
+  and administrator-registry adapters.
 - `mudlibs/lp245/`: LPC mudlib source. `obj/` contains reusable object definitions and
   `room/` contains world/room content, headers, and startup-oriented files.
   Treat upstream vanilla mudlib files as read-only unless the user explicitly
@@ -50,7 +43,7 @@ static docs.
 
 ## Application Operation
 
-- `engine.JVMud` owns `main()`, application lifetime, public endpoints, and worker supervision.
+- `execution.application.JVMud` owns `main()`, application lifetime, public endpoints, and worker supervision.
 - The engine starts with zero mudlibs. Each mudlib runs in a separate sandboxed JVM.
 - The engine player endpoint offers a public menu. Each ready mudlib also has a
   direct player endpoint and a scoped TLS administration endpoint. Quitting a
@@ -66,7 +59,7 @@ static docs.
 
 ## Package Layout
 
-The compiler lives under `io.github.protasm.jvmud.compiler`. Keep new compiler
+The compiler lives under `io.github.protasm.jvmud.language`. Keep new compiler
 code inside that namespace unless a task explicitly introduces another JVMud
 module.
 
@@ -86,7 +79,7 @@ command.
 
 - Inspect the relevant tree before changing it; this repo is still being shaped
   after migration.
-- Keep compiler changes under `src/main/java/io/github/protasm/jvmud/compiler/`
+- Keep compiler changes under `src/main/java/io/github/protasm/jvmud/language/`
   unless the task is explicitly about engine, instance, transport,
   persistence, mudlibs/lp245, or docs.
 - Treat `mudlibs/lp245/` as LPC source/content, not Java module source. Preserve

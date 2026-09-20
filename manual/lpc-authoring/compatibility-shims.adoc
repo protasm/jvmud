@@ -17,7 +17,7 @@ hardcoding a particular game into shared Java or launch scripts.
 ==== Opt-In Legacy Method Transpilation
 
 A bridge manifest may explicitly set `transpilation.untyped_methods = true`.
-The default is false. JVMud's `io.github.protasm.jvmud.compiler.transpiler` subpackage
+The default is false. JVMud's `io.github.protasm.jvmud.language.transpiler` subpackage
 adds explicit `mixed` return and parameter types to untyped method signatures
 in memory after preprocessing and before parsing. Includes, inherited objects,
 and global helper objects use the same profile setting. Existing explicit types

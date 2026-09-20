@@ -1,0 +1,351 @@
+package io.github.protasm.jvmud.communication.transport.telnet;
+
+import io.github.protasm.jvmud.execution.instance.InstanceHost;
+import io.github.protasm.jvmud.execution.instance.InstancePersona;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.Writer;
+import java.io.UncheckedIOException;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
+
+/** One line-oriented telnet connection backed by an interactive JVMud session. */
+final class TelnetSession implements Runnable {
+    private static final int IAC = 255;
+    private static final int SE = 240;
+    private static final int SB = 250;
+    private static final int WILL = 251;
+    private static final int WONT = 252;
+    private static final int DO = 253;
+    private static final int DONT = 254;
+    private static final int ECHO = 1;
+    private static final int GMCP = 201;
+
+    private final Socket socket;
+    private final InstanceHost mud;
+    private final String clientAddress;
+
+    TelnetSession(Socket socket, InstanceHost mud, String clientAddress) {
+        this.socket = Objects.requireNonNull(socket, "socket");
+        this.mud = Objects.requireNonNull(mud, "mud");
+        this.clientAddress = clientAddress;
+    }
+
+    @Override
+    public void run() {
+        SessionState session = null;
+        try (socket;
+                BufferedInputStream in = new BufferedInputStream(socket.getInputStream());
+                OutputStream rawOut = socket.getOutputStream();
+                PrintWriter out = new PrintWriter(
+                        new TelnetLineEndingWriter(
+                                new OutputStreamWriter(rawOut, StandardCharsets.UTF_8), rawOut), true)) {
+            session = new SessionState();
+            writeTelnetCommand(rawOut, out, WILL, GMCP);
+            session.gmcpOffered = true;
+            attachPlayer(session, rawOut, out);
+
+            StringBuilder line = new StringBuilder();
+            int value;
+            while (session.running && (value = in.read()) != -1) {
+                if (handleTelnetCommand(session, value, in, rawOut, out)) {
+                    continue;
+                }
+                if (value == '\r') {
+                    continue;
+                }
+                if (value == '\n') {
+                    executeLine(session, rawOut, out, line);
+                    continue;
+                }
+                if (value == 8 || value == 127) {
+                    if (!line.isEmpty()) {
+                        line.setLength(line.length() - 1);
+                    }
+                    continue;
+                }
+                if (value >= 32 || value == '\t') {
+                    line.append((char) value);
+                }
+            }
+        } catch (IOException ignored) {
+            // A telnet client dropping the socket is a normal session ending.
+        } finally {
+            if (session != null) {
+                session.detach(mud);
+            }
+        }
+    }
+
+    private void executeLine(SessionState session, OutputStream rawOut, PrintWriter out, StringBuilder line)
+            throws IOException {
+        String commandLine = line.toString();
+        line.setLength(0);
+        // A Telnet client does not echo the Return key while server-side echo suppression is
+        // active. Supply the terminal line ending before the mudlib writes its next hidden-input
+        // prompt so that it begins in column one on every client.
+        if (mud.isCapturingNoEchoInput(session.persona)) {
+            out.print("\r\n");
+            out.flush();
+        }
+
+        String controlPrefix = mud.transportControlPrefix();
+        if (!controlPrefix.isEmpty() && commandLine.startsWith(controlPrefix)) {
+            executeTransportCommand(session, out, commandLine.substring(controlPrefix.length()).trim());
+        } else {
+            executePlayerCommand(session, out, commandLine);
+        }
+        out.flush();
+        if (!mud.isAttached(session.persona)) {
+            session.running = false;
+        }
+        if (session.running) {
+            mud.printPromptIfReady(session.persona, out);
+        }
+        updateEchoMode(session, rawOut, out);
+    }
+
+    /** Begins this mudlib's login flow; engine selection has already completed upstream. */
+    private void attachPlayer(SessionState session, OutputStream rawOut, PrintWriter out) throws IOException {
+        try {
+            session.persona = mud.attachPersona(out, clientAddress);
+            mud.bindClientProtocolSink(session.persona, (protocol, message) -> {
+                if (!"GMCP".equalsIgnoreCase(protocol)) return;
+                try { writeGmcp(rawOut, out, message); }
+                catch (IOException e) { throw new UncheckedIOException(e); }
+            });
+            if (session.gmcpNegotiated) mud.setClientProtocolEnabled(session.persona, "GMCP", true);
+            mud.printPromptIfReady(session.persona, out);
+            updateEchoMode(session, rawOut, out);
+        } catch (RuntimeException e) {
+            out.println("Could not attach player: " + e.getMessage());
+            session.running = false;
+        }
+    }
+
+    private void executeTransportCommand(SessionState session, PrintWriter out, String commandLine) {
+        switch (commandLine) {
+        case "help", "h" -> {
+            out.println("Telnet commands:");
+            out.println("  " + mud.transportControlPrefix() + "help  Show this command reference.");
+            out.println("  " + mud.transportControlPrefix() + "quit  Disconnect this session.");
+        }
+        case "quit", "exit", "q" -> {
+            session.detach(mud);
+            session.running = false;
+        }
+        default -> out.println("Unknown telnet command: " + mud.transportControlPrefix() + commandLine);
+        }
+    }
+
+    private void executePlayerCommand(SessionState session, PrintWriter out, String commandLine) {
+        try {
+            mud.dispatch(session.persona, out, commandLine);
+        } catch (RuntimeException e) {
+            System.err.println("Unhandled telnet command error: " + e.getMessage());
+        }
+    }
+
+    private boolean handleTelnetCommand(
+            SessionState session, int value, BufferedInputStream in, OutputStream rawOut, PrintWriter out)
+            throws IOException {
+        if (value != IAC) {
+            return false;
+        }
+
+        int command = in.read();
+        if (command == -1) {
+            return true;
+        }
+        if (command == IAC) {
+            return false;
+        }
+        if (command == SB) {
+            readSubnegotiation(session, in);
+            return true;
+        }
+        if (command == DO || command == DONT || command == WILL || command == WONT) {
+            int option = in.read();
+            if (option != -1) {
+                // DO ECHO acknowledges the WILL ECHO sent while JVMud is consuming hidden input.
+                // Rejecting that acknowledgement with WONT immediately re-enables client echo.
+                if (command == DO && option == ECHO && session.noEchoNegotiated) {
+                    return true;
+                }
+                if (option == GMCP && command == DO && session.gmcpOffered) {
+                    if (!session.gmcpNegotiated) {
+                        session.gmcpNegotiated = true;
+                        if (mud != null) mud.setClientProtocolEnabled(session.persona, "GMCP", true);
+                    }
+                    return true;
+                }
+                if (option == GMCP && command == DONT) {
+                    if (session.gmcpNegotiated) {
+                        session.gmcpNegotiated = false;
+                        if (mud != null) mud.setClientProtocolEnabled(session.persona, "GMCP", false);
+                    }
+                    return true;
+                }
+                refuseOption(command, option, rawOut, out);
+            }
+        }
+        return true;
+    }
+
+    private void readSubnegotiation(SessionState session, BufferedInputStream in) throws IOException {
+        int option = in.read();
+        if (option == -1) {
+            return;
+        }
+        ByteArrayOutputStream payload = new ByteArrayOutputStream();
+        while (true) {
+            int value = in.read();
+            if (value == -1) {
+                return;
+            }
+            if (value != IAC) {
+                payload.write(value);
+                continue;
+            }
+            int command = in.read();
+            if (command == -1) {
+                return;
+            }
+            if (command == IAC) {
+                payload.write(IAC);
+                continue;
+            }
+            if (command == SE) {
+                break;
+            }
+        }
+        if (option == GMCP && session.gmcpNegotiated && mud != null) {
+            mud.receiveClientProtocolMessage(
+                    session.persona, "GMCP", payload.toString(StandardCharsets.UTF_8));
+        }
+    }
+
+    private void refuseOption(int command, int option, OutputStream rawOut, PrintWriter out) throws IOException {
+        int response = (command == DO || command == DONT) ? WONT : DONT;
+        out.flush();
+        synchronized (rawOut) {
+            rawOut.write(IAC);
+            rawOut.write(response);
+            rawOut.write(option);
+            rawOut.flush();
+        }
+    }
+
+    private void updateEchoMode(SessionState session, OutputStream rawOut, PrintWriter out) throws IOException {
+        if (session == null || session.persona == null || session.detached || !session.running || !mud.isAttached(session.persona)) {
+            if (session != null && session.noEchoNegotiated) {
+                writeTelnetCommand(rawOut, out, WONT, ECHO);
+                session.noEchoNegotiated = false;
+            }
+            return;
+        }
+
+        boolean shouldSuppressEcho = mud.isCapturingNoEchoInput(session.persona);
+        if (shouldSuppressEcho == session.noEchoNegotiated) {
+            return;
+        }
+        writeTelnetCommand(rawOut, out, shouldSuppressEcho ? WILL : WONT, ECHO);
+        session.noEchoNegotiated = shouldSuppressEcho;
+    }
+
+    private void writeTelnetCommand(OutputStream rawOut, PrintWriter out, int command, int option) throws IOException {
+        out.flush();
+        synchronized (rawOut) {
+            rawOut.write(IAC);
+            rawOut.write(command);
+            rawOut.write(option);
+            rawOut.flush();
+        }
+    }
+
+    private void writeGmcp(OutputStream rawOut, PrintWriter out, String message) throws IOException {
+        byte[] payload = message.getBytes(StandardCharsets.UTF_8);
+        out.flush();
+        synchronized (rawOut) {
+            rawOut.write(IAC);
+            rawOut.write(SB);
+            rawOut.write(GMCP);
+            for (byte value : payload) {
+                int unsigned = Byte.toUnsignedInt(value);
+                rawOut.write(unsigned);
+                if (unsigned == IAC) {
+                    rawOut.write(IAC);
+                }
+            }
+            rawOut.write(IAC);
+            rawOut.write(SE);
+            rawOut.flush();
+        }
+    }
+
+    private static final class SessionState {
+        private InstancePersona persona;
+        private boolean running = true;
+        private boolean detached;
+        private boolean noEchoNegotiated;
+        private boolean gmcpOffered;
+        private boolean gmcpNegotiated;
+
+
+        private void detach(InstanceHost mud) {
+            if (detached || persona == null) {
+                return;
+            }
+            if (gmcpNegotiated) {
+                mud.setClientProtocolEnabled(persona, "GMCP", false);
+                gmcpNegotiated = false;
+            }
+            mud.detachPersona(persona);
+            detached = true;
+        }
+    }
+
+    private static final class TelnetLineEndingWriter extends Writer {
+        private final Writer delegate;
+        private final Object lock;
+        private boolean previousWasCarriageReturn;
+
+        private TelnetLineEndingWriter(Writer delegate, Object lock) {
+            this.delegate = Objects.requireNonNull(delegate, "delegate");
+            this.lock = Objects.requireNonNull(lock, "lock");
+        }
+
+        @Override
+        public void write(char[] characters, int offset, int length) throws IOException {
+            synchronized (lock) {
+                for (int index = offset; index < offset + length; index++) {
+                    char character = characters[index];
+                    if (character == '\n' && !previousWasCarriageReturn) {
+                        delegate.write('\r');
+                    }
+                    delegate.write(character);
+                    previousWasCarriageReturn = character == '\r';
+                }
+            }
+        }
+
+        @Override
+        public void flush() throws IOException {
+            synchronized (lock) {
+                delegate.flush();
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            synchronized (lock) {
+                delegate.close();
+            }
+        }
+    }
+}

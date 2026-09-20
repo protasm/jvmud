@@ -1,0 +1,485 @@
+package io.github.protasm.jvmud.language.scanner;
+
+import static io.github.protasm.jvmud.language.token.TokenType.T_BANG;
+import static io.github.protasm.jvmud.language.token.TokenType.T_BANG_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_AMP;
+import static io.github.protasm.jvmud.language.token.TokenType.T_AMP_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_APOSTROPHE;
+import static io.github.protasm.jvmud.language.token.TokenType.T_CARET;
+import static io.github.protasm.jvmud.language.token.TokenType.T_CARET_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_COLON;
+import static io.github.protasm.jvmud.language.token.TokenType.T_COMMA;
+import static io.github.protasm.jvmud.language.token.TokenType.T_DBL_AMP;
+import static io.github.protasm.jvmud.language.token.TokenType.T_DBL_AMP_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_DBL_PIPE;
+import static io.github.protasm.jvmud.language.token.TokenType.T_DBL_PIPE_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_DOT_DOT;
+import static io.github.protasm.jvmud.language.token.TokenType.T_DOLLAR;
+import static io.github.protasm.jvmud.language.token.TokenType.T_EOF;
+import static io.github.protasm.jvmud.language.token.TokenType.T_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_EQUAL_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_ERROR;
+import static io.github.protasm.jvmud.language.token.TokenType.T_FLOAT_LITERAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_GREATER;
+import static io.github.protasm.jvmud.language.token.TokenType.T_GREATER_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_GREATER_GREATER;
+import static io.github.protasm.jvmud.language.token.TokenType.T_GREATER_GREATER_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_HASH;
+import static io.github.protasm.jvmud.language.token.TokenType.T_IDENTIFIER;
+import static io.github.protasm.jvmud.language.token.TokenType.T_INT_LITERAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_LEFT_BRACE;
+import static io.github.protasm.jvmud.language.token.TokenType.T_LEFT_BRACKET;
+import static io.github.protasm.jvmud.language.token.TokenType.T_LEFT_PAREN;
+import static io.github.protasm.jvmud.language.token.TokenType.T_LESS;
+import static io.github.protasm.jvmud.language.token.TokenType.T_LESS_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_LESS_LESS;
+import static io.github.protasm.jvmud.language.token.TokenType.T_LESS_LESS_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_MINUS;
+import static io.github.protasm.jvmud.language.token.TokenType.T_MINUS_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_MINUS_MINUS;
+import static io.github.protasm.jvmud.language.token.TokenType.T_PERCENT;
+import static io.github.protasm.jvmud.language.token.TokenType.T_PLUS;
+import static io.github.protasm.jvmud.language.token.TokenType.T_PLUS_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_PLUS_PLUS;
+import static io.github.protasm.jvmud.language.token.TokenType.T_PIPE;
+import static io.github.protasm.jvmud.language.token.TokenType.T_PIPE_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_QUESTION;
+import static io.github.protasm.jvmud.language.token.TokenType.T_RIGHT_ARROW;
+import static io.github.protasm.jvmud.language.token.TokenType.T_RIGHT_BRACE;
+import static io.github.protasm.jvmud.language.token.TokenType.T_RIGHT_BRACKET;
+import static io.github.protasm.jvmud.language.token.TokenType.T_RIGHT_PAREN;
+import static io.github.protasm.jvmud.language.token.TokenType.T_SEMICOLON;
+import static io.github.protasm.jvmud.language.token.TokenType.T_SLASH;
+import static io.github.protasm.jvmud.language.token.TokenType.T_SLASH_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_STAR;
+import static io.github.protasm.jvmud.language.token.TokenType.T_STAR_EQUAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_STRING_LITERAL;
+import static io.github.protasm.jvmud.language.token.TokenType.T_SUPER;
+import static io.github.protasm.jvmud.language.token.TokenType.T_TILDE;
+
+import java.nio.file.Path;
+import java.util.Map;
+import io.github.protasm.jvmud.language.sourcepos.SourceSpan;
+import io.github.protasm.jvmud.language.preproc.PreprocessException;
+import io.github.protasm.jvmud.language.preproc.PreprocessedSource;
+import io.github.protasm.jvmud.language.preproc.Preprocessor;
+import io.github.protasm.jvmud.language.token.Token;
+import io.github.protasm.jvmud.language.token.TokenList;
+import io.github.protasm.jvmud.language.token.TokenType;
+
+public class Scanner {
+    private static final char EOL = '\n';
+    private ScannableSource ss;
+    private final Preprocessor preprocessor;
+
+    private static final Map<Character, TokenType> oneCharLexemes =
+            Map.of(
+                    '(', T_LEFT_PAREN,
+                    ')', T_RIGHT_PAREN,
+                    '{', T_LEFT_BRACE,
+                    '}', T_RIGHT_BRACE,
+                    '[', T_LEFT_BRACKET,
+                    ']', T_RIGHT_BRACKET,
+                    ',', T_COMMA,
+                    ';', T_SEMICOLON,
+                    '?', T_QUESTION);
+
+    public Scanner() {
+        this(new Preprocessor(Preprocessor.rejectingResolver()));
+    }
+
+    public Scanner(Preprocessor preprocessor) {
+        this.preprocessor = preprocessor;
+    }
+
+    public TokenList scan(String source) {
+        return scan(null, source);
+    }
+
+    public TokenList scan(Path sourcePath, String source) {
+        return scan(sourcePath, source, null);
+    }
+
+    public TokenList scan(Path sourcePath, String source, String displayPath) {
+        if (source == null)
+            throw new ScanException("Source text cannot be null.", -1);
+
+        try {
+            PreprocessedSource processed = preprocessor.preprocessWithMapping(sourcePath, source, displayPath);
+
+            ss = new ScannableSource(processed);
+
+            TokenList tokens = new TokenList();
+            Token<?> token;
+
+            do {
+                token = lexToken();
+
+                if (token != null)
+                    tokens.add(token);
+            } while ((token == null) || (token.type() != T_EOF));
+
+            return mergeStringLiterals(tokens);
+        } catch (PreprocessException e) {
+            throw new ScanException("Failed to scan source: " + e.getMessage(), e.getLine(), e);
+        } catch (ScanException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            int line = (ss != null) ? ss.pos().line() : -1;
+
+            throw new ScanException("Failed to scan source: " + e.getMessage(), line, e);
+        }
+    }
+
+    private TokenList mergeStringLiterals(TokenList tokens) {
+        TokenList merged = new TokenList();
+
+        for (int i = 0; i < tokens.size(); i++) {
+            Token<?> token = tokens.get(i);
+
+            if (token.type() != T_STRING_LITERAL) {
+                merged.add(token);
+                continue;
+            }
+
+            StringBuilder lexeme = new StringBuilder(token.lexeme());
+            StringBuilder literal = new StringBuilder(token.literal().toString());
+            SourceSpan span = token.span();
+
+            int j = i + 1;
+            while (j < tokens.size() && tokens.get(j).type() == T_STRING_LITERAL) {
+                Token<?> next = tokens.get(j);
+                lexeme.append(next.lexeme());
+                literal.append(next.literal().toString());
+                span = (span != null && next.span() != null) ? SourceSpan.encompassing(span, next.span()) : span;
+                j++;
+            }
+
+            merged.add(new Token<>(T_STRING_LITERAL, lexeme.toString(), literal.toString(), span));
+            i = j - 1;
+        }
+
+        return merged;
+    }
+
+    private Token<?> lexToken() {
+
+        if (ss.atEnd()) {
+            ss.syncTailHead();
+            return token(T_EOF);
+        }
+
+        ss.syncTailHead();
+
+        char c = ss.consumeOneChar();
+
+        if (oneCharLexemes.containsKey(c))
+            return token(oneCharLexemes.get(c));
+
+        if (isDigit(c))
+            return number();
+
+        if (isAlpha(c))
+            return identifier();
+
+        switch (c) {
+        case EOL:
+            return null;
+        case '"':
+            return stringLiteral();
+        case '\'':
+            if (isAlpha(ss.peek()) && ss.peekNext() != '\'')
+                return token(T_APOSTROPHE);
+            return characterLiteral();
+        case '#':
+            return token(T_HASH);
+        case '$':
+            return token(T_DOLLAR);
+        case '&':
+            if (ss.match('&'))
+                return token(ss.match('=') ? T_DBL_AMP_EQUAL : T_DBL_AMP);
+            else if (ss.match('='))
+                return token(T_AMP_EQUAL);
+            else
+                return token(T_AMP);
+        case '|':
+            if (ss.match('|'))
+                return token(ss.match('=') ? T_DBL_PIPE_EQUAL : T_DBL_PIPE);
+            else if (ss.match('='))
+                return token(T_PIPE_EQUAL);
+            else
+                return token(T_PIPE);
+        case '^':
+            return token(ss.match('=') ? T_CARET_EQUAL : T_CARET);
+        case ':':
+            if (ss.match(':'))
+                return token(T_SUPER);
+            else
+                return token(T_COLON);
+        case '-':
+            if (ss.match('-'))
+                return token(T_MINUS_MINUS);
+            else if (ss.match('='))
+                return token(T_MINUS_EQUAL);
+            else if (ss.match('>'))
+                return token(T_RIGHT_ARROW);
+            else
+                return token(T_MINUS);
+        case '+':
+            if (ss.match('+'))
+                return token(T_PLUS_PLUS);
+            else if (ss.match('='))
+                return token(T_PLUS_EQUAL);
+            else
+                return token(T_PLUS);
+        case '!':
+            return token(ss.match('=') ? T_BANG_EQUAL : T_BANG);
+        case '=':
+            return token(ss.match('=') ? T_EQUAL_EQUAL : T_EQUAL);
+        case '<':
+            if (ss.match('<'))
+                return token(ss.match('=') ? T_LESS_LESS_EQUAL : T_LESS_LESS);
+            return token(ss.match('=') ? T_LESS_EQUAL : T_LESS);
+        case '>':
+            if (ss.match('>'))
+                return token(ss.match('=') ? T_GREATER_GREATER_EQUAL : T_GREATER_GREATER);
+            return token(ss.match('=') ? T_GREATER_EQUAL : T_GREATER);
+        case '/':
+            if (ss.match('/'))
+                return lineComment();
+            else if (ss.match('*'))
+                return blockComment();
+            else if (ss.match('='))
+                return token(T_SLASH_EQUAL);
+            else
+                return token(T_SLASH);
+        case '*':
+            return token(ss.match('=') ? T_STAR_EQUAL : T_STAR);
+        case '%':
+            return token(T_PERCENT);
+        case '~':
+            return token(T_TILDE);
+        case '.':
+            if (ss.match('.'))
+                return token(T_DOT_DOT);
+            return unexpectedChar(c);
+        case ' ':
+        case '\r':
+        case '\t':
+            while (isWhitespace(ss.peek()))
+                ss.advance();
+
+            return null;
+        default:
+            return unexpectedChar(c);
+        }
+    }
+
+    private Token<?> lineComment() {
+        ss.advanceTo(EOL);
+
+        return null;
+    }
+
+    private Token<?> blockComment() {
+        while (!ss.atEnd()) {
+            ss.advanceTo('*');
+
+            if (ss.peekPrev() == '/')
+                return errorToken("Nested block comment");
+
+            ss.advance();
+
+            if (ss.match('/'))
+                return null;
+        }
+
+        return errorToken("Unterminated block comment.");
+    }
+
+    private Token<?> identifier() {
+        while (isAlphaNumeric(ss.peek()))
+            ss.advance();
+
+        return token(T_IDENTIFIER);
+    }
+
+    private Token<?> number() {
+        boolean isFloat = false;
+
+        if (ss.peekPrev() == '0' && (ss.peek() == 'x' || ss.peek() == 'X')) {
+            ss.advance();
+            while (isHexDigit(ss.peek()))
+                ss.advance();
+
+            String lexeme = ss.read();
+            try {
+                return intToken(T_INT_LITERAL, lexeme, Integer.parseUnsignedInt(lexeme.substring(2), 16));
+            } catch (NumberFormatException e) {
+                return errorToken("Invalid numeric literal: '" + lexeme + "'");
+            }
+        }
+
+        while (isDigit(ss.peek()))
+            ss.advance();
+
+        if ((ss.peek() == '.') && isDigit(ss.peekNext())) {
+            isFloat = true;
+
+            ss.advance();
+
+            while (isDigit(ss.peek()))
+                ss.advance();
+        }
+
+        String lexeme = ss.read();
+
+        try {
+            if (isFloat)
+                return floatToken(T_FLOAT_LITERAL, lexeme, Float.parseFloat(lexeme));
+            else
+                return intToken(T_INT_LITERAL, lexeme, Integer.parseInt(lexeme));
+        } catch (NumberFormatException e) {
+            return errorToken("Invalid numeric literal: '" + lexeme + "'");
+        }
+    }
+
+    private Token<String> stringLiteral() {
+        boolean terminated = false;
+        while (!ss.atEnd()) {
+            char c = ss.consumeOneChar();
+            if (c == '\\') {
+                if (!ss.atEnd()) {
+                    ss.consumeOneChar();
+                }
+                continue;
+            }
+            if (c == '"') {
+                terminated = true;
+                break;
+            }
+        }
+
+        if (!terminated)
+            return errorToken("Unterminated string.");
+
+        return stringToken(T_STRING_LITERAL, unescapeStringLiteral(ss.readTrimmed()));
+    }
+
+    private String unescapeStringLiteral(String value) {
+        StringBuilder unescaped = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c != '\\' || i + 1 >= value.length()) {
+                unescaped.append(c);
+                continue;
+            }
+            if (value.charAt(i + 1) == 'x' && i + 3 < value.length()
+                    && isHexDigit(value.charAt(i + 2)) && isHexDigit(value.charAt(i + 3))) {
+                unescaped.append((char) ((hexValue(value.charAt(i + 2)) << 4) + hexValue(value.charAt(i + 3))));
+                i += 3;
+                continue;
+            }
+            if (value.charAt(i + 1) == 'u' && i + 5 < value.length()
+                    && isHexDigit(value.charAt(i + 2)) && isHexDigit(value.charAt(i + 3))
+                    && isHexDigit(value.charAt(i + 4)) && isHexDigit(value.charAt(i + 5))) {
+                unescaped.append((char) ((hexValue(value.charAt(i + 2)) << 12)
+                        + (hexValue(value.charAt(i + 3)) << 8)
+                        + (hexValue(value.charAt(i + 4)) << 4)
+                        + hexValue(value.charAt(i + 5))));
+                i += 5;
+                continue;
+            }
+            unescaped.append((char) escapedCharacterValue(value.charAt(++i)));
+        }
+        return unescaped.toString();
+    }
+
+    private Token<?> characterLiteral() {
+        if (ss.atEnd())
+            return errorToken("Unterminated character literal.");
+
+        int value;
+        char c = ss.consumeOneChar();
+        if (c == '\\') {
+            if (ss.atEnd())
+                return errorToken("Unterminated character literal.");
+
+            value = escapedCharacterValue(ss.consumeOneChar());
+        } else {
+            value = c;
+        }
+
+        if (!ss.match('\''))
+            return errorToken("Unterminated character literal.");
+
+        return intToken(T_INT_LITERAL, ss.read(), value);
+    }
+
+    private int escapedCharacterValue(char c) {
+        return switch (c) {
+        case 'n' -> '\n';
+        case 'r' -> '\r';
+        case 't' -> '\t';
+        case '\\' -> '\\';
+        case '\'' -> '\'';
+        case '"' -> '"';
+        default -> c;
+        };
+    }
+
+    private int hexValue(char c) {
+        if (c >= '0' && c <= '9') {
+            return c - '0';
+        }
+        if (c >= 'a' && c <= 'f') {
+            return c - 'a' + 10;
+        }
+        return c - 'A' + 10;
+    }
+
+    private boolean isWhitespace(char c) {
+        return (c == ' ') || (c == '\r') || (c == '\t');
+    }
+
+    private boolean isAlpha(char c) {
+        return ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) || (c == '_');
+    }
+
+    private boolean isAlphaNumeric(char c) {
+        return isAlpha(c) || isDigit(c);
+    }
+
+    private boolean isDigit(char c) {
+        return (c >= '0') && (c <= '9');
+    }
+
+    private boolean isHexDigit(char c) {
+        return isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    }
+
+    private Token<String> unexpectedChar(char c) {
+        return errorToken("Unexpected character: '" + c + "'.");
+    }
+
+    private Token<Object> token(TokenType type) {
+        return new Token<>(type, ss.read(), null, ss.span());
+    }
+
+    private Token<String> errorToken(String message) {
+        return new Token<>(T_ERROR, message, null, ss.span());
+    }
+
+    private Token<Integer> intToken(TokenType type, String lexeme, Integer i) {
+        return new Token<>(type, lexeme, i, ss.span());
+    }
+
+    private Token<Float> floatToken(TokenType type, String lexeme, Float f) {
+        return new Token<>(type, lexeme, f, ss.span());
+    }
+
+    private Token<String> stringToken(TokenType type, String literal) {
+        return new Token<>(type, ss.read(), literal, ss.span());
+    }
+
+}

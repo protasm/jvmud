@@ -185,7 +185,7 @@ voice.
 - Motivation: original Lysator LP 2.4.5 declarations such as `reset(arg)` and
   `close(str)` in `mudlibs/lp245/obj/chest.c`, preserved without source changes.
 - Bridge setting: `transpilation.untyped_methods = true` (default false).
-- Implementation: `io.github.protasm.jvmud.compiler.transpiler` subpackage adds
+- Implementation: `io.github.protasm.jvmud.language.transpiler` subpackage adds
   explicit `mixed` signature types to expanded tokens before strict compilation.
   Existing type declarations remain authoritative. Other legacy syntax is outside
   this transformation's scope.

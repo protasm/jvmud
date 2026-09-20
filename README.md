@@ -63,7 +63,7 @@ Every connection receives a menu, even when only one mudlib is configured. Selec
 by number or game id to enter that mudlib's login flow. There is no default world
 and no travel between worlds; reconnect to choose another mudlib.
 
-`engine.JVMud` owns application startup and shutdown and starts `TelnetServer`
+`execution.application.JVMud` owns application startup and shutdown and starts `TelnetServer`
 as a transport component. Each `MudInstance` owns its own execution queue and
 clock. Player input, administration, and scheduled work execute serially on that
 instance's thread, using its `temporal_tick_interval`. A slow world does not
@@ -181,14 +181,10 @@ local site. Website changes appear online only after publication.
 
 | Path | Responsibility |
 | --- | --- |
-| `src/main/java/io/github/protasm/jvmud/engine/` | World, identity, time, mudlib boundary, output, and support |
-| `src/main/java/io/github/protasm/jvmud/compiler/` | LPC pipeline, efuns, generated-code helpers, and execution APIs |
-| `src/main/java/io/github/protasm/jvmud/instance/` | Boot, hosted worlds, Personas, lifecycle dispatch, and routing |
-| `src/main/java/io/github/protasm/jvmud/transport/` | Telnet sessions and protocol mechanics |
-| `src/main/java/io/github/protasm/jvmud/persistence/` | Filesystem and JDBC storage adapters |
-| `src/main/java/io/github/protasm/jvmud/console/` | Shared administration console |
-| `src/main/java/io/github/protasm/jvmud/admin/` | Engine and mudlib command interpreters |
-| `src/main/java/io/github/protasm/jvmud/maintenance/` | Installation updates and compilation diagnostics |
+| `src/main/java/io/github/protasm/jvmud/language/` | LPC pipeline, efuns, language runtime, generated-code helpers, and diagnostics |
+| `src/main/java/io/github/protasm/jvmud/execution/` | Application supervision and updates (`application`), game concepts (`model`), and running mudlibs (`instance`) |
+| `src/main/java/io/github/protasm/jvmud/communication/` | Connection transports, administrative commands, terminal client, structured messages, and text output |
+| `src/main/java/io/github/protasm/jvmud/storage/` | Filesystem, JDBC, and administrator-registry storage adapters |
 | `src/test/` | Java tests, smoke checks, and documentation validation; see [testing guide](src/test/README.md) |
 | `mudlibs/` | LPC content and profiles, separate from the host |
 | `mudlibs/smallmercies/` | Bundled toy mudlib and teaching examples |
@@ -196,7 +192,7 @@ local site. Website changes appear online only after publication.
 | `docs/` | Static site, generated manual and Java API, design records |
 | `scripts/` | Shared manifest-driven launch and development tools |
 
-`compiler.runtime` supports generated LPC bytecode; it is distinct from the
+`language.runtime` supports generated LPC bytecode; it is distinct from the
 engine's world model. These packages are not separately released Maven modules.
 
 ## Verification and status

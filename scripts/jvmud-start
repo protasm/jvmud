@@ -9,4 +9,4 @@ mvn -q compile dependency:build-classpath \
   -Dmdep.outputFile=target/jvmud-transport-classpath.txt >/dev/null
 
 CP="target/classes:$(cat target/jvmud-transport-classpath.txt)"
-exec java -cp "$CP" io.github.protasm.jvmud.engine.JVMud "$@"
+exec java -cp "$CP" io.github.protasm.jvmud.execution.application.JVMud "$@"

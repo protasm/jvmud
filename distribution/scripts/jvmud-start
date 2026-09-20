@@ -3,4 +3,4 @@ set -eu
 JVMUD_SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$JVMUD_SCRIPT_DIR/runtime.sh"
 export JVMUD_INSTALL_ROOT="$JVMUD_ROOT"
-exec "$JVMUD_JAVA" -cp "$JVMUD_ROOT/lib/*" io.github.protasm.jvmud.engine.JVMud "$@"
+exec "$JVMUD_JAVA" -cp "$JVMUD_ROOT/lib/*" io.github.protasm.jvmud.execution.application.JVMud "$@"

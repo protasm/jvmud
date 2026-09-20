@@ -1,6 +1,6 @@
 === Instance And Transport Internals
 
-`engine.JVMud` starts engine endpoints independently of mudlibs and supervises
+`execution.application.JVMud` starts engine endpoints independently of mudlibs and supervises
 one sandboxed worker JVM per mudlib. `MudlibWorker` boots through `MudlibBoot` and
 reports readiness over private pipes. The engine then publishes the mudlib's
 player/admin pair. `PlayerGateway` provides the engine menu and direct relays;
@@ -19,16 +19,16 @@ rejected-command messages. The selected mudlib owns that meaning and output.
 
 Follow an input from transport to instance to LPC command handling when debugging
 player behavior. Follow an efun from its catalog through runtime context and
-instance services when debugging host effects. `compiler.runtime` is generated-code
-support; `engine.world` owns the engine's world model.
+instance services when debugging host effects. `language.runtime` is generated-code
+support; `execution.model.world` owns the engine's world model.
 
-`console.AdminConsole` connects to an engine or mudlib administration endpoint.
+`communication.console.AdminConsole` connects to an engine or mudlib administration endpoint.
 The engine owns TLS authentication and grants. Engine commands execute in
 `EngineAdminCommandSession`; mudlib commands cross private worker pipes and execute
 in `MudlibAdminCommandSession` on that instance's execution queue. No administrator
 credentials are sent to worker JVMs. Player listeners relay bytes to a selected
 worker, where Telnet negotiation, player login and game commands are handled.
 
-Storage adapters live under `persistence`; engine administrator identities are
+Storage adapters live under `storage`; engine administrator identities are
 separate from mudlib player accounts. See `docs/ENGINE-ADMINISTRATION.md` for the
 OS sandbox boundary, supervision deadlines and platform limitations.
