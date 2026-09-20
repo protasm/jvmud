@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build Javadocs, then generate the site's package directory and shared navigation.
+"""Build standard Javadocs and the site's hierarchical package directory.
 
 Descriptions come from Javadoc's rendering of package-info.java and class comments.
-Use --decorate-only to refresh navigation around an already generated API without
+Use --directory-only to refresh the directory from an already generated API without
 including unrelated Java work in progress. All output is static and works without JS.
 """
 from html import escape
@@ -76,7 +76,10 @@ def relative(target, page):
 
 
 def link(target, page, label):
-    return f'<a href="{escape(relative(target, page), quote=True)}">{escape(label)}</a>'
+    # Crossing into the standard Javadoc reference keeps the directory available.
+    reference = target.resolve().is_relative_to(JAVADOC.resolve())
+    attributes = ' target="_blank" rel="noopener noreferrer" title="Opens in a new tab"' if reference else ''
+    return f'<a href="{escape(relative(target, page), quote=True)}"{attributes}>{escape(label)}</a>'
 
 
 def clean(text):
@@ -169,7 +172,7 @@ def render_directory(name, packages):
         content += '<p class="lead">' + escape(packages[name]['description']) + '</p>'
     elif not name:
         content += '<p class="lead">Packages and their responsibilities.</p>'
-    content += '</header>'
+    content += '<p>Detailed Javadoc references open in a new tab.</p></header>'
     children = sorted(k for k in packages if k.rpartition('/')[0] == name)
     if children:
         content += '<section><h2>' + ('Subpackages' if name else 'Packages') + '</h2><div class="resource-grid">'
@@ -206,35 +209,21 @@ def render_directory(name, packages):
 ''')
 
 
-def decorate(packages):
-    """Add static chrome to every reference page, preserving Javadoc content and URLs."""
-    for page in sorted(JAVADOC.rglob('*.html')):
-        source = MARKER.sub('', page.read_text())
-        source = re.sub(r'(<(?:header role="banner"|body\b[^>]*)>)\n+', r'\1\n', source)
-        styles = ''.join(f'<link rel="stylesheet" href="{relative(DOCS / name, page)}?v=api-1">\n'
-                         for name in ('styles.css', 'api.css'))
-        source = source.replace('</head>', '<!-- JVMUD NAV START -->\n' + styles + '<!-- JVMUD NAV END -->\n</head>', 1)
-        parent = page.parent
-        while parent != JAVADOC and not (parent / 'package-summary.html').exists():
-            parent = parent.parent
-        name = parent.relative_to(JAVADOC / PREFIX).as_posix() if parent.is_relative_to(JAVADOC / PREFIX) else ''
-        if name not in packages:
-            name = ''
-        # Inside Javadoc's existing sticky header: its JS measures the whole header,
-        # keeping anchor scrolling and sidebar offsets correct at every viewport size.
-        chrome = '<!-- JVMUD NAV START -->\n<div class="api-site-chrome">' + site_header(page).replace('<header ', '<div ').replace('</header>', '</div>') + breadcrumbs(page, name) + '</div>\n<!-- JVMUD NAV END -->\n'
-        if '<header role="banner">' in source:
-            source = source.replace('<header role="banner">', '<header role="banner">' + chrome, 1)
-        else:
-            source = re.sub(r'(<body\b[^>]*>)', lambda m: m[0] + chrome, source, count=1)
-        page.write_text(source)
+def remove_site_chrome():
+    """Remove only our marked additions from previously decorated Javadoc output."""
+    for page in JAVADOC.rglob('*.html'):
+        original = page.read_text()
+        cleaned = MARKER.sub('', original)
+        if cleaned != original:
+            page.write_text(cleaned)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--decorate-only', action='store_true', help='Reuse existing Javadocs; regenerate only navigation and directory pages.')
+    parser.add_argument('--directory-only', '--decorate-only', dest='directory_only', action='store_true',
+                        help='Reuse existing Javadocs and regenerate the package directory.')
     args = parser.parse_args()
-    if not args.decorate_only:
+    if not args.directory_only:
         subprocess.run(['mvn', '-Psite-docs', '-DskipTests', 'javadoc:javadoc'], cwd=ROOT, check=True)
     packages = package_data()
     # Remove only generator-owned directory pages for packages that disappeared.
@@ -243,8 +232,8 @@ def main():
             old.unlink()
     for name in ['', *sorted(packages)]:
         render_directory(name, packages)
-    decorate(packages)
-    print(f'Generated package directory for {len(packages)} packages and added site navigation to Javadocs.')
+    remove_site_chrome()
+    print(f'Generated package directory for {len(packages)} packages with references opening in new tabs.')
 
 
 if __name__ == '__main__':

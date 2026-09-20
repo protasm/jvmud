@@ -1,4 +1,4 @@
-/* Shared navigation and generated package-directory presentation. */
+/* Generated package-directory presentation. Standard Javadocs keep their own styles. */
 .api-breadcrumbs { font: .9rem/1.5 system-ui, sans-serif; margin: 0 0 2rem; }
 .api-breadcrumbs ol { display: flex; flex-wrap: wrap; gap: .4rem 1rem; list-style: none; margin: 0; padding: 0; }
 .api-breadcrumbs li + li { border-left: 1px solid var(--line); padding-left: 1rem; }
@@ -8,41 +8,3 @@
 .api-types { margin-bottom: 3rem; }
 .api-types dt { font: 600 1.05rem/1.6 system-ui, sans-serif; margin-top: 1.3rem; overflow-wrap: anywhere; }
 .api-types dd { margin: .3rem 0 1rem; max-width: 70ch; }
-.api-site-chrome { background: var(--bg); color: var(--text); font: 1.0625rem/1.65 system-ui, sans-serif; }
-.api-site-chrome .site-header { position: static; background: transparent; }
-.api-site-chrome .api-breadcrumbs { width: min(100% - 5rem, 68rem); margin: 0 auto; padding: .65rem 0; }
-.api-site-chrome a { color: var(--accent); }
-.api-site-chrome .site-header .brand { color: var(--text); }
-.api-site-chrome .site-header a { font: inherit; }
-.api-site-chrome .site-header .brand { font-size: 1.25rem; font-weight: 750; }
-.api-site-chrome ol { list-style: none; }
-@media (max-width: 650px) {
-  .api-site-chrome .site-header { padding-block: .65rem; }
-  .api-site-chrome .api-breadcrumbs { width: calc(100% - 2.5rem); font-size: .8rem; }
-}
-@media print { .api-site-chrome { display: none; } }
-
-/* Javadoc uses content-box dimensions for captions and table headers. */
-:where(body:not(.site)) * { box-sizing: revert; }
-.api-site-chrome, .api-site-chrome * { box-sizing: border-box; }
-:root {
-  --body-text-color: var(--text);
-  --block-text-color: var(--text);
-  --body-background-color: var(--bg);
-  --detail-background-color: var(--bg);
-  --navbar-background-color: var(--panel-strong);
-  --navbar-text-color: var(--text);
-  --subnav-background-color: var(--panel);
-  --subnav-link-color: var(--accent);
-  --selected-background-color: var(--accent);
-  --selected-text-color: white;
-  --selected-link-color: var(--accent);
-  --table-header-color: var(--panel-strong);
-  --even-row-color: var(--bg);
-  --odd-row-color: var(--panel);
-  --title-color: var(--text);
-  --link-color: var(--accent);
-  --link-color-active: var(--text);
-  --toc-background-color: var(--panel);
-  --toc-hover-color: var(--panel-strong);
-}

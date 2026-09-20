@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression checks for generated package traversal and repeatable site chrome."""
+"""Regression checks for generated package traversal and new-tab reference boundaries."""
 import importlib.util
 from pathlib import Path
 import tempfile
@@ -43,20 +43,26 @@ class ApiDirectoryTest(unittest.TestCase):
         self.assertNotIn('More detail.', branch)
         self.assertIn('compiler/Example.html', branch)
 
-    def test_nested_reference_has_static_navigation_and_keeps_content(self):
-        api.decorate(self.packages)
-        page = (api.JAVADOC / api.PREFIX / 'compiler/parser/ast/Example.html').read_text()
-        self.assertIn('Package breadcrumbs', page)
-        self.assertIn('packages/compiler/parser/ast/index.html', page)
-        self.assertIn('<main id="detail">Class reference</main>', page)
-        self.assertNotIn('aria-current="page"', page)
-        self.assertEqual(page.count('<header'), 1)
+    def test_only_reference_links_open_new_tabs(self):
+        api.render_directory('compiler', self.packages)
+        tree = api.Document(api.directory('compiler').read_text()).root
+        for anchor in tree.find(lambda n: n.tag == 'a'):
+            href = anchor.attrs['href']
+            if 'apidocs/' in href:
+                self.assertEqual(anchor.attrs['target'], '_blank')
+                self.assertEqual(anchor.attrs['rel'], 'noopener noreferrer')
+            else:
+                self.assertNotIn('target', anchor.attrs)
 
-    def test_repeated_decoration_is_identical(self):
-        api.decorate(self.packages)
-        before = {p: p.read_bytes() for p in api.JAVADOC.rglob('*.html')}
-        api.decorate(self.packages)
-        self.assertEqual(before, {p: p.read_bytes() for p in before})
+    def test_cleanup_preserves_reference_and_is_repeatable(self):
+        path = api.JAVADOC / api.PREFIX / 'compiler/Example.html'
+        original = path.read_text()
+        path.write_text(original.replace('</head>',
+            '<!-- JVMUD NAV START --><link href="custom.css"><!-- JVMUD NAV END -->\n</head>'))
+        api.remove_site_chrome()
+        self.assertEqual(original, path.read_text())
+        api.remove_site_chrome()
+        self.assertEqual(original, path.read_text())
 
     def test_missing_namespace_gets_a_traversable_parent(self):
         parent = api.JAVADOC / api.PREFIX / 'compiler/parser/package-summary.html'

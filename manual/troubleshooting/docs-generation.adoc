@@ -23,7 +23,8 @@ python3 src/test/scripts/check-docs.py
 
 Javadocs live under `docs/api/apidocs/`; `docs/api/index.html` is the generated
 package directory. The build script runs Javadoc, derives package descriptions
-from its output, and adds shared site navigation to the detailed reference. The checker verifies local HTML links, fragment targets, and
+from its output, and opens detailed reference links in a new tab. Standard
+Javadoc pages retain their own layout. The checker verifies local HTML links, fragment targets, and
 manual placeholders. It does not check external URLs or prove visual quality.
 
 Preview the static site with `python3 -m http.server 8000 --directory docs` and
