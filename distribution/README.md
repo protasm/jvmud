@@ -22,15 +22,15 @@ Apple Silicon example; substitute your package filename for another platform:
 
 ```sh
 mkdir current &&
-tar -xzf jvmud-0.1.0-preview.7-macos-aarch64.tar.gz --strip-components=1 -C current &&
+tar -xzf jvmud-0.1.0-preview.8-test.20260920-macos-aarch64.tar.gz --strip-components=1 -C current &&
 cd current
 ```
 
 `mkdir` deliberately fails if `current` already exists, preventing extraction
 over an existing installation. Use the updater below for subsequent releases.
-For an EC2/Linux server, use a writable parent such as `/opt/jvmud` and the
+For an EC2/Linux server, choose a writable parent directory and the
 `-linux-x64.tar.gz` package for x86-64 instances, or `-linux-aarch64.tar.gz` for
-ARM64. The resulting installation path is `/opt/jvmud/current`.
+ARM64.
 
 Keep `scripts/`, `lib/`, `mudlibs/`, `jre`, and `vendor-runtime/` together when
 present. If using the ZIP, rename its extracted `jvmud-<version>` folder to
@@ -44,7 +44,8 @@ scripts/jvmud-start smallmercies
 ```
 
 Wait for the engine endpoint report and the mudlib's `state=RUNNING` status, then connect a Telnet-capable MUD client to
-`127.0.0.1`, port `4000`, with SSL/TLS disabled. Choose a guest name (2–16 letters),
+`127.0.0.1`, port `4000`, with SSL/TLS disabled. Select Small Mercies from the menu,
+then choose a guest name (2–16 letters),
 `male` or `female`, and `warrior` or `mage`. Try `help`, `look`, `score`, and `north`.
 Type `quit` to disconnect. Guests last for one connection. Stop the server with
 Ctrl+C in its terminal.
@@ -60,8 +61,11 @@ Start the engine with or without initial mudlibs. Its player/admin ports default
 to localhost:4000/4001. Bootstrap using the same OS account:
 
 ```sh
-scripts/jvmud-console --socket ~/.jvmud/engine-4000/engine.sock
+scripts/jvmud-console --local
 ```
+
+`--local` uses `~/.jvmud/engine-4000/engine.sock` and your OS account, without a
+token or fingerprint. For custom state, use `--socket <state-directory>/engine.sock`.
 
 Use `help`, `admin-create <name>`, `grant <name> engine`, and
 `start <manifest> [player-port admin-port]`. Named administrator tokens and grants
@@ -69,8 +73,15 @@ are engine-owned, independent of mudlib player accounts. Remote consoles use TLS
 and an explicitly trusted certificate fingerprint:
 
 ```sh
-scripts/jvmud-console --host server.example --port 4001 --user operator --fingerprint <SHA-256>
+scripts/jvmud-console                     # localhost:4001
+scripts/jvmud-console server.example      # server.example:4001
+scripts/jvmud-console server.example 4401 # server.example:4401
 ```
+
+The console prompts for the trusted certificate fingerprint, administrator name,
+and token (without echo). Obtain the fingerprint from the engine operator.
+For scripts, supply `--user`, `--fingerprint`, and `--token-file` explicitly.
+The `--host`, `--port`, and local `--socket` forms remain available.
 
 Use a mudlib's admin port for its live object commands. Each mudlib runs in its
 own sandboxed worker JVM. Linux requires `/usr/bin/bwrap` and user namespaces;
@@ -85,7 +96,7 @@ Stop Small Mercies first, or choose another port:
 scripts/jvmud-start --port 4010 --admin-port 4011 lp245
 ```
 
-Connect to `127.0.0.1:4001` and follow LP245's character creation prompts.
+Connect to `127.0.0.1:4010`, select LP245, and follow its character creation prompts.
 Its editable LPC source and compatibility settings are under `mudlibs/lp245/`;
 see `mudlibs/lp245/jvmud/README.md` for the porting details. Compatibility remains
 experimental. Character saves belong to this extracted copy; keep them when
@@ -119,7 +130,7 @@ to source checkouts only. Source and issues: https://github.com/protasm/jvmud.
 
 ## Update an installed distribution
 
-From your existing `current` directory (on EC2, `cd /opt/jvmud/current`):
+From your existing `current` directory:
 
 ```sh
 scripts/jvmud-update --check
@@ -155,8 +166,8 @@ without overwriting another installation, and relaunch from the new location wit
 the same options. Update any service definitions or external absolute paths too. The bundled JRE is accessed through `jre`, a symlink into `vendor-runtime`.
 
 Server output is displayed in the terminal and appended to
-`mudlibs/<world>/jvmud/log/server-<port>.log`. Updater restart logs go in that same
-mudlib log directory. Backups include the installation's files, including saves,
+`.jvmud/log/server-<port>.log`. Updater restart logs go in that same engine log
+directory. Worker logs are kept in the private engine state directory. Backups include the installation's files, including saves,
 configuration and logs; external files, mounted worlds and external databases need
 separate backups. External mudlib symlinks require a manual update.
 

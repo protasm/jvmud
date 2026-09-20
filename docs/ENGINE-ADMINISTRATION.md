@@ -38,8 +38,14 @@ are retained for the current engine lifetime, not persisted as an autostart list
 Run the console as the engine's OS account, locally or from an SSH login:
 
 ```sh
-scripts/jvmud-console --socket ~/.jvmud/engine-4000/engine.sock
+scripts/jvmud-console --local
 ```
+
+`--local` connects to `~/.jvmud/engine-4000/engine.sock`, the socket created
+by a default engine launch. It does not scan for engines or use TLS credentials.
+For a custom state directory or another engine player port, use
+`scripts/jvmud-console --socket <state-directory>/engine.sock` instead.
+The flag must be used alone.
 
 The OS supplies the connecting process's user identity. The engine requires it
 to match the private state directory's owner. The socket is not a TCP endpoint.
@@ -66,13 +72,29 @@ finish. Engine authority includes all mudlib scopes and identity management.
 
 ## Connect remotely
 
+The console accepts an optional server and administration port:
+
+```sh
+scripts/jvmud-console                     # localhost:4001
+scripts/jvmud-console server.example      # server.example:4001
+scripts/jvmud-console server.example 4401 # server.example:4401
+```
+
+All three forms use TLS and prompt for the trusted server certificate fingerprint,
+administrator name, and token. Obtain the fingerprint from the engine operator
+through a trusted channel. The token is entered without echo. Connection details
+are not saved; supply named options to omit individual prompts. Local TCP connections
+require administrator credentials too; use the Unix socket above for bootstrap.
+
+The explicit options remain available:
+
 ```sh
 scripts/jvmud-console --host server.example --port 4001 --user operator \
   --fingerprint <server-certificate-SHA-256>
 ```
 
-The console prompts for the token without echoing it. For noninteractive input,
-use `--token-file <private-file>`; do not put tokens in command-line arguments.
+For noninteractive input, supply `--user`, `--fingerprint`, and
+`--token-file <private-file>`; do not put tokens in command-line arguments.
 TLS 1.2/1.3 protects remote administration. The console requires an explicitly
 supplied certificate fingerprint and checks certificate validity. It never
 accepts an unknown certificate automatically. The engine generates and retains

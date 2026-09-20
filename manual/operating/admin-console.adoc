@@ -11,7 +11,7 @@ Bootstrap locally as the engine's OS account:
 ----
 scripts/jvmud-start
 # In another terminal:
-scripts/jvmud-console --socket ~/.jvmud/engine-4000/engine.sock
+scripts/jvmud-console --local
 ----
 
 [source,text]
@@ -22,17 +22,26 @@ start /absolute/path/to/mudlib/jvmud/mudlib.config 4100 4101
 status
 ----
 
+`--local` uses `~/.jvmud/engine-4000/engine.sock` and authenticates through your
+OS account. For custom engine state, use `--socket <state-directory>/engine.sock`.
+
 Store the issued random token securely; it is displayed only once. The engine
 stores its hash and grants. Remote connections require the certificate fingerprint
 printed by the engine, obtained through a trusted channel:
 
 [source,shell]
 ----
-scripts/jvmud-console --host server.example --port 4001 --user operator --fingerprint <SHA-256>
+scripts/jvmud-console                     # localhost:4001
+scripts/jvmud-console server.example      # server.example:4001
+scripts/jvmud-console server.example 4401 # server.example:4401
 ----
 
-The console prompts for the token. Use `--token-file <private-file>` when no
-interactive terminal is available. Engine grants include all mudlibs;
+The console prompts for the trusted certificate fingerprint, administrator name,
+and token. Token input is hidden. These values are not saved between connections.
+Supply `--user`, `--fingerprint`, and `--token-file <private-file>` when no
+interactive terminal is available. Explicit `--host` and `--port` options remain
+supported. Local TCP connections use the same TLS authentication; the Unix socket
+provides initial bootstrap and recovery. Engine grants include all mudlibs;
 `grant <name> mudlib:<id>` limits an administrator to one mudlib. Grants are
 independent of OS accounts, player accounts and in-game wizard privileges.
 

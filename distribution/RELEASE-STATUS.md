@@ -1,74 +1,27 @@
-# JVMud 0.1.0-preview.7
+# JVMud 0.1.0-preview.8-test.20260920
 
-This experimental preview includes Small Mercies and LP245. The macOS and Linux
-packages include Eclipse Temurin Java 21.0.12.1+1-LTS. A POSIX shell is required;
-Maven is not needed. The separate runtime-free archive requires Java 21 or newer.
+Local test candidate for the September 20 engine and package restructuring.
+This candidate is not a published release. It includes Small Mercies and LP245.
 
-## Changes
+## Changes under test
 
-Packaged and website installation instructions now create a stable `current`
-directory before starting servers. The commands refuse to extract over an
-existing installation; later releases are installed in place using the updater.
-EC2 examples use `/opt/jvmud/current`. Archive names and roots remain versioned
-for release identification and updater verification. No engine behavior changes.
+The engine supports an empty public menu, separate sandboxed mudlib worker JVMs,
+direct mudlib player endpoints, TLS administration with named tokens and scoped
+grants, and a same-account Unix recovery socket. Player quits disconnect.
+Java packages now separate language, execution, communication, and storage.
 
-### Retained from preview.6
-
-The updater now accepts comment-only configuration differences using verified
-release baselines, archives edited Markdown documentation before replacing it,
-and reports all genuine adapter/configuration conflicts before shutdown.
-New packages include configuration baselines. For older hash-only releases,
-the updater can recover original configuration files from the previous release
-archive and verify them against the installed checksums. Runtime files and
-custom mudlib content remain preserved.
-
-The full Java suite passes 563 tests. Update integration checks exercise legacy
-baseline recovery, documentation replacement with backup, player saves, restart,
-and rollback. The new conflict handling applies once this updater is installed;
-each upgrade is performed by the existing installed updater.
-
-### Retained from preview.5
-
-Adds explicitly opt-in `compiler.dynamic_types = true`: declared value types use
-stable mixed storage while strict typing remains the default. LP245 selects this
-policy, replacing all 51 field and 24 local type overrides. Its original source
-remains unchanged. One method-varargs rule and separate legacy syntax settings
-remain. Shop valuation now correctly prices the frog's crown at 30 gold coins.
-
-Regression coverage includes strict/dynamic policy isolation,
-hosted startup, original LP245 archive checks, Telnet gameplay, and saved-player
-restore. Configurations combining dynamic typing with field/local overrides are
-rejected; update the LP245 configuration and override file together.
-
-### Retained from preview.4
-
-Adds `jvmud-update`: verified downloads, clean server shutdown and restart,
-full installation backups beside the distribution in `backup/`, and rollback
-on installation/restart failure. Mudlib content outside `jvmud/` stays untouched;
-local adapter conflicts require a manual merge. The bundled Java symlink is now
-`jre`. Server logs live under each mudlib's `jvmud/log/` directory.
-
-World perception now reaches entities and locations, with structured native events
-and an LP245 adapter for original `catch_tell` handlers. The Go puzzle and Leo's
-quest hand-in are covered by regression tests; the spoken Go solution is also
-tested through Telnet. Private interface output remains separate.
-
-Launchers now accept a mudlib name: `scripts/jvmud-start lp245` or
-`scripts/jvmud-start smallmercies` from the extracted package directory.
-
-Platform packages include the complete vendor JRE and use it by default.
-`JVMUD_JAVA_HOME` provides an explicit override. Packages are available for
-macOS Apple Silicon and Intel, and Linux ARM64 and x86-64 (glibc).
+Use a fresh installation and disposable player data. Keep engine private state
+outside the mudlib trees. Linux requires bubblewrap and unprivileged user
+namespaces; macOS requires sandbox-exec. See the packaged README for commands.
 
 ## Validation
 
-See the accompanying `.validation.json` for each platform package's actual
-validation. The packager verifies vendor SHA-256 checksums, runtime architecture,
-archive extraction, and preservation of runtime files, permissions, and symlinks.
-It runs launcher, formatter, Small Mercies and LP245 login, movement, and attached
-administration checks only on the matching build host. Other targets are not
-runtime-validated by cross-packaging. JVMud classes target Java 21.
-LP245 compatibility remains experimental.
+The distribution builder runs the Java suite, extracted-archive gameplay and
+administration checks, and update/rollback checks before writing checksums.
+The accompanying platform .validation.json records checks actually completed.
+A package for another platform is not runtime-validated by cross-packaging.
+Linux runtime validation and the manual walkthrough remain pending.
+LP245 compatibility remains experimental. JVMud classes target Java 21.
 
 ## Licensing status
 

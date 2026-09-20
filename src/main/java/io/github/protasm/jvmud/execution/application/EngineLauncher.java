@@ -24,7 +24,7 @@ final class EngineLauncher {
         try (InstallationServers registration = InstallationServers.register(args, applicationRoot);
                 JVMud engine = new JVMud(new EngineConfiguration(options.bindAddress(), options.port(), options.adminPort(),
                         options.stateDirectory(), options.traceStartupLoads()))) {
-            Thread shutdown = new Thread(engine::close, "jvmud-engine-shutdown");
+            Thread shutdown = new Thread(() -> closeForProcessExit(engine, registration), "jvmud-engine-shutdown");
             Runtime.getRuntime().addShutdownHook(shutdown);
             try {
                 engine.start();
@@ -42,6 +42,16 @@ final class EngineLauncher {
                 catch (IllegalStateException ignored) { /* Process shutdown already began. */ }
             }
         }
+    }
+
+    /**
+     * Records shutdown after worker save hooks finish, before the JVM exits.
+     * Signal-driven shutdown does not wait for the main thread's resource cleanup.
+     */
+    private static void closeForProcessExit(JVMud engine, InstallationServers registration) {
+        engine.close();
+        try { registration.close(); }
+        catch (IOException e) { System.err.println("Cannot record completed engine shutdown: " + e.getMessage()); }
     }
 
     /** Accepts zero or more initial mudlibs; engine administration always has its own port. */

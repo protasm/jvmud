@@ -36,9 +36,23 @@ def live_records(root):
         if value['state']=='ready': result.append(value)
     return result
 
+def wait_world(root, state, world):
+    """Wait for the worker, since engine registration precedes mudlib startup."""
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        result = subprocess.run([str(root/'scripts/jvmud-console'), '--socket',
+                                 str(state/'engine.sock')], input='status\nquit\n',
+                                text=True, capture_output=True, timeout=15)
+        if any(f'id={world},' in line and 'state=RUNNING' in line
+               for line in result.stdout.splitlines()):
+            return
+        time.sleep(.2)
+    raise AssertionError(f'{world} did not become ready: {result.stdout} {result.stderr}')
+
 def main():
     archive=Path(sys.argv[1]).resolve()
-    with tempfile.TemporaryDirectory(prefix='jvmud update test ') as temporary:
+    with tempfile.TemporaryDirectory(prefix='jvmud update test ') as temporary, \
+            tempfile.TemporaryDirectory(prefix='jvmud-update-state-', dir='/tmp') as private_state:
         work=Path(temporary)
         with tarfile.open(archive) as tar: tar.extractall(work / 'installed', filter='data')
         root,=(work / 'installed').iterdir()
@@ -79,18 +93,26 @@ def main():
         web_server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler)
         threading.Thread(target=web_server.serve_forever,daemon=True).start()
         url=f'http://127.0.0.1:{web_server.server_port}/latest.json'
-        ports=[dist.free_port(),dist.free_port()]
-        while ports[0]==ports[1]:ports[1]=dist.free_port()
+        endpoint_ports=set()
+        while len(endpoint_ports)<4:endpoint_ports.add(dist.free_port())
+        ports=list(endpoint_ports)[:2]
+        admin_ports=list(endpoint_ports)[2:]
+        states=[Path(private_state)/world for world in ['smallmercies','lp245']]
         processes=[]; outputs=[]
         try:
-            for world,port in zip(['smallmercies','lp245'],ports):
+            for world,port,admin_port,state in zip(['smallmercies','lp245'],ports,admin_ports,states):
                 output=(work/f'{world}-launcher.log').open('w');outputs.append(output)
-                processes.append(subprocess.Popen([str(root/'scripts/jvmud-start'),'--port',str(port),world],cwd=root,stdout=output,stderr=subprocess.STDOUT))
+                processes.append(subprocess.Popen([str(root/'scripts/jvmud-start'),'--port',str(port),
+                                  '--admin-port',str(admin_port),'--state-dir',str(state),world],
+                                  cwd=root,stdout=output,stderr=subprocess.STDOUT))
                 wait_ready(root,processes[-1].pid)
+                wait_world(root,state,world)
                 # Reap stopped children just as a launching shell would.
                 threading.Thread(target=processes[-1].wait, daemon=True).start()
             with socket.create_connection(('127.0.0.1',ports[1])) as player:
                 player.settimeout(.5)
+                dist.until(player,'(or quit): ')
+                player.sendall(b'lp245\n')
                 dist.until(player,'What is your name: ')
                 for text,marker in [('updatetest','Password: '),('secret123','Password: (again) '),('secret123','Please enter your email address'),('none','Are you, male, female or other'),('o','Welcome, Creature!'),('south','You are at an open green place'),('west','An old humpbacked bridge.'),('get money','Ok.')]:
                     dist.command(player,text,marker)
@@ -106,6 +128,7 @@ def main():
                 assert updated.returncode==0,updated.stdout+updated.stderr
             for p in processes:p.wait(timeout=10)
             assert len(live_records(root))==2
+            for world,state in zip(['smallmercies','lp245'],states):wait_world(root,state,world)
             assert config.read_bytes()==(fresh/config_name).read_bytes()
             assert custom.read_text()=='local world content'
             assert local_log.read_text()=='keep my log'
@@ -120,7 +143,7 @@ def main():
             assert save.exists(),'Connected player was not saved before backup'
             assert save.read_bytes()!=before_save,'Shutdown did not persist the live player changes'
             assert save.read_bytes()==(backups[0]/save.relative_to(root)).read_bytes(),'Backup missed the shutdown save'
-            assert all((root/f'mudlibs/{world}/jvmud/log/server-{port}.log').exists() for world,port in zip(['smallmercies','lp245'],ports))
+            assert all((root/f'.jvmud/log/server-{port}.log').exists() for port in ports)
             assert not list(root.glob('*.log'))
             print('PASS: bad download leaves two servers running; update saves players, backs up beside install, preserves world/config/logs, updates bridge, and restarts both worlds')
 
@@ -133,6 +156,7 @@ def main():
             rolled=subprocess.run([str(root/'scripts/jvmud-update'),'--manifest',url],cwd=root,text=True,capture_output=True,timeout=150)
             assert rolled.returncode!=0 and 'Previous JVMud files restored' in rolled.stderr,rolled.stdout+rolled.stderr
             assert len(live_records(root))==2
+            for world,state in zip(['smallmercies','lp245'],states):wait_world(root,state,world)
             assert not (root/'.jvmud/update-in-progress.json').exists()
             assert json.loads((root/'metadata/update-index.json').read_text())['version']=='0.1.0-test-rollback'
             assert custom.read_text()=='local world content' and config.read_bytes()==expected_config

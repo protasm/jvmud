@@ -137,7 +137,7 @@ runs in a separate sandboxed worker JVM with its own player/admin port pair.
 Bootstrap through the local console:
 
 ```sh
-scripts/jvmud-console --socket ~/.jvmud/engine-4000/engine.sock
+scripts/jvmud-console --local
 ```
 
 At `engine>`, use `help`, `start <manifest> [player-port admin-port]`, `status`,
@@ -148,8 +148,15 @@ The registry stores token hashes, independently of player accounts and in-game p
 Remote consoles require TLS certificate pinning and an administrator token:
 
 ```sh
-scripts/jvmud-console --host server.example --port 4001 --user operator --fingerprint <SHA-256>
+scripts/jvmud-console                     # localhost:4001
+scripts/jvmud-console server.example      # server.example:4001
+scripts/jvmud-console server.example 4401 # server.example:4401
 ```
+
+The console prompts for the trusted certificate fingerprint, administrator name,
+and token. Obtain the fingerprint from the engine operator through a trusted
+channel; token input is hidden. For scripts, supply `--user`, `--fingerprint`,
+and `--token-file`. Explicit `--host` and `--port` options remain supported.
 
 Use a mudlib's admin port for its live object commands. Both engine-menu and
 direct player connections enter the same mudlib. Quitting closes the connection;
