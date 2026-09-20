@@ -891,7 +891,7 @@ analysis, IR, bytecode generation, efun contracts, loading, and diagnostics.</p>
 <ul>
 <li>
 <p><code>application</code> starts JVMud, owns public endpoints and administrator authority,
-supervises sandboxed worker JVMs, and supports installation updates. It remains
+supervises separate worker JVMs, and supports installation updates. It remains
 available with zero mudlibs.</p>
 </li>
 <li>
@@ -926,9 +926,10 @@ tree. A player connects through communication code to an execution instance,
 which runs language-compiled behavior against model state and storage services.</p>
 </div>
 <div class="paragraph">
-<p>These packages organize responsibilities within the project. The worker process
-sandbox, rather than a Java package name, enforces isolation between mudlibs and
-the supervising application.</p>
+<p>These packages organize responsibilities within the project. Separate worker
+JVMs give each mudlib independent runtime state and contain worker process
+crashes. Workers retain the host account&#8217;s OS permissions; this architecture
+provides fault isolation, not an OS security sandbox.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1637,16 +1638,21 @@ port pair. Mudlib administration operates on that worker&#8217;s live objects.</
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-start
 # In another terminal:
-scripts/jvmud-console --socket ~/.jvmud/engine-4000/engine.sock</code></pre>
+scripts/jvmud-console --local</code></pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="text">admin-create operator
 grant operator engine
-start /absolute/path/to/mudlib/jvmud/mudlib.config 4100 4101
+available
+start smallmercies 4100 4101
 status</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p><code>--local</code> uses <code>~/.jvmud/engine-4000/engine.sock</code> and authenticates through your
+OS account. For custom engine state, use <code>--socket &lt;state-directory&gt;/engine.sock</code>.</p>
 </div>
 <div class="paragraph">
 <p>Store the issued random token securely; it is displayed only once. The engine
@@ -1655,14 +1661,30 @@ printed by the engine, obtained through a trusted channel:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-console --host server.example --port 4001 --user operator --fingerprint &lt;SHA-256&gt;</code></pre>
+<pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-console                     # localhost:4001
+scripts/jvmud-console server.example      # server.example:4001
+scripts/jvmud-console server.example 4401 # server.example:4401</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The console prompts for the token. Use <code>--token-file &lt;private-file&gt;</code> when no
-interactive terminal is available. Engine grants include all mudlibs;
+<p>The console prompts for the trusted certificate fingerprint, administrator name,
+and token. Token input is hidden. These values are not saved between connections.
+Supply <code>--user</code>, <code>--fingerprint</code>, and <code>--token-file &lt;private-file&gt;</code> when no
+interactive terminal is available. Explicit <code>--host</code> and <code>--port</code> options remain
+supported. Local TCP connections use the same TLS authentication; the Unix socket
+provides initial bootstrap and recovery. Engine grants include all mudlibs;
 <code>grant &lt;name&gt; mudlib:&lt;id&gt;</code> limits an administrator to one mudlib. Grants are
 independent of OS accounts, player accounts and in-game wizard privileges.</p>
+</div>
+<div class="paragraph">
+<p><code>available</code> lists names under the engine&#8217;s configured mudlib directory.
+<code>start &lt;name&gt;</code> resolves <code>&lt;mudlib-dir&gt;/&lt;name&gt;/jvmud/&lt;name&gt;.config</code> and defaults to
+player/admin ports 4100/4101. Occupied ports return an error. Supply another pair
+for additional mudlibs, or <code>0 0</code> for OS-allocated ports. Engine ports still default
+to 4000/4001.
+The host operator selects <code>--mudlib-dir</code> at startup; it defaults to <code>mudlibs</code>
+under the launch root. Both local and networked administration reject host
+paths, traversal, and escaping symlinks. Restarts revalidate the same boundary.</p>
 </div>
 <div class="paragraph">
 <p>Connect to a mudlib&#8217;s admin port for <code>objects</code>, <code>inspect</code>, <code>call</code>, <code>reload</code>, and
@@ -1673,8 +1695,10 @@ closes its connections while leaving the engine and other mudlibs running.</p>
 <div class="paragraph">
 <p>The private engine state defaults to <code>~/.jvmud/engine-&lt;player-port&gt;</code> and contains
 its recovery socket, registry, TLS identity and bounded worker logs. Override it
-with <code>--state-dir</code>. Keep it outside mudlib trees. macOS requires <code>sandbox-exec</code>;
-Linux requires bubblewrap and user namespaces. Sandbox startup fails closed.</p>
+with <code>--state-dir</code>. Keep it outside mudlib trees. Workers launch directly with
+Java and retain the host account&#8217;s OS permissions. Separate JVMs contain worker
+crashes; they are not a security boundary against hostile code. No external
+sandbox package is required.</p>
 </div>
 <div class="paragraph">
 <p>See the repository&#8217;s <code>docs/ENGINE-ADMINISTRATION.md</code> for isolation limits, timeout
@@ -3470,7 +3494,7 @@ boundaries.</p>
 <h3 id="_instance_and_transport_internals"><a class="anchor" href="#_instance_and_transport_internals"></a><a class="link" href="#_instance_and_transport_internals">Instance And Transport Internals</a></h3>
 <div class="paragraph">
 <p><code>execution.application.JVMud</code> starts engine endpoints independently of mudlibs and supervises
-one sandboxed worker JVM per mudlib. <code>MudlibWorker</code> boots through <code>MudlibBoot</code> and
+one separate worker JVM per mudlib. <code>MudlibWorker</code> boots through <code>MudlibBoot</code> and
 reports readiness over private pipes. The engine then publishes the mudlib&#8217;s
 player/admin pair. <code>PlayerGateway</code> provides the engine menu and direct relays;
 worker-side <code>TelnetServer</code> handles only its own mudlib&#8217;s protocol sessions.
@@ -3505,7 +3529,7 @@ worker, where Telnet negotiation, player login and game commands are handled.</p
 <div class="paragraph">
 <p>Storage adapters live under <code>storage</code>; engine administrator identities are
 separate from mudlib player accounts. See <code>docs/ENGINE-ADMINISTRATION.md</code> for the
-OS sandbox boundary, supervision deadlines and platform limitations.</p>
+process fault isolation, supervision deadlines and platform limitations.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3851,7 +3875,7 @@ spaces. Numeric text is not automatically converted to LPC integers. <code>help<
 </table>
 <div class="paragraph">
 <p>The terminal launcher for play is
-<code>scripts/jvmud-start [--bind &lt;address&gt;] [--port &lt;port&gt;] [--admin-port &lt;port&gt;] [--state-dir &lt;path&gt;] [--trace-startup-loads] [&lt;mudlib-config-file&gt;&#8230;&#8203;]</code>.
+<code>scripts/jvmud-start [--bind &lt;address&gt;] [--port &lt;port&gt;] [--admin-port &lt;port&gt;] [--state-dir &lt;path&gt;] [--mudlib-dir &lt;directory&gt;] [--trace-startup-loads] [&lt;mudlib-config-file&gt;&#8230;&#8203;]</code>.
 Inside a player client, profiles using the default transport prefix reserve <code>//help</code> and <code>//quit</code> for
 transport controls. The mudlib owns all gameplay verbs.</p>
 </div>

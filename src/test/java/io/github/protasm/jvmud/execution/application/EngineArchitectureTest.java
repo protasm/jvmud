@@ -11,7 +11,7 @@ import java.time.Duration;
 import java.util.*;
 import org.junit.jupiter.api.*;
 
-/** End-to-end engine supervision using actual sandboxed worker JVMs and authenticated network connections. */
+/** End-to-end engine supervision using actual separate worker JVMs and authenticated network connections. */
 class EngineArchitectureTest {
     private Path directory;
     @BeforeEach void setup() throws IOException { directory = Files.createTempDirectory(Path.of("/tmp"), "jvmud-it-"); }

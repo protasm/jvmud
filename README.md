@@ -132,7 +132,7 @@ scripts/jvmud-start --help
 The engine runs independently of its mudlibs. `scripts/jvmud-start` with no
 manifests opens an unauthenticated player menu on localhost:4000, a TLS engine-admin
 listener on localhost:4001, and a same-account Unix recovery socket. Each mudlib
-runs in a separate sandboxed worker JVM with its own player/admin port pair.
+runs in a separate worker JVM with its own player/admin port pair.
 
 Bootstrap through the local console:
 
@@ -171,9 +171,9 @@ direct player connections enter the same mudlib. Quitting closes the connection;
 players reconnect to return to the menu.
 
 See [Engine and administration](docs/ENGINE-ADMINISTRATION.md) for exact bootstrap,
-remote access, lifecycle commands, sandbox prerequisites, limitations and migration.
-Linux requires bubblewrap; macOS uses sandbox-exec. Unsupported sandbox startup
-fails closed. Engine logs are stored under `.jvmud/log`; private state and worker
+remote access, lifecycle commands, fault isolation, limitations and migration.
+Workers launch directly with Java; no external sandbox tool is required. They
+retain the host account's OS permissions. Engine logs are stored under `.jvmud/log`; private state and worker
 logs default to `~/.jvmud/engine-<player-port>`.
 
 ## Documentation

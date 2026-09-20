@@ -92,8 +92,9 @@ operator sets `--mudlib-dir` when starting the engine (default: the launch root'
 escape that directory or the selected mudlib tree.
 
 Use a mudlib's admin port for its live object commands. Each mudlib runs in its
-own sandboxed worker JVM. Linux requires `/usr/bin/bwrap` and user namespaces;
-macOS requires `sandbox-exec`. Unsupported sandbox startup fails closed. Player
+own worker JVM, launched directly with Java. No external sandbox tool is required.
+Workers retain the host account's OS permissions; process separation provides
+fault isolation, not protection against hostile code. Player
 quits close the connection; reconnect for the engine menu.
 
 ## Run LP245

@@ -44,12 +44,13 @@ static docs.
 ## Application Operation
 
 - `execution.application.JVMud` owns `main()`, application lifetime, public endpoints, and worker supervision.
-- The engine starts with zero mudlibs. Each mudlib runs in a separate sandboxed JVM.
+- The engine starts with zero mudlibs. Each mudlib runs in a separate JVM.
 - The engine player endpoint offers a public menu. Each ready mudlib also has a
   direct player endpoint and a scoped TLS administration endpoint. Quitting a
   mudlib closes the connection; there is no return-to-menu or world-hopping API.
-- The engine owns administrator tokens, grants and TLS keys outside worker-visible
-  storage. A same-account Unix socket provides local bootstrap/recovery.
+- The engine owns administrator tokens, grants and TLS keys in its private state
+  directory. Workers use separate JVMs for fault isolation but retain the host
+  account's OS permissions; they are not a security boundary. A same-account Unix socket provides local bootstrap/recovery.
 - Each `MudInstance` owns its execution queue and clock within its worker. Queue
   player input, protocol callbacks, administration and ticks there.
 - Mudlibs interpret player commands. Transport never interprets LPC return values

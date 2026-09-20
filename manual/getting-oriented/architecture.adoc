@@ -10,7 +10,7 @@ analysis, IR, bytecode generation, efun contracts, loading, and diagnostics.
 `execution` separates three responsibilities:
 
 * `application` starts JVMud, owns public endpoints and administrator authority,
-  supervises sandboxed worker JVMs, and supports installation updates. It remains
+  supervises separate worker JVMs, and supports installation updates. It remains
   available with zero mudlibs.
 * `model` defines worlds, Places, Entities, Locations, Links, identities, time,
   and mudlib boundary contracts. `WorldRuntime` enforces rules such as single
@@ -35,6 +35,7 @@ and compatibility policy. It lives under `mudlibs/`, outside the Java package
 tree. A player connects through communication code to an execution instance,
 which runs language-compiled behavior against model state and storage services.
 
-These packages organize responsibilities within the project. The worker process
-sandbox, rather than a Java package name, enforces isolation between mudlibs and
-the supervising application.
+These packages organize responsibilities within the project. Separate worker
+JVMs give each mudlib independent runtime state and contain worker process
+crashes. Workers retain the host account's OS permissions; this architecture
+provides fault isolation, not an OS security sandbox.

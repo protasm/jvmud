@@ -5,14 +5,14 @@ This candidate is not a published release. It includes Small Mercies and LP245.
 
 ## Changes under test
 
-The engine supports an empty public menu, separate sandboxed mudlib worker JVMs,
+The engine supports an empty public menu, separate mudlib worker JVMs,
 direct mudlib player endpoints, TLS administration with named tokens and scoped
 grants, and a same-account Unix recovery socket. Player quits disconnect.
 Java packages now separate language, execution, communication, and storage.
 
 Use a fresh installation and disposable player data. Keep engine private state
-outside the mudlib trees. Linux requires bubblewrap and unprivileged user
-namespaces; macOS requires sandbox-exec. See the packaged README for commands.
+outside the mudlib trees. Workers launch directly with Java and retain the host
+account's OS permissions; no external sandbox package is required. See the packaged README for commands.
 
 ## Validation
 

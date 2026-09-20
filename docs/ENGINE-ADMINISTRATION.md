@@ -132,8 +132,8 @@ empty or absent. Initial manifests explicitly supplied by the host operator on
 the startup command line remain supported; an externally launched mudlib outside
 the configured directory cannot be restarted through administration. Place it in
 the managed directory to make it administratively startable and restartable.
-The catalog limits manifest selection; each worker's OS sandbox separately
-restricts runtime access. Host operators control the directory and its contents.
+The catalog limits administrative manifest selection; it does not restrict the
+worker process's operating-system permissions. Host operators control the directory and its contents.
 
 Supply both requested mudlib ports or neither. The `start` command defaults to
 player port 4100 and admin port 4101; occupied ports return an error without
@@ -183,26 +183,21 @@ Stopping gives hooks a bounded opportunity before forced termination. A crash
 removes the mudlib from the menu, closes its public endpoints and leaves its
 failure visible. The engine and other workers remain available.
 
-On macOS workers run under `sandbox-exec`: file contents are restricted to system runtime inputs, the declared classpath,
-mudlib and scratch paths; engine state is
-explicitly denied; writes are limited to the mudlib and scratch; process spawning
-and signaling other processes are denied; outbound connections are denied and
-inbound networking is loopback-only. System runtime reads remain permitted for
-macOS dynamic linking. This platform sandbox requires `sandbox-exec`.
+Workers are launched directly with the engine's Java runtime. No bubblewrap,
+`sandbox-exec`, or enabled Linux user namespaces are required. The engine clears
+the worker's inherited environment and gives it its own temporary directory,
+but these are execution defaults, not access controls.
 
-On Linux workers require `/usr/bin/bwrap` (bubblewrap) and enabled unprivileged
-user namespaces. Workers receive private process/IPC namespaces and a filesystem
-view containing read-only system/JRE/classpath inputs, their writable mudlib and
-scratch, and private `/tmp` and `/proc`. Host network access remains available
-for the private loopback relay; engine credentials and the Unix recovery socket
-are absent from the filesystem view. No capabilities are retained. The engine
-fails mudlib startup if the sandbox cannot start; there is no unsandboxed fallback.
+Each worker retains the host account's operating-system permissions, including
+file and network access. Engine credentials are not sent through the worker
+protocol, but the worker process is not prevented by JVMud from accessing files
+owned by that same account. Use trusted mudlibs. The administrative catalog and
+mudlib filesystem APIs retain their path checks; they do not provide an OS
+security boundary. Host-wide resource exhaustion can still affect every process.
 
-The macOS implementation is integration-tested on the development host. The
-Linux launcher needs runtime validation on a Linux host with bubblewrap. Native
-Windows is not currently supported by this sandbox implementation. Database or
-other external-service access requires additional platform-specific capability
-design; macOS workers cannot currently make outbound database connections.
+macOS and Linux remain the supported hosting platforms. Linux runtime validation
+is performed on Linux, not inferred from a Mac build. Native Windows hosting and
+launchers have not been validated by this change.
 
 Worker diagnostics are capped at 1 MiB per start in `logs/<id>.log` and replaced
 on restart. `--trace-startup-loads` enables worker-side startup tracing. A forced
@@ -212,7 +207,7 @@ still an explicit mudlib/storage responsibility.
 ## Code responsibilities
 
 - `execution.application`: application configuration, lifecycle, and worker supervision.
-- `execution.application.worker`: OS sandbox launch and private control protocol.
+- `execution.application.worker`: Java worker launch and private control protocol.
 - `execution.application.update`: installation updates and server tracking.
 - `execution.model`: worlds, identities, time, and mudlib contracts.
 - `execution.instance`: one worker's mudlib assembly, execution queue, and clock.

@@ -1,7 +1,7 @@
 === Instance And Transport Internals
 
 `execution.application.JVMud` starts engine endpoints independently of mudlibs and supervises
-one sandboxed worker JVM per mudlib. `MudlibWorker` boots through `MudlibBoot` and
+one separate worker JVM per mudlib. `MudlibWorker` boots through `MudlibBoot` and
 reports readiness over private pipes. The engine then publishes the mudlib's
 player/admin pair. `PlayerGateway` provides the engine menu and direct relays;
 worker-side `TelnetServer` handles only its own mudlib's protocol sessions.
@@ -31,4 +31,4 @@ worker, where Telnet negotiation, player login and game commands are handled.
 
 Storage adapters live under `storage`; engine administrator identities are
 separate from mudlib player accounts. See `docs/ENGINE-ADMINISTRATION.md` for the
-OS sandbox boundary, supervision deadlines and platform limitations.
+process fault isolation, supervision deadlines and platform limitations.

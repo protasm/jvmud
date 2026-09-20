@@ -9,7 +9,11 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-/** Engine-side owner of a worker JVM. The engine never loads this mudlib's LPC classes or runtime objects. */
+/**
+ * Engine-side owner of a separate worker JVM for fault isolation.
+ * The engine never loads this mudlib's LPC classes or runtime objects. Workers
+ * run with the host account's OS permissions, not within a security sandbox.
+ */
 public final class MudlibProcess implements AutoCloseable {
     private final Process process;
     private final Path scratch;
@@ -21,7 +25,7 @@ public final class MudlibProcess implements AutoCloseable {
     private final WorkerWire.Ready ready;
     private volatile boolean closed;
 
-    /** Starts a sandboxed, memory-bounded JVM and requires readiness before returning. */
+    /** Starts Java directly with per-worker JVM memory limits and requires readiness before returning. */
     public MudlibProcess(MudlibSpec spec, Path log, boolean trace) throws IOException {
         scratch = Files.createTempDirectory("jvmud-worker-");
         List<Path> classpath = classpath();
@@ -33,7 +37,7 @@ public final class MudlibProcess implements AutoCloseable {
                 "-XX:ErrorFile=" + scratch.resolve("hs_err_pid%p.log"),
                 "-cp", cp, "io.github.protasm.jvmud.execution.instance.MudlibWorker");
         try {
-            ProcessBuilder builder = new ProcessBuilder(WorkerSandbox.command(spec.root(), scratch, log.getParent().getParent(), java, classpath));
+            ProcessBuilder builder = new ProcessBuilder(java);
             builder.directory(spec.root().toFile());
             builder.environment().clear();
             builder.environment().put("LANG", "en_US.UTF-8");

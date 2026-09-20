@@ -17,7 +17,7 @@ import java.util.concurrent.CountDownLatch;
 
 /**
  * Application entry point and supervisor. Owns public endpoints, administrator identities and worker lifecycles.
- * LPC execution belongs exclusively to sandboxed worker JVMs; the engine remains available with no mudlibs.
+ * LPC execution belongs exclusively to separate worker JVMs; the engine remains available with no mudlibs.
  */
 public final class JVMud implements AutoCloseable {
     private final EngineConfiguration configuration;

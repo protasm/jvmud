@@ -62,8 +62,10 @@ closes its connections while leaving the engine and other mudlibs running.
 
 The private engine state defaults to `~/.jvmud/engine-<player-port>` and contains
 its recovery socket, registry, TLS identity and bounded worker logs. Override it
-with `--state-dir`. Keep it outside mudlib trees. macOS requires `sandbox-exec`;
-Linux requires bubblewrap and user namespaces. Sandbox startup fails closed.
+with `--state-dir`. Keep it outside mudlib trees. Workers launch directly with
+Java and retain the host account's OS permissions. Separate JVMs contain worker
+crashes; they are not a security boundary against hostile code. No external
+sandbox package is required.
 
 See the repository's `docs/ENGINE-ADMINISTRATION.md` for isolation limits, timeout
 behavior, certificate management and the complete operating workflow.
