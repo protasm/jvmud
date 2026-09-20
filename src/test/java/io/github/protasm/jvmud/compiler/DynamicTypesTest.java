@@ -47,7 +47,7 @@ class DynamicTypesTest {
     @Test void strictModeAndMissingDeclarationRulesRemainUnchanged() {
         assertFalse(MudlibBoundary.empty().dynamicTypes());
         assertThrows(IllegalArgumentException.class, () -> MudlibBoundary.builder().dynamicTypes(true)
-                .fieldTypeOverride(new io.github.protasm.jvmud.transpiler.FieldTypeOverride("test.c", "value", "string", "int")).build());
+                .fieldTypeOverride(new io.github.protasm.jvmud.compiler.transpiler.FieldTypeOverride("test.c", "value", "string", "int")).build());
         assertThrows(LPCRuntimeException.class, () -> runtime(false).loadSource("bad.c", "int value() { return ({1}); }"));
         assertThrows(LPCRuntimeException.class, () -> runtime(true).loadSource("untyped.c", "value() { return 1; }"));
         assertThrows(LPCRuntimeException.class, () -> runtime(true).loadSource("parameter.c", "int value(arg) { return arg; }"));

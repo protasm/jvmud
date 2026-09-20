@@ -130,7 +130,7 @@ public final class CompilationPipeline {
             tokens = runtimeContext.transpileSourceTokens(unit.sourcePath(), tokens);
             unit.setTokens(tokens);
             observer.stageSucceeded(unit, CompilationStage.TRANSPILE);
-        } catch (io.github.protasm.jvmud.transpiler.TranspilationException e) {
+        } catch (io.github.protasm.jvmud.compiler.transpiler.TranspilationException e) {
             CompilationProblem problem = new CompilationProblem(CompilationStage.TRANSPILE, e.getMessage(), e.line(), e);
             problems.add(problem);
             observer.stageFailed(unit, CompilationStage.TRANSPILE, problem);
@@ -163,7 +163,7 @@ public final class CompilationPipeline {
             observer.stageStarted(unit, CompilationStage.TRANSPILE);
             runtimeContext.transpileSourceLocals(unit.sourcePath(), astObject);
             observer.stageSucceeded(unit, CompilationStage.TRANSPILE);
-        } catch (io.github.protasm.jvmud.transpiler.TranspilationException e) {
+        } catch (io.github.protasm.jvmud.compiler.transpiler.TranspilationException e) {
             CompilationProblem problem = new CompilationProblem(CompilationStage.TRANSPILE, e.getMessage(), e.line(), e);
             problems.add(problem);
             observer.stageFailed(unit, CompilationStage.TRANSPILE, problem);

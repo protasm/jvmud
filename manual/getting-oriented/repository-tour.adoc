@@ -14,7 +14,8 @@ All Java package names below begin with `io.github.protasm.jvmud`.
 `MudInstance`, and `MudlibRouter`.
 |`transport` |Player connection mechanics. Start with `telnet.TelnetServer`, created by `engine.JVMud`.
 |`persistence` |Durable adapters under `filesystem` and `jdbc`.
-|`cli` |Local object sandbox. Start with `AdminCli`.
+|`cli` |Terminal administration client and maintenance tools. Start with `AdminClient`.
+|`admin` |Administrative command interpretation and session state. Start with `AdminCommandSession`.
 |===
 
 `src/main/java/` contains these packages; `src/test/java/` mirrors them.

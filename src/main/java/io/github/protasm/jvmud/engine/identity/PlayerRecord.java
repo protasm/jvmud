@@ -11,9 +11,9 @@ import java.util.Set;
  * to associate mudlib-authored profile state without making that state part of the engine ontology.</p>
  */
 public record PlayerRecord(
-        PlayerId id,
-        Set<SessionId> activeSessionIds,
-        Optional<PersonaId> activePersonaId,
+        PlayerID id,
+        Set<SessionID> activeSessionIds,
+        Optional<PersonaID> activePersonaId,
         Optional<Object> mudlibProfileProjection) {
     public PlayerRecord {
         id = Objects.requireNonNull(id, "id");
@@ -22,7 +22,7 @@ public record PlayerRecord(
         mudlibProfileProjection = Objects.requireNonNull(mudlibProfileProjection, "mudlibProfileProjection");
     }
 
-    public PlayerRecord(PlayerId id) {
+    public PlayerRecord(PlayerID id) {
         this(id, Set.of(), Optional.empty(), Optional.empty());
     }
 }

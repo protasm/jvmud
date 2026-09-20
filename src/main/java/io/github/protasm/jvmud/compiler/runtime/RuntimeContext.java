@@ -21,12 +21,12 @@ import io.github.protasm.jvmud.engine.world.PerceptionEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
 import io.github.protasm.jvmud.engine.output.OutgoingTextFormatter;
-import io.github.protasm.jvmud.engine.identity.PersonaId;
+import io.github.protasm.jvmud.engine.identity.PersonaID;
 import io.github.protasm.jvmud.engine.identity.PersonaRecord;
-import io.github.protasm.jvmud.engine.identity.PlayerId;
+import io.github.protasm.jvmud.engine.identity.PlayerID;
 import io.github.protasm.jvmud.engine.identity.PlayerRecord;
 import io.github.protasm.jvmud.engine.time.ScheduledTask;
-import io.github.protasm.jvmud.engine.identity.SessionId;
+import io.github.protasm.jvmud.engine.identity.SessionID;
 import io.github.protasm.jvmud.engine.identity.SessionRecord;
 import io.github.protasm.jvmud.engine.time.WorldScheduler;
 import io.github.protasm.jvmud.engine.world.MudlibWorldProjection;
@@ -87,11 +87,11 @@ public final class RuntimeContext {
     private final Map<Object, Map<String, List<DeferredCallback>>> deferredCallbackTasks =
             new IdentityHashMap<>();
     private long nextDeferredCallbackId = 1;
-    private final Map<PlayerId, PlayerRecord> players = new LinkedHashMap<>();
-    private final Map<SessionId, SessionBinding> sessions = new LinkedHashMap<>();
-    private final Map<PersonaId, PersonaRecord> personas = new LinkedHashMap<>();
+    private final Map<PlayerID, PlayerRecord> players = new LinkedHashMap<>();
+    private final Map<SessionID, SessionBinding> sessions = new LinkedHashMap<>();
+    private final Map<PersonaID, PersonaRecord> personas = new LinkedHashMap<>();
     private final Map<Object, SessionBinding> sessionsByPersona = new IdentityHashMap<>();
-    private final Map<Object, PersonaId> personaIdsByProjection = new IdentityHashMap<>();
+    private final Map<Object, PersonaID> personaIdsByProjection = new IdentityHashMap<>();
     private final Map<Object, PendingSessionInput> pendingInputsByPersona = new IdentityHashMap<>();
     private final Map<Object, StringBuilder> pendingTargetedOutputByPersona = new IdentityHashMap<>();
     private final RuntimeDatabaseService databaseService = new RuntimeDatabaseService();
@@ -113,7 +113,7 @@ public final class RuntimeContext {
     private Function<String, Object> objectLoader = path -> null;
     private Function<String, Object> mudlibTextReader = path -> 0;
     private Function<String, Object> mudlibJsonReader = path -> 0;
-    private MudlibJsonArrayReader mudlibJsonArrayReader = (path, pointer, offset, count) -> 0;
+    private MudlibJSONArrayReader mudlibJsonArrayReader = (path, pointer, offset, count) -> 0;
     private BiFunction<String, Integer, Object> mudlibPathLister = (path, flags) -> List.of();
     private BiFunction<String, Object, Integer> mudlibTextAppender = (path, text) -> 0;
     private Function<String, Integer> mudlibTextRemover = path -> 0;
@@ -217,7 +217,7 @@ public final class RuntimeContext {
      *
      * @param mudlibJsonArrayReader host reader, or {@code null} to restore the unavailable reader
      */
-    public void setMudlibJsonArrayReader(MudlibJsonArrayReader mudlibJsonArrayReader) {
+    public void setMudlibJsonArrayReader(MudlibJSONArrayReader mudlibJsonArrayReader) {
         this.mudlibJsonArrayReader = (mudlibJsonArrayReader != null)
                 ? mudlibJsonArrayReader
                 : (path, pointer, offset, count) -> 0;
@@ -307,18 +307,18 @@ public final class RuntimeContext {
 
     /** Applies checked local types and method varargs declarations before semantic resolution. */
     public void transpileSourceLocals(Path sourcePath, ASTObject object) {
-        new io.github.protasm.jvmud.transpiler.MethodVarargsTranspiler().transpile(sourcePath,
+        new io.github.protasm.jvmud.compiler.transpiler.MethodVarargsTranspiler().transpile(sourcePath,
                 mudlibBoundary.mudlibRootPath().orElse(null), object, mudlibBoundary.methodVarargsOverrides());
-        new io.github.protasm.jvmud.transpiler.LocalTypeTranspiler().transpile(sourcePath,
+        new io.github.protasm.jvmud.compiler.transpiler.LocalTypeTranspiler().transpile(sourcePath,
                 mudlibBoundary.mudlibRootPath().orElse(null), object, mudlibBoundary.localTypeOverrides());
     }
 
     /** Applies only the source translations explicitly selected by this mudlib's bridge. */
     public TokenList transpileSourceTokens(Path sourcePath, TokenList tokens) {
-        tokens = new io.github.protasm.jvmud.transpiler.FieldTypeTranspiler().transpile(
+        tokens = new io.github.protasm.jvmud.compiler.transpiler.FieldTypeTranspiler().transpile(
                 sourcePath, mudlibBoundary.mudlibRootPath().orElse(null), tokens, mudlibBoundary.fieldTypeOverrides());
         return mudlibBoundary.transpileUntypedMethods()
-                ? new io.github.protasm.jvmud.transpiler.UntypedMethodTranspiler().transpile(tokens)
+                ? new io.github.protasm.jvmud.compiler.transpiler.UntypedMethodTranspiler().transpile(tokens)
                 : tokens;
     }
 
@@ -371,7 +371,7 @@ public final class RuntimeContext {
     }
 
     /** Writes engine control-plane or transport text to one bound Session. */
-    public boolean writeToSession(SessionId sessionId, Object value) {
+    public boolean writeToSession(SessionID sessionId, Object value) {
         Objects.requireNonNull(sessionId, "sessionId");
         SessionBinding binding = sessions.get(sessionId);
         if (binding == null) {
@@ -382,21 +382,21 @@ public final class RuntimeContext {
     }
 
     /** Writes engine control-plane text to all active Sessions for one Player. */
-    public boolean writeToPlayer(PlayerId playerId, Object value) {
+    public boolean writeToPlayer(PlayerID playerId, Object value) {
         Objects.requireNonNull(playerId, "playerId");
         PlayerRecord player = players.get(playerId);
         if (player == null) {
             return false;
         }
         boolean delivered = false;
-        for (SessionId sessionId : player.activeSessionIds()) {
+        for (SessionID sessionId : player.activeSessionIds()) {
             delivered |= writeToSession(sessionId, value);
         }
         return delivered;
     }
 
     /** Writes engine gameplay text to the bound Session for one Persona. */
-    public boolean writeToPersona(PersonaId personaId, Object value) {
+    public boolean writeToPersona(PersonaID personaId, Object value) {
         Objects.requireNonNull(personaId, "personaId");
         PersonaRecord persona = personas.get(personaId);
         if (persona == null || persona.mudlibBehaviorProjection().isEmpty()) {
@@ -962,8 +962,8 @@ public final class RuntimeContext {
     }
 
     public void bindPlayerSession(String sessionId, String remoteAddress, Consumer<String> sessionOutputSink) {
-        SessionId engineSessionId = new SessionId(sessionId);
-        PlayerId playerId = playerIdForSession(engineSessionId);
+        SessionID engineSessionId = new SessionID(sessionId);
+        PlayerID playerId = playerIdForSession(engineSessionId);
         Consumer<String> sink = sessionOutputSink != null ? sessionOutputSink : ignored -> {};
         SessionBinding existing = sessions.remove(engineSessionId);
         Optional<Object> mudlibProfileProjection = Optional.empty();
@@ -1006,11 +1006,11 @@ public final class RuntimeContext {
             Consumer<String> sessionOutputSink,
             MudlibProjection mudlibProjection) {
         Objects.requireNonNull(persona, "persona");
-        SessionId engineSessionId = new SessionId(sessionId);
-        PersonaId personaId = projectionPersonaIdFor(persona);
+        SessionID engineSessionId = new SessionID(sessionId);
+        PersonaID personaId = projectionPersonaIdFor(persona);
         Consumer<String> sink = sessionOutputSink != null ? sessionOutputSink : ignored -> {};
         SessionBinding existing = sessions.get(engineSessionId);
-        PlayerId playerId = existing != null ? existing.sessionRecord().playerId() : projectionPlayerIdFor(persona);
+        PlayerID playerId = existing != null ? existing.sessionRecord().playerId() : projectionPlayerIdFor(persona);
         Optional<Object> mudlibProfileProjection = existing != null
                 ? existing.playerRecord().mudlibProfileProjection()
                 : Optional.ofNullable(mudlibProjection);
@@ -1152,7 +1152,7 @@ public final class RuntimeContext {
         if (sessionId == null) {
             return;
         }
-        SessionBinding binding = sessions.remove(new SessionId(sessionId));
+        SessionBinding binding = sessions.remove(new SessionID(sessionId));
         if (binding != null) {
             detachSessionFromRecords(binding);
         }
@@ -1162,7 +1162,7 @@ public final class RuntimeContext {
         if (sessionId == null) {
             return Optional.empty();
         }
-        SessionBinding binding = sessions.get(new SessionId(sessionId));
+        SessionBinding binding = sessions.get(new SessionID(sessionId));
         return binding != null ? Optional.of(binding.sessionRecord()) : Optional.empty();
     }
 
@@ -1171,7 +1171,7 @@ public final class RuntimeContext {
         if (sessionId == null) {
             return Optional.empty();
         }
-        SessionBinding binding = sessions.get(new SessionId(sessionId));
+        SessionBinding binding = sessions.get(new SessionID(sessionId));
         return binding != null ? Optional.ofNullable(binding.personaProjection()) : Optional.empty();
     }
 
@@ -1182,7 +1182,7 @@ public final class RuntimeContext {
     }
 
     public Optional<PersonaRecord> personaRecordForProjection(Object persona) {
-        PersonaId personaId = personaIdsByProjection.get(persona);
+        PersonaID personaId = personaIdsByProjection.get(persona);
         return personaId != null ? Optional.ofNullable(personas.get(personaId)) : Optional.empty();
     }
 
@@ -2633,20 +2633,20 @@ public final class RuntimeContext {
         return actor != null ? actor : currentObject();
     }
 
-    private PlayerId projectionPlayerIdFor(Object persona) {
-        return new PlayerId("projection-player/" + objectReference(persona));
+    private PlayerID projectionPlayerIdFor(Object persona) {
+        return new PlayerID("projection-player/" + objectReference(persona));
     }
 
-    private PlayerId playerIdForSession(SessionId sessionId) {
-        return new PlayerId("session-player/" + sessionId.value());
+    private PlayerID playerIdForSession(SessionID sessionId) {
+        return new PlayerID("session-player/" + sessionId.value());
     }
 
-    private PersonaId projectionPersonaIdFor(Object persona) {
-        PersonaId existing = personaIdsByProjection.get(persona);
+    private PersonaID projectionPersonaIdFor(Object persona) {
+        PersonaID existing = personaIdsByProjection.get(persona);
         if (existing != null) {
             return existing;
         }
-        return new PersonaId("projection-persona/" + objectReference(persona));
+        return new PersonaID("projection-persona/" + objectReference(persona));
     }
 
     private String objectReference(Object object) {
@@ -2661,8 +2661,8 @@ public final class RuntimeContext {
         return projection instanceof MudlibProjection mudlibProjection ? mudlibProjection.object() : projection;
     }
 
-    private Set<SessionId> addSessionId(PlayerRecord playerRecord, SessionId sessionId) {
-        Set<SessionId> sessionIds = new HashSet<>();
+    private Set<SessionID> addSessionId(PlayerRecord playerRecord, SessionID sessionId) {
+        Set<SessionID> sessionIds = new HashSet<>();
         if (playerRecord != null) {
             sessionIds.addAll(playerRecord.activeSessionIds());
         }
@@ -2680,7 +2680,7 @@ public final class RuntimeContext {
         SessionRecord sessionRecord = binding.sessionRecord();
         PlayerRecord playerRecord = players.get(sessionRecord.playerId());
         if (playerRecord != null) {
-            Set<SessionId> remainingSessions = new HashSet<>(playerRecord.activeSessionIds());
+            Set<SessionID> remainingSessions = new HashSet<>(playerRecord.activeSessionIds());
             remainingSessions.remove(sessionRecord.id());
             PlayerRecord updatedPlayer = new PlayerRecord(
                     playerRecord.id(),

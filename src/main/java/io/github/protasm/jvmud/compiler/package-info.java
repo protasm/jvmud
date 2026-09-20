@@ -10,6 +10,9 @@
  * {@link io.github.protasm.jvmud.compiler.exec.LPCRuntime} rather than calling stage classes
  * directly.</p>
  *
+ * <p>The {@code transpiler} subpackage applies opt-in legacy LPC compatibility transformations
+ * before compilation, preserving original source files and source locations.</p>
+ *
  * <p>The compiler module does not own JVMud engine ontology. Engine concepts live under {@code
  * io.github.protasm.jvmud.engine}; mudlib source lives under repository mudlib trees.</p>
  */

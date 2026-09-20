@@ -980,7 +980,11 @@ authored LPC content, it belongs in a mudlib.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>cli</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Local object sandbox. Start with <code>AdminCli</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Terminal administration client and maintenance tools. Start with <code>AdminClient</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>admin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Administrative command interpretation and session state. Start with <code>AdminCommandSession</code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -3224,7 +3228,7 @@ hardcoding a particular game into shared Java or launch scripts.</p>
 <h4 id="_opt_in_legacy_method_transpilation"><a class="anchor" href="#_opt_in_legacy_method_transpilation"></a><a class="link" href="#_opt_in_legacy_method_transpilation">Opt-In Legacy Method Transpilation</a></h4>
 <div class="paragraph">
 <p>A bridge manifest may explicitly set <code>transpilation.untyped_methods = true</code>.
-The default is false. JVMud&#8217;s sibling <code>io.github.protasm.jvmud.transpiler</code> package
+The default is false. JVMud&#8217;s <code>io.github.protasm.jvmud.compiler.transpiler</code> subpackage
 adds explicit <code>mixed</code> return and parameter types to untyped method signatures
 in memory after preprocessing and before parsing. Includes, inherited objects,
 and global helper objects use the same profile setting. Existing explicit types
@@ -3518,7 +3522,7 @@ support; <code>engine.world</code> owns the engine&#8217;s world model.</p>
 </div>
 <div class="paragraph">
 <p><code>AdminClient</code> connects to the authenticated loopback <code>AdminServer</code>; each client
-gets an attached <code>AdminCli</code> command session. <code>InstanceHost.administer</code> serializes
+gets an attached <code>AdminCommandSession</code> command session. <code>InstanceHost.administer</code> serializes
 commands on the explicitly selected mudlib&#8217;s execution queue alongside
 player dispatch and ticks. Admin socket reads and response writes occur outside
 those locks. The client never boots a runtime.
@@ -3543,7 +3547,7 @@ production isolation.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="shell">mvn -Dtest=AdminCliTest test</code></pre>
+<pre class="CodeRay highlight"><code data-lang="shell">mvn -Dtest=AdminCommandSessionTest test</code></pre>
 </div>
 </div>
 <div class="paragraph">

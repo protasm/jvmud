@@ -10,4 +10,4 @@ mvn -q compile dependency:build-classpath \
 
 exec java \
   -cp "target/classes:$(cat target/jvmud-classpath.txt)" \
-  io.github.protasm.jvmud.cli.AdminCli "$@"
+  io.github.protasm.jvmud.cli.AdminClient "$@"

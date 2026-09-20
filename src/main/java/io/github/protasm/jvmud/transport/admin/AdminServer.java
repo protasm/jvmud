@@ -1,6 +1,6 @@
 package io.github.protasm.jvmud.transport.admin;
 
-import io.github.protasm.jvmud.cli.AdminCli;
+import io.github.protasm.jvmud.admin.AdminCommandSession;
 import io.github.protasm.jvmud.instance.InstanceHost;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -103,21 +103,21 @@ public final class AdminServer implements AutoCloseable {
             socket.setSoTimeout(0);
             StringWriter buffer = new StringWriter();
             PrintWriter output = new PrintWriter(buffer, true);
-            AdminCli cli = host.administer(runtime -> AdminCli.attach(output, runtime, host.mudlibRoot()));
+            AdminCommandSession session = host.administer(runtime -> AdminCommandSession.attach(output, runtime, host.mudlibRoot()));
             AdminWire.write(out, "Connected to live JVMud at admin port " + port()
                     + "\nWorld: " + host.mudlibRoot() + "\nType help for commands; quit disconnects.",
                     AdminWire.MAX_RESPONSE_BYTES);
-            while (!closed && cli.isRunning()) {
+            while (!closed && session.isRunning()) {
                 String command = AdminWire.read(in, AdminWire.MAX_COMMAND_BYTES);
                 String response = host.administer(runtime -> {
                     if (closed) return "Server administration is shutting down.\n";
                     buffer.getBuffer().setLength(0);
-                    cli.execute(command);
+                    session.execute(command);
                     output.flush();
                     return buffer.toString();
                 });
                 AdminWire.write(out, response, AdminWire.MAX_RESPONSE_BYTES);
-                out.writeBoolean(cli.isRunning());
+                out.writeBoolean(session.isRunning());
                 out.flush();
             }
         } catch (IOException | RuntimeException e) {

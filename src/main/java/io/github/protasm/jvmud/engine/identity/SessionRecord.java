@@ -12,12 +12,12 @@ import java.util.Optional;
  * any Persona during login, reconnect, or character selection.</p>
  */
 public record SessionRecord(
-        SessionId id,
-        PlayerId playerId,
+        SessionID id,
+        PlayerID playerId,
         Optional<String> remoteAddress,
         Instant connectedAt,
         Instant lastActivityAt,
-        Optional<PersonaId> attachedPersonaId) {
+        Optional<PersonaID> attachedPersonaId) {
     public SessionRecord {
         id = Objects.requireNonNull(id, "id");
         playerId = Objects.requireNonNull(playerId, "playerId");
@@ -28,7 +28,7 @@ public record SessionRecord(
         attachedPersonaId = Objects.requireNonNull(attachedPersonaId, "attachedPersonaId");
     }
 
-    public SessionRecord(SessionId id, PlayerId playerId, Optional<String> remoteAddress, Instant connectedAt) {
+    public SessionRecord(SessionID id, PlayerID playerId, Optional<String> remoteAddress, Instant connectedAt) {
         this(id, playerId, remoteAddress, connectedAt, connectedAt, Optional.empty());
     }
 }

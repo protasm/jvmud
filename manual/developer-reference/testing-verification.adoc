@@ -11,7 +11,7 @@ For a targeted change, select the relevant JUnit class, for example:
 
 [source,shell]
 ----
-mvn -Dtest=AdminCliTest test
+mvn -Dtest=AdminCommandSessionTest test
 ----
 
 Some integration checks require an external database and configured password

@@ -5,7 +5,7 @@ import io.github.protasm.jvmud.compiler.efun.EfunSignature;
 import io.github.protasm.jvmud.compiler.exec.LPCRuntime;
 import io.github.protasm.jvmud.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.compiler.parser.type.LPCType;
-import io.github.protasm.jvmud.compiler.runtime.JsonValueCodec;
+import io.github.protasm.jvmud.compiler.runtime.JSONValueCodec;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCallable;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeCollectionTransform;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
@@ -14,7 +14,7 @@ import io.github.protasm.jvmud.compiler.runtime.RuntimeScanf;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeValueCodec;
 import io.github.protasm.jvmud.compiler.runtime.Truth;
 import io.github.protasm.jvmud.engine.mudlib.EngineCapability;
-import io.github.protasm.jvmud.engine.protocol.GmcpCodec;
+import io.github.protasm.jvmud.engine.protocol.GMCPCodec;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
@@ -475,13 +475,13 @@ public final class CoreEfuns {
                 (runtime, args) -> runtime.sendSessionProtocolMessage(
                         currentInteractive(runtime),
                         "GMCP",
-                        GmcpCodec.encode(String.valueOf(args[0]), null, false)) ? 1 : 0));
+                        GMCPCodec.encode(String.valueOf(args[0]), null, false)) ? 1 : 0));
         efuns.add(efun("jvmud_send_gmcp", LPCType.LPCSTATUS,
                 List.of(LPCType.LPCSTRING, LPCType.LPCMIXED),
                 (runtime, args) -> runtime.sendSessionProtocolMessage(
                         currentInteractive(runtime),
                         "GMCP",
-                        GmcpCodec.encode(String.valueOf(args[0]), args[1], true)) ? 1 : 0));
+                        GMCPCodec.encode(String.valueOf(args[0]), args[1], true)) ? 1 : 0));
         efuns.add(efun("jvmud_emit_world_event", LPCType.LPCVOID,
                 List.of(LPCType.LPCMIXED, LPCType.LPCSTRING, LPCType.LPCMIXED, LPCType.LPCSTRING),
                 (runtime, args) -> {
@@ -692,9 +692,9 @@ public final class CoreEfuns {
         efuns.add(efun("jvmud_deserialize_lpc_value", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
                 (runtime, args) -> RuntimeValueCodec.deserialize(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_parse_json", LPCType.LPCMIXED, List.of(LPCType.LPCSTRING),
-                (runtime, args) -> JsonValueCodec.parse(String.valueOf(args[0]))));
+                (runtime, args) -> JSONValueCodec.parse(String.valueOf(args[0]))));
         efuns.add(efun("jvmud_format_json", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
-                (runtime, args) -> JsonValueCodec.format(args[0])));
+                (runtime, args) -> JSONValueCodec.format(args[0])));
         efuns.add(formatTextEfun());
         efuns.add(efun("jvmud_extract_text", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED, LPCType.LPCINT),
                 (runtime, args) -> extractText(

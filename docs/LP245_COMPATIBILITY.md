@@ -325,7 +325,7 @@ The originals are still read-only. Needed data locations include player saves,
 banishment records, post/mail data, bulletin boards, and logs. Select writable
 data destinations or bridge-owned routing while protecting source files.
 
-The current `LpcObjectStateStore` supports scalar state in JVMud JSON and an older
+The current `LPCObjectStateStore` supports scalar state in JVMud JSON and an older
 typed-properties format. The archive's original `.o` files use a different LPC
 save format. Existing saved characters cannot be assumed to restore correctly;
 add an importer/decoder if retaining them is required. Arrays needed for mail,

@@ -6,6 +6,15 @@ import org.junit.jupiter.api.Test;
 
 final class AdminClientTest {
     @Test
+    void mainRequiresAnExplicitAdminPort() {
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> AdminClient.main(new String[0]));
+
+        assertEquals("Usage: scripts/jvmud-cli --port <admin-port> [--token-file <path>]", error.getMessage());
+    }
+
+    @Test
     void choosesTheRequestedServerAndCredential() {
         var options = AdminClient.parseOptions(new String[] {"--port", "4100", "--token-file", "private key"});
         assertEquals(4100, options.port());

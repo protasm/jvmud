@@ -13,8 +13,8 @@ import io.github.protasm.jvmud.engine.mudlib.MudlibBoundaryConfigReader;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
 import io.github.protasm.jvmud.engine.output.OutgoingTextFormatter;
-import io.github.protasm.jvmud.engine.protocol.GmcpCodec;
-import io.github.protasm.jvmud.engine.protocol.GmcpMessage;
+import io.github.protasm.jvmud.engine.protocol.GMCPCodec;
+import io.github.protasm.jvmud.engine.protocol.GMCPMessage;
 import io.github.protasm.jvmud.engine.world.Place;
 import io.github.protasm.jvmud.engine.world.WorldRuntime;
 import java.io.PrintWriter;
@@ -397,9 +397,9 @@ public final class MudInstance implements InstanceHost {
         if (persona == null || !isAttached(persona) || !"GMCP".equalsIgnoreCase(protocol)) {
             return;
         }
-        GmcpMessage decoded;
+        GMCPMessage decoded;
         try {
-            decoded = GmcpCodec.decode(message);
+            decoded = GMCPCodec.decode(message);
         } catch (IllegalArgumentException ignored) {
             return;
         }

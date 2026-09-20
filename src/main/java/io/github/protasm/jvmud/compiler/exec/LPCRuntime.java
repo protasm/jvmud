@@ -8,21 +8,21 @@ import io.github.protasm.jvmud.compiler.pipeline.CompilationResult;
 import io.github.protasm.jvmud.compiler.pipeline.CompilationUnit;
 import io.github.protasm.jvmud.compiler.parser.ParserOptions;
 import io.github.protasm.jvmud.compiler.preproc.SearchPathIncludeResolver;
-import io.github.protasm.jvmud.compiler.runtime.JsonValueCodec;
+import io.github.protasm.jvmud.compiler.runtime.JSONValueCodec;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContext;
 import io.github.protasm.jvmud.compiler.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.engine.mudlib.MudlibBoundary;
 import io.github.protasm.jvmud.engine.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
-import io.github.protasm.jvmud.engine.identity.PersonaId;
+import io.github.protasm.jvmud.engine.identity.PersonaID;
 import io.github.protasm.jvmud.engine.identity.PersonaRecord;
-import io.github.protasm.jvmud.engine.identity.PlayerId;
+import io.github.protasm.jvmud.engine.identity.PlayerID;
 import io.github.protasm.jvmud.engine.identity.PlayerRecord;
-import io.github.protasm.jvmud.engine.identity.SessionId;
+import io.github.protasm.jvmud.engine.identity.SessionID;
 import io.github.protasm.jvmud.engine.identity.SessionRecord;
 import io.github.protasm.jvmud.engine.time.WorldScheduler;
 import io.github.protasm.jvmud.engine.world.MudlibWorldProjection;
-import io.github.protasm.jvmud.persistence.filesystem.LpcObjectStateStore;
+import io.github.protasm.jvmud.persistence.filesystem.LPCObjectStateStore;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -80,7 +80,7 @@ public final class LPCRuntime {
     private final List<Path> includeSearchPaths;
     private final LPCObjectLoadObserver objectLoadObserver;
     private final List<String> loadingObjectIds = new ArrayList<>();
-    private final LpcObjectStateStore objectStateStore = new LpcObjectStateStore();
+    private final LPCObjectStateStore objectStateStore = new LPCObjectStateStore();
     private final boolean useBoundaryMudlibRootForIncludes;
     private MudlibBoundary mudlibBoundary = MudlibBoundary.empty();
     private boolean notifyingCompilationError;
@@ -475,7 +475,7 @@ public final class LPCRuntime {
             return 0;
         }
         try (InputStream input = openJsonInput(resolved)) {
-            return JsonValueCodec.parse(input);
+            return JSONValueCodec.parse(input);
         } catch (IOException e) {
             return 0;
         }
@@ -501,7 +501,7 @@ public final class LPCRuntime {
             return 0;
         }
         try (InputStream input = openJsonInput(resolved)) {
-            return JsonValueCodec.readArraySlice(input, pointer, offset, count);
+            return JSONValueCodec.readArraySlice(input, pointer, offset, count);
         } catch (IOException e) {
             return 0;
         }
@@ -925,17 +925,17 @@ public final class LPCRuntime {
     }
 
     /** Writes engine control-plane or transport text to one bound Session. */
-    public boolean writeToSession(SessionId sessionId, Object value) {
+    public boolean writeToSession(SessionID sessionId, Object value) {
         return runtimeContext.writeToSession(sessionId, value);
     }
 
     /** Writes engine control-plane text to all active Sessions for one Player. */
-    public boolean writeToPlayer(PlayerId playerId, Object value) {
+    public boolean writeToPlayer(PlayerID playerId, Object value) {
         return runtimeContext.writeToPlayer(playerId, value);
     }
 
     /** Writes engine gameplay text to one bound Persona. */
-    public boolean writeToPersona(PersonaId personaId, Object value) {
+    public boolean writeToPersona(PersonaID personaId, Object value) {
         return runtimeContext.writeToPersona(personaId, value);
     }
 

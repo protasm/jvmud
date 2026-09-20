@@ -14,9 +14,9 @@ import java.util.Optional;
  * to associate LPC-authored behavior, including a mudlib's combined player/Persona object.</p>
  */
 public record PersonaRecord(
-        PersonaId id,
+        PersonaID id,
         Optional<Entity> entity,
-        Optional<PlayerId> controllingPlayerId,
+        Optional<PlayerID> controllingPlayerId,
         Optional<Object> mudlibBehaviorProjection) {
     public PersonaRecord {
         id = Objects.requireNonNull(id, "id");
@@ -25,11 +25,11 @@ public record PersonaRecord(
         mudlibBehaviorProjection = Objects.requireNonNull(mudlibBehaviorProjection, "mudlibBehaviorProjection");
     }
 
-    public PersonaRecord(PersonaId id, Entity entity) {
+    public PersonaRecord(PersonaID id, Entity entity) {
         this(id, Optional.of(Objects.requireNonNull(entity, "entity")), Optional.empty(), Optional.empty());
     }
 
-    public PersonaRecord(PersonaId id) {
+    public PersonaRecord(PersonaID id) {
         this(id, Optional.empty(), Optional.empty(), Optional.empty());
     }
 }

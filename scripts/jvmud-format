@@ -9,4 +9,4 @@ mvn -q compile
 
 exec java \
   -cp "target/classes" \
-  io.github.protasm.jvmud.compiler.formatter.LPCFormatterCli "$@"
+  io.github.protasm.jvmud.compiler.formatter.LPCFormatterCLI "$@"

@@ -139,7 +139,7 @@
               <windowtitle>JVMud API</windowtitle>
               <outputDirectory>${maven.multiModuleProjectDirectory}/docs/api</outputDirectory>
               <sourcepath>${maven.multiModuleProjectDirectory}/src/main/java</sourcepath>
-              <subpackages>io.github.protasm.jvmud.engine:io.github.protasm.jvmud.compiler:io.github.protasm.jvmud.instance:io.github.protasm.jvmud.transport:io.github.protasm.jvmud.persistence:io.github.protasm.jvmud.cli</subpackages>
+              <subpackages>io.github.protasm.jvmud.admin:io.github.protasm.jvmud.engine:io.github.protasm.jvmud.compiler:io.github.protasm.jvmud.instance:io.github.protasm.jvmud.transport:io.github.protasm.jvmud.persistence:io.github.protasm.jvmud.cli</subpackages>
               <source>${maven.compiler.release}</source>
               <doclint>all,-missing</doclint>
             </configuration>

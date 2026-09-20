@@ -37,7 +37,9 @@ static docs.
   and connection lifecycle.
 - `src/main/java/io/github/protasm/jvmud/persistence/`: JVMud durable storage
   adapters for filesystem, JDBC, and future persistence backends.
-- `src/main/java/io/github/protasm/jvmud/cli/`: JVMud local admin CLI code.
+- `src/main/java/io/github/protasm/jvmud/admin/`: Administrative command interpretation
+  and per-administrator session state.
+- `src/main/java/io/github/protasm/jvmud/cli/`: Terminal clients and maintenance tools.
 - `mudlibs/lp245/`: LPC mudlib source. `obj/` contains reusable object definitions and
   `room/` contains world/room content, headers, and startup-oriented files.
   Treat upstream vanilla mudlib files as read-only unless the user explicitly
@@ -64,6 +66,12 @@ static docs.
 The compiler lives under `io.github.protasm.jvmud.compiler`. Keep new compiler
 code inside that namespace unless a task explicitly introduces another JVMud
 module.
+
+## Naming
+
+In class and file names, always spell acronyms in uppercase, regardless of their
+position. For example, use `LPCObject`, `ASTNode`, `GMCPCodec`, `PlayerID`, and
+`LPCFormatterCLI`; never `LpcObject`, `GmcpCodec`, `PlayerId`, or `LPCFormatterCli`.
 
 ## Current Build State
 

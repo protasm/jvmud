@@ -23,7 +23,7 @@ instance services when debugging host effects. `compiler.runtime` is generated-c
 support; `engine.world` owns the engine's world model.
 
 `AdminClient` connects to the authenticated loopback `AdminServer`; each client
-gets an attached `AdminCli` command session. `InstanceHost.administer` serializes
+gets an attached `AdminCommandSession` command session. `InstanceHost.administer` serializes
 commands on the explicitly selected mudlib's execution queue alongside
 player dispatch and ticks. Admin socket reads and response writes occur outside
 those locks. The client never boots a runtime.

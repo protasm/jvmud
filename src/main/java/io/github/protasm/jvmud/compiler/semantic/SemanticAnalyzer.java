@@ -1247,7 +1247,7 @@ public final class SemanticAnalyzer {
                     && resolveScopedSymbol(unresolvedCall.name()) == null
                     && resolveLocal(context, unresolvedCall.name()) == null
                     && !runtimeContext.hasFunctionNamed(unresolvedCall.name())) {
-                return new io.github.protasm.jvmud.transpiler.ImplicitSelfCallTranspiler()
+                return new io.github.protasm.jvmud.compiler.transpiler.ImplicitSelfCallTranspiler()
                         .transpile(unresolvedCall, resolvedArgs, runtimeContext);
             }
 

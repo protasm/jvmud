@@ -4,11 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.protasm.jvmud.engine.identity.PersonaId;
+import io.github.protasm.jvmud.engine.identity.PersonaID;
 import io.github.protasm.jvmud.engine.identity.PersonaRecord;
-import io.github.protasm.jvmud.engine.identity.PlayerId;
+import io.github.protasm.jvmud.engine.identity.PlayerID;
 import io.github.protasm.jvmud.engine.identity.PlayerRecord;
-import io.github.protasm.jvmud.engine.identity.SessionId;
+import io.github.protasm.jvmud.engine.identity.SessionID;
 import io.github.protasm.jvmud.engine.identity.SessionRecord;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjection;
 import io.github.protasm.jvmud.engine.mudlib.MudlibProjectionRole;
@@ -26,32 +26,32 @@ import org.junit.jupiter.api.Test;
 final class PlayerSessionPersonaRecordTest {
     @Test
     void identifiersTrimAndRejectBlankValues() {
-        assertEquals("alice", new PlayerId(" alice ").value());
-        assertEquals("session/1", new SessionId(" session/1 ").value());
-        assertEquals("persona/alice", new PersonaId(" persona/alice ").value());
+        assertEquals("alice", new PlayerID(" alice ").value());
+        assertEquals("session/1", new SessionID(" session/1 ").value());
+        assertEquals("persona/alice", new PersonaID(" persona/alice ").value());
 
-        assertThrows(IllegalArgumentException.class, () -> new PlayerId(" "));
-        assertThrows(IllegalArgumentException.class, () -> new SessionId(""));
-        assertThrows(IllegalArgumentException.class, () -> new PersonaId("\t"));
+        assertThrows(IllegalArgumentException.class, () -> new PlayerID(" "));
+        assertThrows(IllegalArgumentException.class, () -> new SessionID(""));
+        assertThrows(IllegalArgumentException.class, () -> new PersonaID("\t"));
     }
 
     @Test
     void playerRecordKeepsEngineStateSeparateFromMudlibProfileProjection() {
-        PlayerId playerId = new PlayerId("player/alice");
-        PersonaId personaId = new PersonaId("persona/alice");
+        PlayerID playerId = new PlayerID("player/alice");
+        PersonaID personaId = new PersonaID("persona/alice");
         Object profileProjection = new Object();
-        Set<SessionId> sessions = new HashSet<>();
-        sessions.add(new SessionId("session/1"));
+        Set<SessionID> sessions = new HashSet<>();
+        sessions.add(new SessionID("session/1"));
 
         PlayerRecord player = new PlayerRecord(
                 playerId,
                 sessions,
                 Optional.of(personaId),
                 Optional.of(profileProjection));
-        sessions.add(new SessionId("session/2"));
+        sessions.add(new SessionID("session/2"));
 
         assertEquals(playerId, player.id());
-        assertEquals(Set.of(new SessionId("session/1")), player.activeSessionIds());
+        assertEquals(Set.of(new SessionID("session/1")), player.activeSessionIds());
         assertEquals(Optional.of(personaId), player.activePersonaId());
         assertEquals(Optional.of(profileProjection), player.mudlibProfileProjection());
     }
@@ -61,8 +61,8 @@ final class PlayerSessionPersonaRecordTest {
         Instant connectedAt = Instant.parse("2026-06-10T12:00:00Z");
 
         SessionRecord session = new SessionRecord(
-                new SessionId("session/1"),
-                new PlayerId("player/alice"),
+                new SessionID("session/1"),
+                new PlayerID("player/alice"),
                 Optional.of(" 127.0.0.1 "),
                 connectedAt);
 
@@ -77,8 +77,8 @@ final class PlayerSessionPersonaRecordTest {
         WorldRuntime runtime = new WorldRuntime(new World("test", "Test World"));
         Place start = runtime.createPlace("place/start", "Start");
         Entity entity = runtime.createEntity("entity/alice", "Alice", start, Capability.ACTOR);
-        PersonaId personaId = new PersonaId("persona/alice");
-        PlayerId playerId = new PlayerId("player/alice");
+        PersonaID personaId = new PersonaID("persona/alice");
+        PlayerID playerId = new PlayerID("player/alice");
         Object behaviorProjection = new Object();
 
         PersonaRecord persona = new PersonaRecord(
@@ -95,7 +95,7 @@ final class PlayerSessionPersonaRecordTest {
 
     @Test
     void personaRecordCanRepresentCompatibilityProjectionBeforeEntityAttachment() {
-        PersonaRecord persona = new PersonaRecord(new PersonaId("persona/logon"));
+        PersonaRecord persona = new PersonaRecord(new PersonaID("persona/logon"));
 
         assertTrue(persona.entity().isEmpty());
         assertTrue(persona.controllingPlayerId().isEmpty());
