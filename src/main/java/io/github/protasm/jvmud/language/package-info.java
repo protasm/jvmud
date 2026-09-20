@@ -1,8 +1,10 @@
 /**
  * LPC compilation, language runtime support, and standalone compilation diagnostics.
  *
- * <p>The compiler module is organized as an educational pipeline: preprocessing, scanning, token
- * modeling, parsing, AST construction, semantic analysis, IR lowering, and bytecode generation.
+ * <p>The compiler module is organized as a coherent pipeline whose stages and relationships are
+ * designed to be readable and understandable to people working with the source: preprocessing,
+ * scanning, token modeling, parsing, AST construction, semantic analysis, IR lowering, and
+ * bytecode generation.
  * The {@link io.github.protasm.jvmud.language.JVMudCompiler} class provides a command-line facade
  * for compiling one LPC source file into a JVM class file.</p>
  *
