@@ -18,7 +18,8 @@ scripts/jvmud-console --local
 ----
 admin-create operator
 grant operator engine
-start /absolute/path/to/mudlib/jvmud/mudlib.config 4100 4101
+available
+start smallmercies 4100 4101
 status
 ----
 
@@ -44,6 +45,12 @@ supported. Local TCP connections use the same TLS authentication; the Unix socke
 provides initial bootstrap and recovery. Engine grants include all mudlibs;
 `grant <name> mudlib:<id>` limits an administrator to one mudlib. Grants are
 independent of OS accounts, player accounts and in-game wizard privileges.
+
+`available` lists names under the engine's configured mudlib directory.
+`start <name>` resolves `<mudlib-dir>/<name>/jvmud/<name>.config`.
+The host operator selects `--mudlib-dir` at startup; it defaults to `mudlibs`
+under the launch root. Both local and networked administration reject host
+paths, traversal, and escaping symlinks. Restarts revalidate the same boundary.
 
 Connect to a mudlib's admin port for `objects`, `inspect`, `call`, `reload`, and
 other mudlib commands. `quit` disconnects only the console. `stop` and `restart`

@@ -1,10 +1,8 @@
 package io.github.protasm.jvmud.communication.admin;
 
 import io.github.protasm.jvmud.execution.application.JVMud;
-import io.github.protasm.jvmud.execution.instance.MudlibSpec;
 import io.github.protasm.jvmud.storage.admin.AdminRegistry;
 import java.io.IOException;
-import java.nio.file.Path;
 
 /** Engine command language. No mudlib runtime objects or player permissions cross this boundary. */
 public final class EngineAdminCommandSession implements AdminSession {
@@ -21,7 +19,8 @@ public final class EngineAdminCommandSession implements AdminSession {
             String text = switch (command.name()) {
                 case "help" -> """
                         status | mudlibs                         Show engine and mudlib state
-                        start <config> [player-port admin-port] Boot a mudlib (omitted ports are allocated)
+                        available                               List installed mudlibs available to start
+                        start <name> [player-port admin-port]   Boot a mudlib (omitted ports are allocated)
                         stop <id> | restart <id>                 Manage one mudlib
                         admins                                  List administrators and grants
                         admin-create <name>                     Issue an access token (shown once)
@@ -33,15 +32,20 @@ public final class EngineAdminCommandSession implements AdminSession {
                         quit                                    Disconnect this console
                         """;
                 case "status", "mudlibs" -> engine.describe();
+                case "available" -> {
+                    var names = engine.availableMudlibs();
+                    yield names.isEmpty() ? "No mudlibs are available to start.\n" : String.join("\n", names) + "\n";
+                }
                 case "start" -> {
+                    if (command.argumentsAfter(0).length > 3) throw new IllegalArgumentException("Usage: start <name> [player-port admin-port]");
                     boolean player = !command.optional(1, "").isEmpty(), admin = !command.optional(2, "").isEmpty();
                     if (player != admin) throw new IllegalArgumentException("Supply both player and admin ports, or neither.");
-                    var status = engine.startMudlib(MudlibSpec.fromConfig(Path.of(command.required(0))),
+                    var status = engine.startMudlib(command.required(0),
                             port(command.optional(1, "0")), port(command.optional(2, "0")));
                     yield status + "\n";
                 }
                 case "stop" -> { engine.stopMudlib(command.required(0)); yield "Mudlib stopped.\n"; }
-                case "restart" -> engine.restartMudlib(command.required(0)) + "\n";
+                case "restart" -> engine.restartManagedMudlib(command.required(0)) + "\n";
                 case "admins" -> registry.describe();
                 case "admin-create" -> "Access token (store securely; shown once): " + registry.create(command.required(0)) + "\n";
                 case "admin-rotate" -> "Replacement access token (store securely; shown once): " + registry.rotate(command.required(0)) + "\n";

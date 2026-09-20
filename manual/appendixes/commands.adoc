@@ -33,6 +33,6 @@ spaces. Numeric text is not automatically converted to LPC integers. `help` is t
 |===
 
 The terminal launcher for play is
-`scripts/jvmud-start [--bind <address>] [--port <port>] [--admin-port <port>] [--state-dir <path>] [--trace-startup-loads] [<mudlib-config-file>...]`.
+`scripts/jvmud-start [--bind <address>] [--port <port>] [--admin-port <port>] [--state-dir <path>] [--mudlib-dir <directory>] [--trace-startup-loads] [<mudlib-config-file>...]`.
 Inside a player client, profiles using the default transport prefix reserve `//help` and `//quit` for
 transport controls. The mudlib owns all gameplay verbs.

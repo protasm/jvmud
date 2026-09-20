@@ -183,6 +183,20 @@ final class EngineTest {
     }
 
     @Test
+    void configuredMudlibDirectoryResolvesNamesRegardlessOfOptionOrder(@TempDir Path directory) throws IOException {
+        Path manifest = directory.resolve("sample/jvmud/sample.config");
+        Files.createDirectories(manifest.getParent());
+        Files.writeString(manifest, "game_id = sample\n");
+        for (String[] args : new String[][] {{"--mudlib-dir", directory.toString(), "sample"},
+                {"sample", "--mudlib-dir", directory.toString()}}) {
+            var options = EngineLauncher.parseLaunchOptions(args);
+            assertEquals(directory, options.mudlibDirectory());
+            assertEquals(directory.resolve("sample"), options.mudlibs().getFirst().root());
+        }
+        assertThrows(IllegalArgumentException.class, () -> EngineLauncher.parseLaunchOptions(new String[]{"--mudlib-dir"}));
+    }
+
+    @Test
     void telnetServerLaunchOptionsAcceptHelp() {
         EngineLauncher.LaunchOptions options = EngineLauncher.parseLaunchOptions(new String[] {"--help"});
 

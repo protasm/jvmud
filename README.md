@@ -140,7 +140,7 @@ Bootstrap through the local console:
 scripts/jvmud-console --local
 ```
 
-At `engine>`, use `help`, `start <manifest> [player-port admin-port]`, `status`,
+At `engine>`, use `help`, `start <name> [player-port admin-port]`, `status`,
 `stop <id>`, and `restart <id>`. `admin-create <name>` issues a random token;
 `grant <name> engine` or `grant <name> mudlib:<id>` assigns administrative scope.
 The registry stores token hashes, independently of player accounts and in-game permissions.
@@ -157,6 +157,12 @@ The console prompts for the trusted certificate fingerprint, administrator name,
 and token. Obtain the fingerprint from the engine operator through a trusted
 channel; token input is hidden. For scripts, supply `--user`, `--fingerprint`,
 and `--token-file`. Explicit `--host` and `--port` options remain supported.
+
+Use `available` to list mudlibs that can be started, then `start smallmercies` or
+`start lp245`. Names map to `<mudlib-dir>/<name>/jvmud/<name>.config`; the host
+operator sets `--mudlib-dir` when starting the engine (default: the launch root's
+`mudlibs` directory). Administration rejects filesystem paths and symlinks that
+escape that directory or the selected mudlib tree.
 
 Use a mudlib's admin port for its live object commands. Both engine-menu and
 direct player connections enter the same mudlib. Quitting closes the connection;

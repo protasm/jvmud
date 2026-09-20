@@ -20,6 +20,47 @@ class EngineArchitectureTest {
     }
     private JVMud engine() { return new JVMud(new EngineConfiguration("127.0.0.1", 0, 0, directory.resolve("engine"), false)); }
 
+    @Test void administrationStartsCatalogNamesAndConfinesLocalAndRemoteRequests() throws Exception {
+        MudlibSpec original = spec("sample");
+        Path catalog = directory.resolve("installed");
+        Files.createDirectories(catalog);
+        Path root = catalog.resolve("sample");
+        Files.move(original.root(), root);
+        Files.createDirectories(root.resolve("jvmud"));
+        Path manifest = root.resolve("jvmud/sample.config");
+        Files.move(root.resolve("mudlib.config"), manifest);
+        try (JVMud engine = new JVMud(new EngineConfiguration("127.0.0.1", 0, 0, directory.resolve("engine"), false, catalog))) {
+            engine.start();
+            try (AdminConnection local = new AdminConnection(engine.localSocket())) {
+                String token = token(local.command("admin-create operator"));
+                local.command("grant operator engine");
+                try (AdminConnection remote = new AdminConnection(engine.adminPort(), pin(), "operator", token)) {
+                    for (AdminConnection connection : List.of(local, remote)) {
+                        assertEquals("sample\n", connection.command("available"));
+                        assertTrue(connection.command("start " + manifest).startsWith("Error:"));
+                        assertTrue(connection.command("start ../sample").startsWith("Error:"));
+                        assertTrue(connection.command("start missing").startsWith("Error:"));
+                    }
+                    assertTrue(remote.command("start sample").contains("state=RUNNING"));
+                    var running = engine.mudlibs().getFirst();
+                    try (Socket player = player(running.playerPort())) { assertTrue(readUntil(player, "ready>").contains("LOGIN sample")); }
+                    assertTrue(local.command("restart sample").contains("state=RUNNING"));
+                    Path outside = directory.resolve("outside.config");
+                    Files.copy(manifest, outside);
+                    Files.delete(manifest);
+                    Files.createSymbolicLink(manifest, outside);
+                    for (AdminConnection connection : List.of(local, remote)) {
+                        assertTrue(connection.command("restart sample").startsWith("Error:"));
+                        assertEquals("No mudlibs are available to start.\n", connection.command("available"));
+                    }
+                    assertEquals(MudlibStatus.State.RUNNING, engine.mudlibs().getFirst().state());
+                    local.command("stop sample");
+                    assertTrue(remote.command("start sample").startsWith("Error:"));
+                }
+            }
+        }
+    }
+
     @Test void emptyEngineProvidesPublicMenuLocalBootstrapAndRemoteEngineConsole() throws Exception {
         try (JVMud engine = engine()) {
             engine.start();

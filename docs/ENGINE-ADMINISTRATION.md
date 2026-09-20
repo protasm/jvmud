@@ -106,11 +106,34 @@ new fingerprint. An existing private key is never regenerated on normal restart.
 ```text
 help
 status
-start /absolute/path/to/smallmercies/jvmud/smallmercies.config 4100 4101
+available
+start smallmercies 4100 4101
 stop smallmercies
 restart smallmercies
 quit
 ```
+
+The engine exposes installed mudlibs by name. `available` lists startable names;
+`status` and `mudlibs` show instances already registered with this engine.
+A name such as `smallmercies` resolves to
+`<mudlib-dir>/smallmercies/jvmud/smallmercies.config`. Names contain 1–64 letters,
+digits, underscores or hyphens. Absolute paths, traversal and symlinks escaping
+the catalog or a mudlib's own tree are rejected. Restarts recheck this boundary
+before stopping the existing worker. Local and TLS consoles use the same rules.
+
+The host operator configures this directory when launching the engine:
+
+```sh
+scripts/jvmud-start --mudlib-dir /srv/my-mudlibs
+```
+
+The default is `mudlibs` under the launch root. The directory may initially be
+empty or absent. Initial manifests explicitly supplied by the host operator on
+the startup command line remain supported; an externally launched mudlib outside
+the configured directory cannot be restarted through administration. Place it in
+the managed directory to make it administratively startable and restartable.
+The catalog limits manifest selection; each worker's OS sandbox separately
+restricts runtime access. Host operators control the directory and its contents.
 
 Supply both requested mudlib ports or neither; omitted ports are allocated by the
 OS. `restart` reuses the prior pair. Each mudlib must have a unique `game_id` and

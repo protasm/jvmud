@@ -21,6 +21,7 @@ import java.util.concurrent.CountDownLatch;
  */
 public final class JVMud implements AutoCloseable {
     private final EngineConfiguration configuration;
+    private final MudlibCatalog catalog;
     private final Map<String, ManagedMudlib> mudlibs = new LinkedHashMap<>();
     private final CountDownLatch stopped = new CountDownLatch(1);
     private volatile boolean closed;
@@ -34,7 +35,25 @@ public final class JVMud implements AutoCloseable {
     private AdminServer localAdministration;
 
     /** Construction declares application configuration without booting a mudlib or binding a socket. */
-    public JVMud(EngineConfiguration configuration) { this.configuration = Objects.requireNonNull(configuration); }
+    public JVMud(EngineConfiguration configuration) {
+        this.configuration = Objects.requireNonNull(configuration);
+        catalog = new MudlibCatalog(configuration.mudlibDirectory());
+    }
+
+    /** Names available for administrative startup, including mudlibs not yet running. */
+    public List<String> availableMudlibs() throws IOException { return catalog.names(); }
+
+    /** Starts an administrator-selected name within the host-configured mudlib directory. */
+    public MudlibStatus startMudlib(String name, int playerPort, int adminPort) throws IOException {
+        return startMudlib(catalog.resolve(name), playerPort, adminPort);
+    }
+
+    /** Revalidates the administrative filesystem boundary before stopping and restarting a mudlib. */
+    public MudlibStatus restartManagedMudlib(String id) throws IOException {
+        try { catalog.validate(requireMudlib(id).spec); }
+        catch (IOException e) { throw new IOException("Mudlib is unavailable within the configured mudlib directory.", e); }
+        return restartMudlib(id);
+    }
 
     /** Operating-system entry point; command-line parsing delegates to the engine launcher. */
     public static void main(String[] args) throws IOException { EngineLauncher.run(args); }
@@ -67,7 +86,10 @@ public final class JVMud implements AutoCloseable {
         }
     }
 
-    /** Boots one isolated worker and publishes its port pair only after both bindings succeed. */
+    /**
+     * Boots a host-supplied manifest and publishes its port pair only after both bindings succeed.
+     * Administration must use the name overload, which first enforces the catalog boundary.
+     */
     public MudlibStatus startMudlib(MudlibSpec spec, int playerPort, int adminPort) throws IOException {
         requireRunning();
         if (playerPort < 0 || playerPort > 65535 || adminPort < 0 || adminPort > 65535 || playerPort != 0 && playerPort == adminPort)
@@ -145,7 +167,7 @@ public final class JVMud implements AutoCloseable {
         }
     }
 
-    /** Restarts a registered mudlib using its previously allocated port pair. */
+    /** Host-facing restart using the previous port pair; administration uses restartManagedMudlib for boundary checks. */
     public MudlibStatus restartMudlib(String id) throws IOException {
         ManagedMudlib entry = requireMudlib(id);
         stopMudlib(id); return startMudlib(entry.spec, entry.playerPort, entry.adminPort);

@@ -68,7 +68,7 @@ scripts/jvmud-console --local
 token or fingerprint. For custom state, use `--socket <state-directory>/engine.sock`.
 
 Use `help`, `admin-create <name>`, `grant <name> engine`, and
-`start <manifest> [player-port admin-port]`. Named administrator tokens and grants
+`start <name> [player-port admin-port]`. Named administrator tokens and grants
 are engine-owned, independent of mudlib player accounts. Remote consoles use TLS
 and an explicitly trusted certificate fingerprint:
 
@@ -82,6 +82,12 @@ The console prompts for the trusted certificate fingerprint, administrator name,
 and token (without echo). Obtain the fingerprint from the engine operator.
 For scripts, supply `--user`, `--fingerprint`, and `--token-file` explicitly.
 The `--host`, `--port`, and local `--socket` forms remain available.
+
+Use `available` to list mudlibs that can be started, then `start smallmercies` or
+`start lp245`. Names map to `<mudlib-dir>/<name>/jvmud/<name>.config`; the host
+operator sets `--mudlib-dir` when starting the engine (default: the launch root's
+`mudlibs` directory). Administration rejects filesystem paths and symlinks that
+escape that directory or the selected mudlib tree.
 
 Use a mudlib's admin port for its live object commands. Each mudlib runs in its
 own sandboxed worker JVM. Linux requires `/usr/bin/bwrap` and user namespaces;
