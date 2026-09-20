@@ -1,22 +1,9 @@
 === Architecture
 
-JVMud is organized around a small set of architectural responsibilities. The
-diagram is the responsibility map for the Java package layout and for the
-boundary between JVMud-owned code and mudlib-authored content.
-
-[source,text]
-----
-                 compiler
-                     |
-                     v
-persistence <--> engine <--> mudlib
-                     |
-                  instance
-                     |
-                 transport
-                     |
-                   player
-----
+JVMud separates compilation, engine behavior, hosted instances, transport,
+and persistence. A player connects through transport to a hosted mudlib instance;
+that instance runs LPC content compiled for the JVM and uses engine services.
+The following responsibilities define the package boundaries.
 
 The engine is the center of the architecture. It owns JVMud truth: the world
 model, canonical state machinery, and rules that should still make sense in a

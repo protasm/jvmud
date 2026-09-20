@@ -28,7 +28,7 @@ Legacy aliases belong in the profile. A recognized efun can still require an
 `engine_capabilities` grant, such as `mudlib_files`, `database`, `session_control`,
 or `host_control`.
 
-Use link:{site-url}/efuns.html[the efun reference] for signatures and categories, and
+Use <<efun-catalog,the efun catalog>> for signatures and categories, and
 `compiler.efun.builtin.CoreEfuns` for implementation details. Do not duplicate the
 catalog in a mudlib guide. When a call fails, check its spelling, argument types,
 profile mapping, and required capability.
@@ -72,3 +72,5 @@ scans forward through ordinary JSON, but skips unrelated branches and entries
 outside the requested range without constructing their LPC values. An empty
 pointer selects a root array. Plain and gzip-compressed documents are both
 accepted.
+
+include::efun-catalog.adoc[]

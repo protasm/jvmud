@@ -1,116 +1,20 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Architecture - JVMud</title>
-  <meta name="description" content="Architecture - JVMud: concepts and references for the JVMud LPC/LPMud engine.">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — JVMud</title>
+<meta name="description" content="Architecture — JVMud project information and documentation.">
+<link rel="stylesheet" href="styles.css?v=text-1">
 </head>
-<body>
-  <a class="skip-link" href="#main">Skip to content</a>
-  <nav class="side-nav" aria-label="Documentation">
-<a class="brand" href="index.html">JVMud</a>
-<a href="documentation.html">Documentation</a>
-<a href="principles.html">Design philosophy</a>
-<a href="architecture.html" aria-current="page">Architecture</a>
-<a href="packages.html">Core packages</a>
-<a href="manual/index.html">User Manual</a>
-<a href="lpc.html">LPC language</a>
-<a href="efuns.html">Efun reference</a>
-<a href="lifecycle-events.html">Lifecycle events</a>
-<a href="glossary.html">Glossary</a>
-<a href="api/index.html">Java API</a>
-<a href="https://github.com/protasm/jvmud">GitHub ↗</a>
-</nav>
-
-  <main id="main" class="content-page">
-    <header>
-      <p class="eyebrow">Package responsibilities</p>
-      <h1>Architecture</h1>
-      <p>
-        JVMud is organized around compiler, engine, instance, transport,
-        persistence, and mudlib responsibilities.
-      </p>
-    </header>
-
-    <section>
-      <h2>Responsibility Map</h2>
-<p>Begin with the <a href="principles.html">design philosophy</a>. This is a responsibility map, not a Java dependency diagram or a deployment topology.</p>
-      <pre class="architecture-map"><code>                 compiler
-                     |
-                     v
-persistence &lt;--&gt; engine &lt;--&gt; mudlib
-                     |
-                  instance
-                     |
-                 transport
-                     |
-                   player</code></pre>
-      <p>
-        The diagram is a package and ownership map. It keeps JVMud-owned Java
-        concepts separate from authored mudlib content and from player-facing
-        connection mechanics.
-      </p>
-    </section>
-
-    <section>
-      <h2>Engine And Instance</h2>
-      <p>
-        The engine owns JVMud truth: world rules, canonical state machinery,
-        Places, Entities, Locations, Links, Personas, Sessions, world time, and
-        mudlib boundary events. A running instance owns one live hosted
-        realization: booted mudlibs, loaded LPC objects, active Personas,
-        lifecycle hooks, and mudlib routing.
-      </p>
-    </section>
-
-    <section>
-      <h2>Outer Responsibilities</h2>
-      <div class="term-grid">
-        <article>
-          <h3>Compiler</h3>
-          <p>
-            Turns LPC source into executable JVM code and supplies generated-code
-            runtime support without defining engine ontology.
-          </p>
-        </article>
-        <article>
-          <h3>Mudlib</h3>
-          <p>
-            Supplies authored LPC world content: fiction, object behavior,
-            commands, rules, presentation, and compatibility policy.
-          </p>
-        </article>
-        <article>
-          <h3>Persistence</h3>
-          <p>
-            Owns storage adapters for durable filesystem and database state so
-            engine and instance code do not embed storage formats.
-          </p>
-        </article>
-        <article>
-          <h3>Transport</h3>
-          <p>
-            Owns human connection protocols such as Telnet: sockets, sessions,
-            echo behavior, line I/O, and connection lifecycle.
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <section>
-      <h2>Follow the next layer</h2><p>The <a href="packages.html">core package guide</a> links each responsibility to its Java API. The <a href="manual/index.html#_developer_reference">developer reference</a> follows compilation and hosted execution.</p>
-<h2>Rule Of Thumb</h2>
-      <p>
-        If a concept defines what JVMud means by a world, it belongs near the
-        engine. If it exists because a particular mudlib is running, it belongs
-        near the instance. If it speaks a connection protocol, it belongs near
-        transport. If it stores durable state, it belongs near persistence. If
-        it is authored LPC content, it belongs in a mudlib.
-      </p>
-    </section>
-  <footer class="site-footer">JVMud · LPC/LPMud engine · <a href="https://github.com/protasm/jvmud">Source and issue tracker</a></footer>
-</main>
+<body class="site">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><nav aria-label="Main navigation"><a href="index.html" class="brand">JVMud</a>
+<a href="about.html">About</a>
+<a href="faq.html">FAQ</a>
+<a href="downloads.html">Downloads</a>
+<a href="documentation.html">Documentation</a></nav></header>
+<main id="main"><header class="page-heading"><h1>Architecture</h1></header><p>This reference is maintained in the User Manual.</p><p><a href="manual/index.html#_architecture">Read architecture in the manual</a></p></main>
+<footer class="site-footer"><span>JVMud</span><a href="https://github.com/protasm/jvmud">Source code</a><a href="https://github.com/protasm/jvmud/issues">Issue tracker</a></footer>
 </body>
 </html>

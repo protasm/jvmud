@@ -96,7 +96,7 @@ are normalized for case, spaces, and hyphens.
 an interval override.
 |===
 
-Refer to link:{site-url}/lifecycle-events.html[lifecycle events] for event roles and
+Refer to <<lifecycle-reference,lifecycle events>> for event roles and
 verify method signatures against the selected profile.
 
 ==== Database

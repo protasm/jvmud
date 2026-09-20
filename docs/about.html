@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About — JVMud</title>
+<meta name="description" content="About — JVMud project information and documentation.">
+<link rel="stylesheet" href="styles.css?v=text-1">
+</head>
+<body class="site">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><nav aria-label="Main navigation"><a href="index.html" class="brand">JVMud</a>
+<a href="about.html" aria-current="page">About</a>
+<a href="faq.html">FAQ</a>
+<a href="downloads.html">Downloads</a>
+<a href="documentation.html">Documentation</a></nav></header>
+<main id="main"><header class="page-heading"><p class="kicker">Project</p><h1>About JVMud</h1><p class="lead">An engine for LPC-authored multiplayer text worlds.</p></header>
+<div class="prose"><section><h2>What it does</h2><p>JVMud compiles LPC source to JVM bytecode and loads it as live objects. It provides the engine, hosted instances, player connections, persistence adapters, and an administration interface.</p><p>A mudlib supplies the world’s content, commands, game rules, and presentation. JVMud includes Small Mercies, a small teaching world.</p></section>
+<section><h2>Design</h2><p>The project separates engine behavior, mudlib execution, transport, and persistence. Each hosted mudlib has its own execution queue and clock. Mudlibs interpret player commands.</p><p>The source code is part of the product: it is intended to be read, understood, and extended.</p><p>See the manual’s <a href="manual/index.html#_the_jvmud_philosophy_of_mud">design philosophy</a> and <a href="manual/index.html#_architecture">architecture</a> for the detailed account.</p></section>
+<section><h2>Status</h2><p>JVMud is under development. Downloads are preview releases, and compatibility with existing LPC mudlibs is incremental.</p><p><a href="https://github.com/protasm/jvmud">Project repository</a></p></section></div></main>
+<footer class="site-footer"><span>JVMud</span><a href="https://github.com/protasm/jvmud">Source code</a><a href="https://github.com/protasm/jvmud/issues">Issue tracker</a></footer>
+</body>
+</html>

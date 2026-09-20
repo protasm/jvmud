@@ -1,36 +1,20 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Download JVMud</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="JVMud is an LPC/LPMud text-world engine for the JVM, with explicit hosting profiles and a native world model.">
-  <link rel="stylesheet" href="styles.css?v=downloads-spacing-3">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Downloads — JVMud</title>
+<meta name="description" content="Downloads — JVMud project information and documentation.">
+<link rel="stylesheet" href="styles.css?v=text-1">
 </head>
-<body>
-  <a class="skip-link" href="#main">Skip to content</a>
-  <nav class="side-nav" aria-label="Documentation">
-<a class="brand" href="index.html">JVMud</a>
+<body class="site">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><nav aria-label="Main navigation"><a href="index.html" class="brand">JVMud</a>
+<a href="about.html">About</a>
+<a href="faq.html">FAQ</a>
 <a href="downloads.html" aria-current="page">Downloads</a>
-<a href="documentation.html">Documentation</a>
-<a href="principles.html">Design philosophy</a>
-<a href="architecture.html">Architecture</a>
-<a href="packages.html">Core packages</a>
-<a href="manual/index.html">User Manual</a>
-<a href="lpc.html">LPC language</a>
-<a href="efuns.html">Efun reference</a>
-<a href="lifecycle-events.html">Lifecycle events</a>
-<a href="glossary.html">Glossary</a>
-<a href="api/index.html">Java API</a>
-<a href="https://github.com/protasm/jvmud">GitHub ↗</a>
-</nav>
-
-  <main id="main" class="downloads-page">
-    <h1>Download JVMud</h1>
-    <p>JVMud 0.1.0-preview.7 includes the compiled engine, launchers, and editable
-    LPC source for Small Mercies and LP245. The macOS and Linux packages include
-    Eclipse Temurin Java 21.0.12.1; no separate Java installation is needed.</p>
-    <div class="downloads-table-wrap" role="region" aria-label="JVMud downloads" tabindex="0">
+<a href="documentation.html">Documentation</a></nav></header>
+<main id="main"><header class="page-heading"><p class="kicker">Preview release</p><h1>Downloads</h1><p class="lead">JVMud 0.1.0-preview.7</p></header><p>Packages include the engine, launchers, and bundled LPC source. The macOS and Linux packages include Eclipse Temurin Java 21.0.12.1.</p><div class="downloads-table-wrap" role="region" aria-label="JVMud downloads" tabindex="0">
       <table class="downloads-table">
         <thead>
           <tr><th scope="col">Platform</th><th scope="col">Variant</th><th scope="col">Size</th><th scope="col">SHA</th><th scope="col">Requirements</th></tr>
@@ -73,68 +57,7 @@
           </tr>
         </tbody>
       </table>
-    </div>
-
-    <h2>Requirements</h2>
-    <p>Choose the package matching your operating system and processor. A POSIX
-    terminal and a separate MUD client are needed; Maven is not.</p>
-
-    <h2>Start your first world</h2>
-    <p>In a terminal, go to the writable folder containing your download. For Apple Silicon, run the commands below; for another platform, replace the archive filename with your download:</p>
-    <pre><code>mkdir current &amp;&amp;
-tar -xzf jvmud-0.1.0-preview.7-macos-aarch64.tar.gz --strip-components=1 -C current &amp;&amp;
-cd current &amp;&amp;
-scripts/jvmud-start smallmercies</code></pre>
-    <p>Keep the installation in <code>current</code> across releases. These commands
-    stop if that directory already exists; use the updater below for an existing
-    installation.</p>
-    <p>Wait for <code>JVMud mudlib listening on</code>, then connect a Telnet-capable
-    MUD client to <code>127.0.0.1:4000</code> with SSL/TLS disabled. Choose a guest
-    name, gender, and class. Try <code>help</code>, <code>look</code>, and
-    <code>north</code>. Stop the server with Ctrl+C.</p>
-
-    <h2>Update an installation</h2>
-    <p>From your existing <code>current</code> directory:</p>
-    <pre><code>scripts/jvmud-update --check
-scripts/jvmud-update</code></pre>
-    <p>The updater verifies the latest matching download, stops this installation's
-    servers cleanly, and creates a full backup in <code>../backup/</code>, beside
-    the distribution folder. It updates JVMud and shipped mudlib
-    <code>jvmud/</code> files, then restarts the servers. Other mudlib content and
-    saved data remain in place. Starting with preview.6, comment-only configuration
-    differences do not block updates, edited Markdown documentation is backed up
-    and replaced, and genuine adapter/configuration conflicts are reported together
-    before downtime. The updater already installed performs each upgrade. External files and databases need separate backups.</p>
-    <p>The installation folder keeps its name across releases; the updater reports
-    the installed version. Do not rename a running installation. Stop its servers
-    cleanly first, then relaunch them from the new location with their original
-    options and update any external paths. The bundled Java runtime is available
-    through <code>jre</code>; server logs live in each mudlib's <code>jvmud/log/</code>
-    directory. Players must reconnect after an update. Earlier previews without the
-    updater require a manual migration; see the package README for recovery and migration details.</p>
-
-    <h2>Run LP245</h2>
-    <p>To start the bundled LP245 world on a separate port:</p>
-    <pre><code>scripts/jvmud-start --port 4001 lp245</code></pre>
-    <p>Connect to <code>127.0.0.1:4001</code> and follow the character creation
-    prompts. The package retains LP245's LPC source and JVMud compatibility
-    files. Existing player saves and old logs are excluded.</p>
-
-    <h2>Preview status</h2>
-    <p>All 563 Maven tests passed. Runtime-free packages and the Apple Silicon
-    package passed launcher, formatter, login, movement, and administration checks
-    for both worlds, plus updater backup, restart, and rollback tests. The published
-    preview.6 updater was also tested upgrading to preview.7 in a stable current directory. Intel macOS and Linux
-    packages passed archive and runtime-integrity checks; they were not executed
-    on those platforms for this release.</p>
-    <p>Launchers use the bundled Java runtime by default. Set
-    <code>JVMUD_JAVA_HOME</code> to explicitly select another Java installation.</p>
-    <p>The package's README covers launch options, administration, and upgrades.
-    <code>RELEASE-STATUS.md</code> records validation and licensing status; no
-    project license has yet been declared for JVMud or Small Mercies.</p>
-    <p><a href="manual/index.html">Read the User Manual</a> ·
-    <a href="manual/index.html#small-mercies">Small Mercies walkthrough</a></p>
-    <footer class="site-footer">JVMud · LPC/LPMud engine</footer>
-  </main>
+    </div><section class="index-note"><h2>Installation and updates</h2><p>A POSIX terminal and a Telnet-capable MUD client are needed. Follow the <a href="manual/index.html#_installing_and_running">installation instructions in the User Manual</a>. Release-specific launch, update, and recovery instructions are also included in each package’s README.</p><p>These are preview packages. Platform validation and licensing details are recorded in the included <code>RELEASE-STATUS.md</code>.</p></section></main>
+<footer class="site-footer"><span>JVMud</span><a href="https://github.com/protasm/jvmud">Source code</a><a href="https://github.com/protasm/jvmud/issues">Issue tracker</a></footer>
 </body>
 </html>

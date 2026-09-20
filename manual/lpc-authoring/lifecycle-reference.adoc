@@ -1,0 +1,89 @@
+[[lifecycle-reference]]
+==== Lifecycle event reference
+
+===== How Mudlibs Register Events
+
+A mudlib registers interest through its `MudlibBoundary`. Configuration keys such as `lifecycle.object_loaded = reset` map an engine event to a mudlib method. A mudlib can also declare `handled_lifecycle_events` as metadata before a concrete method mapping exists.
+
+No lifecycle event is globally required. If no method is configured, JVMud continues the engine-owned operation. If a method is configured but the target object does not define it, JVMud skips the call unless a future event contract marks that call required.
+
+===== Configuration Names
+
+Event names are case-insensitive in mudlib config, and hyphens or spaces normalize to underscores. Older aliases such as `player_connected`, `player_bound`, and `interaction_scope_entered` are accepted for existing manifests, but the current contract names below are preferred.
+
+===== Current Lifecycle Events
+
+`SERVER_STARTED`::
+Implemented. After the declared boundary object and preload manifest have loaded, JVMud invokes the configured no-argument method on the boundary object. A compatibility profile can map a driver-specific master-startup convention here without teaching that convention to the engine.
+
+`OBJECT_LOADED`::
+Implemented. Invoked on a loaded or cloned object with one argument, `mixed first_load`; current compatibility passes `0`. Example compatibility mapping: `reset`.
+
+`OBJECT_ACTIVATED`::
+Reserved. Names a reactivation moment for reload, reset, or world maintenance, but JVMud does not currently invoke it.
+
+`OBJECT_SOURCE_MISSING`::
+Implemented. Invoked on the configured boundary object when a shared object path is requested but no source exists. The method receives the normalized requested path and may return an object to bind to that path. Example compatibility mapping: `compile_object`.
+
+`OBJECT_DESTRUCTION_REQUESTED`::
+Implemented. Invoked on the configured boundary object before destruction, passing the target object. The return value is advisory. Example compatibility mapping: `prepare_destruct`.
+
+`OBJECT_DESTROYED`::
+Reserved. Names a post-destruction cleanup point for future policies that need an after-the-fact notification.
+
+`ENTITY_ARRIVED_AT_PLACE`::
+Reserved. Names the moment after an entity completes movement into a Place.
+
+`ENTITY_DEPARTED_FROM_PLACE`::
+Reserved. Names the moment when an entity leaves a Place, paired with `ENTITY_ARRIVED_AT_PLACE`.
+
+`ENTITY_ADDED_TO_ENTITY`::
+Reserved. Names the moment when an entity enters another entity's containment.
+
+`ENTITY_REMOVED_FROM_ENTITY`::
+Reserved. Names the moment when an entity leaves another entity's containment.
+
+`PLAYER_SESSION_CONNECTED`::
+Implemented by the hosted server path. The configured player object method is invoked without arguments and may start login or character selection. Example compatibility mapping: `logon`.
+
+`PLAYER_SESSION_POST_REBIND`::
+Implemented by the hosted server path after a compatibility session handoff changes which LPC object receives player input. The configured method is invoked without arguments on the newly bound object.
+
+`PLAYER_PERSONA_RESOLVED`::
+Implemented for host-managed session policies. Delivers the external user ID, display name, gender text, and policy-defined profile attributes to the selected Persona.
+
+`PLAYER_OBJECT_BOUND`::
+Reserved. Names the moment when JVMud has associated a live mudlib projection with a Player, Session, and Persona.
+
+`PLAYER_ENTERED_WORLD`::
+Implemented for host-managed session policies. Delivers the configured starting Place object after the Player's Persona has entered the world.
+
+`PLAYER_SESSION_DISCONNECTED`::
+Implemented by the hosted server path. The configured player object method is invoked without arguments so the mudlib can save or clean up session-owned state. Example compatibility mapping: `quit`.
+
+`INTERACTION_SCOPE_STARTED`::
+Implemented. Invoked without arguments on the active Persona, its location, objects in that location, and carried objects. Compatibility mudlibs usually register local text commands here. Example compatibility mapping: `init`.
+
+`COMMAND_DISPATCH_STARTED`::
+Reserved. Names the moment before JVMud dispatches a Player command line to mudlib behavior.
+
+`COMMAND_DISPATCH_FINISHED`::
+Reserved. Names the moment after JVMud finishes dispatching a Player command line.
+
+`LOG_ERROR`::
+Implemented. Invoked on the configured boundary object with the object path and diagnostic message for compilation or load-time diagnostics. Example compatibility mapping: `log_error`.
+
+`RUNTIME_ERROR`::
+Implemented for timed runtime errors and server-layer error handling. Invoked on the configured boundary or error handler object with details about target, context, operation, and message. Example compatibility mapping: `runtime_error`.
+
+`SCHEDULED_TICK_ERROR`::
+Implemented. When a scheduled tick throws, JVMud can invoke this specialized error event in addition to `RUNTIME_ERROR`. Example compatibility mapping: `heart_beat_error`.
+
+`SERVER_SHUTDOWN`::
+Implemented by the hosted server path. Invoked on the configured boundary or error handler object with the shutdown reason. Example compatibility mapping: `notify_shutdown`.
+
+`SCHEDULED_TICK`::
+Implemented through temporal tick configuration rather than a per-event method mapping. The boundary chooses the recurring tick method and default interval; compatibility shims may expose names such as `set_heart_beat`.
+
+`DEFERRED_CALLBACK`::
+Reserved as a named event. Concrete one-shot callbacks are currently scheduled with explicit callback method names through runtime efuns.

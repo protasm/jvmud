@@ -1,5 +1,39 @@
 === Installing
 
+==== Installing a preview package
+
+Download the archive matching your platform from link:{site-url}/downloads.html[Downloads]. A POSIX terminal and a Telnet-capable MUD client are required. The platform packages include Java; the runtime-free package requires Java 21 or newer. Maven is not needed.
+
+In a terminal, go to the writable folder containing your download. For Apple Silicon, run the commands below; for another platform, replace the archive filename with your download:
+
+[source,shell]
+----
+mkdir current &&
+tar -xzf jvmud-0.1.0-preview.7-macos-aarch64.tar.gz --strip-components=1 -C current &&
+cd current &&
+scripts/jvmud-start smallmercies
+----
+
+Keep the installation in `current` across releases. These commands stop if that directory already exists; use the updater below for an existing installation.
+
+Wait for `JVMud mudlib listening on`, then connect a Telnet-capable MUD client to `127.0.0.1:4000` with SSL/TLS disabled. Choose a guest name, gender, and class. Try `help`, `look`, and `north`. Stop the server with Ctrl+C.
+
+==== Update an installation
+
+From your existing `current` directory:
+
+[source,shell]
+----
+scripts/jvmud-update --check
+scripts/jvmud-update
+----
+
+The updater verifies the latest matching download, stops this installation's servers cleanly, and creates a full backup in `../backup/`, beside the distribution folder. It updates JVMud and shipped mudlib `jvmud/` files, then restarts the servers. Other mudlib content and saved data remain in place. Starting with preview.6, comment-only configuration differences do not block updates, edited Markdown documentation is backed up and replaced, and genuine adapter/configuration conflicts are reported together before downtime. The updater already installed performs each upgrade. External files and databases need separate backups.
+
+The installation folder keeps its name across releases; the updater reports the installed version. Do not rename a running installation. Stop its servers cleanly first, then relaunch them from the new location with their original options and update any external paths. The bundled Java runtime is available through `jre`; server logs live in each mudlib's `jvmud/log/` directory. Players must reconnect after an update. Earlier previews without the updater require a manual migration; see the package README for recovery and migration details.
+
+==== Building from source
+
 You need a JDK that can compile Java 21, Maven, Git, and a POSIX shell for the
 repository launch scripts. Some profile-owned smoke scripts also require Bash or Python 3.
 A Telnet-capable client is needed for interactive play. The bundled Small Mercies

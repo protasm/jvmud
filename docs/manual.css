@@ -15,7 +15,7 @@ p, li, dd, td, th { font-family: inherit; }
 #toc #toctitle { font-size: 1.25rem; }
 .sect1 + .sect1, #header > h1:first-child { border-color: var(--line); }
 #content code { color: var(--accent); background: var(--panel); overflow-wrap: anywhere; }
-#content pre, #content pre code { background: #030806; color: #eef5e9; white-space: pre-wrap; word-wrap: break-word; }
+#content pre, #content pre code { background: var(--panel); color: var(--text); white-space: pre-wrap; word-wrap: break-word; }
 #content pre { font-size: .9rem; box-shadow: none; }
 #content table { background: var(--panel); color: var(--text); border-color: var(--line); width: 100%; table-layout: fixed; }
 #content table thead, #content table tr.even, #content table tr.alt, #content table tr:nth-of-type(even) { background: var(--panel-strong); }
@@ -40,5 +40,10 @@ p, li, dd, td, th { font-family: inherit; }
   #content p, #content li, h1,h2,h3,h4 { color: black; }
 }
 
-/* The default light-theme syntax palette is not legible on dark code panels. */
+/* Keep source examples consistent with the document palette. */
 #content pre code span { color: inherit; background: transparent; }
+
+/* Section links inherit the reading hierarchy instead of Asciidoctor's accent. */
+#content h2, #content h3, #content h4, #content h5, #content h6,
+#content h2 a.link, #content h3 a.link, #content h4 a.link,
+#content h5 a.link, #content h6 a.link { color: var(--text); }

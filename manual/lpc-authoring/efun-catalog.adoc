@@ -1,0 +1,400 @@
+[[efun-catalog]]
+==== Efun catalog
+
+===== Boundary Role
+
+JVMud's core efuns use JVMud-native names. Legacy driver names belong in mudlib compatibility profiles through engine function aliases such as `engine_function.jvmud_size = sizeof`. That keeps familiar LPC source usable without making old driver vocabulary the engine model.
+
+Mudlib code can also qualify calls. `efun::name(...)` bypasses mudlib shim methods while still honoring configured engine-function aliases. `jvmud::name(...)` resolves only JVMud-native efuns, such as `jvmud::jvmud_size(...)`; it does not invent a `jvmud_` prefix for bad calls.
+
+===== Current Core Efuns
+
+This page mirrors the built-in catalog registered by `CoreEfuns`. Overloaded families are shown with arity ranges when each overload has the same behavior.
+
+===== Output And Perception
+
+`void jvmud_write (mixed message)`::
+Writes text to the active output sink.
+
+`void jvmud_write_to_lpc_object (object target, mixed message)`::
+Writes text to a target object's bound session, when it has one.
+
+`status jvmud_rebind_session_lpc_object (object newObject, object oldObject)`::
+Moves an interactive session binding from one LPC object to another.
+
+`void jvmud_emit_perceivable (mixed emitter, mixed message)`::
+Emits a perceivable message from an entity or path-resolved object.
+
+`void jvmud_emit_perceivable_except (mixed emitter, mixed message, mixed excluded)`::
+Emits near an entity while suppressing one explicit recipient.
+
+`void jvmud_emit_perceivable_at (mixed location, mixed message)`::
+Emits a perceivable message at an explicit location or path-resolved object.
+
+===== Current Context
+
+`object jvmud_current_lpc_object ()`::
+Returns the currently executing LPC object.
+
+`object jvmud_previous_lpc_object ()`::
+Returns the previous LPC object in the active call chain, when available.
+
+`object jvmud_current_actor ()`::
+Returns the active command actor, falling back to the current object.
+
+`object jvmud_current_agent ()`::
+Returns the active world-present Agent for the action scope, or LPC false when none is active.
+
+`string jvmud_current_verb ()`::
+Returns the verb being dispatched for the current command.
+
+`object jvmud_previous_object ()`::
+Compatibility spelling for the previous LPC object on the runtime call stack.
+
+===== Command Dispatch
+
+`mixed jvmud_dispatch_entity_command (mixed actor, string commandLine)`::
+Dispatches a text command as an entity or path-resolved object.
+
+`void jvmud_enable_commands ()`::
+Marks the current object as command-capable.
+
+`void jvmud_add_action (string methodName)`::
+Remembers a method as a command action without registering a verb yet.
+
+`void jvmud_add_action (string methodName, string verb)`::
+Remembers an action method and registers a verb for it.
+
+`void jvmud_add_action (string methodName, string verb, status prefix)`::
+Registers a verb for an action method, optionally as a prefix verb.
+
+`void jvmud_add_verb (string verb)`::
+Registers a verb for the most recently remembered action method in the current interaction scope.
+
+===== Time And Scheduling
+
+`int jvmud_time ()`::
+Returns Unix epoch seconds from the host clock.
+
+`string jvmud_format_time (int epochSeconds)`::
+Formats epoch seconds using the host default time zone.
+
+`int jvmud_random (int max)`::
+Returns a value in `[0, max)`, or `0` when `max <= 0`.
+
+`void jvmud_schedule_recurring_tick (int enabled, int intervalSeconds)`::
+Schedules or disables recurring temporal ticks for the current object.
+
+`void jvmud_schedule_deferred_callback (string methodName, int delaySeconds)`::
+Schedules a one-shot callback on the current object.
+
+`void jvmud_schedule_deferred_callback (string methodName, int delaySeconds, mixed arg...)`::
+Schedules a one-shot callback with one to four mudlib-supplied arguments.
+
+`int jvmud_cancel_deferred_callback (string methodName)`::
+Cancels matching deferred callbacks and returns the runtime cancellation result.
+
+===== Objects, Entities, And Containment
+
+`string jvmud_lpc_object_id (mixed object)`::
+Returns the registered runtime object id for a loaded LPC object.
+
+`status jvmud_method_exists (string name)`::
+Reports whether the current object exposes a public mudlib method.
+
+`status jvmud_method_exists (string name, mixed object)`::
+Reports whether another loaded object exposes a public mudlib method.
+
+`array jvmud_inherited_programs (mixed object)`::
+Returns the transitive LPC program paths inherited by a generated object.
+
+`mixed jvmud_find_lpc_object (string path)`::
+Returns an already loaded LPC object, or LPC false when it is not loaded.
+
+`mixed jvmud_find_object (string path)`::
+Returns an already loaded shared object, or LPC false when it is not loaded.
+
+`object jvmud_load_lpc_object (string path)`::
+Loads or returns the shared LPC runtime object for a mudlib path.
+
+`object jvmud_clone_lpc_object (string path)`::
+Clones an LPC object and returns the new runtime instance.
+
+`mixed jvmud_invoke_lpc_object (mixed target, string methodName, mixed arg...)`::
+Invokes an optional method on an object or path-resolved shared object; registered for arities 2 through 6.
+
+`void jvmud_destroy_lpc_object (object object)`::
+Destroys an LPC object and removes it from runtime indexes.
+
+`void jvmud_set_entity_location (mixed entity, mixed location)`::
+Sets an entity's location or containment directly.
+
+`void jvmud_move_entity (mixed entity, mixed destination)`::
+Moves an entity or path-resolved object through runtime containment.
+
+`object jvmud_find_entity (string id)`::
+Finds an entity by id in the default scope.
+
+`object jvmud_find_entity (mixed id, mixed location)`::
+Finds an entity by id inside a supplied location or container.
+
+`object jvmud_entity_location ()`::
+Returns the current object's immediate location.
+
+`object jvmud_entity_location (mixed entity)`::
+Returns another entity's immediate location.
+
+`object jvmud_first_entity_at (mixed location)`::
+Starts traversal of entities in a location or container.
+
+`object jvmud_next_entity_at (mixed entity)`::
+Continues traversal from a previous entity in the same inventory walk.
+
+===== Aliases, Capabilities, And Light
+
+`void jvmud_bind_entity_alias (object entity, string alias, mixed location)`::
+Binds a lookup alias for an entity in a location scope.
+
+`object jvmud_find_entity_alias (string alias, mixed location)`::
+Resolves an alias in a location scope.
+
+`status jvmud_entity_has_alias (mixed entity, string alias)`::
+Reports whether an entity has a registered alias.
+
+`status jvmud_entity_commands_enabled (mixed entity)`::
+Reports whether command handling is enabled for an entity.
+
+`void jvmud_set_entity_translucent (mixed entity, status translucent)`::
+Controls whether ambient perception such as light passes through an entity container.
+
+`status jvmud_entity_translucent (mixed entity)`::
+Reports whether an entity is currently translucent.
+
+`int jvmud_set_light (int delta)`::
+Adjusts current runtime light and returns the resulting light value.
+
+===== Sessions, Users, And Host Requests
+
+`array jvmud_users ()`::
+Returns the active user/player objects known to the runtime.
+
+`status jvmud_interactive (mixed user)`::
+Reports whether an object is bound to an active session.
+
+`mixed jvmud_interactive_info (mixed user, int key)`::
+Returns LPC false for driver-specific interactive metadata JVMud does not expose.
+
+`mixed jvmud_lpc_object_info (mixed object, int key)`::
+Returns LPC false for driver-specific LPC object metadata JVMud does not expose.
+
+`mixed jvmud_object_info (mixed object, int key)`::
+Returns LPC false for driver-specific object metadata JVMud does not expose.
+
+`status jvmud_configure_lpc_object (mixed object, int key, mixed value)`::
+Accepts driver-specific LPC object configuration requests conservatively.
+
+`status jvmud_configure_object (mixed object, int key, mixed value)`::
+Accepts driver-specific object configuration requests conservatively.
+
+`void jvmud_shutdown ()`::
+Accepts legacy shutdown requests without exposing driver control to mudlib code.
+
+`void jvmud_set_this_player (mixed player)`::
+Accepts legacy current-player mutation requests while JVMud keeps session ownership engine-side.
+
+`void jvmud_raise_error (mixed message)`::
+Raises a runtime exception with the supplied LPC message.
+
+`int jvmud_query_idle (mixed user)`::
+Returns idle time for a runtime session/user target.
+
+`mixed jvmud_query_ip_number (mixed user)`::
+Returns the user's remote address, or LPC false when unavailable.
+
+`mixed jvmud_runtime_info (int key)`::
+Returns LPC false for unsupported runtime metadata queries.
+
+`void jvmud_capture_session_input (string methodName, int noEcho, mixed arg...)`::
+Routes the next session input line to a method on the current object; registered for arities 2 through 8.
+
+`status jvmud_transfer_player_to_game (string gameId)`::
+Asks the host to transfer the current player to another registered game.
+
+===== Files, Persistence, And Databases
+
+`mixed jvmud_read_mudlib_text (string path)`::
+Reads a mudlib-relative text file, returning LPC false when unavailable.
+
+`mixed jvmud_read_mudlib_text (string path, int startLine, int lineCount)`::
+Reads a line slice from a mudlib-relative text file for legacy file helpers.
+
+`mixed jvmud_read_mudlib_json (string path)`::
+Parses a mudlib-relative ordinary JSON file, transparently accepting gzip compression.
+
+`mixed jvmud_read_mudlib_json_array (string path, string pointer, int offset, int count)`::
+Streams a bounded slice from a JSON array selected by RFC 6901 JSON Pointer, returning LPC false when the file is unavailable.
+
+`array jvmud_list_mudlib_paths (string path)`::
+Lists mudlib-relative paths with default listing flags.
+
+`array jvmud_list_mudlib_paths (string path, int flags)`::
+Lists mudlib-relative paths, including simple glob support for compatibility discovery.
+
+`status jvmud_append_mudlib_text (string path, mixed text)`::
+Appends text to a mudlib-relative file.
+
+`status jvmud_remove_mudlib_text (string path)`::
+Removes a mudlib-relative file.
+
+`int jvmud_copy_mudlib_text (string source, string destination)`::
+Copies a mudlib-relative file, returning zero for success.
+
+`int jvmud_rename_mudlib_text (string source, string destination)`::
+Renames a mudlib-relative path, returning zero for success.
+
+`status jvmud_create_mudlib_directory (string path)`::
+Creates a mudlib-relative directory.
+
+`status jvmud_remove_mudlib_directory (string path)`::
+Removes an empty mudlib-relative directory.
+
+`status jvmud_save_lpc_object_state (string path)`::
+Persists the current object's LPC fields.
+
+`status jvmud_restore_lpc_object_state (string path)`::
+Restores the current object's LPC fields.
+
+`int jvmud_db_connect (string database)`::
+Opens a configured JDBC database handle.
+
+`int jvmud_db_connect (string database, string user, string password)`::
+Opens a JDBC database handle with mudlib-supplied credentials.
+
+`int jvmud_db_exec (int handle, string sql)`::
+Executes SQL and retains any result cursor for later fetches.
+
+`mixed jvmud_db_fetch (int handle)`::
+Returns the next result row as an LPC array, or LPC false when no row remains.
+
+`mixed jvmud_db_error (int handle)`::
+Returns the last SQL error for a handle.
+
+`status jvmud_db_close (int handle)`::
+Closes a database handle.
+
+`array jvmud_db_handles ()`::
+Returns currently open database handles.
+
+`string jvmud_db_escape (mixed value)`::
+Escapes text for mudlib-generated SQL.
+
+===== Security Helpers
+
+`string jvmud_hash_password (string password)`::
+Returns a PBKDF2-SHA256 password hash string.
+
+`status jvmud_verify_password (string password, string encodedHash)`::
+Verifies a password against a hash created by `jvmud_hash_password`.
+
+===== Text And Regex
+
+`string jvmud_lowercase_text (mixed value)`::
+Converts text to lowercase.
+
+`string jvmud_uppercase_text (mixed value)`::
+Converts text to uppercase.
+
+`array jvmud_split_text (string text, string delimiter)`::
+Splits text on a literal delimiter while preserving empty trailing fields.
+
+`mixed jvmud_regex_match (array values, string pattern)`::
+Returns values whose string forms match a compatibility regular expression, or LPC false when none match.
+
+`mixed jvmud_regex_match (array values, string pattern, int flags)`::
+Compatibility regex match with flags.
+
+`string jvmud_regex_replace (string input, string pattern, mixed replacement, int flags)`::
+Performs compatibility regex replacement for legacy mudlib text helpers, including function callbacks that receive each matched string.
+
+`array jvmud_regex_explode (string input, string pattern)`::
+Splits text around regular-expression matches while preserving matched delimiters.
+
+`int jvmud_to_int (mixed value)`::
+Converts numeric values and base-10 text to an integer, returning false-style zero for non-numeric input.
+
+`string jvmud_to_string (mixed value)`::
+Converts a mixed LPC value to JVMud text form.
+
+`string jvmud_capitalize_text (mixed value)`::
+Capitalizes the first character of text.
+
+`string jvmud_wrap_text (mixed text)`::
+Wraps description text at the default 78-column width.
+
+`string jvmud_wrap_text (mixed text, int width)`::
+Wraps description text at a requested line width.
+
+`string jvmud_format_text (string format, mixed arg...)`::
+Formats text using the host formatter; registered for arities 1 through 24.
+
+`string jvmud_extract_text (mixed value, int from)`::
+Extracts text from an inclusive start index through the end.
+
+`string jvmud_extract_text (mixed value, int from, int to)`::
+Extracts text using inclusive start and end indexes.
+
+===== Collections, Types, And Values
+
+`int jvmud_size (mixed value)`::
+Returns the size of a string, collection, mapping, or array.
+
+`int jvmud_member (mixed value, mixed needle)`::
+Checks mapping key membership or returns the index of a value in an array or string.
+
+`array jvmud_mapping_keys (mapping value)`::
+Returns a mapping's keys in runtime iteration order.
+
+`array jvmud_mapping_values (mapping value)`::
+Returns a mapping's values in runtime iteration order.
+
+`mapping jvmud_mapping_from_keys (array keys)`::
+Builds a mapping whose keys come from an array and whose values are LPC true.
+
+`mapping jvmud_mapping_delete (mapping value, mixed key)`::
+Removes a key from a mutable mapping and returns the same mapping.
+
+`string jvmud_serialize_lpc_value (mixed value)`::
+Serializes LPC data values to JVMud's tagged JSON payload.
+
+`mixed jvmud_deserialize_lpc_value (string data)`::
+Restores LPC data values produced by `jvmud_serialize_lpc_value`.
+
+`mixed jvmud_parse_json (string document)`::
+Parses ordinary JSON into LPC mappings, arrays, strings, numbers, and 1/0 status values; JSON null becomes LPC false.
+
+`string jvmud_format_json (mixed value)`::
+Formats LPC-compatible data as ordinary JSON; mapping keys must be strings.
+
+`status jvmud_is_string (mixed value)`::
+Reports whether the value is Java-backed LPC string data.
+
+`status jvmud_is_int (mixed value)`::
+Reports whether the value is Java-backed LPC integer data.
+
+`status jvmud_is_object (mixed value)`::
+Reports whether the value is a live runtime object.
+
+`status jvmud_is_array (mixed value)`::
+Reports whether the value is Java-backed LPC array data.
+
+`status jvmud_is_mapping (mixed value)`::
+Reports whether the value is Java-backed LPC mapping data.
+
+`mapping jvmud_filter_indices (mapping values, function callback, mixed arg...)`::
+Returns entries whose keys satisfy a callable predicate; registered for arities 2 through 8.
+
+`array jvmud_allocate (int size)`::
+Returns a zero-filled LPC array of non-negative size.
+
+`int jvmud_sscanf (mixed input, mixed format, mixed capture...)`::
+Scans text into supplied capture targets; registered for arities 3 through 8.

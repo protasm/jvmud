@@ -1,32 +1,26 @@
 # Documentation maintenance
 
-JVMud uses its existing static HTML site and Maven documentation generators.
-No JavaScript application or external hosting service is needed to edit it.
-
-## Reading order
-
-Documentation home → design philosophy → architecture → core packages → User
-Manual tasks → LPC/efun/lifecycle references → Java API. Existing general-purpose page URLs and manual chapter anchors are retained.
-The former named-profile notes are replaced by generic profile validation.
+The static site is a directory to the project and its documentation. About and
+FAQ provide brief orientation; Downloads lists release artifacts and requirements.
+Procedures and technical reference material belong in the User Manual or Javadocs,
+not in parallel website guides.
 
 ## Source ownership
 
-| Surface | Edit | Generated or published output |
+| Surface | Authored source | Published output |
 | --- | --- | --- |
-| Site and navigation | `docs/*.html`, `docs/styles.css` | Same files, served statically |
-| User Manual | `manual/**/*.adoc`, `manual/docinfo*.html`, `manual/pdf-theme.yml`, `docs/manual.css` | `docs/manual/index.html`, `docs/manual/jvmud-user-manual.pdf` |
+| Site navigation, About, FAQ, Downloads | `docs/*.html`, `docs/styles.css` | Same static files |
+| User Manual, including efun catalog, lifecycle reference, and glossary | `manual/**/*.adoc`, `manual/docinfo*.html`, `manual/pdf-theme.yml`, `docs/manual.css` | `docs/manual/index.html`, `docs/manual/jvmud-user-manual.pdf` |
 | Java API | Java Javadocs and `pom.xml` profile `site-docs` | `docs/api/apidocs/` |
-| API landing page | `docs/api/index.html` | Authored package guide, not generated |
-| Design principles | `docs/PRINCIPLES.md` | Maintain `docs/principles.html` as its reader-facing companion |
-| Vocabulary | `docs/GLOSSARY.md` | Maintain `docs/glossary.html` as its reader-facing companion |
-| Boundary design | `docs/ENGINE_MUDLIB_CONTRACT.md` | Manual links to this detailed contract |
-| Work tracking | Roadmap, deferred work, provenance, and documentation gaps | Markdown records; proposals are not product guarantees |
+| Internal design and work tracking | Markdown records in `docs/` | Repository documents; proposals are not product guarantees |
 
-Procedures belong in the manual; README and landing pages should point to them.
-Keep short quick starts consistent with the manual. Keep focused catalogs in the
-efun/lifecycle pages instead of copying full lists into multiple guides.
-Principles and glossary HTML remain manually maintained companions; when changing
-the controlling Markdown, check both versions for semantic agreement.
+The former architecture, principles, package, LPC, efun, lifecycle, and glossary
+HTML URLs are retained as pointers to the manual. Do not add technical prose to
+these pages. `docs/api/index.html` points directly to generated Javadocs.
+
+Original website graphics are preserved in `design/archive/website-graphics/`,
+outside the published tree, with SHA-256 hashes. The site uses text, typography,
+and CSS layout without images, icon fonts, or text art.
 
 ## Build and check
 
@@ -39,27 +33,14 @@ python3 src/test/scripts/check-docs.py
 python3 -m http.server 8000 --directory docs
 ```
 
-Open `http://localhost:8000/`; stop the preview with Ctrl+C. HTML and PDF are
-built from the same AsciiDoc. Do not hand-edit generated pages. The API build
-includes compiler, engine, instance, transport, persistence, and CLI.
+HTML and PDF are generated from the same AsciiDoc. Do not edit generated outputs
+by hand. The API build includes compiler, engine, instance, transport, persistence,
+and CLI. Rebuild the manual after changing its content or navigation fragments;
+rebuild Javadocs when their source changes.
 
-The checker validates local links and anchors, duplicate IDs in authored pages,
-and unfinished manual placeholders. External URLs, visual layout, actual runtime
-commands, and complete API semantics require separate review. Inspect the manual
-PDF for clipped code, crowded tables, poor page breaks, and missing characters.
+The checker validates local links, fragments, duplicate IDs in authored pages,
+and unfinished manual placeholders. Check desktop and narrow-screen layouts,
+keyboard navigation, and rendered manual pages separately.
 
-## Editorial rules
-
-Use Small Mercies as the bundled teaching example. Keep the platform architecture
-and reference contracts independent of game content, and do not reference other
-particular mudlibs in the website or documentation. Generic placeholders remain
-appropriate when explaining how to configure independently authored content.
-
-Use JVMud-native terms for the engine and actual legacy names when describing a
-profile's source. Explain Player, Session, and Persona before using them in a
-workflow. Name the context for every command: terminal, attached admin CLI, or player
-client. State prerequisites, expected results, recovery steps, and material
-limits. Distinguish implemented behavior, observed verification, and proposals.
-
-The site is published from `docs/` using the repository's established publishing
-arrangement and `CNAME`. A local rebuild does not update the public website.
+The site is published from `docs/` using the repository's existing Pages setup
+and `CNAME`. A local rebuild does not update the public website.

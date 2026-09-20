@@ -16,6 +16,6 @@ Examples identify whether input belongs in a terminal, the admin shell, or a
 Telnet client. Replace angle-bracket placeholders with actual values; do not type
 the angle brackets. A mudlib is the LPC source and configuration that define a game.
 
-The manual owns procedures. The website's Principles and Glossary pages explain
-concepts; its efun and lifecycle pages own focused boundary references. Java API
-pages describe Java contracts, not player commands.
+The manual owns procedures, concepts, and LPC reference material. Java API
+pages describe Java contracts. The website provides project information and
+links into these two documentation sources.

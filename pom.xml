@@ -171,7 +171,6 @@
                   <doctype>book</doctype>
                   <attributes>
                     <docinfo>shared</docinfo>
-                    <icons>font</icons>
                     <sectanchors>true</sectanchors>
                     <sectlinks>true</sectlinks>
                     <source-highlighter>coderay</source-highlighter>

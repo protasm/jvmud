@@ -433,7 +433,6 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 #footer-text{color:rgba(0,0,0,.6);font-size:.9em}}
 @media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
 </style>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <style>
 /*! Stylesheet for CodeRay to loosely match GitHub themes | MIT License */
 pre.CodeRay{background:#f7f7f8}
@@ -531,12 +530,12 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <a class="skip-link" href="#content">Skip to manual content</a>
 <nav class="manual-nav" aria-label="Documentation">
 <a class="brand" href="../index.html">JVMud</a>
+<a href="../about.html">About</a>
+<a href="../faq.html">FAQ</a>
+<a href="../downloads.html">Downloads</a>
 <a href="../documentation.html">Documentation</a>
-<a href="../principles.html">Design philosophy</a>
-<a href="../architecture.html">Architecture</a>
-<a href="../packages.html">Core packages</a>
 <a href="index.html" aria-current="page">User Manual</a>
-<a href="../api/index.html">Java API</a>
+<a href="../api/apidocs/index.html">Java API</a>
 <a href="jvmud-user-manual.pdf">PDF</a>
 </nav>
 <div id="header">
@@ -673,9 +672,9 @@ Telnet client. Replace angle-bracket placeholders with actual values; do not typ
 the angle brackets. A mudlib is the LPC source and configuration that define a game.</p>
 </div>
 <div class="paragraph">
-<p>The manual owns procedures. The website&#8217;s Principles and Glossary pages explain
-concepts; its efun and lifecycle pages own focused boundary references. Java API
-pages describe Java contracts, not player commands.</p>
+<p>The manual owns procedures, concepts, and LPC reference material. Java API
+pages describe Java contracts. The website provides project information and
+links into these two documentation sources.</p>
 </div>
 <div class="sect2">
 <h3 id="_terms_used_in_procedures"><a class="anchor" href="#_terms_used_in_procedures"></a><a class="link" href="#_terms_used_in_procedures">Terms used in procedures</a></h3>
@@ -877,23 +876,10 @@ from Places, Links, Entities, Players, Sessions, and Personas.</p>
 <div class="sect2">
 <h3 id="_architecture"><a class="anchor" href="#_architecture"></a><a class="link" href="#_architecture">Architecture</a></h3>
 <div class="paragraph">
-<p>JVMud is organized around a small set of architectural responsibilities. The
-diagram is the responsibility map for the Java package layout and for the
-boundary between JVMud-owned code and mudlib-authored content.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="text">                 compiler
-                     |
-                     v
-persistence &lt;--&gt; engine &lt;--&gt; mudlib
-                     |
-                  instance
-                     |
-                 transport
-                     |
-                   player</code></pre>
-</div>
+<p>JVMud separates compilation, engine behavior, hosted instances, transport,
+and persistence. A player connects through transport to a hosted mudlib instance;
+that instance runs LPC content compiled for the JVM and uses engine services.
+The following responsibilities define the package boundaries.</p>
 </div>
 <div class="paragraph">
 <p>The engine is the center of the architecture. It owns JVMud truth: the world
@@ -986,7 +972,7 @@ authored LPC content, it belongs in a mudlib.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>transport</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Player connection mechanics. Start with <code>telnet.TelnetServer</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Player connection mechanics. Start with <code>telnet.TelnetServer</code>, created by <code>engine.JVMud</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>persistence</code></p></td>
@@ -1021,6 +1007,49 @@ it. Database requirements depend on the selected profile.</p>
 </div>
 <div class="sect2">
 <h3 id="_installing"><a class="anchor" href="#_installing"></a><a class="link" href="#_installing">Installing</a></h3>
+<div class="sect3">
+<h4 id="_installing_a_preview_package"><a class="anchor" href="#_installing_a_preview_package"></a><a class="link" href="#_installing_a_preview_package">Installing a preview package</a></h4>
+<div class="paragraph">
+<p>Download the archive matching your platform from <a href="../downloads.html">Downloads</a>. A POSIX terminal and a Telnet-capable MUD client are required. The platform packages include Java; the runtime-free package requires Java 21 or newer. Maven is not needed.</p>
+</div>
+<div class="paragraph">
+<p>In a terminal, go to the writable folder containing your download. For Apple Silicon, run the commands below; for another platform, replace the archive filename with your download:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">mkdir current &amp;&amp;
+tar -xzf jvmud-0.1.0-preview.7-macos-aarch64.tar.gz --strip-components=1 -C current &amp;&amp;
+cd current &amp;&amp;
+scripts/jvmud-start smallmercies</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Keep the installation in <code>current</code> across releases. These commands stop if that directory already exists; use the updater below for an existing installation.</p>
+</div>
+<div class="paragraph">
+<p>Wait for <code>JVMud mudlib listening on</code>, then connect a Telnet-capable MUD client to <code>127.0.0.1:4000</code> with SSL/TLS disabled. Choose a guest name, gender, and class. Try <code>help</code>, <code>look</code>, and <code>north</code>. Stop the server with Ctrl+C.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_update_an_installation"><a class="anchor" href="#_update_an_installation"></a><a class="link" href="#_update_an_installation">Update an installation</a></h4>
+<div class="paragraph">
+<p>From your existing <code>current</code> directory:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-update --check
+scripts/jvmud-update</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The updater verifies the latest matching download, stops this installation&#8217;s servers cleanly, and creates a full backup in <code>../backup/</code>, beside the distribution folder. It updates JVMud and shipped mudlib <code>jvmud/</code> files, then restarts the servers. Other mudlib content and saved data remain in place. Starting with preview.6, comment-only configuration differences do not block updates, edited Markdown documentation is backed up and replaced, and genuine adapter/configuration conflicts are reported together before downtime. The updater already installed performs each upgrade. External files and databases need separate backups.</p>
+</div>
+<div class="paragraph">
+<p>The installation folder keeps its name across releases; the updater reports the installed version. Do not rename a running installation. Stop its servers cleanly first, then relaunch them from the new location with their original options and update any external paths. The bundled Java runtime is available through <code>jre</code>; server logs live in each mudlib&#8217;s <code>jvmud/log/</code> directory. Players must reconnect after an update. Earlier previews without the updater require a manual migration; see the package README for recovery and migration details.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_building_from_source"><a class="anchor" href="#_building_from_source"></a><a class="link" href="#_building_from_source">Building from source</a></h4>
 <div class="paragraph">
 <p>You need a JDK that can compile Java 21, Maven, Git, and a POSIX shell for the
 repository launch scripts. Some profile-owned smoke scripts also require Bash or Python 3.
@@ -1047,6 +1076,7 @@ work. Tests are described in <a href="#_testing_and_verification">Testing And Ve
 not run them.</p>
 </div>
 </div>
+</div>
 <div class="sect2">
 <h3 id="_running_jvmud"><a class="anchor" href="#_running_jvmud"></a><a class="link" href="#_running_jvmud">Running JVMud</a></h3>
 <div class="paragraph">
@@ -1070,7 +1100,7 @@ to other compatible content.</p>
 relative to the repository root. Do not type the angle brackets. The script
 compiles Java, resolves the dependency classpath, and runs the Telnet server in
 the foreground. Wait for the preload summary followed by
-<code>JVMud mudlib listening on 127.0.0.1:4000</code> before connecting.</p>
+<code>JVMud engine listening on 127.0.0.1:4000</code> before connecting.</p>
 </div>
 <div class="paragraph">
 <p>The launcher defaults to loopback port 4000. Use <code>--bind 0.0.0.0 --port 4000</code>
@@ -1099,6 +1129,27 @@ down does not promise a snapshot of every loaded object&#8217;s state. Add <code
 connect with <code>scripts/jvmud-cli --port 4100</code>. The CLI controls this live primary
 world; its port is separate from the player port.</p>
 </div>
+<div class="sect3">
+<h4 id="_offer_several_mudlibs"><a class="anchor" href="#_offer_several_mudlibs"></a><a class="link" href="#_offer_several_mudlibs">Offer several mudlibs</a></h4>
+<div class="paragraph">
+<p>Pass each manifest or mudlib name as a separate argument:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="sh">scripts/jvmud-start smallmercies lp245</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The engine presents a selection menu before login, including for a single
+mudlib. Enter the menu number or game id. Mudlibs are peers; reconnect to choose
+another. Each instance has its own clock, configured by <code>temporal_tick_interval</code>,
+and serializes input and scheduled work on its own execution thread.</p>
+</div>
+<div class="paragraph">
+<p>When enabling administration for several mudlibs, use <code>--admin-game &lt;game-id&gt;</code>
+to choose the mudlib served by that admin endpoint.</p>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="small-mercies"><a class="anchor" href="#small-mercies"></a><a class="link" href="#small-mercies">First steps with Small Mercies</a></h3>
@@ -1119,7 +1170,7 @@ Use it to learn the player flow and to find small source examples.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Wait for <code>JVMud mudlib listening on 127.0.0.1:4000</code>. In a second terminal or
+<p>Wait for <code>JVMud engine listening on 127.0.0.1:4000</code>. In a second terminal or
 Telnet-capable MUD client, connect to <code>127.0.0.1</code> on port <code>4000</code>:</p>
 </div>
 <div class="listingblock">
@@ -1551,7 +1602,7 @@ escaped namespace for connection controls; its default is <code>//</code>.</p>
 </li>
 <li>
 <p><code>load</code>, <code>inspect</code>, and <code>reload</code> run through the authenticated admin connection
-against the live primary world. They are not player Telnet commands.</p>
+against the selected live mudlib. They are not player Telnet commands.</p>
 </li>
 </ul>
 </div>
@@ -1566,7 +1617,7 @@ Then check the active profile&#8217;s lifecycle mappings and command registratio
 <p>For a useful regression report, record the repository revision, manifest path,
 startup summary, client input, expected result, actual output, and server error.
 Use a small route with known starting state. A successful login is a different
-assertion from successful movement, persistence, or transfer between worlds.</p>
+assertion from successful movement, persistence, or selection from the mudlib menu.</p>
 </div>
 <div class="paragraph">
 <p>Start with the Small Mercies walkthrough and the relevant tests under
@@ -1605,7 +1656,7 @@ hosting policy, and the server log to diagnose a running listener.</p>
 </div>
 <div class="paragraph">
 <p>The CLI displays the selected server&#8217;s admin port and world path. Commands act on
-that server&#8217;s primary world, sharing its actual objects and execution lock with
+the selected mudlib, sharing its actual objects and execution queue with
 player input and ticks. No new world is booted. Mounted worlds are not selected
 by this interface. Every input line is an admin command, not a player command.</p>
 </div>
@@ -2292,6 +2343,20 @@ wrappers or the Java execution API.</p>
 <div class="sect2">
 <h3 id="_efuns"><a class="anchor" href="#_efuns"></a><a class="link" href="#_efuns">Efuns</a></h3>
 <div class="paragraph">
+<p>The <code>jvmud_</code> identifier prefix is reserved for JVMud engine symbols. Mudlib code
+may call <code>jvmud_*</code> efuns, but may not declare names with that prefix, including
+functions, fields, parameters, locals, or macros. This also applies to mfuns and
+compatibility shims. The compiler rejects violations even when the particular
+name is not yet an engine efun. Strings and comments are unaffected.
+Profile predefines and engine-function aliases cannot repurpose reserved names
+either; an alias may retain an engine function&#8217;s identical native spelling.</p>
+</div>
+<div class="paragraph">
+<p>Name game policy separately: Small Mercies uses <code>mercy_random(n)</code> for favorable
+dodge rolls and <code>jvmud_random(n)</code> for the engine&#8217;s uniform random primitive.
+Explicit <code>efun::</code> and <code>jvmud::</code> calls still bypass mudlib function resolution.</p>
+</div>
+<div class="paragraph">
 <p>Efuns expose host operations to LPC. Ordinary calls may resolve through mudlib
 functions or the active boundary&#8217;s translation table. <code>efun::name(&#8230;&#8203;)</code> selects
 that efun surface; <code>jvmud::name(&#8230;&#8203;)</code> requires an exact native JVMud efun name.</p>
@@ -2310,7 +2375,7 @@ Legacy aliases belong in the profile. A recognized efun can still require an
 or <code>host_control</code>.</p>
 </div>
 <div class="paragraph">
-<p>Use <a href="../efuns.html">the efun reference</a> for signatures and categories, and
+<p>Use <a href="#efun-catalog">the efun catalog</a> for signatures and categories, and
 <code>compiler.efun.builtin.CoreEfuns</code> for implementation details. Do not duplicate the
 catalog in a mudlib guide. When a call fails, check its spelling, argument types,
 profile mapping, and required capability.</p>
@@ -2362,6 +2427,589 @@ pointer selects a root array. Plain and gzip-compressed documents are both
 accepted.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="efun-catalog"><a class="anchor" href="#efun-catalog"></a><a class="link" href="#efun-catalog">Efun catalog</a></h4>
+<div class="sect4">
+<h5 id="_boundary_role"><a class="anchor" href="#_boundary_role"></a><a class="link" href="#_boundary_role">Boundary Role</a></h5>
+<div class="paragraph">
+<p>JVMud&#8217;s core efuns use JVMud-native names. Legacy driver names belong in mudlib compatibility profiles through engine function aliases such as <code>engine_function.jvmud_size = sizeof</code>. That keeps familiar LPC source usable without making old driver vocabulary the engine model.</p>
+</div>
+<div class="paragraph">
+<p>Mudlib code can also qualify calls. <code>efun::name(&#8230;&#8203;)</code> bypasses mudlib shim methods while still honoring configured engine-function aliases. <code>jvmud::name(&#8230;&#8203;)</code> resolves only JVMud-native efuns, such as <code>jvmud::jvmud_size(&#8230;&#8203;)</code>; it does not invent a <code>jvmud_</code> prefix for bad calls.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_current_core_efuns"><a class="anchor" href="#_current_core_efuns"></a><a class="link" href="#_current_core_efuns">Current Core Efuns</a></h5>
+<div class="paragraph">
+<p>This page mirrors the built-in catalog registered by <code>CoreEfuns</code>. Overloaded families are shown with arity ranges when each overload has the same behavior.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_output_and_perception"><a class="anchor" href="#_output_and_perception"></a><a class="link" href="#_output_and_perception">Output And Perception</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>void jvmud_write (mixed message)</code></dt>
+<dd>
+<p>Writes text to the active output sink.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_write_to_lpc_object (object target, mixed message)</code></dt>
+<dd>
+<p>Writes text to a target object&#8217;s bound session, when it has one.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_rebind_session_lpc_object (object newObject, object oldObject)</code></dt>
+<dd>
+<p>Moves an interactive session binding from one LPC object to another.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_emit_perceivable (mixed emitter, mixed message)</code></dt>
+<dd>
+<p>Emits a perceivable message from an entity or path-resolved object.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_emit_perceivable_except (mixed emitter, mixed message, mixed excluded)</code></dt>
+<dd>
+<p>Emits near an entity while suppressing one explicit recipient.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_emit_perceivable_at (mixed location, mixed message)</code></dt>
+<dd>
+<p>Emits a perceivable message at an explicit location or path-resolved object.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_current_context"><a class="anchor" href="#_current_context"></a><a class="link" href="#_current_context">Current Context</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>object jvmud_current_lpc_object ()</code></dt>
+<dd>
+<p>Returns the currently executing LPC object.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_previous_lpc_object ()</code></dt>
+<dd>
+<p>Returns the previous LPC object in the active call chain, when available.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_current_actor ()</code></dt>
+<dd>
+<p>Returns the active command actor, falling back to the current object.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_current_agent ()</code></dt>
+<dd>
+<p>Returns the active world-present Agent for the action scope, or LPC false when none is active.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_current_verb ()</code></dt>
+<dd>
+<p>Returns the verb being dispatched for the current command.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_previous_object ()</code></dt>
+<dd>
+<p>Compatibility spelling for the previous LPC object on the runtime call stack.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_command_dispatch"><a class="anchor" href="#_command_dispatch"></a><a class="link" href="#_command_dispatch">Command Dispatch</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>mixed jvmud_dispatch_entity_command (mixed actor, string commandLine)</code></dt>
+<dd>
+<p>Dispatches a text command as an entity or path-resolved object.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_enable_commands ()</code></dt>
+<dd>
+<p>Marks the current object as command-capable.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_add_action (string methodName)</code></dt>
+<dd>
+<p>Remembers a method as a command action without registering a verb yet.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_add_action (string methodName, string verb)</code></dt>
+<dd>
+<p>Remembers an action method and registers a verb for it.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_add_action (string methodName, string verb, status prefix)</code></dt>
+<dd>
+<p>Registers a verb for an action method, optionally as a prefix verb.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_add_verb (string verb)</code></dt>
+<dd>
+<p>Registers a verb for the most recently remembered action method in the current interaction scope.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_time_and_scheduling"><a class="anchor" href="#_time_and_scheduling"></a><a class="link" href="#_time_and_scheduling">Time And Scheduling</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>int jvmud_time ()</code></dt>
+<dd>
+<p>Returns Unix epoch seconds from the host clock.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_format_time (int epochSeconds)</code></dt>
+<dd>
+<p>Formats epoch seconds using the host default time zone.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_random (int max)</code></dt>
+<dd>
+<p>Returns a value in <code>[0, max)</code>, or <code>0</code> when <code>max &#8656; 0</code>.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_schedule_recurring_tick (int enabled, int intervalSeconds)</code></dt>
+<dd>
+<p>Schedules or disables recurring temporal ticks for the current object.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_schedule_deferred_callback (string methodName, int delaySeconds)</code></dt>
+<dd>
+<p>Schedules a one-shot callback on the current object.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_schedule_deferred_callback (string methodName, int delaySeconds, mixed arg&#8230;&#8203;)</code></dt>
+<dd>
+<p>Schedules a one-shot callback with one to four mudlib-supplied arguments.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_cancel_deferred_callback (string methodName)</code></dt>
+<dd>
+<p>Cancels matching deferred callbacks and returns the runtime cancellation result.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_objects_entities_and_containment"><a class="anchor" href="#_objects_entities_and_containment"></a><a class="link" href="#_objects_entities_and_containment">Objects, Entities, And Containment</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>string jvmud_lpc_object_id (mixed object)</code></dt>
+<dd>
+<p>Returns the registered runtime object id for a loaded LPC object.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_method_exists (string name)</code></dt>
+<dd>
+<p>Reports whether the current object exposes a public mudlib method.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_method_exists (string name, mixed object)</code></dt>
+<dd>
+<p>Reports whether another loaded object exposes a public mudlib method.</p>
+</dd>
+<dt class="hdlist1"><code>array jvmud_inherited_programs (mixed object)</code></dt>
+<dd>
+<p>Returns the transitive LPC program paths inherited by a generated object.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_find_lpc_object (string path)</code></dt>
+<dd>
+<p>Returns an already loaded LPC object, or LPC false when it is not loaded.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_find_object (string path)</code></dt>
+<dd>
+<p>Returns an already loaded shared object, or LPC false when it is not loaded.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_load_lpc_object (string path)</code></dt>
+<dd>
+<p>Loads or returns the shared LPC runtime object for a mudlib path.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_clone_lpc_object (string path)</code></dt>
+<dd>
+<p>Clones an LPC object and returns the new runtime instance.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_invoke_lpc_object (mixed target, string methodName, mixed arg&#8230;&#8203;)</code></dt>
+<dd>
+<p>Invokes an optional method on an object or path-resolved shared object; registered for arities 2 through 6.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_destroy_lpc_object (object object)</code></dt>
+<dd>
+<p>Destroys an LPC object and removes it from runtime indexes.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_set_entity_location (mixed entity, mixed location)</code></dt>
+<dd>
+<p>Sets an entity&#8217;s location or containment directly.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_move_entity (mixed entity, mixed destination)</code></dt>
+<dd>
+<p>Moves an entity or path-resolved object through runtime containment.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_find_entity (string id)</code></dt>
+<dd>
+<p>Finds an entity by id in the default scope.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_find_entity (mixed id, mixed location)</code></dt>
+<dd>
+<p>Finds an entity by id inside a supplied location or container.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_entity_location ()</code></dt>
+<dd>
+<p>Returns the current object&#8217;s immediate location.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_entity_location (mixed entity)</code></dt>
+<dd>
+<p>Returns another entity&#8217;s immediate location.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_first_entity_at (mixed location)</code></dt>
+<dd>
+<p>Starts traversal of entities in a location or container.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_next_entity_at (mixed entity)</code></dt>
+<dd>
+<p>Continues traversal from a previous entity in the same inventory walk.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_aliases_capabilities_and_light"><a class="anchor" href="#_aliases_capabilities_and_light"></a><a class="link" href="#_aliases_capabilities_and_light">Aliases, Capabilities, And Light</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>void jvmud_bind_entity_alias (object entity, string alias, mixed location)</code></dt>
+<dd>
+<p>Binds a lookup alias for an entity in a location scope.</p>
+</dd>
+<dt class="hdlist1"><code>object jvmud_find_entity_alias (string alias, mixed location)</code></dt>
+<dd>
+<p>Resolves an alias in a location scope.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_entity_has_alias (mixed entity, string alias)</code></dt>
+<dd>
+<p>Reports whether an entity has a registered alias.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_entity_commands_enabled (mixed entity)</code></dt>
+<dd>
+<p>Reports whether command handling is enabled for an entity.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_set_entity_translucent (mixed entity, status translucent)</code></dt>
+<dd>
+<p>Controls whether ambient perception such as light passes through an entity container.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_entity_translucent (mixed entity)</code></dt>
+<dd>
+<p>Reports whether an entity is currently translucent.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_set_light (int delta)</code></dt>
+<dd>
+<p>Adjusts current runtime light and returns the resulting light value.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_sessions_users_and_host_requests"><a class="anchor" href="#_sessions_users_and_host_requests"></a><a class="link" href="#_sessions_users_and_host_requests">Sessions, Users, And Host Requests</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>array jvmud_users ()</code></dt>
+<dd>
+<p>Returns the active user/player objects known to the runtime.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_interactive (mixed user)</code></dt>
+<dd>
+<p>Reports whether an object is bound to an active session.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_interactive_info (mixed user, int key)</code></dt>
+<dd>
+<p>Returns LPC false for driver-specific interactive metadata JVMud does not expose.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_lpc_object_info (mixed object, int key)</code></dt>
+<dd>
+<p>Returns LPC false for driver-specific LPC object metadata JVMud does not expose.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_object_info (mixed object, int key)</code></dt>
+<dd>
+<p>Returns LPC false for driver-specific object metadata JVMud does not expose.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_configure_lpc_object (mixed object, int key, mixed value)</code></dt>
+<dd>
+<p>Accepts driver-specific LPC object configuration requests conservatively.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_configure_object (mixed object, int key, mixed value)</code></dt>
+<dd>
+<p>Accepts driver-specific object configuration requests conservatively.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_shutdown ()</code></dt>
+<dd>
+<p>Accepts legacy shutdown requests without exposing driver control to mudlib code.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_set_this_player (mixed player)</code></dt>
+<dd>
+<p>Accepts legacy current-player mutation requests while JVMud keeps session ownership engine-side.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_raise_error (mixed message)</code></dt>
+<dd>
+<p>Raises a runtime exception with the supplied LPC message.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_query_idle (mixed user)</code></dt>
+<dd>
+<p>Returns idle time for a runtime session/user target.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_query_ip_number (mixed user)</code></dt>
+<dd>
+<p>Returns the user&#8217;s remote address, or LPC false when unavailable.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_runtime_info (int key)</code></dt>
+<dd>
+<p>Returns LPC false for unsupported runtime metadata queries.</p>
+</dd>
+<dt class="hdlist1"><code>void jvmud_capture_session_input (string methodName, int noEcho, mixed arg&#8230;&#8203;)</code></dt>
+<dd>
+<p>Routes the next session input line to a method on the current object; registered for arities 2 through 8.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_transfer_player_to_game (string gameId)</code></dt>
+<dd>
+<p>Asks the host to transfer the current player to another registered game.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_files_persistence_and_databases"><a class="anchor" href="#_files_persistence_and_databases"></a><a class="link" href="#_files_persistence_and_databases">Files, Persistence, And Databases</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>mixed jvmud_read_mudlib_text (string path)</code></dt>
+<dd>
+<p>Reads a mudlib-relative text file, returning LPC false when unavailable.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_read_mudlib_text (string path, int startLine, int lineCount)</code></dt>
+<dd>
+<p>Reads a line slice from a mudlib-relative text file for legacy file helpers.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_read_mudlib_json (string path)</code></dt>
+<dd>
+<p>Parses a mudlib-relative ordinary JSON file, transparently accepting gzip compression.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_read_mudlib_json_array (string path, string pointer, int offset, int count)</code></dt>
+<dd>
+<p>Streams a bounded slice from a JSON array selected by RFC 6901 JSON Pointer, returning LPC false when the file is unavailable.</p>
+</dd>
+<dt class="hdlist1"><code>array jvmud_list_mudlib_paths (string path)</code></dt>
+<dd>
+<p>Lists mudlib-relative paths with default listing flags.</p>
+</dd>
+<dt class="hdlist1"><code>array jvmud_list_mudlib_paths (string path, int flags)</code></dt>
+<dd>
+<p>Lists mudlib-relative paths, including simple glob support for compatibility discovery.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_append_mudlib_text (string path, mixed text)</code></dt>
+<dd>
+<p>Appends text to a mudlib-relative file.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_remove_mudlib_text (string path)</code></dt>
+<dd>
+<p>Removes a mudlib-relative file.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_copy_mudlib_text (string source, string destination)</code></dt>
+<dd>
+<p>Copies a mudlib-relative file, returning zero for success.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_rename_mudlib_text (string source, string destination)</code></dt>
+<dd>
+<p>Renames a mudlib-relative path, returning zero for success.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_create_mudlib_directory (string path)</code></dt>
+<dd>
+<p>Creates a mudlib-relative directory.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_remove_mudlib_directory (string path)</code></dt>
+<dd>
+<p>Removes an empty mudlib-relative directory.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_save_lpc_object_state (string path)</code></dt>
+<dd>
+<p>Persists the current object&#8217;s LPC fields.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_restore_lpc_object_state (string path)</code></dt>
+<dd>
+<p>Restores the current object&#8217;s LPC fields.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_db_connect (string database)</code></dt>
+<dd>
+<p>Opens a configured JDBC database handle.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_db_connect (string database, string user, string password)</code></dt>
+<dd>
+<p>Opens a JDBC database handle with mudlib-supplied credentials.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_db_exec (int handle, string sql)</code></dt>
+<dd>
+<p>Executes SQL and retains any result cursor for later fetches.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_db_fetch (int handle)</code></dt>
+<dd>
+<p>Returns the next result row as an LPC array, or LPC false when no row remains.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_db_error (int handle)</code></dt>
+<dd>
+<p>Returns the last SQL error for a handle.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_db_close (int handle)</code></dt>
+<dd>
+<p>Closes a database handle.</p>
+</dd>
+<dt class="hdlist1"><code>array jvmud_db_handles ()</code></dt>
+<dd>
+<p>Returns currently open database handles.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_db_escape (mixed value)</code></dt>
+<dd>
+<p>Escapes text for mudlib-generated SQL.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_security_helpers"><a class="anchor" href="#_security_helpers"></a><a class="link" href="#_security_helpers">Security Helpers</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>string jvmud_hash_password (string password)</code></dt>
+<dd>
+<p>Returns a PBKDF2-SHA256 password hash string.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_verify_password (string password, string encodedHash)</code></dt>
+<dd>
+<p>Verifies a password against a hash created by <code>jvmud_hash_password</code>.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_text_and_regex"><a class="anchor" href="#_text_and_regex"></a><a class="link" href="#_text_and_regex">Text And Regex</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>string jvmud_lowercase_text (mixed value)</code></dt>
+<dd>
+<p>Converts text to lowercase.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_uppercase_text (mixed value)</code></dt>
+<dd>
+<p>Converts text to uppercase.</p>
+</dd>
+<dt class="hdlist1"><code>array jvmud_split_text (string text, string delimiter)</code></dt>
+<dd>
+<p>Splits text on a literal delimiter while preserving empty trailing fields.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_regex_match (array values, string pattern)</code></dt>
+<dd>
+<p>Returns values whose string forms match a compatibility regular expression, or LPC false when none match.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_regex_match (array values, string pattern, int flags)</code></dt>
+<dd>
+<p>Compatibility regex match with flags.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_regex_replace (string input, string pattern, mixed replacement, int flags)</code></dt>
+<dd>
+<p>Performs compatibility regex replacement for legacy mudlib text helpers, including function callbacks that receive each matched string.</p>
+</dd>
+<dt class="hdlist1"><code>array jvmud_regex_explode (string input, string pattern)</code></dt>
+<dd>
+<p>Splits text around regular-expression matches while preserving matched delimiters.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_to_int (mixed value)</code></dt>
+<dd>
+<p>Converts numeric values and base-10 text to an integer, returning false-style zero for non-numeric input.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_to_string (mixed value)</code></dt>
+<dd>
+<p>Converts a mixed LPC value to JVMud text form.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_capitalize_text (mixed value)</code></dt>
+<dd>
+<p>Capitalizes the first character of text.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_wrap_text (mixed text)</code></dt>
+<dd>
+<p>Wraps description text at the default 78-column width.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_wrap_text (mixed text, int width)</code></dt>
+<dd>
+<p>Wraps description text at a requested line width.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_format_text (string format, mixed arg&#8230;&#8203;)</code></dt>
+<dd>
+<p>Formats text using the host formatter; registered for arities 1 through 24.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_extract_text (mixed value, int from)</code></dt>
+<dd>
+<p>Extracts text from an inclusive start index through the end.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_extract_text (mixed value, int from, int to)</code></dt>
+<dd>
+<p>Extracts text using inclusive start and end indexes.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_collections_types_and_values"><a class="anchor" href="#_collections_types_and_values"></a><a class="link" href="#_collections_types_and_values">Collections, Types, And Values</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>int jvmud_size (mixed value)</code></dt>
+<dd>
+<p>Returns the size of a string, collection, mapping, or array.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_member (mixed value, mixed needle)</code></dt>
+<dd>
+<p>Checks mapping key membership or returns the index of a value in an array or string.</p>
+</dd>
+<dt class="hdlist1"><code>array jvmud_mapping_keys (mapping value)</code></dt>
+<dd>
+<p>Returns a mapping&#8217;s keys in runtime iteration order.</p>
+</dd>
+<dt class="hdlist1"><code>array jvmud_mapping_values (mapping value)</code></dt>
+<dd>
+<p>Returns a mapping&#8217;s values in runtime iteration order.</p>
+</dd>
+<dt class="hdlist1"><code>mapping jvmud_mapping_from_keys (array keys)</code></dt>
+<dd>
+<p>Builds a mapping whose keys come from an array and whose values are LPC true.</p>
+</dd>
+<dt class="hdlist1"><code>mapping jvmud_mapping_delete (mapping value, mixed key)</code></dt>
+<dd>
+<p>Removes a key from a mutable mapping and returns the same mapping.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_serialize_lpc_value (mixed value)</code></dt>
+<dd>
+<p>Serializes LPC data values to JVMud&#8217;s tagged JSON payload.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_deserialize_lpc_value (string data)</code></dt>
+<dd>
+<p>Restores LPC data values produced by <code>jvmud_serialize_lpc_value</code>.</p>
+</dd>
+<dt class="hdlist1"><code>mixed jvmud_parse_json (string document)</code></dt>
+<dd>
+<p>Parses ordinary JSON into LPC mappings, arrays, strings, numbers, and 1/0 status values; JSON null becomes LPC false.</p>
+</dd>
+<dt class="hdlist1"><code>string jvmud_format_json (mixed value)</code></dt>
+<dd>
+<p>Formats LPC-compatible data as ordinary JSON; mapping keys must be strings.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_is_string (mixed value)</code></dt>
+<dd>
+<p>Reports whether the value is Java-backed LPC string data.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_is_int (mixed value)</code></dt>
+<dd>
+<p>Reports whether the value is Java-backed LPC integer data.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_is_object (mixed value)</code></dt>
+<dd>
+<p>Reports whether the value is a live runtime object.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_is_array (mixed value)</code></dt>
+<dd>
+<p>Reports whether the value is Java-backed LPC array data.</p>
+</dd>
+<dt class="hdlist1"><code>status jvmud_is_mapping (mixed value)</code></dt>
+<dd>
+<p>Reports whether the value is Java-backed LPC mapping data.</p>
+</dd>
+<dt class="hdlist1"><code>mapping jvmud_filter_indices (mapping values, function callback, mixed arg&#8230;&#8203;)</code></dt>
+<dd>
+<p>Returns entries whose keys satisfy a callable predicate; registered for arities 2 through 8.</p>
+</dd>
+<dt class="hdlist1"><code>array jvmud_allocate (int size)</code></dt>
+<dd>
+<p>Returns a zero-filled LPC array of non-negative size.</p>
+</dd>
+<dt class="hdlist1"><code>int jvmud_sscanf (mixed input, mixed format, mixed capture&#8230;&#8203;)</code></dt>
+<dd>
+<p>Scans text into supplied capture targets; registered for arities 3 through 8.</p>
+</dd>
+</dl>
+</div>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_lifecycle_hooks"><a class="anchor" href="#_lifecycle_hooks"></a><a class="link" href="#_lifecycle_hooks">Lifecycle Hooks</a></h3>
@@ -2380,7 +3028,7 @@ lifecycle.player_session_connected = logon</code></pre>
 can map the same events to their own typed LPC methods.</p>
 </div>
 <div class="paragraph">
-<p>Read <a href="../lifecycle-events.html">the lifecycle reference</a> for each event&#8217;s
+<p>Read <a href="#lifecycle-reference">the lifecycle reference</a> for each event&#8217;s
 role. Verify the mapped method&#8217;s signature in the profile and corresponding
 Java dispatch code before adding a hook. Test normal entry, failed input, and
 disconnect paths; recognizing a method name does not establish its invocation
@@ -2425,6 +3073,131 @@ optional <code>catch_tell</code> method with exact, unwrapped legacy text. Neith
 required. Callbacks may emit further events; nesting beyond 64 deliveries raises
 an error and unwinds the delivery. Callback errors propagate to the existing
 command/scheduler error handling and can interrupt the remaining recipients.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="lifecycle-reference"><a class="anchor" href="#lifecycle-reference"></a><a class="link" href="#lifecycle-reference">Lifecycle event reference</a></h4>
+<div class="sect4">
+<h5 id="_how_mudlibs_register_events"><a class="anchor" href="#_how_mudlibs_register_events"></a><a class="link" href="#_how_mudlibs_register_events">How Mudlibs Register Events</a></h5>
+<div class="paragraph">
+<p>A mudlib registers interest through its <code>MudlibBoundary</code>. Configuration keys such as <code>lifecycle.object_loaded = reset</code> map an engine event to a mudlib method. A mudlib can also declare <code>handled_lifecycle_events</code> as metadata before a concrete method mapping exists.</p>
+</div>
+<div class="paragraph">
+<p>No lifecycle event is globally required. If no method is configured, JVMud continues the engine-owned operation. If a method is configured but the target object does not define it, JVMud skips the call unless a future event contract marks that call required.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_configuration_names"><a class="anchor" href="#_configuration_names"></a><a class="link" href="#_configuration_names">Configuration Names</a></h5>
+<div class="paragraph">
+<p>Event names are case-insensitive in mudlib config, and hyphens or spaces normalize to underscores. Older aliases such as <code>player_connected</code>, <code>player_bound</code>, and <code>interaction_scope_entered</code> are accepted for existing manifests, but the current contract names below are preferred.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_current_lifecycle_events"><a class="anchor" href="#_current_lifecycle_events"></a><a class="link" href="#_current_lifecycle_events">Current Lifecycle Events</a></h5>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>SERVER_STARTED</code></dt>
+<dd>
+<p>Implemented. After the declared boundary object and preload manifest have loaded, JVMud invokes the configured no-argument method on the boundary object. A compatibility profile can map a driver-specific master-startup convention here without teaching that convention to the engine.</p>
+</dd>
+<dt class="hdlist1"><code>OBJECT_LOADED</code></dt>
+<dd>
+<p>Implemented. Invoked on a loaded or cloned object with one argument, <code>mixed first_load</code>; current compatibility passes <code>0</code>. Example compatibility mapping: <code>reset</code>.</p>
+</dd>
+<dt class="hdlist1"><code>OBJECT_ACTIVATED</code></dt>
+<dd>
+<p>Reserved. Names a reactivation moment for reload, reset, or world maintenance, but JVMud does not currently invoke it.</p>
+</dd>
+<dt class="hdlist1"><code>OBJECT_SOURCE_MISSING</code></dt>
+<dd>
+<p>Implemented. Invoked on the configured boundary object when a shared object path is requested but no source exists. The method receives the normalized requested path and may return an object to bind to that path. Example compatibility mapping: <code>compile_object</code>.</p>
+</dd>
+<dt class="hdlist1"><code>OBJECT_DESTRUCTION_REQUESTED</code></dt>
+<dd>
+<p>Implemented. Invoked on the configured boundary object before destruction, passing the target object. The return value is advisory. Example compatibility mapping: <code>prepare_destruct</code>.</p>
+</dd>
+<dt class="hdlist1"><code>OBJECT_DESTROYED</code></dt>
+<dd>
+<p>Reserved. Names a post-destruction cleanup point for future policies that need an after-the-fact notification.</p>
+</dd>
+<dt class="hdlist1"><code>ENTITY_ARRIVED_AT_PLACE</code></dt>
+<dd>
+<p>Reserved. Names the moment after an entity completes movement into a Place.</p>
+</dd>
+<dt class="hdlist1"><code>ENTITY_DEPARTED_FROM_PLACE</code></dt>
+<dd>
+<p>Reserved. Names the moment when an entity leaves a Place, paired with <code>ENTITY_ARRIVED_AT_PLACE</code>.</p>
+</dd>
+<dt class="hdlist1"><code>ENTITY_ADDED_TO_ENTITY</code></dt>
+<dd>
+<p>Reserved. Names the moment when an entity enters another entity&#8217;s containment.</p>
+</dd>
+<dt class="hdlist1"><code>ENTITY_REMOVED_FROM_ENTITY</code></dt>
+<dd>
+<p>Reserved. Names the moment when an entity leaves another entity&#8217;s containment.</p>
+</dd>
+<dt class="hdlist1"><code>PLAYER_SESSION_CONNECTED</code></dt>
+<dd>
+<p>Implemented by the hosted server path. The configured player object method is invoked without arguments and may start login or character selection. Example compatibility mapping: <code>logon</code>.</p>
+</dd>
+<dt class="hdlist1"><code>PLAYER_SESSION_POST_REBIND</code></dt>
+<dd>
+<p>Implemented by the hosted server path after a compatibility session handoff changes which LPC object receives player input. The configured method is invoked without arguments on the newly bound object.</p>
+</dd>
+<dt class="hdlist1"><code>PLAYER_PERSONA_RESOLVED</code></dt>
+<dd>
+<p>Implemented for host-managed session policies. Delivers the external user ID, display name, gender text, and policy-defined profile attributes to the selected Persona.</p>
+</dd>
+<dt class="hdlist1"><code>PLAYER_OBJECT_BOUND</code></dt>
+<dd>
+<p>Reserved. Names the moment when JVMud has associated a live mudlib projection with a Player, Session, and Persona.</p>
+</dd>
+<dt class="hdlist1"><code>PLAYER_ENTERED_WORLD</code></dt>
+<dd>
+<p>Implemented for host-managed session policies. Delivers the configured starting Place object after the Player&#8217;s Persona has entered the world.</p>
+</dd>
+<dt class="hdlist1"><code>PLAYER_SESSION_DISCONNECTED</code></dt>
+<dd>
+<p>Implemented by the hosted server path. The configured player object method is invoked without arguments so the mudlib can save or clean up session-owned state. Example compatibility mapping: <code>quit</code>.</p>
+</dd>
+<dt class="hdlist1"><code>INTERACTION_SCOPE_STARTED</code></dt>
+<dd>
+<p>Implemented. Invoked without arguments on the active Persona, its location, objects in that location, and carried objects. Compatibility mudlibs usually register local text commands here. Example compatibility mapping: <code>init</code>.</p>
+</dd>
+<dt class="hdlist1"><code>COMMAND_DISPATCH_STARTED</code></dt>
+<dd>
+<p>Reserved. Names the moment before JVMud dispatches a Player command line to mudlib behavior.</p>
+</dd>
+<dt class="hdlist1"><code>COMMAND_DISPATCH_FINISHED</code></dt>
+<dd>
+<p>Reserved. Names the moment after JVMud finishes dispatching a Player command line.</p>
+</dd>
+<dt class="hdlist1"><code>LOG_ERROR</code></dt>
+<dd>
+<p>Implemented. Invoked on the configured boundary object with the object path and diagnostic message for compilation or load-time diagnostics. Example compatibility mapping: <code>log_error</code>.</p>
+</dd>
+<dt class="hdlist1"><code>RUNTIME_ERROR</code></dt>
+<dd>
+<p>Implemented for timed runtime errors and server-layer error handling. Invoked on the configured boundary or error handler object with details about target, context, operation, and message. Example compatibility mapping: <code>runtime_error</code>.</p>
+</dd>
+<dt class="hdlist1"><code>SCHEDULED_TICK_ERROR</code></dt>
+<dd>
+<p>Implemented. When a scheduled tick throws, JVMud can invoke this specialized error event in addition to <code>RUNTIME_ERROR</code>. Example compatibility mapping: <code>heart_beat_error</code>.</p>
+</dd>
+<dt class="hdlist1"><code>SERVER_SHUTDOWN</code></dt>
+<dd>
+<p>Implemented by the hosted server path. Invoked on the configured boundary or error handler object with the shutdown reason. Example compatibility mapping: <code>notify_shutdown</code>.</p>
+</dd>
+<dt class="hdlist1"><code>SCHEDULED_TICK</code></dt>
+<dd>
+<p>Implemented through temporal tick configuration rather than a per-event method mapping. The boundary chooses the recurring tick method and default interval; compatibility shims may expose names such as <code>set_heart_beat</code>.</p>
+</dd>
+<dt class="hdlist1"><code>DEFERRED_CALLBACK</code></dt>
+<dd>
+<p>Reserved as a named event. Concrete one-shot callbacks are currently scheduled with explicit callback method names through runtime efuns.</p>
+</dd>
+</dl>
+</div>
 </div>
 </div>
 </div>
@@ -2573,9 +3346,10 @@ before choosing, moving, or cleaning state paths; not every store uses a sibling
 state directory.</p>
 </div>
 <div class="paragraph">
-<p>Mounts use <code>mount.&lt;game-id&gt; = &lt;config-path&gt;</code>; the manifest explicitly names each
-mounted world. Paths resolve relative to the declaring manifest. Do not rely on
-sibling-directory discovery or any bundled game identity.</p>
+<p>Supply peer manifests to <code>scripts/jvmud-start &lt;manifest&gt; &lt;manifest&gt; &#8230;&#8203;</code>.
+The engine offers them in a connection menu. Each must have a unique game id.
+<code>mount.*</code> declarations and world-hopping are unsupported. No manifest owns or
+implicitly discovers other worlds.</p>
 </div>
 <div class="paragraph">
 <p>Small Mercies follows this separation under <code>mudlibs/smallmercies/</code>. Its guest
@@ -2605,7 +3379,7 @@ characters are transient; it does not demonstrate durable account storage.</p>
 <p>writable stores exist where the persistence policy expects them;</p>
 </li>
 <li>
-<p>mounted worlds boot independently before you exercise transfer.</p>
+<p>each configured world boots independently and can be selected directly from the engine menu.</p>
 </li>
 </ul>
 </div>
@@ -2717,10 +3491,24 @@ boundaries.</p>
 <div class="sect2">
 <h3 id="_instance_and_transport_internals"><a class="anchor" href="#_instance_and_transport_internals"></a><a class="link" href="#_instance_and_transport_internals">Instance And Transport Internals</a></h3>
 <div class="paragraph">
-<p><code>MudlibBoot</code> reads profile metadata, assembles runtime configuration, and loads
-startup content. <code>MudInstance</code> coordinates the running world, LPC objects,
-Personas, lifecycle dispatch, and scheduled work. <code>MudlibRouter</code> coordinates
-explicitly mounted worlds. <code>TelnetServer</code> owns the listener and connection path.</p>
+<p><code>engine.JVMud</code> is the application entry point. It boots explicit peer mudlibs,
+starts their independent execution, and owns the Telnet and optional admin
+components. <code>MudlibBoot</code> reads each manifest and loads startup content.
+<code>MudlibRouter</code> provides a menu and resolves a connection&#8217;s selection before
+any player is attached. It has no default world or world-hopping behavior.
+<code>TelnetServer</code> owns socket mechanics, not engine startup or world clocks.</p>
+</div>
+<div class="paragraph">
+<p>Each <code>MudInstance</code> owns a <code>MudlibExecution</code>: one thread serving its command queue
+and clock. Player input, protocol callbacks, administration, and scheduled work
+run serially there. Each manifest supplies its own <code>temporal_tick_interval</code>;
+zero disables automatic ticks. Ticks use a delay after the preceding tick
+completes, without accumulating catch-up ticks. No router-wide tick loop or
+cross-world execution lock exists.</p>
+</div>
+<div class="paragraph">
+<p>Telnet delivers input without interpreting LPC command results or generating
+rejected-command messages. The selected mudlib owns that meaning and output.</p>
 </div>
 <div class="paragraph">
 <p>Follow an input from transport to instance to LPC command handling when debugging
@@ -2731,7 +3519,7 @@ support; <code>engine.world</code> owns the engine&#8217;s world model.</p>
 <div class="paragraph">
 <p><code>AdminClient</code> connects to the authenticated loopback <code>AdminServer</code>; each client
 gets an attached <code>AdminCli</code> command session. <code>InstanceHost.administer</code> serializes
-commands against the primary world with the same router/instance locks used by
+commands on the explicitly selected mudlib&#8217;s execution queue alongside
 player dispatch and ticks. Admin socket reads and response writes occur outside
 those locks. The client never boots a runtime.
 Storage adapters live under <code>persistence</code>. Concurrency hardening and alignment
@@ -2889,7 +3677,7 @@ mudlib&#8217;s package emission. GMCP is not required for ordinary text play.</p
 </table>
 <div class="paragraph">
 <p>For mounted-world issues, first prove each profile can boot directly, then test
-the mount configuration and transfer route. Capture the first failing transition.</p>
+the engine menu selection and the selected mudlib manifest. Capture the first failing transition.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3153,10 +3941,6 @@ with an optional <code>.c</code> extension. Prefer this manifest for the startup
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>preload_objects</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Additional comma-separated startup object paths.</p></td>
 </tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mount.&lt;game-id&gt;</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Mounted profile config, relative to this manifest&#8217;s directory.</p></td>
-</tr>
 </tbody>
 </table>
 <div class="paragraph">
@@ -3326,7 +4110,7 @@ an interval override.</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Refer to <a href="../lifecycle-events.html">lifecycle events</a> for event roles and
+<p>Refer to <a href="#lifecycle-reference">lifecycle events</a> for event roles and
 verify method signatures against the selected profile.</p>
 </div>
 </div>
@@ -3392,11 +4176,176 @@ the credential-free examples in this manual before taking on that environment.</
 </div>
 <div class="sect2">
 <h3 id="_glossary"><a class="anchor" href="#_glossary"></a><a class="link" href="#_glossary">Glossary</a></h3>
-<div class="paragraph">
-<p>Use <a href="../glossary.html">the JVMud Glossary</a> for the full conceptual vocabulary.
-Its controlling repository source is <code>docs/GLOSSARY.md</code>; the controlling design
-principles are in <code>docs/PRINCIPLES.md</code>. The short terms section at the beginning
-of this manual defines the words needed for its procedures.</p>
+<div class="sect3">
+<h4 id="_core_concepts"><a class="anchor" href="#_core_concepts"></a><a class="link" href="#_core_concepts">Core Concepts</a></h4>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Game</dt>
+<dd>
+<p>The playable system JVMud hosts: rules, mechanics, goals, challenges, progression, or other game-like structures.</p>
+</dd>
+<dt class="hdlist1">Text</dt>
+<dd>
+<p>The primary medium through which the world is perceived and manipulated.</p>
+</dd>
+<dt class="hdlist1">Interactive</dt>
+<dd>
+<p>The property that players can affect the world and the world can affect players.</p>
+</dd>
+<dt class="hdlist1">Multiplayer</dt>
+<dd>
+<p>The property that multiple players inhabit the same world at the same time.</p>
+</dd>
+<dt class="hdlist1">World</dt>
+<dd>
+<p>The complete shared virtual domain of the game, composed of places, links, entities, locations, containment, and movement.</p>
+</dd>
+<dt class="hdlist1">Persistence</dt>
+<dd>
+<p>The property that the world and its state endure independently of any individual session.</p>
+</dd>
+<dt class="hdlist1">Temporality</dt>
+<dd>
+<p>The property that the world can change through time.</p>
+</dd>
+<dt class="hdlist1">Presence</dt>
+<dd>
+<p>The requirement that a player experiences the game from within the world through a located persona.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_world_model"><a class="anchor" href="#_world_model"></a><a class="link" href="#_world_model">World Model</a></h4>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Place</dt>
+<dd>
+<p>A discrete location in game space where entities may exist, be perceived, or interact.</p>
+</dd>
+<dt class="hdlist1">Link</dt>
+<dd>
+<p>A traversable relationship between places. Links make the world navigable.</p>
+</dd>
+<dt class="hdlist1">Entity</dt>
+<dd>
+<p>A thing in the world: a player persona, coin, sword, bag, vehicle, NPC, effect, or environmental feature.</p>
+</dd>
+<dt class="hdlist1">Location</dt>
+<dd>
+<p>The mechanical relationship that says where an entity is. A location is either a place or another entity.</p>
+</dd>
+<dt class="hdlist1">Containment</dt>
+<dd>
+<p>The relationship in which one entity is inside, carried by, mounted on, or otherwise immediately located in another entity.</p>
+</dd>
+<dt class="hdlist1">Single Containment</dt>
+<dd>
+<p>The rule that every entity has exactly one immediate location.</p>
+</dd>
+<dt class="hdlist1">Movement</dt>
+<dd>
+<p>The transition of an entity from one location to another, often through a place-to-place link.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_player_and_connection_model"><a class="anchor" href="#_player_and_connection_model"></a><a class="link" href="#_player_and_connection_model">Player And Connection Model</a></h4>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Player</dt>
+<dd>
+<p>The human-facing controller endpoint associated with a session. JVMud does not make Player an account, login, or durable identity.</p>
+</dd>
+<dt class="hdlist1">Session</dt>
+<dd>
+<p>An active connection or control context, such as a Telnet connection.</p>
+</dd>
+<dt class="hdlist1">Persona</dt>
+<dd>
+<p>The entity currently associated with a session as that session&#8217;s in-world perspective.</p>
+</dd>
+<dt class="hdlist1">Player Object</dt>
+<dd>
+<p>Compatibility vocabulary for an LPC-authored mudlib object that may combine profile data, persona behavior, login flow, and legacy session glue.</p>
+</dd>
+<dt class="hdlist1">Interaction Scope</dt>
+<dd>
+<p>The local command and perception context around a persona.</p>
+</dd>
+<dt class="hdlist1">Command Dispatch</dt>
+<dd>
+<p>The engine process that routes one line of player input to mudlib behavior registered for the current interaction scope.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_lpc_and_compatibility"><a class="anchor" href="#_lpc_and_compatibility"></a><a class="link" href="#_lpc_and_compatibility">LPC And Compatibility</a></h4>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">LPC</dt>
+<dd>
+<p>The language used by JVMud&#8217;s sole mudlib target.</p>
+</dd>
+<dt class="hdlist1">LPMud</dt>
+<dd>
+<p>A MUD whose game world is authored in LPC, compiled into live game objects, and reloadable while the game continues running.</p>
+</dd>
+<dt class="hdlist1">Mudlib</dt>
+<dd>
+<p>The LPC source and content layer that defines world fiction, object behavior, commands, rules, and presentation.</p>
+</dd>
+<dt class="hdlist1">Compatibility Shim</dt>
+<dd>
+<p>A mudlib-side object dedicated to translating legacy LPC/LPMud vocabulary into JVMud-native engine requests.</p>
+</dd>
+<dt class="hdlist1">Mfun</dt>
+<dd>
+<p>A mudlib-global function provided by a configured mudlib object.</p>
+</dd>
+<dt class="hdlist1">Efun</dt>
+<dd>
+<p>An engine function callable from compiled LPC code.</p>
+</dd>
+<dt class="hdlist1">Lifecycle Hook</dt>
+<dd>
+<p>A configured engine-to-mudlib call for a JVMud lifecycle event.</p>
+</dd>
+<dt class="hdlist1">Live Reload</dt>
+<dd>
+<p>The requirement that LPC-authored objects can be rewritten, recompiled, and reloaded while the game continues running.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_legacy_terms"><a class="anchor" href="#_legacy_terms"></a><a class="link" href="#_legacy_terms">Legacy Terms</a></h4>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Room</dt>
+<dd>
+<p>A legacy mudlib term for a location-like object. JVMud&#8217;s engine concept is place.</p>
+</dd>
+<dt class="hdlist1">Heartbeat</dt>
+<dd>
+<p>A legacy driver concept for recurring object callbacks. JVMud&#8217;s engine concept is temporality and scheduled time.</p>
+</dd>
+<dt class="hdlist1">Call Out</dt>
+<dd>
+<p>A legacy driver concept for delayed callbacks. JVMud treats delayed work as a mudlib request to the engine&#8217;s temporality model.</p>
+</dd>
+<dt class="hdlist1">Apply</dt>
+<dd>
+<p>A legacy driver term for driver-invoked mudlib methods. JVMud uses explicit lifecycle hooks.</p>
+</dd>
+<dt class="hdlist1">Master Object</dt>
+<dd>
+<p>A legacy driver policy object. JVMud uses explicit boundary configuration and compatibility shims.</p>
+</dd>
+</dl>
+</div>
 </div>
 </div>
 </div>

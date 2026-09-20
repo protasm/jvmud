@@ -12,7 +12,7 @@ lifecycle.player_session_connected = logon
 These are illustrative legacy method names, not required names. Native profiles
 can map the same events to their own typed LPC methods.
 
-Read link:{site-url}/lifecycle-events.html[the lifecycle reference] for each event's
+Read <<lifecycle-reference,the lifecycle reference>> for each event's
 role. Verify the mapped method's signature in the profile and corresponding
 Java dispatch code before adding a hook. Test normal entry, failed input, and
 disconnect paths; recognizing a method name does not establish its invocation
@@ -53,3 +53,5 @@ optional `catch_tell` method with exact, unwrapped legacy text. Neither hook is
 required. Callbacks may emit further events; nesting beyond 64 deliveries raises
 an error and unwinds the delivery. Callback errors propagate to the existing
 command/scheduler error handling and can interrupt the remaining recipients.
+
+include::lifecycle-reference.adoc[]

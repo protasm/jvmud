@@ -1,146 +1,20 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Principles - JVMud</title>
-  <meta name="description" content="Principles - JVMud: concepts and references for the JVMud LPC/LPMud engine.">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="styles.css?v=principles-quote-1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design philosophy — JVMud</title>
+<meta name="description" content="Design philosophy — JVMud project information and documentation.">
+<link rel="stylesheet" href="styles.css?v=text-1">
 </head>
-<body>
-  <a class="skip-link" href="#main">Skip to content</a>
-  <nav class="side-nav" aria-label="Documentation">
-<a class="brand" href="index.html">JVMud</a>
-<a href="documentation.html">Documentation</a>
-<a href="principles.html" aria-current="page">Design philosophy</a>
-<a href="architecture.html">Architecture</a>
-<a href="packages.html">Core packages</a>
-<a href="manual/index.html">User Manual</a>
-<a href="lpc.html">LPC language</a>
-<a href="efuns.html">Efun reference</a>
-<a href="lifecycle-events.html">Lifecycle events</a>
-<a href="glossary.html">Glossary</a>
-<a href="api/index.html">Java API</a>
-<a href="https://github.com/protasm/jvmud">GitHub ↗</a>
-</nav>
-
-  <main id="main" class="content-page">
-    <header>
-      <p class="eyebrow">Engine principles</p>
-      <h1>Principles</h1>
-      <p>
-        JVMud models persistent, temporal, multiplayer text worlds inhabited by
-        players who perceive those worlds from within them.
-      </p>
-    </header>
-
-    <blockquote class="principles-quote">
-      <p>A MUD is an online, interactive, multiplayer, text-centric, persistent, temporal, world-based, player-present game.</p>
-    </blockquote>
-
-    <section>
-      <h2>Purpose</h2>
-      <p>
-        JVMud is specifically an engine for creating and operating persistent,
-        multiplayer, text-based game worlds in the tradition of LP MUDs. It is
-        not intended to become a general-purpose simulation framework, chat
-        server, collaboration platform, or generic game engine.
-      </p>
-    </section>
-
-    <section>
-      <h2>Pillars of MUD</h2>
-      <div class="term-grid">
-        <article>
-          <h3>Online</h3>
-          <p>Players connect over a network to access the shared world.</p>
-        </article>
-        <article>
-          <h3>Interactive</h3>
-          <p>Players can affect the world, and the world can affect players.</p>
-        </article>
-        <article>
-          <h3>Multiplayer</h3>
-          <p>Multiple players inhabit the same shared world simultaneously.</p>
-        </article>
-        <article>
-          <h3>Text-centric</h3>
-          <p>Text is the primary medium through which the world is perceived and manipulated.</p>
-        </article>
-        <article>
-          <h3>Persistent</h3>
-          <p>The world and its state endure independently of any individual player's session.</p>
-        </article>
-        <article>
-          <h3>Temporal</h3>
-          <p>The world can change through time: events occur, state evolves, and actions have consequences.</p>
-        </article>
-        <article>
-          <h3>World-based</h3>
-          <p>The game takes place in a concrete virtual domain of linked places, entities, and movement.</p>
-        </article>
-        <article>
-          <h3>Player-present</h3>
-          <p>A player experiences the game from within the world through a located persona.</p>
-        </article>
-        <article>
-          <h3>Game</h3>
-          <p>The world exists to be played, with rules, mechanics, challenges, or progression.</p>
-        </article>
-      </div>
-    </section>
-
-    <section>
-      <h2>Engine And Mudlib</h2>
-      <p>
-        The engine provides the fundamental structure of virtual reality. The
-        mudlib provides the fiction. Concepts that appear repeatedly across
-        LP-style text worlds belong in the engine; concepts that vary
-        substantially between worlds belong in the mudlib.
-      </p>
-    </section>
-
-    <section>
-      <h2>World Model</h2>
-      <p>
-        A world is composed of places and the links between them. Places hold
-        entities. Links connect places. Together, they create connected
-        containment: an explorable spatial model rather than a set of isolated
-        rooms.
-      </p>
-      <p>
-        Every entity has exactly one immediate location, either a place or
-        another entity. This single-containment rule supports inventories,
-        containers, vehicles, nested containment, location resolution, and
-        movement propagation.
-      </p>
-    </section>
-
-    <section>
-      <h2>Capabilities</h2>
-      <p>
-        JVMud distinguishes existence from capability. An entity may be
-        perceptive, actor-capable, both, or neither. The engine asks whether an
-        entity can receive information about the world and whether it can
-        initiate change, without making assumptions about consciousness,
-        awareness, intelligence, or sentience.
-      </p>
-    </section>
-
-    <section>
-      <h2>Architectural Principles</h2>
-      <ul class="compact-list">
-        <li>Clarity over cleverness.</li>
-        <li>Simplicity over abstraction.</li>
-        <li>Readability over novelty.</li>
-        <li>Maintainability over optimization.</li>
-        <li>Descriptive names over concise names.</li>
-        <li>Explicit behavior over implicit behavior.</li>
-        <li>Composition over unnecessary hierarchy.</li>
-        <li>Capabilities over deep inheritance trees.</li>
-      </ul>
-    </section>
-  <footer class="site-footer">JVMud · LPC/LPMud engine · <a href="https://github.com/protasm/jvmud">Source and issue tracker</a></footer>
-</main>
+<body class="site">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><nav aria-label="Main navigation"><a href="index.html" class="brand">JVMud</a>
+<a href="about.html">About</a>
+<a href="faq.html">FAQ</a>
+<a href="downloads.html">Downloads</a>
+<a href="documentation.html">Documentation</a></nav></header>
+<main id="main"><header class="page-heading"><h1>Design philosophy</h1></header><p>This reference is maintained in the User Manual.</p><p><a href="manual/index.html#_the_jvmud_philosophy_of_mud">Read design philosophy in the manual</a></p></main>
+<footer class="site-footer"><span>JVMud</span><a href="https://github.com/protasm/jvmud">Source code</a><a href="https://github.com/protasm/jvmud/issues">Issue tracker</a></footer>
 </body>
 </html>
