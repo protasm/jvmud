@@ -47,7 +47,10 @@ provides initial bootstrap and recovery. Engine grants include all mudlibs;
 independent of OS accounts, player accounts and in-game wizard privileges.
 
 `available` lists names under the engine's configured mudlib directory.
-`start <name>` resolves `<mudlib-dir>/<name>/jvmud/<name>.config`.
+`start <name>` resolves `<mudlib-dir>/<name>/jvmud/<name>.config` and defaults to
+player/admin ports 4100/4101. Occupied ports return an error. Supply another pair
+for additional mudlibs, or `0 0` for OS-allocated ports. Engine ports still default
+to 4000/4001.
 The host operator selects `--mudlib-dir` at startup; it defaults to `mudlibs`
 under the launch root. Both local and networked administration reject host
 paths, traversal, and escaping symlinks. Restarts revalidate the same boundary.

@@ -135,8 +135,10 @@ the managed directory to make it administratively startable and restartable.
 The catalog limits manifest selection; each worker's OS sandbox separately
 restricts runtime access. Host operators control the directory and its contents.
 
-Supply both requested mudlib ports or neither; omitted ports are allocated by the
-OS. `restart` reuses the prior pair. Each mudlib must have a unique `game_id` and
+Supply both requested mudlib ports or neither. The `start` command defaults to
+player port 4100 and admin port 4101; occupied ports return an error without
+stopping the engine. Use an explicit pair for additional mudlibs, or `0 0` to ask
+the OS to allocate both ports. Engine defaults remain 4000/4001. `restart` reuses the prior pair. Each mudlib must have a unique `game_id` and
 its own non-overlapping filesystem tree. The engine keeps failed/stopped entries
 visible. `shutdown` stops the engine and all workers; `quit` only disconnects the
 console. Token issuance and grants are immediately persisted with atomic file

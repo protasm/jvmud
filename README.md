@@ -158,8 +158,10 @@ and token. Obtain the fingerprint from the engine operator through a trusted
 channel; token input is hidden. For scripts, supply `--user`, `--fingerprint`,
 and `--token-file`. Explicit `--host` and `--port` options remain supported.
 
-Use `available` to list mudlibs that can be started, then `start smallmercies` or
-`start lp245`. Names map to `<mudlib-dir>/<name>/jvmud/<name>.config`; the host
+Use `available` to list mudlibs that can be started, then `start smallmercies`
+(default player/admin ports 4100/4101). For another mudlib, choose another pair,
+for example `start lp245 4200 4201`. Occupied ports return an error; explicit
+`0 0` requests OS-allocated ports. Names map to `<mudlib-dir>/<name>/jvmud/<name>.config`; the host
 operator sets `--mudlib-dir` when starting the engine (default: the launch root's
 `mudlibs` directory). Administration rejects filesystem paths and symlinks that
 escape that directory or the selected mudlib tree.

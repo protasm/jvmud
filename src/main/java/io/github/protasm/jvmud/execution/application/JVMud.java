@@ -144,6 +144,11 @@ public final class JVMud implements AutoCloseable {
                 return entry.snapshot();
             } catch (IOException | RuntimeException failure) {
                 release(entry); entry.state = MudlibStatus.State.FAILED; entry.detail = failure.getMessage();
+                if (failure instanceof java.net.BindException) {
+                    entry.detail = "Mudlib ports " + playerPort + "/" + adminPort
+                            + " could not be bound; a port is occupied or unavailable. Supply different player and admin ports.";
+                    throw new IOException(entry.detail, failure);
+                }
                 if (failure instanceof IOException io) throw io;
                 throw failure;
             }

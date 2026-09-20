@@ -20,7 +20,7 @@ public final class EngineAdminCommandSession implements AdminSession {
                 case "help" -> """
                         status | mudlibs                         Show engine and mudlib state
                         available                               List installed mudlibs available to start
-                        start <name> [player-port admin-port]   Boot a mudlib (omitted ports are allocated)
+                        start <name> [player-port admin-port]   Boot a mudlib (defaults: 4100/4101)
                         stop <id> | restart <id>                 Manage one mudlib
                         admins                                  List administrators and grants
                         admin-create <name>                     Issue an access token (shown once)
@@ -41,7 +41,7 @@ public final class EngineAdminCommandSession implements AdminSession {
                     boolean player = !command.optional(1, "").isEmpty(), admin = !command.optional(2, "").isEmpty();
                     if (player != admin) throw new IllegalArgumentException("Supply both player and admin ports, or neither.");
                     var status = engine.startMudlib(command.required(0),
-                            port(command.optional(1, "0")), port(command.optional(2, "0")));
+                            port(command.optional(1, "4100")), port(command.optional(2, "4101")));
                     yield status + "\n";
                 }
                 case "stop" -> { engine.stopMudlib(command.required(0)); yield "Mudlib stopped.\n"; }

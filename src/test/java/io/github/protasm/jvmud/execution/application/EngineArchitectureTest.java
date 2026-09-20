@@ -41,7 +41,20 @@ class EngineArchitectureTest {
                         assertTrue(connection.command("start ../sample").startsWith("Error:"));
                         assertTrue(connection.command("start missing").startsWith("Error:"));
                     }
-                    assertTrue(remote.command("start sample").contains("state=RUNNING"));
+                    String defaultStart = remote.command("start sample");
+                    assertEquals(4100, engine.mudlibs().getFirst().playerPort());
+                    assertEquals(4101, engine.mudlibs().getFirst().adminPort());
+                    assertTrue(defaultStart.contains("state=RUNNING") || defaultStart.startsWith("Error: Mudlib ports 4100/4101 could not be bound;"), defaultStart);
+                    local.command("stop sample");
+                    // Both occupied endpoint positions must fail without taking down the engine.
+                    for (String ports : List.of(engine.port() + " 0", "0 " + engine.adminPort())) {
+                        String rejected = remote.command("start sample " + ports);
+                        assertTrue(rejected.startsWith("Error: Mudlib ports "), rejected);
+                        assertTrue(rejected.contains("Supply different player and admin ports."));
+                        assertEquals(-1, engine.mudlibs().getFirst().pid());
+                        assertTrue(local.command("status").contains("Engine player="));
+                    }
+                    assertTrue(remote.command("start sample 0 0").contains("state=RUNNING"));
                     var running = engine.mudlibs().getFirst();
                     try (Socket player = player(running.playerPort())) { assertTrue(readUntil(player, "ready>").contains("LOGIN sample")); }
                     assertTrue(local.command("restart sample").contains("state=RUNNING"));
