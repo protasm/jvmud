@@ -1,8 +1,7 @@
 /**
- * Telnet transport for JVMud player sessions.
+ * Player connections: engine-owned menu/direct relays and worker-side Telnet protocol sessions.
  *
- * <p>This package owns the Telnet server, socket sessions, command-line launch options, protocol
- * echo handling, and text I/O needed to connect a human player to a {@link
- * io.github.protasm.jvmud.instance.MudInstance}.</p>
+ * <p>The engine publishes only ready mudlibs. A selected connection stays with its worker
+ * until disconnection; it never returns to the engine menu.</p>
  */
 package io.github.protasm.jvmud.transport.telnet;

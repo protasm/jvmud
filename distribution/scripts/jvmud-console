@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+set -eu
+JVMUD_SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$JVMUD_SCRIPT_DIR/runtime.sh"
+exec "$JVMUD_JAVA" -cp "$JVMUD_ROOT/lib/*" io.github.protasm.jvmud.console.AdminConsole "$@"

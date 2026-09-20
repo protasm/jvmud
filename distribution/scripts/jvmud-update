@@ -2,4 +2,4 @@
 set -eu
 JVMUD_SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$JVMUD_SCRIPT_DIR/runtime.sh"
-exec "$JVMUD_JAVA" -cp "$JVMUD_ROOT/lib/*" io.github.protasm.jvmud.cli.update.DistributionUpdater "$JVMUD_ROOT" "$@"
+exec "$JVMUD_JAVA" -cp "$JVMUD_ROOT/lib/*" io.github.protasm.jvmud.maintenance.update.DistributionUpdater "$JVMUD_ROOT" "$@"

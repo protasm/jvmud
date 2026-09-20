@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Test a locally built archive outside the checkout, without Maven on PATH."""
 import os
+import re
 from pathlib import Path, PurePosixPath
 import shutil
 import socket
@@ -53,6 +54,8 @@ def check_world(root, cwd, env, world):
     while admin_port == port:
         admin_port = free_port()
     token = cwd / f"{world}.token"
+    state_context = tempfile.TemporaryDirectory(prefix="jvmud-admin-", dir="/tmp")
+    state = Path(state_context.name)
     log = cwd / f"{world}.log"
     manifest = root / f"mudlibs/{world}/jvmud/{world}.config"
     # Exercise both explicit manifests from another directory and the short name.
@@ -62,16 +65,28 @@ def check_world(root, cwd, env, world):
         server = subprocess.Popen([
             str(root / "scripts/jvmud-start"), "--bind", "127.0.0.1",
             "--port", str(port), "--admin-port", str(admin_port),
-            "--admin-token-file", str(token), launch_argument],
+            "--state-dir", str(state), launch_argument],
             cwd=launch_cwd, env=env, stdout=output, stderr=subprocess.STDOUT)
         try:
             deadline = time.monotonic() + 45
-            while "JVMud mudlib listening on" not in log.read_text():
+            while "state=RUNNING" not in log.read_text():
                 if server.poll() is not None or time.monotonic() > deadline:
                     raise AssertionError(log.read_text())
                 time.sleep(0.1)
+            bootstrap = subprocess.run([
+                str(root / "scripts/jvmud-console"), "--socket", str(state / "engine.sock")],
+                input=f"admin-create smoke\ngrant smoke mudlib:{world}\nstatus\nquit\n", text=True,
+                capture_output=True, timeout=15, cwd=cwd, env=env, check=True)
+            secret = re.search(r"shown once\): ([0-9a-f]{64})", bootstrap.stdout)
+            assert secret, "Console did not issue the bootstrap token"
+            token.write_text(secret.group(1)); token.chmod(0o600)
+            mudlib_admin = re.search(r"id=" + world + r",.*?adminPort=(\d+)", bootstrap.stdout)
+            assert mudlib_admin, bootstrap.stdout.replace(secret.group(1), "<redacted>")
+            fingerprint = (state / "admin-tls.sha256").read_text().strip()
             with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
                 sock.settimeout(0.5)
+                until(sock, "(or quit): ")
+                sock.sendall((world + "\n").encode())
                 if world == "smallmercies":
                     until(sock, "Name (2-16 letters): ")
                     command(sock, "Tester", "Gender (male/female): ")
@@ -106,8 +121,8 @@ def check_world(root, cwd, env, world):
                     command(sock, "say play b1", "You feel that you have gained some experience.")
                     command(sock, "look at board", "7|.......")
             result = subprocess.run([
-                str(root / "scripts/jvmud-cli"), "--port", str(admin_port),
-                "--token-file", str(token)], input="objects\nquit\n", text=True,
+                str(root / "scripts/jvmud-console"), "--port", mudlib_admin.group(1),
+                "--user", "smoke", "--fingerprint", fingerprint, "--token-file", str(token)], input="objects\nquit\n", text=True,
                 capture_output=True, timeout=15, cwd=cwd, env=env, check=True)
             expected = "room/square" if world == "smallmercies" else "room/church"
             assert expected in result.stdout, result.stdout + result.stderr
@@ -125,7 +140,10 @@ def check_world(root, cwd, env, world):
             except subprocess.TimeoutExpired:
                 server.kill()
                 server.wait()
-    assert not token.exists(), "Normal shutdown left an admin token"
+    assert not (state / "engine.sock").exists(), "Normal shutdown left a recovery socket"
+    assert (state / "administrators.json").exists(), "Administrator identities were not persisted"
+    token.unlink(missing_ok=True)
+    state_context.cleanup()
 
 
 def main():
@@ -180,7 +198,7 @@ def main():
             assert "java.specification.version = 21" in settings.stderr
         cwd = work / "caller directory"
         cwd.mkdir()
-        for launcher in ("jvmud-start", "jvmud-cli", "jvmud-format"):
+        for launcher in ("jvmud-start", "jvmud-console", "jvmud-format"):
             subprocess.run([str(root / "scripts" / launcher), "--help"],
                            cwd=cwd, env=env, capture_output=True, check=True, timeout=15)
         invalid = dict(env, JVMUD_JAVA_HOME=str(work / "missing-java"))

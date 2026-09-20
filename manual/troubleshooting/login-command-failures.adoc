@@ -5,10 +5,10 @@
 |Symptom |Check
 |Connection refused |Wait for the listening message; verify the process is still
 running on the configured address and player port (default localhost:4000).
-|Address already in use |Stop your earlier listener or choose another port with `--port 4001`.
+|Address already in use |Stop your earlier listener or choose another pair with `--port 4010 --admin-port 4011`.
 |Prompts repeat or login fails |Confirm the selected profile and account policy;
 inspect the server log and that profile's writable storage.
-|Admin command is unrecognized in Telnet |Use `scripts/jvmud-cli --port <admin-port>`;
+|Admin command is unrecognized in Telnet |Use `scripts/jvmud-console --port <admin-port>`;
 the server must have been started with `--admin-port`.
 |Movement or `look` is unrecognized |Complete login and read the active mudlib's
 help; verify command registration and lifecycle mapping.

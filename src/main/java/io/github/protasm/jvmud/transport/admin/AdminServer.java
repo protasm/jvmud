@@ -1,144 +1,139 @@
 package io.github.protasm.jvmud.transport.admin;
 
-import io.github.protasm.jvmud.admin.AdminCommandSession;
-import io.github.protasm.jvmud.instance.InstanceHost;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import io.github.protasm.jvmud.admin.AdminSession;
+import io.github.protasm.jvmud.persistence.admin.AdminRegistry;
+import jdk.net.ExtendedSocketOptions;
+import javax.net.ssl.*;
+import java.io.*;
+import java.net.*;
+import java.nio.channels.*;
+import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
-import java.util.HexFormat;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
+import java.util.function.BooleanSupplier;
 
-/**
- * Authenticated loopback-only administrative transport for one live host. Socket I/O occurs
- * outside the world's execution lock. Each connection owns its command directory and output.
- */
+/** Engine-owned administration listener. Authentication and grants are checked before creating a command session. */
 public final class AdminServer implements AutoCloseable {
-    private final InstanceHost host;
-    private final ServerSocket listener;
-    private final Path tokenFile;
-    private final String token;
-    private final Set<Socket> connections = ConcurrentHashMap.newKeySet();
-    private final ExecutorService workers = Executors.newVirtualThreadPerTaskExecutor();
+    /** Creates a fresh per-administrator command session after authorization. */
+    @FunctionalInterface public interface Sessions { AdminSession open() throws IOException; }
+    private final Sessions sessions;
+    private final String scope;
+    private final AdminRegistry registry;
+    private final SSLServerSocket tcp;
+    private final ServerSocketChannel unix;
+    private final Path socketPath;
+    private final Set<Connection> connections = ConcurrentHashMap.newKeySet();
+    private final ExecutorService tasks = Executors.newVirtualThreadPerTaskExecutor();
+    private final ScheduledExecutorService checks = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "jvmud-admin-authorization"); t.setDaemon(true); return t;
+    });
+    private final Semaphore slots = new Semaphore(64);
     private volatile boolean closed;
 
-    /**
-     * Binds before writing a new owner-readable credential, then starts accepting clients.
-     * Port zero is supported for embedding/tests; command-line launchers require explicit ports.
-     * Existing credential files are never overwritten. A stale file must be removed explicitly.
-     */
-    public AdminServer(InstanceHost host, int port, Path tokenFile) throws IOException {
-        this.host = host;
-        this.tokenFile = tokenFile.toAbsolutePath();
-        byte[] secret = new byte[32];
-        new SecureRandom().nextBytes(secret);
-        this.token = HexFormat.of().formatHex(secret);
-        listener = new ServerSocket(port, 16, InetAddress.getByName("127.0.0.1"));
-        boolean created = false;
+    /** Binds a TLS endpoint; call start only when the target engine or mudlib is ready. */
+    public AdminServer(String address, int port, SSLContext tls, AdminRegistry registry, String scope, Sessions sessions) throws IOException {
+        this.registry = registry; this.scope = scope; this.sessions = sessions; unix = null; socketPath = null;
+        tcp = (SSLServerSocket) tls.getServerSocketFactory().createServerSocket();
         try {
-            Files.createDirectories(this.tokenFile.getParent());
-            Files.createFile(this.tokenFile, PosixFilePermissions.asFileAttribute(
-                    PosixFilePermissions.fromString("rw-------")));
-            created = true;
-            Files.writeString(this.tokenFile, token, StandardCharsets.UTF_8);
-            workers.submit(this::acceptLoop);
-        } catch (IOException | RuntimeException e) {
-            listener.close();
-            workers.shutdownNow();
-            if (created) Files.deleteIfExists(this.tokenFile);
-            throw e;
-        }
+            tcp.setEnabledProtocols(new String[]{"TLSv1.3", "TLSv1.2"});
+            tcp.bind(new InetSocketAddress(address, port));
+        } catch (IOException | RuntimeException e) { tcp.close(); throw e; }
     }
 
-    /** Actual loopback port, including the assigned port when constructed with zero. */
-    public int port() { return listener.getLocalPort(); }
+    /** Binds an owner-only Unix socket. Existing paths are never silently replaced. */
+    public AdminServer(Path path, Sessions sessions) throws IOException {
+        this.sessions = sessions; scope = "engine"; registry = null; tcp = null; socketPath = path;
+        unix = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
+        try {
+            unix.bind(UnixDomainSocketAddress.of(path));
+            Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rw-------"));
+        } catch (IOException | RuntimeException e) { unix.close(); throw e; }
+    }
 
-    private void acceptLoop() {
-        while (!closed) {
-            try {
-                Socket socket = listener.accept();
-                connections.add(socket);
-                if (closed) {
-                    connections.remove(socket);
-                    socket.close();
-                } else {
-                    try {
-                        workers.submit(() -> serve(socket));
-                    } catch (java.util.concurrent.RejectedExecutionException e) {
-                        connections.remove(socket);
-                        socket.close();
+    /** Starts accepting and periodically disconnects revoked credentials, including idle sessions. */
+    public void start() {
+        checks.scheduleWithFixedDelay(() -> connections.forEach(c -> {
+            if (!c.authorized.getAsBoolean()) c.close();
+        }), 1, 1, TimeUnit.SECONDS);
+        tasks.submit(() -> {
+            while (!closed) {
+                try {
+                    if (tcp != null) {
+                        SSLSocket socket = (SSLSocket) tcp.accept();
+                        if (!slots.tryAcquire()) { socket.close(); continue; }
+                        socket.setSoTimeout(10000);
+                        Connection c = new Connection(socket, new DataInputStream(socket.getInputStream()), new DataOutputStream(socket.getOutputStream()));
+                        accept(c, () -> { socket.startHandshake(); socket.setSoTimeout(0); }, false);
+                    } else {
+                        SocketChannel socket = unix.accept();
+                        if (!slots.tryAcquire()) { socket.close(); continue; }
+                        Connection c = new Connection(socket, new DataInputStream(Channels.newInputStream(socket)), new DataOutputStream(Channels.newOutputStream(socket)));
+                        accept(c, () -> {
+                            var peer = socket.getOption(ExtendedSocketOptions.SO_PEERCRED);
+                            if (!peer.user().equals(Files.getOwner(socketPath.getParent()))) throw new IOException("OS account mismatch.");
+                        }, true);
+                    }
+                } catch (IOException | RuntimeException e) {
+                    if (!closed) System.err.println("Administration accept failed: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    private void accept(Connection c, Handshake handshake, boolean local) {
+        connections.add(c);
+        if (closed) { c.close(); connections.remove(c); slots.release(); return; }
+        ScheduledFuture<?> deadline;
+        try { deadline = checks.schedule(c::close, 10, TimeUnit.SECONDS); }
+        catch (RejectedExecutionException e) { c.close(); connections.remove(c); slots.release(); return; }
+        try { tasks.submit(() -> {
+            try (c) {
+                handshake.run();
+                if (!AdminWire.VERSION.equals(AdminWire.read(c.in, 128))) throw new IOException("Unsupported administration protocol.");
+                if (!local) {
+                    String name = AdminWire.read(c.in, 256), token = AdminWire.read(c.in, 256);
+                    c.authorized = () -> registry.allows(name, token, scope);
+                    if (!c.authorized.getAsBoolean()) {
+                        AdminWire.write(c.out, "ERROR: Authentication or authorization failed.", 1024); return;
                     }
                 }
-            } catch (IOException e) {
-                if (!closed) System.err.println("Admin listener: " + e.getMessage());
-            }
+                deadline.cancel(false);
+                try (AdminSession session = sessions.open()) {
+                    AdminWire.write(c.out, session.scope(), 1024);
+                    while (!closed && c.authorized.getAsBoolean()) {
+                        String command = AdminWire.read(c.in, AdminWire.MAX_COMMAND_BYTES);
+                        if (!c.authorized.getAsBoolean()) break;
+                        AdminSession.Reply reply = session.execute(command);
+                        AdminWire.write(c.out, reply.text(), AdminWire.MAX_RESPONSE_BYTES);
+                        c.out.writeBoolean(reply.running()); c.out.flush();
+                        if (!reply.running()) break;
+                    }
+                }
+            } catch (IOException | RuntimeException ignored) {
+                // Authentication failures, disconnected peers and malformed frames end only this connection.
+            } finally { deadline.cancel(false); connections.remove(c); slots.release(); }
+        }); } catch (RejectedExecutionException e) {
+            deadline.cancel(false); c.close(); connections.remove(c); slots.release();
         }
     }
 
-    private void serve(Socket socket) {
-        try (socket;
-                var in = new DataInputStream(socket.getInputStream());
-                var out = new DataOutputStream(socket.getOutputStream())) {
-            socket.setSoTimeout(10000);
-            String version = AdminWire.read(in, 128);
-            String supplied = AdminWire.read(in, 256);
-            if (!AdminWire.VERSION.equals(version) || !MessageDigest.isEqual(
-                    token.getBytes(StandardCharsets.UTF_8), supplied.getBytes(StandardCharsets.UTF_8))) {
-                AdminWire.write(out, "ERROR: Authentication failed.", AdminWire.MAX_RESPONSE_BYTES);
-                return;
-            }
-            socket.setSoTimeout(0);
-            StringWriter buffer = new StringWriter();
-            PrintWriter output = new PrintWriter(buffer, true);
-            AdminCommandSession session = host.administer(runtime -> AdminCommandSession.attach(output, runtime, host.mudlibRoot()));
-            AdminWire.write(out, "Connected to live JVMud at admin port " + port()
-                    + "\nWorld: " + host.mudlibRoot() + "\nType help for commands; quit disconnects.",
-                    AdminWire.MAX_RESPONSE_BYTES);
-            while (!closed && session.isRunning()) {
-                String command = AdminWire.read(in, AdminWire.MAX_COMMAND_BYTES);
-                String response = host.administer(runtime -> {
-                    if (closed) return "Server administration is shutting down.\n";
-                    buffer.getBuffer().setLength(0);
-                    session.execute(command);
-                    output.flush();
-                    return buffer.toString();
-                });
-                AdminWire.write(out, response, AdminWire.MAX_RESPONSE_BYTES);
-                out.writeBoolean(session.isRunning());
-                out.flush();
-            }
-        } catch (IOException | RuntimeException e) {
-            // Disconnects and malformed clients end only their own admin session.
-        } finally {
-            connections.remove(socket);
-        }
-    }
+    /** Returns the allocated TCP port; Unix endpoints have no TCP port. */
+    public int port() { return tcp == null ? -1 : tcp.getLocalPort(); }
 
-    /** Disconnects clients and removes only this server's credential; never stops the world. */
-    @Override
-    public synchronized void close() {
-        if (closed) return;
+    /** Closes only this endpoint and its sessions; the target's lifecycle belongs to the engine. */
+    @Override public void close() {
         closed = true;
-        try { listener.close(); } catch (IOException ignored) {}
-        for (Socket socket : connections) {
-            try { socket.close(); } catch (IOException ignored) {}
-        }
-        workers.shutdownNow();
-        try {
-            if (Files.readString(tokenFile).equals(token)) Files.deleteIfExists(tokenFile);
-        } catch (IOException ignored) {}
+        try { if (tcp != null) tcp.close(); else unix.close(); } catch (IOException ignored) {}
+        connections.forEach(Connection::close); checks.shutdownNow(); tasks.shutdownNow();
+        if (socketPath != null) try { Files.deleteIfExists(socketPath); } catch (IOException ignored) {}
+    }
+
+    @FunctionalInterface private interface Handshake { void run() throws IOException; }
+    private static final class Connection implements AutoCloseable {
+        final Closeable socket; final DataInputStream in; final DataOutputStream out;
+        volatile BooleanSupplier authorized = () -> true;
+        Connection(Closeable socket, DataInputStream in, DataOutputStream out) { this.socket = socket; this.in = in; this.out = out; }
+        @Override public void close() { try { socket.close(); } catch (IOException ignored) {} }
     }
 }

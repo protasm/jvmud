@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT=$(dirname -- "$SCRIPT_DIR")
+
+cd "$ROOT"
+mvn -q compile dependency:build-classpath \
+  -Dmdep.outputFile=target/jvmud-classpath.txt >/dev/null
+
+exec java \
+  -cp "target/classes:$(cat target/jvmud-classpath.txt)" \
+  io.github.protasm.jvmud.console.AdminConsole "$@"

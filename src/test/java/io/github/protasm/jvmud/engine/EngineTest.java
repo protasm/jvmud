@@ -36,7 +36,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 final class EngineTest {
     /** Chooses the only menu entry before exercising the mudlib's existing login tests. */
-    private static Socket connectToOnlyMudlib(JVMud engine) throws IOException {
+    private static Socket connectToOnlyMudlib(EmbeddedMudlibHost engine) throws IOException {
         Socket socket = new Socket("127.0.0.1", engine.port());
         socket.getOutputStream().write("1\n".getBytes(StandardCharsets.UTF_8));
         socket.getOutputStream().flush();
@@ -132,12 +132,8 @@ final class EngineTest {
     }
 
     @Test
-    void telnetServerLaunchOptionsRequireExplicitMudlibConfig() {
-        IllegalArgumentException error = assertThrows(
-                IllegalArgumentException.class,
-                () -> EngineLauncher.parseLaunchOptions(new String[0]));
-
-        assertEquals("Missing mudlib config file.", error.getMessage());
+    void engineCanLaunchWithoutMudlibs() {
+        assertTrue(EngineLauncher.parseLaunchOptions(new String[0]).mudlibs().isEmpty());
     }
 
     @Test
@@ -177,22 +173,13 @@ final class EngineTest {
     }
 
     @Test
-    void telnetServerLaunchOptionsKeepAdminSeparateAndOptIn() {
-        String config = "mudlibs/smallmercies/jvmud/smallmercies.config";
-        assertEquals(null, EngineLauncher.parseLaunchOptions(new String[] {config}).adminPort());
-        var options = EngineLauncher.parseLaunchOptions(new String[] {
-                "--port", "4500", "--admin-port", "4600", "--admin-token-file", "target/admin.token", config
-        });
-        assertEquals(4500, options.port());
+    void engineAdministrationIsAlwaysSeparate() {
+        var defaults = EngineLauncher.parseLaunchOptions(new String[0]);
+        assertEquals(4001, defaults.adminPort());
+        var options = EngineLauncher.parseLaunchOptions(new String[]{"--port", "4500", "--admin-port", "4600", "--state-dir", "target/engine"});
         assertEquals(4600, options.adminPort());
-        assertEquals(Path.of("target/admin.token"), options.adminTokenFile());
-        for (String[] args : new String[][] {
-                {"--admin-port", "4000", config}, {"--admin-port", "0", config},
-                {"--admin-port", "65536", config}, {"--admin-port", "bad", config},
-                {"--admin-port"}, {"--admin-token-file", "key", config}
-        }) {
+        for (String[] args : new String[][] {{"--admin-port", "4000"}, {"--admin-port", "0"}, {"--admin-port", "bad"}, {"--admin-port"}})
             assertThrows(IllegalArgumentException.class, () -> EngineLauncher.parseLaunchOptions(args));
-        }
     }
 
     @Test
@@ -207,7 +194,7 @@ final class EngineTest {
     void lp245GoPuzzleRespondsToSpokenMoveOverTelnet() throws Exception {
         Path lp245 = lp245TestRoot();
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -263,7 +250,7 @@ final class EngineTest {
     void lp245TrollHuntKeepsHeartbeatAfterExaminingMonster() throws Exception {
         Path lp245 = lp245TestRoot();
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -339,7 +326,7 @@ final class EngineTest {
         Files.writeString(player, Files.readString(player)
                 .replace("move_object(myself, \"room/church\");", "move_object(myself, \"room/wiz_hall\");"));
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, lp245, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -428,7 +415,7 @@ final class EngineTest {
                 void offer_interactions() {}
                 """);
 
-        try (JVMud server = new JVMud("127.0.0.1", 0, tempDir, "jvmud/test.config")) {
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost("127.0.0.1", 0, tempDir, "jvmud/test.config")) {
             server.start();
             try (Socket socket = connectToOnlyMudlib(server)) {
                 socket.setSoTimeout(5000);
@@ -478,13 +465,13 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
             assertEquals(
                     "preload manifest init_file: compiled 1 object(s), skipped 1 object(s). Skipped: obj/broken",
-                    JVMud.preloadSummary(server.mudlibs().getFirst().bootResult()));
+                    EmbeddedMudlibHost.preloadSummary(server.mudlibs().getFirst().bootResult()));
         }
     }
 
@@ -522,7 +509,7 @@ final class EngineTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -564,7 +551,7 @@ final class EngineTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -611,7 +598,7 @@ final class EngineTest {
                 """);
         installMinimalMudlibPlayer(mudlibRoot, "room/village/vill_green");
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, mudlibRoot, DEFAULT_CONFIG_PATH)) {
             server.start();
 
@@ -670,7 +657,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -772,7 +759,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -837,7 +824,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -909,7 +896,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -962,7 +949,7 @@ final class EngineTest {
                 }
                 """);
 
-        JVMud server = new JVMud("127.0.0.1", 0, tempDir, LP245_CONFIG_PATH);
+        EmbeddedMudlibHost server = new EmbeddedMudlibHost("127.0.0.1", 0, tempDir, LP245_CONFIG_PATH);
         server.start();
         server.close();
         server.close();
@@ -1037,7 +1024,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1126,7 +1113,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1180,7 +1167,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1244,7 +1231,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1302,7 +1289,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1332,7 +1319,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1377,7 +1364,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1499,7 +1486,7 @@ final class EngineTest {
                 }
                 """);
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, LP245_CONFIG_PATH)) {
             server.start();
 
@@ -1629,7 +1616,7 @@ final class EngineTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, DEFAULT_CONFIG_PATH)) {
             server.start();
 
@@ -1686,31 +1673,33 @@ final class EngineTest {
                 """);
         installMinimalMudlibPlayer(tempDir, "room/village/vill_green");
 
-        try (JVMud server = new JVMud(
+        try (EmbeddedMudlibHost server = new EmbeddedMudlibHost(
                 "127.0.0.1", 0, tempDir, DEFAULT_CONFIG_PATH)) {
             server.start();
 
-            try (Socket first = connectToOnlyMudlib(server);
-                    Socket second = connectToOnlyMudlib(server)) {
+            try (Socket first = connectToOnlyMudlib(server)) {
                 first.setSoTimeout(5000);
-                second.setSoTimeout(5000);
                 assertTrue(readUntilContains(first, "Attached player 1").contains("Attached player 1"));
-                assertTrue(readUntilContains(second, "Attached player 2").contains("Attached player 2"));
+                // Complete the first login before starting the second; relay scheduling need not preserve accept order.
+                try (Socket second = connectToOnlyMudlib(server)) {
+                    second.setSoTimeout(5000);
+                    assertTrue(readUntilContains(second, "Attached player 2").contains("Attached player 2"));
 
-                first.getOutputStream().write("who\n".getBytes(StandardCharsets.UTF_8));
-                first.getOutputStream().flush();
-                String who = readUntilContains(first, "users=2 ip=127.0.0.1");
-                assertTrue(who.contains("users=2 ip=127.0.0.1"));
+                    first.getOutputStream().write("who\n".getBytes(StandardCharsets.UTF_8));
+                    first.getOutputStream().flush();
+                    String who = readUntilContains(first, "users=2 ip=127.0.0.1");
+                    assertTrue(who.contains("users=2 ip=127.0.0.1"));
 
-                first.getOutputStream().write("poke\n".getBytes(StandardCharsets.UTF_8));
-                first.getOutputStream().flush();
-                assertTrue(readUntilContains(first, "sent").contains("sent"));
-                assertTrue(readUntilContains(second, "poke from 127.0.0.1").contains("poke from 127.0.0.1"));
+                    first.getOutputStream().write("poke\n".getBytes(StandardCharsets.UTF_8));
+                    first.getOutputStream().flush();
+                    assertTrue(readUntilContains(first, "sent").contains("sent"));
+                    assertTrue(readUntilContains(second, "poke from 127.0.0.1").contains("poke from 127.0.0.1"));
 
-                first.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
-                second.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
-                first.getOutputStream().flush();
-                second.getOutputStream().flush();
+                    first.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
+                    second.getOutputStream().write("//quit\n".getBytes(StandardCharsets.UTF_8));
+                    first.getOutputStream().flush();
+                    second.getOutputStream().flush();
+                }
             }
         }
     }
@@ -1950,7 +1939,7 @@ final class EngineTest {
 
     @Test
     void startupObjectLoadTraceSummarizesUniqueObjectsAndAttempts() {
-        EngineLauncher.StartupObjectLoadTrace trace = EngineLauncher.commandLineObjectLoadTrace(true);
+        io.github.protasm.jvmud.instance.StartupObjectLoadTrace trace = new io.github.protasm.jvmud.instance.StartupObjectLoadTrace(true);
         PrintStream originalOut = System.out;
         try {
             System.setOut(new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8));
@@ -1987,7 +1976,7 @@ final class EngineTest {
 
     @Test
     void startupObjectLoadTracePrintsFailureCause() {
-        EngineLauncher.StartupObjectLoadTrace trace = EngineLauncher.commandLineObjectLoadTrace(true);
+        io.github.protasm.jvmud.instance.StartupObjectLoadTrace trace = new io.github.protasm.jvmud.instance.StartupObjectLoadTrace(true);
         PrintStream originalOut = System.out;
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {

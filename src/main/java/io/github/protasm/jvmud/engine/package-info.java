@@ -2,7 +2,8 @@
  * JVMud application lifetime and engine-owned runtime model.
  *
  * <p>{@link io.github.protasm.jvmud.engine.JVMud} is the application entry point. It owns
- * independent mudlib instances and starts transport components. Each instance queues input
+ * sandboxed worker JVMs and public transport components. It can run with zero mudlibs.
+ * Each worker instance queues input
  * and scheduled work on its own execution thread and clock.</p>
  *
  * <p>This package contains the concepts that belong to JVMud itself rather than to LPC, a specific
@@ -41,9 +42,8 @@
  * execution queue so ticks and commands cannot run concurrently.</p>
  *
  * <p>{@link io.github.protasm.jvmud.engine.output} keeps engine-owned text presentation separate
- * from server transport code and mudlib-authored prose. Persistence is currently represented by the
- * stable records in the world and identity packages; repository or storage-specific code can grow
- * into its own package when the engine needs it.</p>
+ * from server transport code and mudlib-authored prose. Storage adapters live in {@code io.github.protasm.jvmud.persistence}; engine-owned
+ * administrator identities and grants remain separate from mudlib player accounts.</p>
  *
  * <p>Compiler and LPC compatibility layers adapt into these engine concepts instead of replacing
  * them with legacy driver vocabulary. Generated-code support lives under {@code

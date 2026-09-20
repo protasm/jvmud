@@ -1,2 +1,2 @@
-/** Authenticated loopback administration transport, separate from player Telnet sessions. */
+/** TLS administration endpoints and same-account Unix recovery transport, owned and authorized by the engine. */
 package io.github.protasm.jvmud.transport.admin;

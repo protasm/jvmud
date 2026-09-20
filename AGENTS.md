@@ -18,7 +18,7 @@ works. Prefer straightforward designs whose intent and boundaries are clear,
 and document non-obvious decisions where future readers need them.
 
 This repository is the JVMud project. It currently contains the JVMud compiler,
-engine, hosted instance, transport, persistence, CLI, bundled mudlibs, and
+engine, hosted instance, transport, persistence, administration consoles, bundled mudlibs, and
 static docs.
 
 ## Top-Level Areas
@@ -31,7 +31,7 @@ static docs.
   which contains compiler helper classes used by generated code.
 - `src/main/java/io/github/protasm/jvmud/instance/`: JVMud hosted-instance code.
   Work here for mudlib boot, shared runtime/world assembly, lifecycle hooks,
-  player/persona attachment, per-mudlib execution, and mudlib menu selection.
+  player/persona attachment, per-mudlib execution, and the worker entry point.
 - `src/main/java/io/github/protasm/jvmud/transport/`: JVMud player transport
   code. Work here for Telnet sockets, sessions, protocol mechanics, line I/O,
   and connection lifecycle.
@@ -39,7 +39,8 @@ static docs.
   adapters for filesystem, JDBC, and future persistence backends.
 - `src/main/java/io/github/protasm/jvmud/admin/`: Administrative command interpretation
   and per-administrator session state.
-- `src/main/java/io/github/protasm/jvmud/cli/`: Terminal clients and maintenance tools.
+- `src/main/java/io/github/protasm/jvmud/console/`: Shared interactive administration console.
+- `src/main/java/io/github/protasm/jvmud/maintenance/`: Standalone updates and compilation diagnostics.
 - `mudlibs/lp245/`: LPC mudlib source. `obj/` contains reusable object definitions and
   `room/` contains world/room content, headers, and startup-oriented files.
   Treat upstream vanilla mudlib files as read-only unless the user explicitly
@@ -49,17 +50,19 @@ static docs.
 
 ## Application Operation
 
-- `engine.JVMud` owns `main()`, application lifetime, and transport startup.
-  `TelnetServer` is an engine-owned component.
-- The engine offers explicitly configured mudlibs as peers through a menu.
-  There is no default world, mounted-world hierarchy, or world-hopping API.
-- `MudlibRouter` handles selection only. Name router references `router`;
-  reserve `mud` for an actual selected mudlib instance.
-- Each `MudInstance` owns its own execution queue and configurable clock.
-  Queue player input, protocol callbacks, administration, and ticks on that
-  instance's thread. Do not introduce a shared tick loop or cross-world lock.
-- Mudlibs interpret player commands and produce command-result messages.
-  Transport must not interpret LPC return values as command success/failure.
+- `engine.JVMud` owns `main()`, application lifetime, public endpoints, and worker supervision.
+- The engine starts with zero mudlibs. Each mudlib runs in a separate sandboxed JVM.
+- The engine player endpoint offers a public menu. Each ready mudlib also has a
+  direct player endpoint and a scoped TLS administration endpoint. Quitting a
+  mudlib closes the connection; there is no return-to-menu or world-hopping API.
+- The engine owns administrator tokens, grants and TLS keys outside worker-visible
+  storage. A same-account Unix socket provides local bootstrap/recovery.
+- Each `MudInstance` owns its execution queue and clock within its worker. Queue
+  player input, protocol callbacks, administration and ticks there.
+- Mudlibs interpret player commands. Transport never interprets LPC return values
+  as command success/failure. A world is part of a mudlib, not a synonym for it.
+- Runtime/transport unit tests may use `EmbeddedMudlibHost`; production engine
+  tests must exercise real worker processes and endpoint authentication.
 
 ## Package Layout
 

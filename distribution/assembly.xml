@@ -59,6 +59,7 @@
         <include>README.md</include>
         <include>jvmud/smallmercies.config</include>
         <include>source/**/*.c</include>
+        <include>source/preload_objects</include>
       </includes>
       <fileMode>0644</fileMode>
     </fileSet>

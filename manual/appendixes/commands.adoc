@@ -1,6 +1,6 @@
 === Commands
 
-These commands run inside `scripts/jvmud-cli --port <admin-port>`.
+These mudlib commands run after connecting the administration console to a mudlib-admin endpoint. Engine endpoints have their own `help` command.
 Paths name source files; handles identify loaded objects. Use `objects` to find
 handles. Arguments to `call` are passed as strings; quote strings containing
 spaces. Numeric text is not automatically converted to LPC integers. `help` is the live syntax reference.
@@ -29,10 +29,10 @@ spaces. Numeric text is not automatically converted to LPC integers. `help` is t
 |`scan <path>` |`s` |Preprocess and print scanner tokens for an LPC source file.
 |`verbosity [quiet&#124;normal&#124;watch]` |`v` |Show or change compiler/shell output detail.
 |`where <handle>` |`w` |Show the environment containing an object.
-|`quit` |`q` |Disconnect this CLI session; the world keeps running.
+|`quit` |`q` |Disconnect this console session; the mudlib keeps running.
 |===
 
 The terminal launcher for play is
-`scripts/jvmud-start [--bind <address>] [--port <port>] [--admin-port <port>] [--admin-token-file <path>] [--trace-startup-loads] <mudlib-config-file>`.
+`scripts/jvmud-start [--bind <address>] [--port <port>] [--admin-port <port>] [--state-dir <path>] [--trace-startup-loads] [<mudlib-config-file>...]`.
 Inside a player client, profiles using the default transport prefix reserve `//help` and `//quit` for
 transport controls. The mudlib owns all gameplay verbs.

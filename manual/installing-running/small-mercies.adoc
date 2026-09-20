@@ -15,7 +15,7 @@ From the repository root:
 scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config
 ----
 
-Wait for `JVMud engine listening on 127.0.0.1:4000`. In a second terminal or
+Wait for the engine endpoint report and the mudlib's `state=RUNNING` status. In a second terminal or
 Telnet-capable MUD client, connect to `127.0.0.1` on port `4000`:
 
 [source,shell]

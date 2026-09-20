@@ -2,7 +2,7 @@
 
 [[_lpc_and_mudlib_authoring]]
 The <<small-mercies,Small Mercies source map>> links runnable examples of rooms,
-commands, NPCs, and scheduling. Start with a typed object and test it through the CLI attached to a development server. Then connect its
+commands, NPCs, and scheduling. Start with a typed object and test it through the console attached to a development server. Then connect its
 behavior to the selected mudlib's commands and lifecycle. The language overview
 below preserves practical LPC examples; compatibility names such as `write` and
 `sizeof` depend on the active profile's mappings.

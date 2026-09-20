@@ -55,7 +55,7 @@ include::playing-testing/transcript-regressions.adoc[]
 
 include::operating/index.adoc[]
 
-include::operating/admin-cli.adoc[]
+include::operating/admin-console.adoc[]
 
 include::operating/runtime-model.adoc[]
 

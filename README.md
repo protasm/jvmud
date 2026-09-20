@@ -39,7 +39,7 @@ scripts/jvmud-start smallmercies
 
 This starts the engine and **Small Mercies**, the bundled five-room example
 world, in one process. No separate engine daemon, database, or account setup is
-needed. Wait for `JVMud engine listening on` and the address before connecting.
+needed. Wait for the engine endpoint report and the mudlib's `state=RUNNING` status and the address before connecting.
 The default is localhost, TCP port **4000**, accessible from this computer only.
 Leave the terminal running; press **Ctrl+C** there to stop the server.
 
@@ -118,7 +118,7 @@ A private LAN address is not directly reachable from the Internet; networks
 behind carrier-grade NAT may require a public endpoint or tunnel.
 
 You can bind a specific local interface instead of `0.0.0.0`, or choose a different
-port with `--port 4001`. Give clients the corresponding address and port. Telnet
+ports with `--port 4010 --admin-port 4011`. Give clients the corresponding address and port. Telnet
 traffic is unencrypted; Small Mercies uses disposable guests without passwords.
 
 To see all launcher options:
@@ -127,84 +127,39 @@ To see all launcher options:
 scripts/jvmud-start --help
 ```
 
-## Connect the CLI to a live server
+## Engine and mudlib administration
 
-Enable a separate local admin port when starting the server:
+The engine runs independently of its mudlibs. `scripts/jvmud-start` with no
+manifests opens an unauthenticated player menu on localhost:4000, a TLS engine-admin
+listener on localhost:4001, and a same-account Unix recovery socket. Each mudlib
+runs in a separate sandboxed worker JVM with its own player/admin port pair.
 
-```sh
-scripts/jvmud-start --port 4000 --admin-port 4100 mudlibs/smallmercies/jvmud/smallmercies.config
-```
-
-In another terminal, connect to that **admin port**:
-
-```sh
-scripts/jvmud-cli --port 4100
-```
-
-The CLI displays the server's admin port and world path. At `jvmud>`, try:
-
-```text
-help
-objects
-inspect room/square
-call room/square short
-quit
-```
-
-These commands operate on the running server's actual objects, including player
-objects. `quit` or Ctrl+D disconnects the CLI; players and the engine keep running.
-Stop the server with Ctrl+C in its own terminal. The CLI does not boot a world,
-and the `boot` command is unavailable when connected.
-
-Use `help` for loading, inspecting, calling, and reloading LPC objects. Changes
-affect the live world. `reload` replaces an object; it does not migrate all
-existing state or references, so use it with care for occupied rooms and players.
-Administrative commands run in coordination with player commands and world ticks;
-a long command can delay gameplay in that server.
-
-Administration is disabled unless `--admin-port` is specified. It listens only
-on `127.0.0.1`, independently of the player `--bind` setting. The server creates a
-private credential at `~/.jvmud/admin/4100.token`, which the CLI reads automatically
-when run by the same OS user. Normal server shutdown removes the credential.
-After an abnormal exit, confirm the old server is stopped before removing its
-stale token file and restarting. Credentials are never overwritten at startup.
-
-To choose another credential location, pass `--admin-token-file /path/to/key` to
-`jvmud-start` and `--token-file /path/to/key` to `jvmud-cli`. The parent directory
-must be writable by the server; the key file must not already exist. Keep this
-file private. The current credential creation requires POSIX file permissions,
-consistent with the launch scripts' macOS/Linux/WSL environment.
-
-## Run several servers
-
-Give each process a distinct player port and admin port. For example, in separate
-terminals (replace the second manifest with your own world's path):
+Bootstrap through the local console:
 
 ```sh
-scripts/jvmud-start --bind 0.0.0.0 --port 4000 --admin-port 4100 mudlibs/smallmercies/jvmud/smallmercies.config
-scripts/jvmud-start --bind 0.0.0.0 --port 4001 --admin-port 4101 /absolute/path/to/other-world/jvmud/world.config
+scripts/jvmud-console --socket ~/.jvmud/engine-4000/engine.sock
 ```
 
-Select the world you administer by its admin port:
+At `engine>`, use `help`, `start <manifest> [player-port admin-port]`, `status`,
+`stop <id>`, and `restart <id>`. `admin-create <name>` issues a random token;
+`grant <name> engine` or `grant <name> mudlib:<id>` assigns administrative scope.
+The registry stores token hashes, independently of player accounts and in-game permissions.
+
+Remote consoles require TLS certificate pinning and an administrator token:
 
 ```sh
-scripts/jvmud-cli --port 4100
-scripts/jvmud-cli --port 4101
+scripts/jvmud-console --host server.example --port 4001 --user operator --fingerprint <SHA-256>
 ```
 
-Players use ports 4000 and 4001; administration uses 4100 and 4101. Each process
-has its own runtime and shutdown lifecycle. Use separate writable world data for
-independent copies of a persistent mudlib.
+Use a mudlib's admin port for its live object commands. Both engine-menu and
+direct player connections enter the same mudlib. Quitting closes the connection;
+players reconnect to return to the menu.
 
-For several mudlibs on one player listener, explicitly select the mudlib exposed
-by the optional admin endpoint:
-
-```sh
-scripts/jvmud-start --admin-port 4100 --admin-game lp245 smallmercies lp245
-```
-
-`--admin-game` is required with multiple mudlibs. The endpoint serves only that
-mudlib. Engine logs are stored in `.jvmud/log` under the launch directory.
+See [Engine and administration](docs/ENGINE-ADMINISTRATION.md) for exact bootstrap,
+remote access, lifecycle commands, sandbox prerequisites, limitations and migration.
+Linux requires bubblewrap; macOS uses sandbox-exec. Unsupported sandbox startup
+fails closed. Engine logs are stored under `.jvmud/log`; private state and worker
+logs default to `~/.jvmud/engine-<player-port>`.
 
 ## Documentation
 
@@ -231,7 +186,9 @@ local site. Website changes appear online only after publication.
 | `src/main/java/io/github/protasm/jvmud/instance/` | Boot, hosted worlds, Personas, lifecycle dispatch, and routing |
 | `src/main/java/io/github/protasm/jvmud/transport/` | Telnet sessions and protocol mechanics |
 | `src/main/java/io/github/protasm/jvmud/persistence/` | Filesystem and JDBC storage adapters |
-| `src/main/java/io/github/protasm/jvmud/cli/` | Local admin shell |
+| `src/main/java/io/github/protasm/jvmud/console/` | Shared administration console |
+| `src/main/java/io/github/protasm/jvmud/admin/` | Engine and mudlib command interpreters |
+| `src/main/java/io/github/protasm/jvmud/maintenance/` | Installation updates and compilation diagnostics |
 | `src/test/` | Java tests, smoke checks, and documentation validation; see [testing guide](src/test/README.md) |
 | `mudlibs/` | LPC content and profiles, separate from the host |
 | `mudlibs/smallmercies/` | Bundled toy mudlib and teaching examples |

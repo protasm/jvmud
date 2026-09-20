@@ -11,7 +11,7 @@ ROOT_DIR=$(dirname -- "$SCRIPT_DIR")
 
 cd "$ROOT_DIR"
 mvn -q compile dependency:build-classpath \
-  -Dmdep.outputFile=target/jvmud-cli-classpath.txt >/dev/null
+  -Dmdep.outputFile=target/jvmud-maintenance-classpath.txt >/dev/null
 
-CP="target/classes:$(cat target/jvmud-cli-classpath.txt)"
-exec java -cp "$CP" io.github.protasm.jvmud.cli.MudlibPreloadCompileScan "$@"
+CP="target/classes:$(cat target/jvmud-maintenance-classpath.txt)"
+exec java -cp "$CP" io.github.protasm.jvmud.maintenance.MudlibPreloadCompileScan "$@"

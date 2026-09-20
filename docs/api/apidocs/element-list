@@ -1,6 +1,4 @@
 io.github.protasm.jvmud.admin
-io.github.protasm.jvmud.cli
-io.github.protasm.jvmud.cli.update
 io.github.protasm.jvmud.compiler
 io.github.protasm.jvmud.compiler.bytecode
 io.github.protasm.jvmud.compiler.efun
@@ -23,6 +21,7 @@ io.github.protasm.jvmud.compiler.semantic
 io.github.protasm.jvmud.compiler.sourcepos
 io.github.protasm.jvmud.compiler.token
 io.github.protasm.jvmud.compiler.transpiler
+io.github.protasm.jvmud.console
 io.github.protasm.jvmud.engine
 io.github.protasm.jvmud.engine.identity
 io.github.protasm.jvmud.engine.mudlib
@@ -30,9 +29,13 @@ io.github.protasm.jvmud.engine.output
 io.github.protasm.jvmud.engine.protocol
 io.github.protasm.jvmud.engine.support
 io.github.protasm.jvmud.engine.time
+io.github.protasm.jvmud.engine.worker
 io.github.protasm.jvmud.engine.world
 io.github.protasm.jvmud.instance
+io.github.protasm.jvmud.maintenance
+io.github.protasm.jvmud.maintenance.update
 io.github.protasm.jvmud.persistence
+io.github.protasm.jvmud.persistence.admin
 io.github.protasm.jvmud.persistence.filesystem
 io.github.protasm.jvmud.persistence.jdbc
 io.github.protasm.jvmud.transport

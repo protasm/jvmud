@@ -2,3 +2,6 @@ target/
 mudlibs/lp245/players/*.o
 mudlibs/lp245/source/log/COMPILER
 .DS_Store
+
+# Local engine logs and control state must never be published.
+.jvmud/

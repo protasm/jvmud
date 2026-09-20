@@ -1,11 +1,11 @@
 === Instance And Transport Internals
 
-`engine.JVMud` is the application entry point. It boots explicit peer mudlibs,
-starts their independent execution, and owns the Telnet and optional admin
-components. `MudlibBoot` reads each manifest and loads startup content.
-`MudlibRouter` provides a menu and resolves a connection's selection before
-any player is attached. It has no default world or world-hopping behavior.
-`TelnetServer` owns socket mechanics, not engine startup or world clocks.
+`engine.JVMud` starts engine endpoints independently of mudlibs and supervises
+one sandboxed worker JVM per mudlib. `MudlibWorker` boots through `MudlibBoot` and
+reports readiness over private pipes. The engine then publishes the mudlib's
+player/admin pair. `PlayerGateway` provides the engine menu and direct relays;
+worker-side `TelnetServer` handles only its own mudlib's protocol sessions.
+There is no return-to-menu operation after a player selects a mudlib.
 
 Each `MudInstance` owns a `MudlibExecution`: one thread serving its command queue
 and clock. Player input, protocol callbacks, administration, and scheduled work
@@ -22,12 +22,13 @@ player behavior. Follow an efun from its catalog through runtime context and
 instance services when debugging host effects. `compiler.runtime` is generated-code
 support; `engine.world` owns the engine's world model.
 
-`AdminClient` connects to the authenticated loopback `AdminServer`; each client
-gets an attached `AdminCommandSession` command session. `InstanceHost.administer` serializes
-commands on the explicitly selected mudlib's execution queue alongside
-player dispatch and ticks. Admin socket reads and response writes occur outside
-those locks. The client never boots a runtime.
-Storage adapters live under `persistence`. Concurrency hardening and alignment
-between LPC location bookkeeping and engine containment remain tracked in
-`docs/DEFERRED_WORK.md`; avoid implying that package boundaries alone prove
-production isolation.
+`console.AdminConsole` connects to an engine or mudlib administration endpoint.
+The engine owns TLS authentication and grants. Engine commands execute in
+`EngineAdminCommandSession`; mudlib commands cross private worker pipes and execute
+in `MudlibAdminCommandSession` on that instance's execution queue. No administrator
+credentials are sent to worker JVMs. Player listeners relay bytes to a selected
+worker, where Telnet negotiation, player login and game commands are handled.
+
+Storage adapters live under `persistence`; engine administrator identities are
+separate from mudlib player accounts. See `docs/ENGINE-ADMINISTRATION.md` for the
+OS sandbox boundary, supervision deadlines and platform limitations.

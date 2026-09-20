@@ -1,6 +1,10 @@
 # JVMud design walkthrough: topics to revisit
 
-Working list for future discussion:
+These original walkthrough notes predate the worker-process and administration
+redesign. The implemented ownership and lifecycle decisions are documented in
+[Engine and administration](docs/ENGINE-ADMINISTRATION.md).
+
+Original discussion list:
 
 - Initial startup object: TelnetServer?
 - Mudlib Router should be capable of offering a menu of mudlibs.

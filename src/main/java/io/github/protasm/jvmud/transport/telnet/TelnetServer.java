@@ -1,7 +1,11 @@
 package io.github.protasm.jvmud.transport.telnet;
 
-import io.github.protasm.jvmud.instance.MudlibRouter;
+import io.github.protasm.jvmud.instance.InstanceHost;
 import java.io.IOException;
+import java.io.DataInputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import io.github.protasm.jvmud.transport.admin.AdminWire;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -12,23 +16,25 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-/** Player listener owned by the engine; accepts connections to an already booted mudlib menu. */
+/** Private worker listener for one ready mudlib; public player admission belongs to the engine gateway. */
 public final class TelnetServer implements AutoCloseable {
     private final String bindAddress;
     private final int requestedPort;
-    private final MudlibRouter router;
+    private final InstanceHost mud;
     private final Set<Socket> connections = ConcurrentHashMap.newKeySet();
     private final ExecutorService sessions = Executors.newVirtualThreadPerTaskExecutor();
     private ServerSocket serverSocket;
     private Thread acceptThread;
     private volatile boolean running;
     private boolean closed;
+    private final String workerSecret;
 
-    /** Creates a transport component without booting, ticking, or owning any mudlib. */
-    public TelnetServer(String bindAddress, int port, MudlibRouter router) {
-        this.bindAddress = Objects.requireNonNull(bindAddress, "bindAddress");
-        requestedPort = port;
-        this.router = Objects.requireNonNull(router, "router");
+    /** Creates a loopback worker listener authenticated by the engine's private relay secret. */
+    public TelnetServer(InstanceHost mud, String workerSecret) {
+        this.bindAddress = "127.0.0.1";
+        requestedPort = 0;
+        this.mud = Objects.requireNonNull(mud, "mud");
+        this.workerSecret = Objects.requireNonNull(workerSecret, "workerSecret");
     }
 
     /** Binds the listener and starts accepting player connections. */
@@ -91,7 +97,17 @@ public final class TelnetServer implements AutoCloseable {
                 }
                 try {
                     sessions.execute(() -> {
-                        try { new TelnetSession(socket, router).run(); }
+                        try {
+                            socket.setSoTimeout(5000);
+                            var input = new DataInputStream(socket.getInputStream());
+                            String secret = AdminWire.read(input, 256);
+                            if (!MessageDigest.isEqual(secret.getBytes(StandardCharsets.UTF_8), workerSecret.getBytes(StandardCharsets.UTF_8))) {
+                                closeSocket(socket); return;
+                            }
+                            String address = AdminWire.read(input, 256);
+                            socket.setSoTimeout(0);
+                            new TelnetSession(socket, mud, address).run();
+                        } catch (IOException e) { closeSocket(socket); }
                         finally { connections.remove(socket); }
                     });
                 } catch (java.util.concurrent.RejectedExecutionException e) {

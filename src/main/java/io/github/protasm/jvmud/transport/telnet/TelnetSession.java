@@ -1,8 +1,6 @@
 package io.github.protasm.jvmud.transport.telnet;
 
 import io.github.protasm.jvmud.instance.InstanceHost;
-import io.github.protasm.jvmud.instance.MudInstance;
-import io.github.protasm.jvmud.instance.MudlibRouter;
 import io.github.protasm.jvmud.instance.InstancePersona;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -29,12 +27,13 @@ final class TelnetSession implements Runnable {
     private static final int GMCP = 201;
 
     private final Socket socket;
-    private final MudlibRouter router;
-    private InstanceHost mud;
+    private final InstanceHost mud;
+    private final String clientAddress;
 
-    TelnetSession(Socket socket, MudlibRouter router) {
-        this.socket = socket;
-        this.router = Objects.requireNonNull(router, "router");
+    TelnetSession(Socket socket, InstanceHost mud, String clientAddress) {
+        this.socket = Objects.requireNonNull(socket, "socket");
+        this.mud = Objects.requireNonNull(mud, "mud");
+        this.clientAddress = clientAddress;
     }
 
     @Override
@@ -49,7 +48,7 @@ final class TelnetSession implements Runnable {
             session = new SessionState();
             writeTelnetCommand(rawOut, out, WILL, GMCP);
             session.gmcpOffered = true;
-            printMenu(out);
+            attachPlayer(session, rawOut, out);
 
             StringBuilder line = new StringBuilder();
             int value;
@@ -87,10 +86,6 @@ final class TelnetSession implements Runnable {
             throws IOException {
         String commandLine = line.toString();
         line.setLength(0);
-        if (session.persona == null) {
-            selectMudlib(session, rawOut, out, commandLine.trim());
-            return;
-        }
         // A Telnet client does not echo the Return key while server-side echo suppression is
         // active. Supply the terminal line ending before the mudlib writes its next hidden-input
         // prompt so that it begins in column one on every client.
@@ -115,33 +110,10 @@ final class TelnetSession implements Runnable {
         updateEchoMode(session, rawOut, out);
     }
 
-    /** Lists peer mudlibs before any mudlib login or persona lifecycle runs. */
-    private void printMenu(PrintWriter out) {
-        out.println("JVMud mudlibs:");
-        for (int i = 0; i < router.mudlibs().size(); i++) {
-            MudInstance entry = router.mudlibs().get(i);
-            out.println("  " + (i + 1) + ". " + entry.gameName() + " [" + entry.gameId() + "]");
-        }
-        out.print("Select a mudlib by number or game id (or quit): ");
-        out.flush();
-    }
-
-    /** Attaches directly to the chosen instance and restores protocols negotiated at the menu. */
-    private void selectMudlib(SessionState session, OutputStream rawOut, PrintWriter out, String selection)
-            throws IOException {
-        if (selection.equalsIgnoreCase("quit")) {
-            session.running = false;
-            return;
-        }
-        MudInstance selected = router.select(selection).orElse(null);
-        if (selected == null) {
-            out.println("Please choose an available mudlib.");
-            printMenu(out);
-            return;
-        }
-        mud = selected;
+    /** Begins this mudlib's login flow; engine selection has already completed upstream. */
+    private void attachPlayer(SessionState session, OutputStream rawOut, PrintWriter out) throws IOException {
         try {
-            session.persona = mud.attachPersona(out, socket.getInetAddress().getHostAddress());
+            session.persona = mud.attachPersona(out, clientAddress);
             mud.bindClientProtocolSink(session.persona, (protocol, message) -> {
                 if (!"GMCP".equalsIgnoreCase(protocol)) return;
                 try { writeGmcp(rawOut, out, message); }

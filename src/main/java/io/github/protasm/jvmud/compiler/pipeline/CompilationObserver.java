@@ -1,6 +1,6 @@
 package io.github.protasm.jvmud.compiler.pipeline;
 
-/** Receives coarse-grained compiler progress events for tools such as the admin CLI. */
+/** Receives coarse-grained compiler progress events for tools such as the administration console. */
 public interface CompilationObserver {
     CompilationObserver NONE = new CompilationObserver() {};
 

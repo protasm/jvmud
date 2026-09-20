@@ -18,7 +18,7 @@ Replace `<mudlib-config-file>` with the absolute path to your manifest, or a pat
 relative to the repository root. Do not type the angle brackets. The script
 compiles Java, resolves the dependency classpath, and runs the Telnet server in
 the foreground. Wait for the preload summary followed by
-`JVMud engine listening on 127.0.0.1:4000` before connecting.
+the engine endpoint report and the mudlib's `state=RUNNING` status before connecting.
 
 The launcher defaults to loopback port 4000. Use `--bind 0.0.0.0 --port 4000`
 to accept incoming connections on all IPv4 interfaces, or choose a specific
@@ -38,24 +38,23 @@ This still runs in the foreground. Inspect the log from another terminal and
 stop with Ctrl+C. Trace output can be large; begin with the preload summary and
 first failure. To see launch syntax, use `scripts/jvmud-start --help`.
 
-Ctrl+C runs the server's shutdown path. Persistence is profile-specific; shutting
-down does not promise a snapshot of every loaded object's state. Add `--admin-port 4100` to enable the authenticated local admin listener, then
-connect with `scripts/jvmud-cli --port 4100`. The CLI controls this live primary
-world; its port is separate from the player port.
+Ctrl+C stops the engine and its worker JVMs. Persistence remains mudlib-specific;
+shutdown does not promise a snapshot of every loaded object. Engine administration
+is always available on its separate TLS port (default 4001) and local Unix socket.
+Use the administration console workflow described in the next section.
 
 ==== Offer several mudlibs
-
-Pass each manifest or mudlib name as a separate argument:
 
 [source,sh]
 ----
 scripts/jvmud-start smallmercies lp245
 ----
 
-The engine presents a selection menu before login, including for a single
-mudlib. Enter the menu number or game id. Mudlibs are peers; reconnect to choose
-another. Each instance has its own clock, configured by `temporal_tick_interval`,
-and serializes input and scheduled work on its own execution thread.
+The engine player port presents a selection menu, including for a single mudlib.
+Each mudlib receives a direct player port and a separate TLS admin port, shown in
+engine status. Each worker owns its execution queue and configurable clock.
+Quitting a mudlib closes the connection; reconnect to select another.
 
-When enabling administration for several mudlibs, use `--admin-game <game-id>`
-to choose the mudlib served by that admin endpoint.
+Starting with no manifests is valid. Use engine administration to start mudlibs
+later and to request explicit player/admin port pairs. A failed mudlib startup
+leaves engine administration and other mudlibs available.

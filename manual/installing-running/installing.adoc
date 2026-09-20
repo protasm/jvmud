@@ -16,7 +16,7 @@ scripts/jvmud-start smallmercies
 
 Keep the installation in `current` across releases. These commands stop if that directory already exists; use the updater below for an existing installation.
 
-Wait for `JVMud mudlib listening on`, then connect a Telnet-capable MUD client to `127.0.0.1:4000` with SSL/TLS disabled. Choose a guest name, gender, and class. Try `help`, `look`, and `north`. Stop the server with Ctrl+C.
+Wait for the mudlib's `state=RUNNING` status, then connect a Telnet-capable MUD client to `127.0.0.1:4000` with SSL/TLS disabled. Choose a guest name, gender, and class. Try `help`, `look`, and `north`. Stop the server with Ctrl+C.
 
 ==== Update an installation
 

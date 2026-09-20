@@ -43,7 +43,7 @@ If a ZIP extractor removed executable permissions, run `chmod +x scripts/jvmud-*
 scripts/jvmud-start smallmercies
 ```
 
-Wait for `JVMud engine listening on`, then connect a Telnet-capable MUD client to
+Wait for the engine endpoint report and the mudlib's `state=RUNNING` status, then connect a Telnet-capable MUD client to
 `127.0.0.1`, port `4000`, with SSL/TLS disabled. Choose a guest name (2–16 letters),
 `male` or `female`, and `warrior` or `mage`. Try `help`, `look`, `score`, and `north`.
 Type `quit` to disconnect. Guests last for one connection. Stop the server with
@@ -54,26 +54,35 @@ other computers, use `--bind 0.0.0.0 --port 4000` before the manifest path and
 configure the server's firewall/router. Clients use the server's actual address.
 Telnet traffic is unencrypted.
 
-## Administer a running world
+## Administration consoles
+
+Start the engine with or without initial mudlibs. Its player/admin ports default
+to localhost:4000/4001. Bootstrap using the same OS account:
 
 ```sh
-scripts/jvmud-start --admin-port 4100 mudlibs/smallmercies/jvmud/smallmercies.config
-# In a second terminal, as the same OS user:
-scripts/jvmud-cli --port 4100
+scripts/jvmud-console --socket ~/.jvmud/engine-4000/engine.sock
 ```
 
-Try `help`, `objects`, `inspect room/square`, and `quit`. The admin listener is
-local-only. Its private credential is created at `~/.jvmud/admin/4100.token` and
-removed on normal shutdown. Use `--admin-token-file` on the server and
-`--token-file` on the CLI for another location. After an abnormal exit, confirm
-the server is stopped before removing a stale token file.
+Use `help`, `admin-create <name>`, `grant <name> engine`, and
+`start <manifest> [player-port admin-port]`. Named administrator tokens and grants
+are engine-owned, independent of mudlib player accounts. Remote consoles use TLS
+and an explicitly trusted certificate fingerprint:
+
+```sh
+scripts/jvmud-console --host server.example --port 4001 --user operator --fingerprint <SHA-256>
+```
+
+Use a mudlib's admin port for its live object commands. Each mudlib runs in its
+own sandboxed worker JVM. Linux requires `/usr/bin/bwrap` and user namespaces;
+macOS requires `sandbox-exec`. Unsupported sandbox startup fails closed. Player
+quits close the connection; reconnect for the engine menu.
 
 ## Run LP245
 
 Stop Small Mercies first, or choose another port:
 
 ```sh
-scripts/jvmud-start --port 4001 lp245
+scripts/jvmud-start --port 4010 --admin-port 4011 lp245
 ```
 
 Connect to `127.0.0.1:4001` and follow LP245's character creation prompts.
@@ -96,7 +105,7 @@ Runtime-free packages use `JVMUD_JAVA_HOME`, then `JAVA_HOME`, then `java` on `P
 
 ```sh
 scripts/jvmud-start --help
-scripts/jvmud-cli --help
+scripts/jvmud-console --help
 scripts/jvmud-format --help
 ```
 
