@@ -534,6 +534,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <a href="../faq.html">FAQ</a>
 <a href="../downloads.html">Downloads</a>
 <a href="../documentation.html">Documentation</a>
+<a href="../glossary.html">Glossary</a>
 <a href="index.html" aria-current="page">User Manual</a>
 <a href="../api/index.html">Java API</a>
 <a href="jvmud-user-manual.pdf">PDF</a>
@@ -4182,175 +4183,1300 @@ the credential-free examples in this manual before taking on that environment.</
 </div>
 <div class="sect2">
 <h3 id="_glossary"><a class="anchor" href="#_glossary"></a><a class="link" href="#_glossary">Glossary</a></h3>
+<div class="paragraph">
+<p>This glossary covers MUD traditions, LPC programming, and JVMud&#8217;s native vocabulary.
+Historical usage varies between communities and drivers; aliases are grouped together.
+It is a broad reference, not a claim that every local slang term or every legacy API is implemented.
+Use your browser&#8217;s Find command to locate any spelling, or browse the alphabetical sections.</p>
+</div>
 <div class="sect3">
-<h4 id="_core_concepts"><a class="anchor" href="#_core_concepts"></a><a class="link" href="#_core_concepts">Core Concepts</a></h4>
-<div class="dlist">
+<h4 id="_from_legacy_vocabulary_to_jvmud"><a class="anchor" href="#_from_legacy_vocabulary_to_jvmud"></a><a class="link" href="#_from_legacy_vocabulary_to_jvmud">From legacy vocabulary to JVMud</a></h4>
+<div class="paragraph">
+<p>These are conceptual correspondences, not promises of identical behavior or mechanical renames.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Historical term</th>
+<th class="tableblock halign-left valign-top">JVMud distinction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Driver</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Application hosting, language runtime, communication, and storage have separate responsibilities.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Room / exit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Place / Link describe world structure.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Object</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LPC object describes code and state; Entity and Place describe the World.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Player / player object</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Player, Session, Persona, and account are distinct roles and lifetimes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Apply</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An explicit lifecycle event maps to a configured mudlib method.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Simul-efun</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An mfun is supplied by the configured mudlib-global provider.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Master object</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Explicit boundary configuration and mudlib callbacks supply policy.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Heartbeat / call_out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scheduled ticks / delayed callbacks express timed work.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Living / interactive</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Actor capabilities, Persona control, and Session state distinguish different meanings.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_a"><a class="anchor" href="#_a"></a><a class="link" href="#_a">A</a></h4>
+<div id="glossary-abermud" class="dlist">
+<dl>
+<dt class="hdlist1">AberMUD</dt>
+<dd>
+<p>An early, influential MUD family associated with the University of Wales at Aberystwyth. It is a separate historical lineage, not a generic name for LP mudlibs.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-account" class="dlist">
+<dl>
+<dt class="hdlist1">Account</dt>
+<dd>
+<p>A mudlib-defined durable login identity or profile. It may own several characters. In JVMud an account is distinct from a live Player or Session; administrator identities are also separate from game accounts.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-action" class="dlist">
+<dl>
+<dt class="hdlist1">Action; add_action</dt>
+<dd>
+<p>In classic LP command systems, a function registered to handle a verb in a command giver&#8217;s vicinity. <code>add_action</code> is the familiar registration name. JVMud leaves player-command interpretation and success/failure policy to the mudlib.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-actor" class="dlist">
+<dl>
+<dt class="hdlist1">Actor</dt>
+<dd>
+<p>An Entity capable of initiating change. An NPC or scripted effect can be an Actor without being a player&#8217;s Persona.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-administrator" class="dlist">
+<dl>
+<dt class="hdlist1">Administrator; admin</dt>
+<dd>
+<p>A person authorized to operate a server or game. JVMud&#8217;s engine administrator tokens and grants govern operational access; in-game wizard ranks are mudlib policy.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-aggro" class="dlist">
+<dl>
+<dt class="hdlist1">Aggro; aggressive</dt>
+<dd>
+<p>Automatic hostility or the attention of an opponent. A mudlib may model aggression, threat, and combat targets separately; none is inherent in the engine&#8217;s Actor capability.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-alias" class="dlist">
+<dl>
+<dt class="hdlist1">Alias</dt>
+<dd>
+<p>An alternate name or command expansion. A client alias expands typed input; a JVMud profile&#8217;s engine-function alias maps a legacy function spelling to an engine operation. These are different mechanisms.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-apply" class="dlist">
+<dl>
+<dt class="hdlist1">Apply; applied function</dt>
+<dd>
+<p>A method the driver invokes in LPC, rather than a built-in function LPC calls in the driver. Applies can handle object, connection, and policy events. JVMud uses explicitly configured lifecycle hooks for these callbacks; legacy method names are profile choices. See <a href="https://www.fluffos.info/apply/">FluffOS applies</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-area" class="dlist">
+<dl>
+<dt class="hdlist1">Area; zone; domain; realm</dt>
+<dd>
+<p>A grouping of rooms, content, or building responsibility. Meanings vary: a zone may be a reset unit, a domain a wizard team&#8217;s territory, and a realm a setting or administrative region. These are mudlib structures, not synonyms for a JVMud instance.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-array" class="dlist">
+<dl>
+<dt class="hdlist1">Array</dt>
+<dd>
+<p>An ordered LPC collection, commonly written <code>({ &#8230;&#8203; })</code>. Element types, indexing, and reference semantics depend on the dialect.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-attribute" class="dlist">
+<dl>
+<dt class="hdlist1">Attribute; property</dt>
+<dd>
+<p>Named data attached to a game object. In MUSH/MOO families these terms often refer to database-stored fields; LP mudlibs may instead expose property mappings and query/set methods.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-avatar" class="dlist">
+<dl>
+<dt class="hdlist1">Avatar; character; PC</dt>
+<dd>
+<p>An in-world identity controlled by a player; PC means player character. JVMud calls the Entity serving as a player&#8217;s current perspective a Persona. A character&#8217;s saved identity may outlive that role or a connection.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_b"><a class="anchor" href="#_b"></a><a class="link" href="#_b">B</a></h4>
+<div id="glossary-blueprint" class="dlist">
+<dl>
+<dt class="hdlist1">Blueprint; prototype; master copy</dt>
+<dd>
+<p>The shared loaded object associated with an LPC source path, from which clones are commonly created. This use of “master” does not mean the master policy object. JVMud documentation also uses shared object. See <a href="https://www.ldmud.eu/lpc-objects.html">LDMud objects</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-boot" class="dlist">
+<dl>
+<dt class="hdlist1">Boot; reboot</dt>
+<dd>
+<p>Starting a runtime, or stopping and starting it again. In JVMud application startup and mudlib startup are separate: the engine can run with zero mudlibs, and each loaded mudlib has its own worker JVM.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-builder" class="dlist">
+<dl>
+<dt class="hdlist1">Builder; creator; coder</dt>
+<dd>
+<p>A contributor who authors world content or behavior. Some games distinguish room builders from LPC programmers; others use creator or wizard for both. These are community roles, not Java access levels.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_c"><a class="anchor" href="#_c"></a><a class="link" href="#_c">C</a></h4>
+<div id="glossary-call-other" class="dlist">
+<dl>
+<dt class="hdlist1">Call other; call_other</dt>
+<dd>
+<p>Calling a named method on an LPC object; commonly written <code>object&#8594;method(&#8230;&#8203;)</code>. It differs from invoking an efun. See <a href="https://www.fluffos.info/efun/calls/">FluffOS function calls</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-call-out" class="dlist">
+<dl>
+<dt class="hdlist1">Call out; call_out</dt>
+<dd>
+<p>A scheduled callback that runs later, after the initiating call returns. It is usually one-shot, though a callback can schedule another. JVMud expresses delayed work through scheduling; a legacy spelling belongs to the compatibility surface.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-capability" class="dlist">
+<dl>
+<dt class="hdlist1">Capability</dt>
+<dd>
+<p>An ability or authorization. World capabilities describe what an Entity can do, such as act or perceive. JVMud <code>engine_capabilities</code> grants authorize selected host operations; they are distinct from <code>language_features</code> syntax settings.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-catch-tell" class="dlist">
+<dl>
+<dt class="hdlist1">Catch tell; catch_tell</dt>
+<dd>
+<p>A traditional LPC method receiving delivered text, often used by NPCs to react. JVMud can adapt this behavior through perception hooks and compatibility code; world event delivery need not be reduced to parsing prose.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-channel" class="dlist">
+<dl>
+<dt class="hdlist1">Channel; tell; say; shout</dt>
+<dd>
+<p>Common communication scopes: a named group, a specific recipient, nearby participants, or a broader audience. Range, privacy, and permissions are mudlib rules. These words may name commands as well as LPC helpers.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-client" class="dlist">
+<dl>
+<dt class="hdlist1">Client</dt>
+<dd>
+<p>The program used to connect to a MUD. Clients may provide scrollback, aliases, triggers, maps, and protocol support; the server hosts the shared game.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-clone" class="dlist">
+<dl>
+<dt class="hdlist1">Clone</dt>
+<dd>
+<p>A distinct runtime object created from an LPC program, with its own instance state. Cloning does not imply copying every current value from an existing object. A clone number identifies an instance, not a character account.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-closure" class="dlist">
+<dl>
+<dt class="hdlist1">Closure; function pointer</dt>
+<dd>
+<p>A value representing callable behavior, sometimes with bound context or arguments. LPC dialects differ in syntax and supported forms; the presence of a glossary term does not imply JVMud implements every dialect&#8217;s version.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-codebase" class="dlist">
+<dl>
+<dt class="hdlist1">Codebase</dt>
+<dd>
+<p>The source of a server, game, or software family. A codebase is not necessarily a mudlib: Diku-style server code and an LP driver-plus-mudlib split organize responsibilities differently.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-command" class="dlist">
+<dl>
+<dt class="hdlist1">Command; verb; parser</dt>
+<dd>
+<p>A command is player input requesting an action; its verb commonly selects behavior. A parser interprets input and arguments. JVMud transport delivers input, while the mudlib decides what it means. An LPC compiler parser instead parses program source.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-command-dispatch" class="dlist">
+<dl>
+<dt class="hdlist1">Command dispatch</dt>
+<dd>
+<p>Routing input to mudlib command behavior in its current context. JVMud serializes execution inside the instance; transport does not interpret LPC return values as command success or failure.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-command-giver" class="dlist">
+<dl>
+<dt class="hdlist1">Command giver; this_player</dt>
+<dd>
+<p>The LPC object on whose behalf a command is executing. It can be an NPC and is not necessarily an interactive user. <code>this_player()</code> is legacy execution-context vocabulary, not the definition of a JVMud Player.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-compatibility-profile" class="dlist">
+<dl>
+<dt class="hdlist1">Compatibility profile</dt>
+<dd>
+<p>Configuration describing one mudlib&#8217;s language options, aliases, lifecycle mappings, capabilities, and supporting objects. Compatibility is explicit and scoped to that profile, not a promise that every LP dialect works unchanged.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-compatibility-shim" class="dlist">
+<dl>
+<dt class="hdlist1">Compatibility shim</dt>
+<dd>
+<p>A dedicated mudlib-side adapter translating legacy names or behavior into JVMud operations. It preserves the distinction between historical conventions and native engine concepts.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-compiler" class="dlist">
+<dl>
+<dt class="hdlist1">Compiler; interpreter; bytecode</dt>
+<dd>
+<p>A compiler translates source into executable form; an interpreter executes a representation of a program; bytecode is instruction data for a virtual machine. JVMud compiles LPC into JVM bytecode. “Interpreted LPC” does not necessarily mean source is reread on each call.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-containment" class="dlist">
+<dl>
+<dt class="hdlist1">Containment</dt>
+<dd>
+<p>An Entity&#8217;s immediate Location in another Entity: a coin in a bag, for example. JVMud&#8217;s single-containment rule gives each Entity exactly one immediate Location, either a Place or another Entity.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-create" class="dlist">
+<dl>
+<dt class="hdlist1">Create; create()</dt>
+<dd>
+<p>An initialization callback in many LPC dialects. Others use <code>reset</code> or configured hooks. Its name, arguments, and invocation rules are not universal; JVMud declares lifecycle method mappings explicitly.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_d"><a class="anchor" href="#_d"></a><a class="link" href="#_d">D</a></h4>
+<div id="glossary-daemon" class="dlist">
+<dl>
+<dt class="hdlist1">Daemon; service object</dt>
+<dd>
+<p>An LPC object providing shared services such as weather, channels, or banking, often loaded once. An LP daemon need not be an operating-system process or thread. JVMud worker processes are a different concept.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-dbref" class="dlist">
+<dl>
+<dt class="hdlist1">Dbref; database reference</dt>
+<dd>
+<p>A database object identifier, often written <code>#123</code>, in Tiny-family systems. It is not an LPC source path or an LPC clone suffix. See <a href="https://fuzzball-muck.github.io/muckman/terms.html">the MUCK manual</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-destruct" class="dlist">
+<dl>
+<dt class="hdlist1">Destruct; destruction</dt>
+<dd>
+<p>Removing a live LPC object. Destruction, deleting its source file, and deleting saved state are separate operations. Hooks and reference cleanup vary by runtime.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-dialect" class="dlist">
+<dl>
+<dt class="hdlist1">Dialect; flavor</dt>
+<dd>
+<p>A particular LPC language or driver/mudlib convention set. Differences can include types, efuns, initialization, security, and command handling. JVMud targets LPC/LPMud while adapting specific conventions through explicit profiles.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-dikumud" class="dlist">
+<dl>
+<dt class="hdlist1">DikuMUD; Diku</dt>
+<dd>
+<p>A MUD codebase and family associated with combat, progression, and data-defined areas. Diku is a lineage name, not a synonym for all combat MUDs or an LPC dialect. See <a href="https://dikumud.com/history/">DikuMUD history</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-disconnect" class="dlist">
+<dl>
+<dt class="hdlist1">Disconnect; quit; reconnect</dt>
+<dd>
+<p>Ending a connection, requesting departure, and connecting again. Character cleanup and recovery are mudlib policy. Quitting a JVMud mudlib closes the connection; it does not return the player to the engine menu.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-driver" class="dlist">
+<dl>
+<dt class="hdlist1">Driver; gamedriver</dt>
+<dd>
+<p>The traditional LP runtime hosting LPC programs and supplying compilation, execution, networking, and built-ins. JVMud separates these responsibilities among language, execution, communication, and storage packages; “engine” is not just a replacement name for every driver responsibility.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_e"><a class="anchor" href="#_e"></a><a class="link" href="#_e">E</a></h4>
+<div id="glossary-efun" class="dlist">
+<dl>
+<dt class="hdlist1">Efun; external function</dt>
+<dd>
+<p>A runtime-provided function callable from LPC. Historically supplied by the driver; in JVMud it exposes a host operation. Compare lfun (object-authored method), simul-efun (mudlib-global helper), and apply (runtime-to-LPC callback). See <a href="https://www.ldmud.eu/lpc-efuns.html">LDMud efuns</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-emulator" class="dlist">
+<dl>
+<dt class="hdlist1">Emulator; compatibility</dt>
+<dd>
+<p>Software or behavior reproducing another system&#8217;s interface. JVMud&#8217;s targeted LP compatibility does not mean complete emulation of a particular legacy driver&#8217;s internals.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-engine" class="dlist">
+<dl>
+<dt class="hdlist1">Engine</dt>
+<dd>
+<p>JVMud&#8217;s application and hosting machinery. <code>JVMud</code> owns application lifetime, endpoints, and worker supervision. Each mudlib executes in a separate worker, and its World is distinct from the hosting application.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-entity" class="dlist">
+<dl>
+<dt class="hdlist1">Entity</dt>
+<dd>
+<p>A thing in JVMud&#8217;s World: a Persona, coin, bag, vehicle, NPC, or effect. It is a world-model concept, not a synonym for every LPC object; service objects need not represent in-world things.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-environment" class="dlist">
+<dl>
+<dt class="hdlist1">Environment</dt>
+<dd>
+<p>In LP vocabulary, the immediate containing object, often queried with <code>environment()</code>. It can be a room or a carried container. JVMud models this relationship as Location and Containment; “environment” here is not the operating system&#8217;s environment variables.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-eval-cost" class="dlist">
+<dl>
+<dt class="hdlist1">Eval cost; evaluation limit</dt>
+<dd>
+<p>A runtime accounting or limit on work performed by LPC execution. Units and enforcement differ among drivers. A historical eval-cost efun is not automatically available in JVMud.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-exec" class="dlist">
+<dl>
+<dt class="hdlist1">Exec; exec()</dt>
+<dd>
+<p>In traditional LP APIs, transferring an interactive connection between LPC objects, often from a login object to a body. It does not mean launching an operating-system executable. JVMud describes the compatibility operation as session rebinding.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-exit" class="dlist">
+<dl>
+<dt class="hdlist1">Exit</dt>
+<dd>
+<p>A route out of a room, often named by a direction or command. JVMud&#8217;s corresponding world-model concept is a Link between Places; doors and travel restrictions remain authored game policy.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-exploration" class="dlist">
+<dl>
+<dt class="hdlist1">Exploration; hack-and-slash; social MUD</dt>
+<dd>
+<p>Labels for discovery-oriented, combat-oriented, or social play. A game can combine them; these describe emphasis, not mutually exclusive server technologies.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_g"><a class="anchor" href="#_g"></a><a class="link" href="#_g">G</a></h4>
+<div id="glossary-game" class="dlist">
 <dl>
 <dt class="hdlist1">Game</dt>
 <dd>
-<p>The playable system JVMud hosts: rules, mechanics, goals, challenges, progression, or other game-like structures.</p>
+<p>The playable system with rules, mechanics, goals, challenges, progression, or other game-like structures. One of JVMud&#8217;s eight defining MUD concepts.</p>
 </dd>
-<dt class="hdlist1">Text</dt>
+</dl>
+</div>
+<div id="glossary-gmcp" class="dlist">
+<dl>
+<dt class="hdlist1">GMCP</dt>
 <dd>
-<p>The primary medium through which the world is perceived and manipulated.</p>
+<p>Generic Mud Communication Protocol: structured messages sent alongside ordinary text using Telnet subnegotiation. JVMud has GMCP codec and message support; a mudlib still determines the meaning of its game-specific messages. See <a href="https://www.gammon.com.au/gmcp">GMCP protocol notes</a>.</p>
 </dd>
+</dl>
+</div>
+<div id="glossary-guild" class="dlist">
+<dl>
+<dt class="hdlist1">Guild; class; race</dt>
+<dd>
+<p>Common mudlib classifications for membership, abilities, or fictional identity. Their rules are game-specific and do not form fixed JVMud engine types.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_h"><a class="anchor" href="#_h"></a><a class="link" href="#_h">H</a></h4>
+<div id="glossary-hardcode" class="dlist">
+<dl>
+<dt class="hdlist1">Hardcode; softcode</dt>
+<dd>
+<p>Relative terms for server implementation versus behavior authored through the server&#8217;s programming facilities. In an LP setting, driver implementation is often called hardcode and LPC mudlib code softcode; neither term means the latter is less substantial software.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-heartbeat" class="dlist">
+<dl>
+<dt class="hdlist1">Heartbeat; heart_beat</dt>
+<dd>
+<p>A recurring callback traditionally used for combat or other periodic object behavior. JVMud uses scheduled time and configured tick methods; <code>heart_beat</code> is a compatibility name, not a universal engine-required method.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-hot-reload" class="dlist">
+<dl>
+<dt class="hdlist1">Hot reload; live reload; update</dt>
+<dd>
+<p>Replacing or reloading authored behavior while the game continues. Reloading a program does not inherently migrate every existing object&#8217;s state. An in-game <code>update</code> command, mudlib reload, and JVMud installation update are different operations.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-hp" class="dlist">
+<dl>
+<dt class="hdlist1">HP; mana; stamina; movement points</dt>
+<dd>
+<p>Hit/health points and other common resource pools for survival, magic, exertion, or travel. Meanings and abbreviations vary by game; JVMud does not prescribe these attributes.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_i"><a class="anchor" href="#_i"></a><a class="link" href="#_i">I</a></h4>
+<div id="glossary-ic" class="dlist">
+<dl>
+<dt class="hdlist1">IC; OOC; roleplay; RP</dt>
+<dd>
+<p>In character, out of character, and acting a fictional role. These distinguish a character&#8217;s knowledge and speech from the player&#8217;s. A server lineage does not by itself require or forbid roleplay.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-immortal" class="dlist">
+<dl>
+<dt class="hdlist1">Immortal; wizard; wiz; god; implementor; archwizard</dt>
+<dd>
+<p>Historical staff or privileged-character titles, with different rank systems in different MUDs. Wizard can also mean an ordinary fictional profession. JVMud&#8217;s operational administrator grants are separate from these mudlib-defined ranks.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-include" class="dlist">
+<dl>
+<dt class="hdlist1">Include; header; preprocessor</dt>
+<dd>
+<p>Source reuse and transformation before LPC parsing. An included header contributes source text, while inheritance reuses a program&#8217;s definitions. A file suffix such as <code>.h</code> is a convention, not a world-model role.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-inheritance" class="dlist">
+<dl>
+<dt class="hdlist1">Inheritance; inherit</dt>
+<dd>
+<p>Reusing an LPC program&#8217;s definitions in another program. Inheritance shares behavior structure; it is not object containment, and inheriting a room program does not itself place an object in a room.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-init" class="dlist">
+<dl>
+<dt class="hdlist1">Init; init()</dt>
+<dd>
+<p>A traditional method used when establishing local command interactions, often registering actions. Exact invocation policy varies by driver and mudlib. JVMud profiles can map <code>INTERACTION_SCOPE_STARTED</code> to <code>init</code>; it is not a general-purpose Java constructor.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-input-capture" class="dlist">
+<dl>
+<dt class="hdlist1">Input capture; input_to</dt>
+<dd>
+<p>Routing subsequent input to a designated callback, commonly for login prompts or editors, rather than the normal command parser. The legacy <code>input_to</code> spelling and detailed behavior depend on the compatibility profile.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-instance" class="dlist">
+<dl>
+<dt class="hdlist1">Instance; MudInstance</dt>
+<dd>
+<p>In JVMud, one running mudlib assembled and executed within a worker JVM, with its own serialized execution queue and clock. In general game language, “instance” can instead mean a private copy of an area; that is a different use.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-interaction-scope" class="dlist">
+<dl>
+<dt class="hdlist1">Interaction scope</dt>
+<dd>
+<p>The Persona and local context that can contribute commands or perception: its Location, carried Entities, and nearby Entities. It describes locality, not access to every object in the mudlib.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-interactive" class="dlist">
+<dl>
 <dt class="hdlist1">Interactive</dt>
 <dd>
-<p>The property that players can affect the world and the world can affect players.</p>
+<p>As a MUD property, players and the World can affect one another. As a legacy LPC predicate, “interactive” means an object is associated with a live connection. JVMud represents connection state with a Session; these two meanings should not be conflated.</p>
 </dd>
-<dt class="hdlist1">Multiplayer</dt>
+</dl>
+</div>
+<div id="glossary-inventory" class="dlist">
+<dl>
+<dt class="hdlist1">Inventory</dt>
 <dd>
-<p>The property that multiple players inhabit the same world at the same time.</p>
-</dd>
-<dt class="hdlist1">World</dt>
-<dd>
-<p>The complete shared virtual domain of the game, composed of places, links, entities, locations, containment, and movement.</p>
-</dd>
-<dt class="hdlist1">Persistence</dt>
-<dd>
-<p>The property that the world and its state endure independently of any individual session.</p>
-</dd>
-<dt class="hdlist1">Temporality</dt>
-<dd>
-<p>The property that the world can change through time.</p>
-</dd>
-<dt class="hdlist1">Presence</dt>
-<dd>
-<p>The requirement that a player experiences the game from within the world through a located persona.</p>
+<p>The immediate contents of an object, not just equipment a character can use. A deep inventory includes recursively contained objects. JVMud describes this through Containment rather than treating every container as an LPC-specific engine type.</p>
 </dd>
 </dl>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_world_model"><a class="anchor" href="#_world_model"></a><a class="link" href="#_world_model">World Model</a></h4>
-<div class="dlist">
+<h4 id="_j"><a class="anchor" href="#_j"></a><a class="link" href="#_j">J</a></h4>
+<div id="glossary-jvm" class="dlist">
 <dl>
-<dt class="hdlist1">Place</dt>
+<dt class="hdlist1">JVM</dt>
 <dd>
-<p>A discrete location in game space where entities may exist, be perceived, or interact.</p>
+<p>Java Virtual Machine, the runtime executing JVMud and compiled LPC bytecode. Each mudlib worker runs in a separate JVM; the language of authored mudlibs remains LPC.</p>
 </dd>
+</dl>
+</div>
+<div id="glossary-jvmud" class="dlist">
+<dl>
+<dt class="hdlist1">JVMud</dt>
+<dd>
+<p>The project&#8217;s LPC compiler and LPMud hosting application, including world-model, transport, storage, and administrative facilities. Its native terminology keeps runtime services, world concepts, and legacy mudlib conventions distinct.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_l"><a class="anchor" href="#_l"></a><a class="link" href="#_l">L</a></h4>
+<div id="glossary-lag" class="dlist">
+<dl>
+<dt class="hdlist1">Lag; idle; AFK</dt>
+<dd>
+<p>Delayed response, lack of recent input, and away from keyboard. A connected Session can be idle without its Persona being absent; lag may arise in the client, network, or server.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-lfun" class="dlist">
+<dl>
+<dt class="hdlist1">Lfun; local function</dt>
+<dd>
+<p>A function defined by an LPC object/program, including inherited behavior. “Local” distinguishes it from a driver-supplied efun; it does not necessarily mean private or inaccessible through an object call.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-lifecycle-hook" class="dlist">
+<dl>
+<dt class="hdlist1">Lifecycle hook</dt>
+<dd>
+<p>An explicitly configured call from JVMud into mudlib code at an event boundary. The event belongs to the engine contract; the mapped method name belongs to the mudlib. Some named events are reserved rather than invoked; consult the lifecycle reference for status.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-link" class="dlist">
+<dl>
 <dt class="hdlist1">Link</dt>
 <dd>
-<p>A traversable relationship between places. Links make the world navigable.</p>
+<p>A traversable relationship between JVMud Places. It is the world-model counterpart of a conventional room exit, not a network connection or website hyperlink.</p>
 </dd>
-<dt class="hdlist1">Entity</dt>
+</dl>
+</div>
+<div id="glossary-linkdead" class="dlist">
+<dl>
+<dt class="hdlist1">Linkdead; netdead</dt>
 <dd>
-<p>A thing in the world: a player persona, coin, sword, bag, vehicle, NPC, effect, or environmental feature.</p>
+<p>A character whose controlling network connection has been lost. Whether the character remains in the world, is protected, or can reconnect is mudlib policy; the Persona and its Session are distinct.</p>
 </dd>
+</dl>
+</div>
+<div id="glossary-living" class="dlist">
+<dl>
+<dt class="hdlist1">Living</dt>
+<dd>
+<p>In legacy LP usage, an object enabled to participate as a command giver. This need not mean biologically alive or human-controlled. JVMud&#8217;s Actor and Persona concepts describe different capabilities and roles, not an exact rename of this predicate.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-load" class="dlist">
+<dl>
+<dt class="hdlist1">Load; preload</dt>
+<dd>
+<p>Loading makes an LPC program/object available to the runtime. Preloading loads selected objects during mudlib startup, commonly from an ordered manifest. Source availability, successful compilation, and world placement are separate facts.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-location" class="dlist">
+<dl>
 <dt class="hdlist1">Location</dt>
 <dd>
-<p>The mechanical relationship that says where an entity is. A location is either a place or another entity.</p>
-</dd>
-<dt class="hdlist1">Containment</dt>
-<dd>
-<p>The relationship in which one entity is inside, carried by, mounted on, or otherwise immediately located in another entity.</p>
-</dd>
-<dt class="hdlist1">Single Containment</dt>
-<dd>
-<p>The rule that every entity has exactly one immediate location.</p>
-</dd>
-<dt class="hdlist1">Movement</dt>
-<dd>
-<p>The transition of an entity from one location to another, often through a place-to-place link.</p>
+<p>An Entity&#8217;s immediate position in JVMud: a Place or another Entity. It describes where something is; Presence describes a player&#8217;s experience through a located Persona.</p>
 </dd>
 </dl>
 </div>
-</div>
-<div class="sect3">
-<h4 id="_player_and_connection_model"><a class="anchor" href="#_player_and_connection_model"></a><a class="link" href="#_player_and_connection_model">Player And Connection Model</a></h4>
-<div class="dlist">
+<div id="glossary-lp245" class="dlist">
 <dl>
-<dt class="hdlist1">Player</dt>
+<dt class="hdlist1">LP245; 2.4.5 mudlib</dt>
 <dd>
-<p>The human-facing controller endpoint associated with a session. JVMud does not make Player an account, login, or durable identity.</p>
-</dd>
-<dt class="hdlist1">Session</dt>
-<dd>
-<p>An active connection or control context, such as a Telnet connection.</p>
-</dd>
-<dt class="hdlist1">Persona</dt>
-<dd>
-<p>The entity currently associated with a session as that session&#8217;s in-world perspective.</p>
-</dd>
-<dt class="hdlist1">Player Object</dt>
-<dd>
-<p>Compatibility vocabulary for an LPC-authored mudlib object that may combine profile data, persona behavior, login flow, and legacy session glue.</p>
-</dd>
-<dt class="hdlist1">Interaction Scope</dt>
-<dd>
-<p>The local command and perception context around a persona.</p>
-</dd>
-<dt class="hdlist1">Command Dispatch</dt>
-<dd>
-<p>The engine process that routes one line of player input to mudlib behavior registered for the current interaction scope.</p>
+<p>A classic LP mudlib lineage and JVMud&#8217;s bundled legacy compatibility target. The name identifies mudlib source and conventions; it does not mean JVMud is that historical driver.</p>
 </dd>
 </dl>
 </div>
-</div>
-<div class="sect3">
-<h4 id="_lpc_and_compatibility"><a class="anchor" href="#_lpc_and_compatibility"></a><a class="link" href="#_lpc_and_compatibility">LPC And Compatibility</a></h4>
-<div class="dlist">
+<div id="glossary-lpc" class="dlist">
 <dl>
 <dt class="hdlist1">LPC</dt>
 <dd>
-<p>The language used by JVMud&#8217;s sole mudlib target.</p>
+<p>The C-like, object-oriented language created for LPMud by Lars Pensjö. It has evolved into driver-specific dialects. JVMud&#8217;s authored mudlib language is LPC, compiled to JVM bytecode, not C or Java source.</p>
 </dd>
-<dt class="hdlist1">LPMud</dt>
+</dl>
+</div>
+<div id="glossary-lpmud" class="dlist">
+<dl>
+<dt class="hdlist1">LPMud; LP MUD</dt>
 <dd>
-<p>A MUD whose game world is authored in LPC, compiled into live game objects, and reloadable while the game continues running.</p>
-</dd>
-<dt class="hdlist1">Mudlib</dt>
-<dd>
-<p>The LPC source and content layer that defines world fiction, object behavior, commands, rules, and presentation.</p>
-</dd>
-<dt class="hdlist1">Compatibility Shim</dt>
-<dd>
-<p>A mudlib-side object dedicated to translating legacy LPC/LPMud vocabulary into JVMud-native engine requests.</p>
-</dd>
-<dt class="hdlist1">Mfun</dt>
-<dd>
-<p>A mudlib-global function provided by a configured mudlib object.</p>
-</dd>
-<dt class="hdlist1">Efun</dt>
-<dd>
-<p>An engine function callable from compiled LPC code.</p>
-</dd>
-<dt class="hdlist1">Lifecycle Hook</dt>
-<dd>
-<p>A configured engine-to-mudlib call for a JVMud lifecycle event.</p>
-</dd>
-<dt class="hdlist1">Live Reload</dt>
-<dd>
-<p>The requirement that LPC-authored objects can be rewritten, recompiled, and reloaded while the game continues running.</p>
+<p>The MUD tradition originating with Lars Pensjö, with a driver hosting LPC-authored game behavior. JVMud uses the term for games whose LPC objects can be rewritten, recompiled, and reloaded while the game continues. It does not require adopting every historical driver API.</p>
 </dd>
 </dl>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_legacy_terms"><a class="anchor" href="#_legacy_terms"></a><a class="link" href="#_legacy_terms">Legacy Terms</a></h4>
-<div class="dlist">
+<h4 id="_m"><a class="anchor" href="#_m"></a><a class="link" href="#_m">M</a></h4>
+<div id="glossary-mapping" class="dlist">
+<dl>
+<dt class="hdlist1">Mapping</dt>
+<dd>
+<p>An LPC associative collection indexed by keys, commonly written <code>([ &#8230;&#8203; ])</code>. It is data, not necessarily a world map; dialects differ in permitted key/value forms.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-master-object" class="dlist">
+<dl>
+<dt class="hdlist1">Master object</dt>
+<dd>
+<p>A privileged policy object consulted by traditional drivers for startup, connections, security, or errors. JVMud uses explicit mudlib boundary configuration and mapped callbacks; a legacy master role can be adapted. Do not confuse it with a clone&#8217;s blueprint.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mccp" class="dlist">
+<dl>
+<dt class="hdlist1">MCCP; MSP; MSSP; MXP; MSDP</dt>
+<dd>
+<p>MUD Client Compression Protocol, MUD Sound Protocol, MUD Server Status Protocol, MUD eXtension Protocol, and MUD Server Data Protocol: separate extensions for compression, sound, server metadata, markup, and structured data. These historical protocol names are not a JVMud support checklist.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mfun" class="dlist">
+<dl>
+<dt class="hdlist1">Mfun</dt>
+<dd>
+<p>JVMud&#8217;s term for a mudlib-global function supplied by a configured <code>mfun_object</code>. It fills the traditional simul-efun role while making the provider explicit. “Mfun” describes the role; function names need not begin with <code>mfun_</code>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mixed" class="dlist">
+<dl>
+<dt class="hdlist1">Mixed</dt>
+<dd>
+<p>An LPC type used for values of varying types. It does not mean an omitted type declaration; JVMud requires explicit method return and parameter types.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mob" class="dlist">
+<dl>
+<dt class="hdlist1">Mob; mobile; monster; NPC</dt>
+<dd>
+<p>An autonomously controlled game character; NPC means non-player character. “Mob” derives from mobile and can include friendly inhabitants. In JVMud these are mudlib-defined Entities and may be Actors; NPC is not a separate hosting process.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-moo" class="dlist">
+<dl>
+<dt class="hdlist1">MOO</dt>
+<dd>
+<p>“MUD, Object Oriented”: a family with a persistent object database and its own programming language, exemplified by LambdaMOO. It is not an LPC dialect. See <a href="https://www.moo.mud.org/">the MOO project</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mortal" class="dlist">
+<dl>
+<dt class="hdlist1">Mortal; newbie; guest</dt>
+<dd>
+<p>Common labels for an ordinary player, newcomer, or limited visitor account. Permissions and progression are local game policy, not universal meanings of the words.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-movement" class="dlist">
+<dl>
+<dt class="hdlist1">Movement</dt>
+<dd>
+<p>Changing an Entity&#8217;s Location, whether traversing a Link or entering/leaving another Entity&#8217;s containment. In JVMud movement is world behavior; transferring a network connection is a different operation.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mu" class="dlist">
+<dl>
+<dt class="hdlist1">MU*; MUSH; MUCK; MUX; MUSE</dt>
+<dd>
+<p>MU* is an umbrella spelling for related multi-user text environments. MUSH is commonly expanded as Multi-User Shared Hallucination; MUCK is a name/pun rather than an original acronym. MUX and MUSE name other related families. Their social, building, and roleplay traditions are not LPC compatibility standards.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mud" class="dlist">
+<dl>
+<dt class="hdlist1">MUD</dt>
+<dd>
+<p>Historically “Multi-User Dungeon”; “Multi-User Domain,” “Multi-User Dimension,” and “Multiple User Dialogue” are also used. The broad historical family includes varied text worlds. JVMud adopts a specific definition: an interactive, multiplayer, text-only game set in a persistent, temporal, player-present world.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mud-driver-hook" class="dlist">
+<dl>
+<dt class="hdlist1">Mud driver hook</dt>
+<dd>
+<p>A configurable driver callback or behavior setting, especially in LDMud terminology. It is related to but not always identical with an apply. JVMud uses a declared mudlib boundary and lifecycle mappings rather than adopting every driver&#8217;s hook registry.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mud1" class="dlist">
+<dl>
+<dt class="hdlist1">MUD1; Essex MUD; MUD2</dt>
+<dd>
+<p>MUD1 is the pioneering Multi-User Dungeon begun by Roy Trubshaw and developed with Richard Bartle at Essex; MUD2 is its successor. These are particular games, not version numbers for all MUD software. See <a href="https://mud.co.uk/richard/mudfaq1.htm">the historical MUD FAQ</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mudlib" class="dlist">
+<dl>
+<dt class="hdlist1">Mudlib; mud library</dt>
+<dd>
+<p>The LPC source/content layer defining a game&#8217;s fiction, commands, rules, presentation, and object behavior. In JVMud a mudlib is hosted by an instance; its World is part of the mudlib, not a synonym for it.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mudlib-boundary" class="dlist">
+<dl>
+<dt class="hdlist1">Mudlib boundary; boundary object</dt>
+<dd>
+<p>JVMud&#8217;s declared contract between engine services and authored code. Configuration selects policy objects, event mappings, aliases, and capabilities. A boundary object supplies configured mudlib callbacks; it does not own application startup or public listeners.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-mudos" class="dlist">
+<dl>
+<dt class="hdlist1">MudOS; FluffOS; LDMud; DGD</dt>
+<dd>
+<p>Names of LP driver implementations or families. FluffOS continues the MudOS lineage; LDMud descends through Amylaar&#8217;s LPMud work; DGD is Dworkin&#8217;s Game Driver. Their differences matter when interpreting an old manual. None is an alternate name for JVMud.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-muf" class="dlist">
+<dl>
+<dt class="hdlist1">MUF; MPI; MUSHcode</dt>
+<dd>
+<p>Other text-world programming facilities: MUF is Forth-like, MPI is an expression/message facility in MUCK systems, and MUSHcode names MUSH softcode. They are not alternate spellings or supported dialects of LPC.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-multiplayer" class="dlist">
+<dl>
+<dt class="hdlist1">Multiplayer</dt>
+<dd>
+<p>The property that multiple Players can inhabit the same shared World simultaneously. One of JVMud&#8217;s defining MUD concepts.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_n"><a class="anchor" href="#_n"></a><a class="link" href="#_n">N</a></h4>
+<div id="glossary-native-efun" class="dlist">
+<dl>
+<dt class="hdlist1">Native efun; jvmud_ prefix</dt>
+<dd>
+<p>A JVMud engine function with an engine-owned name. <code>jvmud_</code> is reserved for engine symbols. <code>jvmud::name(&#8230;&#8203;)</code> requests the exact native efun name; <code>efun::name(&#8230;&#8203;)</code> bypasses ordinary mudlib function resolution but can use the configured efun surface.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-notify-fail" class="dlist">
+<dl>
+<dt class="hdlist1">Notify fail; notify_fail</dt>
+<dd>
+<p>A conventional LP helper for setting the message used if command handling fails. It is part of mudlib/compatibility command policy; JVMud socket transport does not decide success from an LPC return value.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_o"><a class="anchor" href="#_o"></a><a class="link" href="#_o">O</a></h4>
+<div id="glossary-object" class="dlist">
+<dl>
+<dt class="hdlist1">Object; LPC object</dt>
+<dd>
+<p>A runtime instance combining an LPC program&#8217;s behavior and data. Rooms, characters, services, and tools may all be implemented as objects. JVMud distinguishes the language-level object from world-level Entity and Place.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-object-path" class="dlist">
+<dl>
+<dt class="hdlist1">Object path; clone name</dt>
+<dd>
+<p>An LPC object&#8217;s mudlib-relative source identity or runtime name. Clone names commonly append a number to distinguish instances of one program. These names are not OS process identifiers, database references, or durable account identities.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-olc" class="dlist">
+<dl>
+<dt class="hdlist1">OLC; online creation</dt>
+<dd>
+<p>Editing game content while the server is running. The tools and editable data vary by codebase. Live LPC compilation is one mechanism for live development, not the definition of every OLC system.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_p"><a class="anchor" href="#_p"></a><a class="link" href="#_p">P</a></h4>
+<div id="glossary-perception" class="dlist">
+<dl>
+<dt class="hdlist1">Perception; perceptive</dt>
+<dd>
+<p>Information reaching an Entity about events in the World, and the capability to receive it. JVMud delivers world perception events; a legacy <code>catch_tell</code> method is a compatibility interpretation of delivered text, not the engine&#8217;s universal perception model.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-persistence" class="dlist">
+<dl>
+<dt class="hdlist1">Persistence</dt>
+<dd>
+<p>World/state continuity independent of an individual Session. Durable save/restore is related but separate: persistence does not promise that every live value survives a reboot, or that all rooms are stored in a database.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-persona" class="dlist">
+<dl>
+<dt class="hdlist1">Persona</dt>
+<dd>
+<p>The Entity serving as a Player&#8217;s current in-world point of perception and action. A located Persona creates Presence. It is distinct from a durable account, the remote client, and the active Session.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-pk" class="dlist">
+<dl>
+<dt class="hdlist1">PK; PvP; PvE</dt>
+<dd>
+<p>Player killing, player-versus-player, and player-versus-environment play. Consent, penalties, combat, and death rules are mudlib choices, not properties determined by LPMud lineage.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-place" class="dlist">
+<dl>
+<dt class="hdlist1">Place</dt>
+<dd>
+<p>A discrete location in JVMud&#8217;s World where Entities can exist and interact. It can represent a forest clearing or road as well as an interior room. “Place” avoids making a conventional LP room object the engine&#8217;s universal spatial model.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-player" class="dlist">
+<dl>
+<dt class="hdlist1">Player</dt>
+<dd>
+<p>In ordinary MUD conversation, a human participant and sometimes their character or player object. In JVMud, the human-facing controller endpoint associated with a Session. It is not itself an Entity, durable account, or proof of a unique real-world person.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-player-object" class="dlist">
+<dl>
+<dt class="hdlist1">Player object</dt>
+<dd>
+<p>A legacy LPC object that can combine character behavior, profile data, login, and connection glue. JVMud separates the Player, Session, and Persona concepts even when a compatibility mudlib combines their behavior in one object.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-possession" class="dlist">
+<dl>
+<dt class="hdlist1">Possession; puppet; body</dt>
+<dd>
+<p>Terms for controlling or acting through an in-world object. Some mudlibs separate a persistent user/login object from a replaceable body. JVMud&#8217;s Player/Persona distinction expresses control and perspective without imposing one such mudlib design.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-presence" class="dlist">
+<dl>
+<dt class="hdlist1">Presence</dt>
+<dd>
+<p>Experiencing the game from within its World through a located Persona. An Entity can have a Location without being a player&#8217;s perspective; Presence therefore means more than position alone.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-program" class="dlist">
+<dl>
+<dt class="hdlist1">Program</dt>
+<dd>
+<p>The compiled LPC behavior associated with source, potentially used by several object instances. A program, one of its clones, and the source file on disk are related but distinct.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-prompt" class="dlist">
+<dl>
+<dt class="hdlist1">Prompt</dt>
+<dd>
+<p>Text inviting the next input, sometimes including status values. Client protocols can distinguish prompt boundaries or provide status separately; a prompt is not itself an LPC command parser.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_q"><a class="anchor" href="#_q"></a><a class="link" href="#_q">Q</a></h4>
+<div id="glossary-quest" class="dlist">
+<dl>
+<dt class="hdlist1">Quest; XP; level</dt>
+<dd>
+<p>A task or goal, experience points, and a progression rank. These are common game conventions; JVMud does not require a particular reward or leveling system.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_r"><a class="anchor" href="#_r"></a><a class="link" href="#_r">R</a></h4>
+<div id="glossary-reset" class="dlist">
+<dl>
+<dt class="hdlist1">Reset; repop; respawn</dt>
+<dd>
+<p>Reset can mean an object callback or broader world renewal; repop/respawn usually means replenishing inhabitants or items. Early LP <code>reset</code> may also initialize objects. JVMud lifecycle mappings distinguish an actual implemented load callback from proposed activation events; reset is not simply a server reboot.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-room" class="dlist">
 <dl>
 <dt class="hdlist1">Room</dt>
 <dd>
-<p>A legacy mudlib term for a location-like object. JVMud&#8217;s engine concept is place.</p>
-</dd>
-<dt class="hdlist1">Heartbeat</dt>
-<dd>
-<p>A legacy driver concept for recurring object callbacks. JVMud&#8217;s engine concept is temporality and scheduled time.</p>
-</dd>
-<dt class="hdlist1">Call Out</dt>
-<dd>
-<p>A legacy driver concept for delayed callbacks. JVMud treats delayed work as a mudlib request to the engine&#8217;s temporality model.</p>
-</dd>
-<dt class="hdlist1">Apply</dt>
-<dd>
-<p>A legacy driver term for driver-invoked mudlib methods. JVMud uses explicit lifecycle hooks.</p>
-</dd>
-<dt class="hdlist1">Master Object</dt>
-<dd>
-<p>A legacy driver policy object. JVMud uses explicit boundary configuration and compatibility shims.</p>
+<p>A conventional unit of MUD space, including outdoor locations. LP mudlibs often implement it as an LPC object. JVMud uses Place for the world-model location; “room” remains valid authored or compatibility vocabulary.</p>
 </dd>
 </dl>
+</div>
+<div id="glossary-rpi" class="dlist">
+<dl>
+<dt class="hdlist1">RPI; RPE</dt>
+<dd>
+<p>Roleplay-intensive and roleplay-enforced: community descriptions of how strongly a game emphasizes or requires staying in character. Usage and enforcement vary, and neither denotes a driver implementation.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_s"><a class="anchor" href="#_s"></a><a class="link" href="#_s">S</a></h4>
+<div id="glossary-save-restore" class="dlist">
+<dl>
+<dt class="hdlist1">Save/restore; save_object; restore_object</dt>
+<dd>
+<p>Serializing selected object state and restoring it later. This is distinct from preserving a live connection or the whole running World. Legacy LPC function names belong to the configured compatibility surface.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-scheduled-tick" class="dlist">
+<dl>
+<dt class="hdlist1">Scheduled tick; scheduler</dt>
+<dd>
+<p>A recurring execution opportunity and the machinery scheduling work. JVMud&#8217;s per-instance clock and execution queue order timed work with player input and other callbacks. A tick is not necessarily a combat round or one second.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-session" class="dlist">
+<dl>
+<dt class="hdlist1">Session</dt>
+<dd>
+<p>An active connection/control context carrying input, output, terminal state, and disconnect lifecycle. JVMud associates a live Session with a Player; the Persona supplies the in-world perspective.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-shadow" class="dlist">
+<dl>
+<dt class="hdlist1">Shadow; shadowing</dt>
+<dd>
+<p>A legacy LP mechanism that intercepts calls to another object, subject to driver and security rules. It differs from inheritance and from a variable hiding another name. See <a href="https://www.ldmud.eu/lpc-objects.html">LDMud objects</a>; support must be checked per runtime.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-simul-efun" class="dlist">
+<dl>
+<dt class="hdlist1">Simul-efun; simul_efun; sefun</dt>
+<dd>
+<p>A simulated efun: a mudlib-authored function made globally available through a designated provider object, rather than implemented in the driver. JVMud calls this role an mfun and configures its provider explicitly. See <a href="https://www.lysator.liu.se/mud/MudOS-doc/concepts/simul_efun.html">the MudOS simul-efun documentation</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-single-containment" class="dlist">
+<dl>
+<dt class="hdlist1">Single containment</dt>
+<dd>
+<p>JVMud&#8217;s rule that each Entity has exactly one immediate Location. Nested containers are possible; ambiguous multiple immediate locations and containment cycles are not a useful world structure.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-snoop" class="dlist">
+<dl>
+<dt class="hdlist1">Snoop</dt>
+<dd>
+<p>A privileged facility for observing another user&#8217;s input or output in some drivers. Authorization and visibility rules are implementation-specific; a historical snoop API does not establish JVMud administrator permissions.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-social" class="dlist">
+<dl>
+<dt class="hdlist1">Social; emote; pose; soul</dt>
+<dd>
+<p>A social is a conventional expressive command; an emote or pose describes an action. Some LP mudlibs use a “soul” object for social commands. This is a mudlib service, not necessarily a character&#8217;s durable identity or JVMud Persona.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-static" class="dlist">
+<dl>
+<dt class="hdlist1">Static; private; protected; public; nomask</dt>
+<dd>
+<p>LPC declaration modifiers governing visibility, inheritance, or overriding. <code>nomask</code> conventionally prevents overriding; <code>static</code> is particularly dialect-dependent. Check JVMud&#8217;s supported LPC reference rather than assuming C or Java meanings.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-stock-mudlib" class="dlist">
+<dl>
+<dt class="hdlist1">Stock mudlib; stock MUD</dt>
+<dd>
+<p>An unmodified or lightly modified distribution and its supplied content. “Stock” describes how much has been customized, not a server protocol or formal compatibility level.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-swap" class="dlist">
+<dl>
+<dt class="hdlist1">Swap; swapping</dt>
+<dd>
+<p>Moving inactive runtime data to backing storage in drivers that support it. It differs from mudlib save/restore and from operating-system virtual-memory swapping. It is historical runtime vocabulary, not a JVMud persistence guarantee.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_t"><a class="anchor" href="#_t"></a><a class="link" href="#_t">T</a></h4>
+<div id="glossary-telnet" class="dlist">
+<dl>
+<dt class="hdlist1">Telnet; ANSI; NAWS</dt>
+<dd>
+<p>Telnet carries terminal text and option negotiation; ANSI escape sequences are commonly used for color and terminal control; NAWS negotiates window size. A client connection is not synonymous with the in-world character.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-temporality" class="dlist">
+<dl>
+<dt class="hdlist1">Temporality</dt>
+<dd>
+<p>The World&#8217;s capacity to change through time. It covers active time and scheduled work without conflating them with durable saved state.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-text" class="dlist">
+<dl>
+<dt class="hdlist1">Text</dt>
+<dd>
+<p>JVMud&#8217;s primary medium for perceiving and manipulating the World. Structured client messages can accompany text without redefining the game as a graphical world.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-this-object" class="dlist">
+<dl>
+<dt class="hdlist1">This object; previous object</dt>
+<dd>
+<p><code>this_object()</code> identifies the executing LPC object; <code>previous_object()</code> describes the calling-object context in traditional LPC. Neither necessarily identifies the player or the owner of an account. See <a href="https://www.fluffos.info/efun/calls/">FluffOS function calls</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-tick" class="dlist">
+<dl>
+<dt class="hdlist1">Tick; pulse; round</dt>
+<dd>
+<p>Timing words whose units depend on the system: a scheduler step, server loop interval, or game action/combat interval. They are not interchangeable with a wall-clock second or a legacy object&#8217;s heartbeat.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-tinymud" class="dlist">
+<dl>
+<dt class="hdlist1">TinyMUD; Tiny family</dt>
+<dd>
+<p>A historically influential text-world system and related traditions emphasizing social interaction and user building. “Tiny” is a lineage label, not a limit on world size. See <a href="https://mud.co.uk/richard/jf_mud.htm">the historical MUD overview</a>.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-trigger" class="dlist">
+<dl>
+<dt class="hdlist1">Trigger; bot; macro</dt>
+<dd>
+<p>A trigger reacts to output or an event, a bot automates participation, and a macro expands a stored action. These may live in clients or mudlibs. An LPC preprocessor macro is source substitution, a different mechanism.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_u"><a class="anchor" href="#_u"></a><a class="link" href="#_u">U</a></h4>
+<div id="glossary-uid" class="dlist">
+<dl>
+<dt class="hdlist1">UID; EUID; wizard privileges</dt>
+<dd>
+<p>User ID and effective user ID in drivers that attach authorization identities to LPC objects. These do not automatically equal host OS identities. JVMud&#8217;s explicit capabilities and administrator grants should not be interpreted as a blanket emulation of a legacy UID model.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_v"><a class="anchor" href="#_v"></a><a class="link" href="#_v">V</a></h4>
+<div id="glossary-varargs" class="dlist">
+<dl>
+<dt class="hdlist1">Varargs</dt>
+<dd>
+<p>An LPC modifier associated with optional or variable argument handling. Accepted forms and omitted-argument rules vary by dialect; it is not permission to omit parameter types in JVMud source.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-virtual-object" class="dlist">
+<dl>
+<dt class="hdlist1">Virtual object; virtual room</dt>
+<dd>
+<p>An object supplied dynamically for a requested path, often to represent coordinates without one source file per room. JVMud can map a missing-source lifecycle hook to a mudlib method such as <code>compile_object</code>; “virtual” does not mean every such object is a separate World.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-vnum" class="dlist">
+<dl>
+<dt class="hdlist1">Vnum</dt>
+<dd>
+<p>A virtual number used by Diku-family area formats to identify a room, mob, or item prototype. It is distinct from a Tiny-family dbref and an LPC source path.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_w"><a class="anchor" href="#_w"></a><a class="link" href="#_w">W</a></h4>
+<div id="glossary-wiztool" class="dlist">
+<dl>
+<dt class="hdlist1">Wiztool; wizard shell</dt>
+<dd>
+<p>An object or command environment providing development and privileged in-game operations. Its rights come from the mudlib&#8217;s security policy; it is distinct from JVMud&#8217;s TLS administration console.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-worker" class="dlist">
+<dl>
+<dt class="hdlist1">Worker</dt>
+<dd>
+<p>The separate JVM process executing one JVMud mudlib. It provides independent runtime state and process fault isolation while retaining the host account&#8217;s OS permissions; it is not an OS security boundary.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-world" class="dlist">
+<dl>
+<dt class="hdlist1">World</dt>
+<dd>
+<p>The shared virtual domain of a game, composed in JVMud of Places, Links, Entities, Locations, Containment, and Movement. It is part of a mudlib, not another name for the engine or the mudlib&#8217;s worker process.</p>
+</dd>
+</dl>
+</div>
+<div id="glossary-world-continuity" class="dlist">
+<dl>
+<dt class="hdlist1">World continuity</dt>
+<dd>
+<p>The World remaining coherent independently of any one player&#8217;s connection. It is one aspect of Persistence, distinct from explicitly saving and restoring selected state.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_sources_and_further_reading"><a class="anchor" href="#_sources_and_further_reading"></a><a class="link" href="#_sources_and_further_reading">Sources and further reading</a></h4>
+<div class="paragraph">
+<p>Definitions distinguish historical usage from JVMud&#8217;s own design. The linked driver manuals
+explain their respective dialects; they are not JVMud API specifications.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://mud.co.uk/richard/mudfaq1.htm">Historical MUD FAQ</a> and <a href="https://mud.co.uk/richard/jf_mud.htm">MUD overview</a>, preserved by Richard Bartle: origins and families.</p>
+</li>
+<li>
+<p><a href="https://dikumud.com/history/">DikuMUD history</a> and <a href="https://www.moo.mud.org/">MOO project</a>: other server traditions.</p>
+</li>
+<li>
+<p><a href="https://fuzzball-muck.github.io/muckman/terms.html">The MUCK manual</a>: community, database, and MU* vocabulary.</p>
+</li>
+<li>
+<p><a href="https://www.ldmud.eu/history.html">LDMud history</a>, <a href="https://www.ldmud.eu/lpc-functions.html">functions</a>, <a href="https://www.ldmud.eu/lpc-objects.html">objects</a>, and <a href="https://www.ldmud.eu/lpc-efuns.html">efuns</a>: LP language and runtime vocabulary.</p>
+</li>
+<li>
+<p><a href="https://www.fluffos.info/lpc/">FluffOS LPC</a>, <a href="https://www.fluffos.info/apply/">applies</a>, <a href="https://www.fluffos.info/apply/object/">object applies</a>, <a href="https://www.fluffos.info/apply/master/">master applies</a>, <a href="https://www.fluffos.info/efun/calls/">function calls</a>, and <a href="https://www.fluffos.info/efun/interactive/">interactive facilities</a>: another LP dialect and its callback conventions.</p>
+</li>
+<li>
+<p><a href="https://www.lysator.liu.se/mud/MudOS-doc/concepts/simul_efun.html">MudOS simulated efuns</a>: the historical global-helper mechanism.</p>
+</li>
+<li>
+<p><a href="https://www.gammon.com.au/gmcp">GMCP protocol notes</a> and <a href="https://tintin.mudhalla.net/protocols/">TinTin++ protocol references</a>: terminal and structured client communication.</p>
+</li>
+<li>
+<p>../manual/index.html#_the_jvmud_philosophy_of_mud[JVMud philosophy], ../manual/index.html#_architecture[architecture], ../manual/index.html#efun-catalog[efun catalog], and ../manual/index.html#lifecycle-reference[lifecycle reference]: native concepts and implemented contracts.</p>
+</li>
+</ul>
 </div>
 </div>
 </div>

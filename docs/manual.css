@@ -47,3 +47,15 @@ p, li, dd, td, th { font-family: inherit; }
 #content h2, #content h3, #content h4, #content h5, #content h6,
 #content h2 a.link, #content h3 a.link, #content h4 a.link,
 #content h5 a.link, #content h6 a.link { color: var(--text); }
+
+/* The glossary's short letter index stays compact on narrow screens. */
+@media (max-width: 767px) {
+  .glossary-page #toc > ul {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: .4rem;
+  }
+  .glossary-page #toc > ul > li:first-child,
+  .glossary-page #toc > ul > li:last-child { grid-column: 1 / -1; }
+  .glossary-page #toc > ul > li > a { display: block; padding-block: .2rem; }
+}

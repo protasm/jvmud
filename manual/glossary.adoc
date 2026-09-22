@@ -1,0 +1,13 @@
+= Glossary
+:encoding: utf-8
+:lang: en
+:role: glossary-page
+:toc: left
+:toclevels: 1
+:sectanchors:
+:sectlinks:
+:webfonts!:
+:reproducible:
+:site-url: .
+
+include::appendixes/glossary.adoc[tag=entries,leveloffset=-2]

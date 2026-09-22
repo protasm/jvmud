@@ -180,6 +180,24 @@
                 </configuration>
               </execution>
               <execution>
+                <id>generate-glossary-html</id>
+                <phase>process-resources</phase>
+                <goals>
+                  <goal>process-asciidoc</goal>
+                </goals>
+                <configuration>
+                  <sourceDirectory>${maven.multiModuleProjectDirectory}/manual</sourceDirectory>
+                  <sourceDocumentName>glossary.adoc</sourceDocumentName>
+                  <outputDirectory>${maven.multiModuleProjectDirectory}/docs</outputDirectory>
+                  <outputFile>glossary.html</outputFile>
+                  <backend>html5</backend>
+                  <doctype>article</doctype>
+                  <attributes>
+                    <docinfo>private</docinfo>
+                  </attributes>
+                </configuration>
+              </execution>
+              <execution>
                 <id>generate-manual-pdf</id>
                 <phase>process-resources</phase>
                 <goals>
