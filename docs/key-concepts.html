@@ -44,20 +44,21 @@
 </section>
 <section aria-labelledby="lpmud"><h2 id="lpmud">An LPMud engine by design</h2>
 <p>JVMud specifically targets LPC-authored games in the LPMud tradition. The mudlib is the source and content that define a game: its objects, commands, rules, and presentation. JVMud compiles LPC to JVM bytecode and loads it as live objects.</p>
-<p>Live development is central to this approach: authors should be able to rewrite, recompile, and reload behavior while the game continues. Reloading code and migrating existing object state are separate operations; the lifecycle and compatibility contracts determine the behavior available to a particular mudlib.</p>
+<p>Live development is a key innovation of LPMud: separating the driver from <a href="https://www.ldmud.eu/lpc-objects.html">LPC-authored game behavior</a> lets authors rewrite, recompile, and reload that behavior while the game continues. In classic DikuMUD-derived servers such as <a href="https://www.circlemud.org/pub/CircleMUD/3.x/uncompressed/circle-3.1/doc/admin.pdf">stock CircleMUD</a>, changing behavior written into the C server requires recompiling and restarting that server. LPC places much of the game's behavior in a separately loadable mudlib.</p>
+<p>JVMud carries that live-development tradition forward. Reloading code and migrating existing object state are separate operations; the lifecycle and compatibility contracts determine the behavior available to a particular mudlib.</p>
 <p>JVMud is specific about its language and game model while remaining independent of any one legacy LP dialect. It gives compatibility an explicit home in profile configuration, lifecycle mappings, aliases, and dedicated mudlib shims. A legacy <code>init</code> method can be selected for an interaction-scope event; a simulated efun becomes a mudlib-global function, or <a href="glossary.html#glossary-mfun">mfun</a>, supplied by a configured object.</p>
 <p>This keeps the distinction between a conventional room object and a Place, or a legacy player object and the Player/Session/Persona roles. Compatibility preserves useful mudlib conventions without making each convention a universal engine rule. The <a href="glossary.html">Glossary</a> explains those correspondences in detail.</p>
 </section>
 <section aria-labelledby="separation"><h2 id="separation">Separation of concerns</h2>
 <p>Each part of JVMud owns a specific responsibility. These boundaries make it possible to reason about the code, adapt existing mudlibs, and change one facility without spreading its assumptions throughout the system.</p>
-<h3>Application, instance, and world</h3>
+<h3>Execution</h3>
 <p>The application owns startup, public endpoints, administrator authority, and worker supervision. It can run with zero mudlibs. Each mudlib runs in its own worker JVM; its instance assembles the runtime, boots authored content, and orders execution. The world model owns Places, Entities, movement, and time. A World is part of a mudlib, and a mudlib's lifetime is distinct from the application's.</p>
 <p>Separate workers provide process fault isolation. They retain the host account's operating-system permissions, so that isolation is not an OS security sandbox.</p>
-<h3>Language and game policy</h3>
+<h3>Language</h3>
 <p>The language subsystem compiles and executes LPC and exposes engine operations through efuns. The mudlib defines what the game does with those operations. The compiler need not know the rules of a particular guild, and transport need not know how a combat command succeeds.</p>
-<h3>Communication and execution</h3>
+<h3>Communication</h3>
 <p>Communication handles sockets, Telnet, protocol messages, text output, and administration interfaces. Player input is delivered to the instance for mudlib interpretation. Keeping transport separate from game rules allows connection handling and world behavior to evolve independently.</p>
-<h3>Storage and live state</h3>
+<h3>Storage</h3>
 <p>Storage owns durable representations and filesystem or database adapters. Execution uses those services without taking ownership of their formats. A network Session, a live Entity, and a saved profile have different lifetimes, even when a legacy mudlib represents them through one LPC object.</p>
 <p>These responsibilities are reflected in the Java packages <code>language</code>, <code>execution</code>, <code>communication</code>, and <code>storage</code>. The manual's <a href="manual/index.html#_architecture">architecture chapter</a> follows them into the implementation.</p>
 </section>
