@@ -22,7 +22,7 @@ Apple Silicon example; substitute your package filename for another platform:
 
 ```sh
 mkdir current &&
-tar -xzf jvmud-0.1.0-preview.8-test.20260920-macos-aarch64.tar.gz --strip-components=1 -C current &&
+tar -xzf jvmud-0.1.0-preview.8-macos-aarch64.tar.gz --strip-components=1 -C current &&
 cd current
 ```
 
@@ -44,8 +44,8 @@ scripts/jvmud-start smallmercies
 ```
 
 Wait for the engine endpoint report and the mudlib's `state=RUNNING` status, then connect a Telnet-capable MUD client to
-`127.0.0.1`, port `4000`, with SSL/TLS disabled. Select Small Mercies from the menu,
-then choose a guest name (2–16 letters),
+`127.0.0.1`, port `4000`, with SSL/TLS disabled. Select Small Mercies to view
+its direct Telnet address, then connect to that player port and choose a guest name (2–16 letters),
 `male` or `female`, and `warrior` or `mage`. Try `help`, `look`, `score`, and `north`.
 Type `quit` to disconnect. Guests last for one connection. Stop the server with
 Ctrl+C in its terminal.
@@ -61,10 +61,15 @@ Start the engine with or without initial mudlibs. Its player/admin ports default
 to localhost:4000/4001. Bootstrap using the same OS account:
 
 ```sh
-scripts/jvmud-console --local
+scripts/jvmud-console --owner
 ```
 
-`--local` uses `~/.jvmud/engine-4000/engine.sock` and your OS account, without a
+The engine **owner** is the OS account that owns its private state directory;
+owner access grants full engine authority. An **administrator** is a named JVMud
+identity with a token and explicit grants for TCP/TLS access. With no arguments,
+the console uses administrator authentication at localhost:4001.
+
+`--owner` uses `~/.jvmud/engine-4000/engine.sock` and your OS account, without a
 token or fingerprint. For custom state, use `--socket <state-directory>/engine.sock`.
 
 Use `help`, `admin-create <name>`, `grant <name> engine`, and
@@ -95,7 +100,7 @@ Use a mudlib's admin port for its live object commands. Each mudlib runs in its
 own worker JVM, launched directly with Java. No external sandbox tool is required.
 Workers retain the host account's OS permissions; process separation provides
 fault isolation, not protection against hostile code. Player
-quits close the connection; reconnect for the engine menu.
+quits close the connection; reconnect to the mudlib player port.
 
 ## Run LP245
 
@@ -105,7 +110,8 @@ Stop Small Mercies first, or choose another port:
 scripts/jvmud-start --port 4010 --admin-port 4011 lp245
 ```
 
-Connect to `127.0.0.1:4010`, select LP245, and follow its character creation prompts.
+Connect to `127.0.0.1:4010`, select LP245 to see its direct player port, then
+connect to that port and follow its character creation prompts.
 Its editable LPC source and compatibility settings are under `mudlibs/lp245/`;
 see `mudlibs/lp245/jvmud/README.md` for the porting details. Compatibility remains
 experimental. Character saves belong to this extracted copy; keep them when
@@ -139,6 +145,12 @@ to source checkouts only. Source and issues: https://github.com/protasm/jvmud.
 
 ## Update an installed distribution
 
+Before updating, record `status` in the engine console, including running mudlib
+names and player/admin ports. Back up the external engine state directory
+(default `~/.jvmud/engine-4000`) separately; it contains administrator grants,
+token hashes, TLS keys and directory blurbs. The updater's installation backup
+does not include that external directory.
+
 From your existing `current` directory:
 
 ```sh
@@ -164,8 +176,25 @@ manual review. All conflicting adapter/configuration paths are reported together
 before servers stop. Replaced files, including local configuration comments,
 remain available in the full backup.
 
-Servers restart with their recorded arguments, working directories, and Java
-settings. Run the updater as the same OS user, with any game-specific environment
+Engines restart with their recorded arguments, working directories, and Java
+settings. Mudlibs started through administration are not persisted as an autostart
+list. Restore them after updating, using the names and ports you recorded:
+
+```sh
+scripts/jvmud-console --owner
+```
+
+```text
+start smallmercies 4100 4101
+start lp245 4200 4201
+status
+quit
+```
+
+Older clients use `--local` instead of `--owner`; the new flag is available after
+the update. Initial mudlibs supplied as engine launch arguments are booted again,
+but their automatically allocated ports can change.
+ Run the updater as the same OS user, with any game-specific environment
 variables still available. Players reconnect after the restart. The installation
 directory keeps its existing name, so `current` remains stable across releases.
 `jvmud-update --check` reports the installed version; the folder name does not.

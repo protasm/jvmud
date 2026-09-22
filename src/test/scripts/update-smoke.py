@@ -5,6 +5,7 @@ import http.server
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import socket
@@ -45,7 +46,7 @@ def wait_world(root, state, world):
                                 text=True, capture_output=True, timeout=15)
         if any(f'id={world},' in line and 'state=RUNNING' in line
                for line in result.stdout.splitlines()):
-            return
+            return int(re.search(r"id=" + world + r",.*?playerPort=(\d+)", result.stdout).group(1))
         time.sleep(.2)
     raise AssertionError(f'{world} did not become ready: {result.stdout} {result.stderr}')
 
@@ -106,13 +107,11 @@ def main():
                                   '--admin-port',str(admin_port),'--state-dir',str(state),world],
                                   cwd=root,stdout=output,stderr=subprocess.STDOUT))
                 wait_ready(root,processes[-1].pid)
-                wait_world(root,state,world)
+                direct_port = wait_world(root,state,world)
                 # Reap stopped children just as a launching shell would.
                 threading.Thread(target=processes[-1].wait, daemon=True).start()
-            with socket.create_connection(('127.0.0.1',ports[1])) as player:
+            with socket.create_connection(('127.0.0.1',direct_port)) as player:
                 player.settimeout(.5)
-                dist.until(player,'(or quit): ')
-                player.sendall(b'lp245\n')
                 dist.until(player,'What is your name: ')
                 for text,marker in [('updatetest','Password: '),('secret123','Password: (again) '),('secret123','Please enter your email address'),('none','Are you, male, female or other'),('o','Welcome, Creature!'),('south','You are at an open green place'),('west','An old humpbacked bridge.'),('get money','Ok.')]:
                     dist.command(player,text,marker)

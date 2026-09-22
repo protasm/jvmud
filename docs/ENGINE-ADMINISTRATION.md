@@ -1,6 +1,6 @@
 # Engine, mudlibs and administration
 
-`execution.application.JVMud` owns application lifetime. It starts the public player menu, the
+`execution.application.JVMud` owns application lifetime. It starts the public player directory, the
 TLS engine-admin listener, and a local recovery socket before booting any mudlib.
 An engine with zero running mudlibs is a normal, administratively accessible state.
 
@@ -33,15 +33,41 @@ startup leaves the engine and other mudlibs available. Initial launch manifests
 are supplied again when restarting the engine; stopped/failed instance records
 are retained for the current engine lifetime, not persisted as an autostart list.
 
-## Bootstrap administrators locally
+## Owner and administrator access
+
+The **owner** of an engine instance is the operating-system account that owns
+its private state directory, normally the account that starts the engine. Owner
+access uses a Unix-domain socket on that machine and grants full engine authority,
+including creation and recovery of administrator identities. Run the console on
+the host, directly or through SSH, as that account. It does not require Unix root
+or `sudo`, and ownership is not a grant in the administrator registry.
+
+An **administrator** is a named JVMud identity with an access token and explicit
+grants. Administrators connect over TCP/TLS, either remotely or through localhost.
+An `engine` grant includes all mudlibs and administrator management; a
+`mudlib:<id>` grant is limited to that mudlib. Administrator identities are separate
+from OS accounts and player accounts.
+
+| Console invocation | Transport | Identity and authority |
+| --- | --- | --- |
+| `jvmud-console --owner` | Default engine's Unix socket | OS owner; full engine authority |
+| `jvmud-console --socket <path>` | Specified engine's Unix socket | Same owner authentication |
+| `jvmud-console` | TCP/TLS to `localhost:4001` | Named administrator and its grants |
+| `jvmud-console <server> [<port>]` | TCP/TLS to the server (default port 4001) | Named administrator and its grants |
+
+TLS connections require a trusted server fingerprint, administrator name, and
+access token, even when connecting to localhost. Owner connections require none
+of those credentials. `--owner` must stand alone; `--socket` still requires a path.
+
+## Bootstrap administrators as the owner
 
 Run the console as the engine's OS account, locally or from an SSH login:
 
 ```sh
-scripts/jvmud-console --local
+scripts/jvmud-console --owner
 ```
 
-`--local` connects to `~/.jvmud/engine-4000/engine.sock`, the socket created
+`--owner` connects to `~/.jvmud/engine-4000/engine.sock`, the socket created
 by a default engine launch. It does not scan for engines or use TLS credentials.
 For a custom state directory or another engine player port, use
 `scripts/jvmud-console --socket <state-directory>/engine.sock` instead.
@@ -162,14 +188,30 @@ independent working directories and object-handle state within a shared mudlib.
 
 ## Player connections
 
-The engine player port lists ready mudlibs without credentials. Selecting one
-enters its normal login flow. The mudlib's own player port goes directly to that
-same running instance. Neither entry point creates another mudlib instance.
-The engine relays the original client address and preserves Telnet/GMCP traffic.
-The mudlib owns player authentication and command interpretation.
+The engine player port is an interactive directory of running mudlibs. It displays
+a numbered list. Enter a number to see that mudlib's `Telnet:` connection details
+and administrator-configured description. Enter another number to view another
+mudlib, `L` to refresh the list, or `Q` to receive a friendly goodbye and disconnect.
+Letters are case-insensitive. Selecting a number never creates a player session
+or forwards the connection to a worker. Players connect separately to the
+mudlib's own player port for login and gameplay.
 
-Quitting, stopping or losing the selected mudlib closes the connection. There is
-no transfer back to the engine menu. Reconnect to choose another mudlib. Player
+Set the advertised hostname with `--public-host play.jvmud.org`; for example,
+Small Mercies displays `Telnet: play.jvmud.org:4100`. Without a public hostname,
+the directory says `Telnet: same host, port 4100`. This avoids advertising a
+private address behind NAT. The option only affects display, not bindings, DNS
+or firewall rules; the advertised player ports must be reachable separately.
+
+Administrators configure optional blurbs as UTF-8 text files in the engine's
+state directory: `descriptions/<mudlib-id>.txt`. For the default engine, Small
+Mercies uses `~/.jvmud/engine-4000/descriptions/smallmercies.txt`. Create the
+`descriptions` directory if needed. Blank lines and paragraphs are preserved;
+a missing or empty file omits the blurb. Edits take effect on the next selection
+without restarting the engine or mudlib. These files are managed on the host.
+
+The direct mudlib endpoint preserves the original client address and Telnet/GMCP
+traffic. The mudlib owns player authentication and command interpretation.
+Quitting, stopping or losing a mudlib closes its player connections. Player
 Telnet remains unencrypted; administration uses a separate TLS protocol.
 
 ## Isolation and supervision
@@ -180,7 +222,7 @@ limits, not a total OS memory quota or a hard CPU quota. Out-of-memory terminate
 the offending worker. Startup has a 60-second deadline; a worker admin request
 has a 15-second deadline, after which an unresponsive worker is terminated.
 Stopping gives hooks a bounded opportunity before forced termination. A crash
-removes the mudlib from the menu, closes its public endpoints and leaves its
+removes the mudlib from the directory, closes its public endpoints and leaves its
 failure visible. The engine and other workers remain available.
 
 Workers are launched directly with the engine's Java runtime. No bubblewrap,

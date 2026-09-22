@@ -134,10 +134,15 @@ manifests opens an unauthenticated player menu on localhost:4000, a TLS engine-a
 listener on localhost:4001, and a same-account Unix recovery socket. Each mudlib
 runs in a separate worker JVM with its own player/admin port pair.
 
-Bootstrap through the local console:
+The **owner** is the OS account that owns the engine's private state directory.
+Owner access grants full engine control through a Unix socket on the host.
+An **administrator** is a named JVMud identity whose token and grants authorize
+TCP/TLS access, including connections to localhost. Unix root is not required.
+
+Bootstrap as the owner (on the host, directly or through SSH):
 
 ```sh
-scripts/jvmud-console --local
+scripts/jvmud-console --owner
 ```
 
 At `engine>`, use `help`, `start <name> [player-port admin-port]`, `status`,

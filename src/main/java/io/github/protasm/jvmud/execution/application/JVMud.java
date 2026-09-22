@@ -8,6 +8,7 @@ import io.github.protasm.jvmud.storage.admin.AdminRegistry;
 import io.github.protasm.jvmud.communication.transport.admin.AdminServer;
 import io.github.protasm.jvmud.communication.transport.admin.AdminTLS;
 import io.github.protasm.jvmud.communication.transport.telnet.PlayerGateway;
+import io.github.protasm.jvmud.communication.transport.telnet.PlayerDirectory;
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.nio.channels.*;
@@ -30,7 +31,7 @@ public final class JVMud implements AutoCloseable {
     private FileLock lock;
     private AdminRegistry registry;
     private SSLContext tls;
-    private PlayerGateway players;
+    private PlayerDirectory players;
     private AdminServer administration;
     private AdminServer localAdministration;
 
@@ -76,7 +77,7 @@ public final class JVMud implements AutoCloseable {
             localAdministration = new AdminServer(socket, () -> new EngineAdminCommandSession(this, registry));
             administration = new AdminServer(configuration.bindAddress(), configuration.adminPort(), tls, registry,
                     "engine", () -> new EngineAdminCommandSession(this, registry));
-            players = new PlayerGateway(configuration.bindAddress(), configuration.playerPort(), this::available, null);
+            players = new PlayerDirectory(configuration.bindAddress(), configuration.playerPort(), this::available);
             started = true;
             localAdministration.start(); administration.start(); players.start();
         } catch (Exception failure) {
@@ -132,8 +133,7 @@ public final class JVMud implements AutoCloseable {
                 entry.worker = worker;
                 if (!worker.ready().id().equals(id)) throw new IOException("Worker identity differs from its manifest.");
                 entry.name = worker.ready().name();
-                PlayerGateway.Entry route = new PlayerGateway.Entry(id, entry.name, worker::connectPlayer);
-                entry.players = new PlayerGateway(configuration.bindAddress(), playerPort, List::of, route);
+                entry.players = new PlayerGateway(configuration.bindAddress(), playerPort, worker::connectPlayer);
                 entry.admin = new AdminServer(configuration.bindAddress(), adminPort, tls, registry, "mudlib:" + id, worker::administration);
                 entry.playerPort = entry.players.port(); entry.adminPort = entry.admin.port();
                 requireRunning();
@@ -183,15 +183,18 @@ public final class JVMud implements AutoCloseable {
         synchronized (mudlibs) { return mudlibs.values().stream().map(ManagedMudlib::snapshot).toList(); }
     }
 
-    private List<PlayerGateway.Entry> available() {
+    private List<PlayerDirectory.Entry> available() {
         synchronized (mudlibs) {
             return mudlibs.values().stream().filter(e -> e.state == MudlibStatus.State.RUNNING)
-                    .map(e -> new PlayerGateway.Entry(e.id, e.name, address -> {
-                        MudlibProcess worker = e.worker;
-                        if (e.state != MudlibStatus.State.RUNNING || worker == null) throw new IOException("Mudlib unavailable.");
-                        return worker.connectPlayer(address);
-                    })).toList();
+                    .map(e -> new PlayerDirectory.Entry(e.id, e.name, configuration.publicHost(), e.playerPort, () -> directoryBlurb(e.id))).toList();
         }
+    }
+
+    /** Reads administrator-owned UTF-8 directory copy on demand, so edits need no restart. */
+    private String directoryBlurb(String id) {
+        Path file = configuration.stateDirectory().resolve("descriptions").resolve(id + ".txt");
+        try { return Files.exists(file) ? Files.readString(file).strip() : ""; }
+        catch (IOException e) { return "Description currently unavailable."; }
     }
 
     /** Human-readable engine and worker status, with no credentials. */
@@ -200,7 +203,7 @@ public final class JVMud implements AutoCloseable {
         for (MudlibStatus mud : mudlibs()) text.append(mud).append('\n');
         return text.toString();
     }
-    /** Engine menu port. */
+    /** Engine directory port; it never admits players to a mudlib. */
     public int port() { return players == null ? configuration.playerPort() : players.port(); }
     /** Engine TLS administration port. */
     public int adminPort() { return administration == null ? configuration.adminPort() : administration.port(); }

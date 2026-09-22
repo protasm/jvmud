@@ -127,6 +127,7 @@ class PerceptionTest {
                 string quest;
                 void set_quest(string name) { quest = name; }
                 string solved() { return quest; }
+                void quiet_go_player() { present("go player", environment())->load_chat(0, ({})); }
                 void give_sword() { say("Solver gives short sword to Leo.\\n"); }
                 string query_name() { return "Solver"; }
                 string query_real_name() { return "solver"; }
@@ -141,6 +142,9 @@ class PerceptionTest {
         StringBuilder out = new StringBuilder();
         r.bindSession("solver", actor.instance(), "local", out::append);
         r.moveObject(actor.instance(), pub.instance());
+        // Random ambient chat can overwrite the legacy monster's pending puzzle response.
+        // Keep this speech/reward regression deterministic without changing upstream LPC.
+        actor.invoke("quiet_go_player");
         r.withCommandActor(actor.instance(), () -> actor.invoke("speak", "a5"));
         scheduler.advanceBy(4);
         assertEquals(0, actor.invoke("experience"));

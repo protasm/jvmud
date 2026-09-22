@@ -19,39 +19,16 @@ class EmbeddedMudlibHostTest {
     @TempDir Path directory;
 
     @Test
-    void menuAttachesOnlyTheChosenMudlibAndRejectsInvalidSelections() throws Exception {
+    void directEndpointAttachesOnlyItsMudlib() throws Exception {
         try (EmbeddedMudlibHost engine = engine(spec("first", "0"), spec("second", "0"))) {
             engine.start();
-            try (Socket socket = connect(engine)) {
-                String menu = readUntil(socket, "(or quit): ");
-                assertTrue(menu.contains("first"));
-                assertTrue(menu.contains("second"));
-                assertFalse(menu.contains("LOGIN"));
-                send(socket, "missing\n");
-                assertTrue(readUntil(socket, "(or quit): ").contains("Please choose"));
-                assertEquals(0, connections(engine, 0));
-                assertEquals(0, connections(engine, 1));
-                send(socket, "second\n");
-                assertTrue(readUntil(socket, "LOGIN second").contains("LOGIN second"));
+            try (Socket socket = new Socket("127.0.0.1", engine.port(1))) {
+                socket.setSoTimeout(3000);
+                assertTrue(readUntil(socket, "ready>").contains("LOGIN second"));
                 assertEquals(0, connections(engine, 0));
                 assertEquals(1, connections(engine, 1));
-                readUntil(socket, "ready>");
                 send(socket, "unrecognized-command\n");
-                String response = readUntil(socket, "ready>");
-                assertFalse(response.contains("You can't do that."), response);
-            }
-        }
-    }
-
-    @Test
-    void aSingleMudlibStillRequiresSelectionAndMenuQuitCreatesNoPlayer() throws Exception {
-        try (EmbeddedMudlibHost engine = engine(spec("only", "0"))) {
-            engine.start();
-            try (Socket socket = connect(engine)) {
-                readUntil(socket, "(or quit): ");
-                send(socket, "quit\n");
-                assertEquals(-1, socket.getInputStream().read());
-                assertEquals(0, connections(engine, 0));
+                assertFalse(readUntil(socket, "ready>").contains("You can't do that."));
             }
         }
     }
@@ -112,11 +89,11 @@ class EmbeddedMudlibHostTest {
     }
 
     @Test
-    void engineClosesConnectionsWaitingAtTheMenu() throws Exception {
+    void hostClosesDirectPlayerConnections() throws Exception {
         try (EmbeddedMudlibHost engine = engine(spec("only", "0"))) {
             engine.start();
             try (Socket socket = connect(engine)) {
-                readUntil(socket, "(or quit): ");
+                readUntil(socket, "ready>");
                 engine.close();
                 assertEquals(-1, socket.getInputStream().read());
             }

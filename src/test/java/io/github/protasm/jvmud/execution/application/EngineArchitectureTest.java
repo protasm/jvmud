@@ -20,6 +20,44 @@ class EngineArchitectureTest {
     }
     private JVMud engine() { return new JVMud(new EngineConfiguration("127.0.0.1", 0, 0, directory.resolve("engine"), false)); }
 
+    @Test void directoryShowsDetailsAndBlurbWithoutCreatingPlayerSessions() throws Exception {
+        try (JVMud engine = new JVMud(new EngineConfiguration("127.0.0.1", 0, 0,
+                directory.resolve("engine"), false, directory, "play.jvmud.org"))) {
+            engine.start();
+            var mudlib = engine.startMudlib(spec("sample"), 0, 0);
+            try (Socket player = player(engine.port())) {
+                String menu = readUntil(player, "Q to quit: ");
+                assertTrue(menu.contains("1. sample [sample]"));
+                assertFalse(menu.contains("Telnet:"));
+                Path description = directory.resolve("engine/descriptions/sample.txt");
+                Files.createDirectories(description.getParent());
+                Files.writeString(description, "A friendly world.\nCome explore!");
+                send(player, "1\n");
+                String details = readUntil(player, "Q to quit: ");
+                assertTrue(details.contains("Telnet: play.jvmud.org:" + mudlib.playerPort()));
+                assertTrue(details.contains("A friendly world.\r\nCome explore!"));
+                assertFalse(details.contains("play.jvmud.org:" + mudlib.adminPort()));
+                assertFalse(details.contains("LOGIN"));
+                Files.writeString(description, "Updated description.");
+                send(player, "1\n");
+                assertTrue(readUntil(player, "Q to quit: ").contains("Updated description."));
+                for (String command : List.of("l", "L")) {
+                    send(player, command + "\n");
+                    assertTrue(readUntil(player, "Q to quit: ").contains("1. sample [sample]"));
+                }
+                send(player, "999\n");
+                assertTrue(readUntil(player, "Q to quit: ").contains("Please enter"));
+                engine.stopMudlib("sample");
+                send(player, "1\n");
+                assertTrue(readUntil(player, "Q to quit: ").contains("no longer available"));
+                send(player, "L\n");
+                assertTrue(readUntil(player, "Q to quit: ").contains("No mudlibs"));
+                send(player, "q\n");
+                assertTrue(readToEnd(player).contains("Goodbye!"));
+            }
+        }
+    }
+
     @Test void administrationStartsCatalogNamesAndConfinesLocalAndRemoteRequests() throws Exception {
         MudlibSpec original = spec("sample");
         Path catalog = directory.resolve("installed");
@@ -74,12 +112,12 @@ class EngineArchitectureTest {
         }
     }
 
-    @Test void emptyEngineProvidesPublicMenuLocalBootstrapAndRemoteEngineConsole() throws Exception {
+    @Test void emptyEngineProvidesDirectoryLocalBootstrapAndRemoteEngineConsole() throws Exception {
         try (JVMud engine = engine()) {
             engine.start();
             try (Socket player = player(engine.port())) {
-                assertTrue(readUntil(player, "(or quit): ").contains("No mudlibs"));
-                send(player, "quit\n"); assertEquals(-1, player.getInputStream().read());
+                assertTrue(readUntil(player, "Q to quit: ").contains("No mudlibs"));
+                send(player, "Q\n"); assertTrue(readToEnd(player).contains("Goodbye!"));
             }
             try (AdminConnection local = new AdminConnection(engine.localSocket())) {
                 assertEquals("engine", local.greeting);
@@ -106,9 +144,15 @@ class EngineArchitectureTest {
                      Socket direct = player(first.playerPort()); Socket menu = player(engine.port())) {
                     assertEquals("mudlib:first", admin.greeting);
                     String login = readUntil(direct, "ready>"); assertTrue(login.contains("LOGIN first")); assertFalse(login.contains("Select a mudlib"));
-                    readUntil(menu, "(or quit): "); send(menu, "first\n"); readUntil(menu, "ready>");
-                    assertTrue(admin.command("call hub query_connections").contains("2"));
-                    send(menu, "//quit\n"); assertFalse(readToEnd(menu).contains("Select a mudlib"));
+                    String choices = readUntil(menu, "Q to quit: ");
+                    assertTrue(choices.contains("1. first [first]"));
+                    assertTrue(choices.contains("2. second [second]"));
+                    send(menu, "1\n");
+                    String details = readUntil(menu, "Q to quit: ");
+                    assertTrue(details.contains("Telnet: same host, port " + first.playerPort()));
+                    assertFalse(details.contains("LOGIN"));
+                    assertTrue(admin.command("call hub query_connections").contains("1"));
+                    send(menu, "Q\n"); assertTrue(readToEnd(menu).contains("Goodbye!"));
                     try (var denied = new AdminConnection(engine.adminPort(), pin(), "helper", token)) { assertTrue(denied.greeting.startsWith("ERROR:")); }
                     ProcessHandle.of(first.pid()).orElseThrow().destroyForcibly();
                     awaitState(engine, "first", MudlibStatus.State.FAILED);

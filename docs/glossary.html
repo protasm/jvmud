@@ -586,7 +586,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 <dl>
 <dt class="hdlist1">Administrator; admin</dt>
 <dd>
-<p>A person authorized to operate a server or game. JVMud&#8217;s engine administrator tokens and grants govern operational access; in-game wizard ranks are mudlib policy.</p>
+<p>A person authorized to operate a server or game. A JVMud administrator is a named identity authenticated by an access token over TLS, with explicit engine or mudlib grants. It is separate from the engine owner’s OS identity and from mudlib-defined wizard ranks. The engine owner is the OS account that owns the private engine state directory and uses <code>jvmud-console --owner</code> for full engine control on the host.</p>
 </dd>
 </dl>
 </div>

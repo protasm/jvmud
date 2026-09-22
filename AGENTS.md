@@ -45,7 +45,7 @@ static docs.
 
 - `execution.application.JVMud` owns `main()`, application lifetime, public endpoints, and worker supervision.
 - The engine starts with zero mudlibs. Each mudlib runs in a separate JVM.
-- The engine player endpoint offers a public menu. Each ready mudlib also has a
+- The engine player endpoint offers an informational directory, never a route into a mudlib. Each ready mudlib has a
   direct player endpoint and a scoped TLS administration endpoint. Quitting a
   mudlib closes the connection; there is no return-to-menu or world-hopping API.
 - The engine owns administrator tokens, grants and TLS keys in its private state

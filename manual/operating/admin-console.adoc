@@ -1,17 +1,46 @@
 === Administration consoles
 
 The engine starts independently of mudlibs. Its player port presents a public
-menu; its TLS admin port manages mudlib lifecycles and engine-owned administrator
+directory of direct connection details; its TLS admin port manages mudlib lifecycles and engine-owned administrator
 grant records. Each mudlib runs in a separate worker JVM with its own player/admin
 port pair. Mudlib administration operates on that worker's live objects.
 
-Bootstrap locally as the engine's OS account:
+[[engine-owner-and-administrator]]
+==== Owner and administrator access
+
+The *owner* of an engine instance is the operating-system account that owns its
+private state directory, normally the account that starts it. Owner access grants
+full engine authority through a Unix-domain socket on the host. Run the console
+as that account, directly or through SSH. This does not require Unix root or
+`sudo`; ownership is not a grant in the administrator registry.
+
+An *administrator* is a named JVMud identity with an access token and explicit
+grants. Administrators connect over TCP/TLS. An `engine` grant includes all
+mudlibs and administrator management; `mudlib:<id>` is limited to one mudlib.
+These identities are separate from OS accounts and player accounts.
+
+[cols="2,2,3",options="header"]
+|===
+|Invocation |Transport |Authentication and authority
+|`jvmud-console --owner` |Default engine's Unix socket |OS owner; full engine authority
+|`jvmud-console --socket <path>` |Specified Unix socket |Same owner authentication
+|`jvmud-console` |TCP/TLS to `localhost:4001` |Fingerprint, administrator name and token; explicit grants
+|`jvmud-console <server> [<port>]` |TCP/TLS; default port 4001 |Same administrator authentication
+|===
+
+`--owner` must stand alone. `--socket` requires a path. Neither uses a TCP port
+or administrator credentials. Omitting flags uses TLS administrator access even
+though the destination is localhost.
+
+==== Bootstrap and connect
+
+Bootstrap as the engine owner:
 
 [source,shell]
 ----
 scripts/jvmud-start
 # In another terminal:
-scripts/jvmud-console --local
+scripts/jvmud-console --owner
 ----
 
 [source,text]
@@ -23,7 +52,7 @@ start smallmercies 4100 4101
 status
 ----
 
-`--local` uses `~/.jvmud/engine-4000/engine.sock` and authenticates through your
+`--owner` uses `~/.jvmud/engine-4000/engine.sock` and authenticates through your
 OS account. For custom engine state, use `--socket <state-directory>/engine.sock`.
 
 Store the issued random token securely; it is displayed only once. The engine

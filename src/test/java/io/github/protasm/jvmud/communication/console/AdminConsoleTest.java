@@ -15,12 +15,12 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 class AdminConsoleTest {
-    @Test void localConsoleUsesDefaultStateWithoutCredentials() throws Exception {
+    @Test void ownerConsoleUsesDefaultStateWithoutCredentials() throws Exception {
         Path directory = Files.createTempDirectory(Path.of("/tmp"), "jvmud-console-");
         try (JVMud engine = new JVMud(new EngineConfiguration("127.0.0.1", 0, 0,
                 directory.resolve(".jvmud/engine-4000"), false))) {
             engine.start();
-            String output = runConsole(directory, List.of("--local"), 0);
+            String output = runConsole(directory, List.of("--owner"), 0);
             assertTrue(output.contains("Connected to engine."));
             assertTrue(output.contains("Engine player="));
             assertFalse(output.contains("Access token:"));
@@ -57,7 +57,7 @@ class AdminConsoleTest {
             String rejectedToken = runConsole(directory, arguments, 1);
             assertTrue(rejectedToken.contains("Error: Authentication or authorization failed."));
             assertFalse(rejectedToken.contains("Connected to engine."));
-            assertTrue(runConsole(directory, List.of("--local"), 1).contains("Error: Cannot connect to the local engine at"));
+            assertTrue(runConsole(directory, List.of("--owner"), 1).contains("Error: Cannot connect to the local engine at"));
             assertTrue(runConsole(directory, List.of("--fingerprint", "invalid"), 1).contains("Error: Invalid certificate fingerprint."));
             assertTrue(runConsole(directory, List.of(), 1).contains("Without an interactive terminal"));
         } finally {
@@ -97,21 +97,21 @@ class AdminConsoleTest {
 
     @Test void preservesExplicitSocketAndScriptOptions() {
         assertEquals(java.util.Map.of("--socket", Path.of(System.getProperty("user.home"), ".jvmud", "engine-4000", "engine.sock").toString()),
-                AdminConsole.parseOptions(new String[]{"--local"}));
+                AdminConsole.parseOptions(new String[]{"--owner"}));
         assertEquals("/tmp/engine.sock", AdminConsole.parseOptions(new String[]{"--socket", "/tmp/engine.sock"}).get("--socket"));
         assertEquals("4200", AdminConsole.parseOptions(new String[]{"--host", "remote", "--port", "4200", "--user", "alice", "--fingerprint", "a".repeat(64)}).get("--port"));
     }
 
     @Test void rejectsAmbiguousEndpointsAndInvalidValues() {
         for (String[] args : new String[][] { {"--socket", "x", "--port", "4100"},
-                {"--local", "--port", "4401"}, {"--local", "--socket", "x"},
-                {"--local", "--user", "alice"}, {"--local", "--local"},
-                {"remote", "--local"}, {"--local", "remote"},
+                {"--owner", "--port", "4401"}, {"--owner", "--socket", "x"},
+                {"--owner", "--user", "alice"}, {"--owner", "--owner"},
+                {"remote", "--owner"}, {"--owner", "remote"},
                 {"remote", "--socket", "x"}, {"remote", "--host", "other"},
                 {"remote", "4401", "--port", "4402"}, {"remote", "4401", "extra"},
                 {"remote", "0"}, {"remote", "65536"}, {"remote", "nonsense"},
                 {""}, {"remote", ""}, {"--host", "--port", "4401"},
-                {"--fingerprint", "invalid"}, {"--unknown", "x"},
+                {"--fingerprint", "invalid"}, {"--unknown", "x"}, {"--local"},
                 {"--port", "0", "--user", "x", "--fingerprint", "a".repeat(64)}, {"--socket"}, {"--socket", "x", "--socket", "y"}})
             assertThrows(IllegalArgumentException.class, () -> AdminConsole.parseOptions(args));
     }

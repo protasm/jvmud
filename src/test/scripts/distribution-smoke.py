@@ -82,11 +82,11 @@ def check_world(root, cwd, env, world):
             token.write_text(secret.group(1)); token.chmod(0o600)
             mudlib_admin = re.search(r"id=" + world + r",.*?adminPort=(\d+)", bootstrap.stdout)
             assert mudlib_admin, bootstrap.stdout.replace(secret.group(1), "<redacted>")
+            mudlib_player = re.search(r"id=" + world + r",.*?playerPort=(\d+)", bootstrap.stdout)
+            assert mudlib_player, "Missing mudlib player port"
             fingerprint = (state / "admin-tls.sha256").read_text().strip()
-            with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
+            with socket.create_connection(("127.0.0.1", int(mudlib_player.group(1))), timeout=5) as sock:
                 sock.settimeout(0.5)
-                until(sock, "(or quit): ")
-                sock.sendall((world + "\n").encode())
                 if world == "smallmercies":
                     until(sock, "Name (2-16 letters): ")
                     command(sock, "Tester", "Gender (male/female): ")

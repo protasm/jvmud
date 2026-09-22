@@ -44,7 +44,7 @@ An Entity capable of initiating change. An NPC or scripted effect can be an Acto
 
 [[glossary-administrator]]
 Administrator; admin::
-A person authorized to operate a server or game. JVMud's engine administrator tokens and grants govern operational access; in-game wizard ranks are mudlib policy.
+A person authorized to operate a server or game. A JVMud administrator is a named identity authenticated by an access token over TLS, with explicit engine or mudlib grants. It is separate from the engine owner’s OS identity and from mudlib-defined wizard ranks. The engine owner is the OS account that owns the private engine state directory and uses `jvmud-console --owner` for full engine control on the host.
 
 [[glossary-aggro]]
 Aggro; aggressive::

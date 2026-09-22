@@ -1,27 +1,38 @@
-# JVMud 0.1.0-preview.8-test.20260920
+# JVMud 0.1.0-preview.8
 
-Local test candidate for the September 20 engine and package restructuring.
-This candidate is not a published release. It includes Small Mercies and LP245.
+This preview includes Small Mercies and LP245.
 
-## Changes under test
+## Changes
 
-The engine supports an empty public menu, separate mudlib worker JVMs,
-direct mudlib player endpoints, TLS administration with named tokens and scoped
-grants, and a same-account Unix recovery socket. Player quits disconnect.
-Java packages now separate language, execution, communication, and storage.
+The engine provides an interactive mudlib directory: numbered entries show direct
+Telnet addresses and optional owner-configured descriptions. Players connect to
+the mudlib ports for gameplay; the engine no longer forwards player connections.
+Use `--public-host` to advertise the public hostname.
 
-Use a fresh installation and disposable player data. Keep engine private state
-outside the mudlib trees. Workers launch directly with Java and retain the host
-account's OS permissions; no external sandbox package is required. See the packaged README for commands.
+Each mudlib runs in its own worker JVM. Worker diagnostic readers use dedicated
+threads so idle process pipes cannot exhaust Java 21 virtual-thread carriers on
+small servers. Workers retain the host account's OS permissions; they provide
+fault isolation, not an OS security sandbox. Java is the only runtime prerequisite.
+
+`jvmud-console --owner` replaces `--local`: the engine state directory's OS owner
+has full engine access through a Unix socket. Named administrators use TLS,
+tokens and explicit grants. Java packages separate language, execution,
+communication and storage.
+
+## Updating
+
+Use the existing installation's `scripts/jvmud-update`. Record the current
+mudlib names and port pairs first. The updater restarts the engine with its
+recorded launch arguments; mudlibs started through administration must be started
+again afterward. See README.md for the exact commands and backup boundaries.
 
 ## Validation
 
 The distribution builder runs the Java suite, extracted-archive gameplay and
 administration checks, and update/rollback checks before writing checksums.
-The accompanying platform .validation.json records checks actually completed.
-A package for another platform is not runtime-validated by cross-packaging.
-Linux runtime validation and the manual walkthrough remain pending.
-LP245 compatibility remains experimental. JVMud classes target Java 21.
+Platform .validation.json files record checks actually completed. Cross-packaging
+verifies archive and vendor-runtime integrity but does not establish execution
+on that platform. LP245 compatibility remains experimental. Classes target Java 21.
 
 ## Licensing status
 

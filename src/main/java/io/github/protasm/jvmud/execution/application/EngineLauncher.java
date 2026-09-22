@@ -23,7 +23,7 @@ final class EngineLauncher {
         EngineLog.install(applicationRoot, options.port());
         try (InstallationServers registration = InstallationServers.register(args, applicationRoot);
                 JVMud engine = new JVMud(new EngineConfiguration(options.bindAddress(), options.port(), options.adminPort(),
-                        options.stateDirectory(), options.traceStartupLoads(), options.mudlibDirectory()))) {
+                        options.stateDirectory(), options.traceStartupLoads(), options.mudlibDirectory(), options.publicHost()))) {
             Thread shutdown = new Thread(() -> closeForProcessExit(engine, registration), "jvmud-engine-shutdown");
             Runtime.getRuntime().addShutdownHook(shutdown);
             try {
@@ -61,14 +61,16 @@ final class EngineLauncher {
         String bind = DEFAULT_BIND_ADDRESS;
         Path state = null;
         Path mudlibDirectory = launchRoot().resolve("mudlibs");
+        String publicHost = null;
         boolean trace = false, help = false;
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             if (arg.equals("--help") || arg.equals("-help")) help = true;
             else if (arg.equals("--trace-startup-loads")) trace = true;
-            else if (java.util.Set.of("--bind", "--port", "--admin-port", "--state-dir", "--mudlib-dir").contains(arg)) {
+            else if (java.util.Set.of("--bind", "--port", "--admin-port", "--state-dir", "--mudlib-dir", "--public-host").contains(arg)) {
                 if (++i >= args.length || args[i].isBlank() || args[i].startsWith("--")) throw new IllegalArgumentException("Missing value for " + arg);
                 if (arg.equals("--bind")) bind = args[i];
+                else if (arg.equals("--public-host")) publicHost = args[i];
                 else if (arg.equals("--state-dir")) state = Path.of(args[i]).toAbsolutePath().normalize();
                 else if (arg.equals("--mudlib-dir")) mudlibDirectory = Path.of(args[i]).toAbsolutePath().normalize();
                 else {
@@ -86,7 +88,7 @@ final class EngineLauncher {
         java.util.List<MudlibSpec> mudlibs = new java.util.ArrayList<>();
         for (Path argument : initialMudlibs)
             mudlibs.add(MudlibSpec.fromConfig(resolveLaunchConfigFile(argument, launchRoot(), mudlibDirectory)));
-        return new LaunchOptions(java.util.List.copyOf(mudlibs), port, bind, help, trace, adminPort, state, mudlibDirectory);
+        return new LaunchOptions(java.util.List.copyOf(mudlibs), port, bind, help, trace, adminPort, state, mudlibDirectory, publicHost);
     }
 
     /** Resolves a host-supplied path or a short name under the launch root's default mudlib directory. */
@@ -124,7 +126,8 @@ final class EngineLauncher {
 
     private static String usage() {
         return "Usage: scripts/jvmud-start [--bind <address>] [--port <player-port>] [--admin-port <port>] "
-                + "[--state-dir <private-directory>] [--mudlib-dir <directory>] [--trace-startup-loads] [<mudlib-config-or-name>...]\n"
+                + "[--state-dir <private-directory>] [--mudlib-dir <directory>] [--public-host <hostname>] [--trace-startup-loads] [<mudlib-config-or-name>...]\n"
+                + "--public-host advertises direct player connections in the directory; it does not change listener bindings.\n"
                 + "Engine defaults: localhost player port 4000, TLS admin port 4001. Zero mudlibs is valid.\n"
                 + "The state directory contains the local recovery socket, TLS identity and administrator registry.\n"
                 + "Administration selects mudlibs by name from --mudlib-dir (default: mudlibs under the launch root).\n"
@@ -134,5 +137,5 @@ final class EngineLauncher {
 
     /** Application launch settings; initial mudlibs boot only after engine endpoints are ready. */
     record LaunchOptions(java.util.List<MudlibSpec> mudlibs, int port, String bindAddress,
-            boolean help, boolean traceStartupLoads, int adminPort, Path stateDirectory, Path mudlibDirectory) {}
+            boolean help, boolean traceStartupLoads, int adminPort, Path stateDirectory, Path mudlibDirectory, String publicHost) {}
 }

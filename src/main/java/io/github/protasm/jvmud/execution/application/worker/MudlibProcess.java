@@ -44,7 +44,9 @@ public final class MudlibProcess implements AutoCloseable {
             process = builder.start();
         } catch (IOException | RuntimeException e) { deleteScratch(); throw e; }
         input = new DataInputStream(process.getInputStream()); output = new DataOutputStream(process.getOutputStream());
-        Thread diagnostics = Thread.ofVirtual().name("jvmud-worker-log").start(() -> {
+        // Process-pipe reads can pin Java 21 virtual-thread carriers indefinitely.
+        // A dedicated daemon keeps idle worker logs from starving public listeners.
+        Thread diagnostics = Thread.ofPlatform().daemon().name("jvmud-worker-log").start(() -> {
             try (var source = process.getErrorStream(); var target = Files.newOutputStream(log)) {
                 byte[] buffer = new byte[8192]; int count; long total = 0;
                 while ((count = source.read(buffer)) != -1) {

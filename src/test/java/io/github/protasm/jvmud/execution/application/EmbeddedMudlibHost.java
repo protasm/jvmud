@@ -17,7 +17,7 @@ import java.util.Objects;
 /**
  * Test-only in-process fixture for exhaustive Telnet and mudlib behavior checks. Production uses worker JVMs.
  * Each mudlib owns its clock and execution queue; no engine tick visits all worlds.
- * Connections choose a mudlib before any player or persona is created.
+ * Each mudlib has its own direct player endpoint.
  */
 final class EmbeddedMudlibHost implements AutoCloseable {
     private final String bindAddress;
@@ -26,11 +26,11 @@ final class EmbeddedMudlibHost implements AutoCloseable {
     private final MudlibBootProgress progress;
     private final LPCObjectLoadObserver loadObserver;
     private final List<MudInstance> mudlibs = new ArrayList<>();
-    private PlayerGateway telnet;
+    private final List<PlayerGateway> players = new ArrayList<>();
     private final List<TelnetServer> workers = new ArrayList<>();
     private boolean closed;
 
-    /** Creates an engine offering one explicitly configured mudlib in its menu. */
+    /** Creates a host for one explicitly configured mudlib. */
     public EmbeddedMudlibHost(String bindAddress, int port, Path root, String configPath) {
         this(bindAddress, port, List.of(new MudlibSpec(root, configPath)));
     }
@@ -51,10 +51,10 @@ final class EmbeddedMudlibHost implements AutoCloseable {
         this.loadObserver = Objects.requireNonNull(loadObserver, "loadObserver");
     }
 
-    /** Boots all configured worlds, starts their individual clocks, and opens the menu listener. */
+    /** Boots all configured worlds, starts their individual clocks, and opens each direct player listener. */
     public synchronized void start() throws IOException {
         if (closed) throw new IllegalStateException("JVMud is closed.");
-        if (telnet != null) return;
+        if (!players.isEmpty()) return;
         try {
             var ids = new HashSet<String>();
             for (MudlibSpec specification : specifications) {
@@ -65,20 +65,18 @@ final class EmbeddedMudlibHost implements AutoCloseable {
                 }
             }
             mudlibs.forEach(MudInstance::startExecution);
-            List<PlayerGateway.Entry> entries = new ArrayList<>();
             for (MudInstance mud : mudlibs) {
                 String secret = java.util.UUID.randomUUID().toString();
                 TelnetServer worker = new TelnetServer(mud, secret); workers.add(worker); worker.start();
-                entries.add(new PlayerGateway.Entry(mud.gameId(), mud.gameName(), address -> {
+                PlayerGateway endpoint = new PlayerGateway(bindAddress, players.isEmpty() ? requestedPort : 0, address -> {
                     var socket = new java.net.Socket("127.0.0.1", worker.port());
                     var out = new java.io.DataOutputStream(socket.getOutputStream());
                     io.github.protasm.jvmud.communication.transport.admin.AdminWire.write(out, secret, 256);
                     io.github.protasm.jvmud.communication.transport.admin.AdminWire.write(out, address, 256);
                     return socket;
-                }));
+                });
+                players.add(endpoint); endpoint.start();
             }
-            telnet = new PlayerGateway(bindAddress, requestedPort, () -> entries, null);
-            telnet.start();
         } catch (IOException | RuntimeException | Error failure) {
             close();
             throw failure;
@@ -86,7 +84,10 @@ final class EmbeddedMudlibHost implements AutoCloseable {
     }
 
     /** Returns the bound player port (including the resolved ephemeral port for embedded callers). */
-    public synchronized int port() { return telnet == null ? requestedPort : telnet.port(); }
+    public synchronized int port() { return players.isEmpty() ? requestedPort : players.getFirst().port(); }
+
+    /** Returns a particular mudlib's direct player port. */
+    public synchronized int port(int index) { return players.get(index).port(); }
 
     /** Returns the bound player address. */
     public synchronized String bindAddress() { return bindAddress; }
@@ -99,7 +100,7 @@ final class EmbeddedMudlibHost implements AutoCloseable {
     public synchronized void close() {
         if (closed) return;
         closed = true;
-        if (telnet != null) telnet.close();
+        players.forEach(PlayerGateway::close);
         workers.forEach(TelnetServer::close);
         for (MudInstance mud : mudlibs) mud.shutdown(0);
     }

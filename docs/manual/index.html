@@ -1008,7 +1008,7 @@ it. Database requirements depend on the selected profile.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="shell">mkdir current &amp;&amp;
-tar -xzf jvmud-0.1.0-preview.7-macos-aarch64.tar.gz --strip-components=1 -C current &amp;&amp;
+tar -xzf jvmud-0.1.0-preview.8-macos-aarch64.tar.gz --strip-components=1 -C current &amp;&amp;
 cd current &amp;&amp;
 scripts/jvmud-start smallmercies</code></pre>
 </div>
@@ -1017,11 +1017,16 @@ scripts/jvmud-start smallmercies</code></pre>
 <p>Keep the installation in <code>current</code> across releases. These commands stop if that directory already exists; use the updater below for an existing installation.</p>
 </div>
 <div class="paragraph">
-<p>Wait for the mudlib&#8217;s <code>state=RUNNING</code> status, then connect a Telnet-capable MUD client to <code>127.0.0.1:4000</code> with SSL/TLS disabled. Choose a guest name, gender, and class. Try <code>help</code>, <code>look</code>, and <code>north</code>. Stop the server with Ctrl+C.</p>
+<p>Wait for the mudlib&#8217;s <code>state=RUNNING</code> status, then connect a Telnet-capable MUD client to <code>127.0.0.1:4000</code> with SSL/TLS disabled. Select Small Mercies to see its direct Telnet address, then connect to that player port. Choose a guest name, gender, and class. Try <code>help</code>, <code>look</code>, and <code>north</code>. Stop the server with Ctrl+C.</p>
 </div>
 </div>
 <div class="sect3">
 <h4 id="_update_an_installation"><a class="anchor" href="#_update_an_installation"></a><a class="link" href="#_update_an_installation">Update an installation</a></h4>
+<div class="paragraph">
+<p>Before updating, record the running mudlib names and player/admin port pairs with
+<code>status</code> in the engine console. Back up the external engine state directory
+separately; it contains administrator credentials, grants and TLS keys.</p>
+</div>
 <div class="paragraph">
 <p>From your existing <code>current</code> directory:</p>
 </div>
@@ -1035,7 +1040,14 @@ scripts/jvmud-update</code></pre>
 <p>The updater verifies the latest matching download, stops this installation&#8217;s servers cleanly, and creates a full backup in <code>../backup/</code>, beside the distribution folder. It updates JVMud and shipped mudlib <code>jvmud/</code> files, then restarts the servers. Other mudlib content and saved data remain in place. Starting with preview.6, comment-only configuration differences do not block updates, edited Markdown documentation is backed up and replaced, and genuine adapter/configuration conflicts are reported together before downtime. The updater already installed performs each upgrade. External files and databases need separate backups.</p>
 </div>
 <div class="paragraph">
-<p>The installation folder keeps its name across releases; the updater reports the installed version. Do not rename a running installation. Stop its servers cleanly first, then relaunch them from the new location with their original options and update any external paths. The bundled Java runtime is available through <code>jre</code>; server logs live in each mudlib&#8217;s <code>jvmud/log/</code> directory. Players must reconnect after an update. Earlier previews without the updater require a manual migration; see the package README for recovery and migration details.</p>
+<p>The updater restarts engines with their original arguments. Mudlibs started
+through administration are not automatically restarted. After the update, use
+<code>scripts/jvmud-console --owner</code> and restore them with their recorded ports, for
+example <code>start smallmercies 4100 4101</code> and <code>start lp245 4200 4201</code>. Use <code>status</code>
+to verify both. The previous flag <code>--local</code> is replaced by <code>--owner</code> in preview.8.</p>
+</div>
+<div class="paragraph">
+<p>The installation folder keeps its name across releases; the updater reports the installed version. Do not rename a running installation. Stop its servers cleanly first, then relaunch them from the new location with their original options and update any external paths. The bundled Java runtime is available through <code>jre</code>; engine logs live in <code>.jvmud/log/</code> and worker logs in the private engine state directory. Players must reconnect after an update. Earlier previews without the updater require a manual migration; see the package README for recovery and migration details.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1628,18 +1640,77 @@ hosting policy, and the server log to diagnose a running listener.</p>
 <h3 id="_administration_consoles"><a class="anchor" href="#_administration_consoles"></a><a class="link" href="#_administration_consoles">Administration consoles</a></h3>
 <div class="paragraph">
 <p>The engine starts independently of mudlibs. Its player port presents a public
-menu; its TLS admin port manages mudlib lifecycles and engine-owned administrator
+directory of direct connection details; its TLS admin port manages mudlib lifecycles and engine-owned administrator
 grant records. Each mudlib runs in a separate worker JVM with its own player/admin
 port pair. Mudlib administration operates on that worker&#8217;s live objects.</p>
 </div>
+<div class="sect3">
+<h4 id="engine-owner-and-administrator"><a class="anchor" href="#engine-owner-and-administrator"></a><a class="link" href="#engine-owner-and-administrator">Owner and administrator access</a></h4>
 <div class="paragraph">
-<p>Bootstrap locally as the engine&#8217;s OS account:</p>
+<p>The <strong>owner</strong> of an engine instance is the operating-system account that owns its
+private state directory, normally the account that starts it. Owner access grants
+full engine authority through a Unix-domain socket on the host. Run the console
+as that account, directly or through SSH. This does not require Unix root or
+<code>sudo</code>; ownership is not a grant in the administrator registry.</p>
+</div>
+<div class="paragraph">
+<p>An <strong>administrator</strong> is a named JVMud identity with an access token and explicit
+grants. Administrators connect over TCP/TLS. An <code>engine</code> grant includes all
+mudlibs and administrator management; <code>mudlib:&lt;id&gt;</code> is limited to one mudlib.
+These identities are separate from OS accounts and player accounts.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 28.5714%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Invocation</th>
+<th class="tableblock halign-left valign-top">Transport</th>
+<th class="tableblock halign-left valign-top">Authentication and authority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jvmud-console --owner</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default engine&#8217;s Unix socket</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OS owner; full engine authority</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jvmud-console --socket &lt;path&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Specified Unix socket</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Same owner authentication</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jvmud-console</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCP/TLS to <code>localhost:4001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fingerprint, administrator name and token; explicit grants</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jvmud-console &lt;server&gt; [&lt;port&gt;]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCP/TLS; default port 4001</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Same administrator authentication</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>--owner</code> must stand alone. <code>--socket</code> requires a path. Neither uses a TCP port
+or administrator credentials. Omitting flags uses TLS administrator access even
+though the destination is localhost.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_bootstrap_and_connect"><a class="anchor" href="#_bootstrap_and_connect"></a><a class="link" href="#_bootstrap_and_connect">Bootstrap and connect</a></h4>
+<div class="paragraph">
+<p>Bootstrap as the engine owner:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="shell">scripts/jvmud-start
 # In another terminal:
-scripts/jvmud-console --local</code></pre>
+scripts/jvmud-console --owner</code></pre>
 </div>
 </div>
 <div class="listingblock">
@@ -1652,7 +1723,7 @@ status</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p><code>--local</code> uses <code>~/.jvmud/engine-4000/engine.sock</code> and authenticates through your
+<p><code>--owner</code> uses <code>~/.jvmud/engine-4000/engine.sock</code> and authenticates through your
 OS account. For custom engine state, use <code>--socket &lt;state-directory&gt;/engine.sock</code>.</p>
 </div>
 <div class="paragraph">
@@ -1704,6 +1775,7 @@ sandbox package is required.</p>
 <div class="paragraph">
 <p>See the repository&#8217;s <code>docs/ENGINE-ADMINISTRATION.md</code> for isolation limits, timeout
 behavior, certificate management and the complete operating workflow.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -4283,7 +4355,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 <dl>
 <dt class="hdlist1">Administrator; admin</dt>
 <dd>
-<p>A person authorized to operate a server or game. JVMud&#8217;s engine administrator tokens and grants govern operational access; in-game wizard ranks are mudlib policy.</p>
+<p>A person authorized to operate a server or game. A JVMud administrator is a named identity authenticated by an access token over TLS, with explicit engine or mudlib grants. It is separate from the engine owner’s OS identity and from mudlib-defined wizard ranks. The engine owner is the OS account that owns the private engine state directory and uses <code>jvmud-console --owner</code> for full engine control on the host.</p>
 </dd>
 </dl>
 </div>

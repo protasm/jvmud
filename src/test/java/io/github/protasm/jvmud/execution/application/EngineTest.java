@@ -35,11 +35,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 final class EngineTest {
-    /** Chooses the only menu entry before exercising the mudlib's existing login tests. */
+    /** Connects to the sole mudlib directly for login tests. */
     private static Socket connectToOnlyMudlib(EmbeddedMudlibHost engine) throws IOException {
         Socket socket = new Socket("127.0.0.1", engine.port());
-        socket.getOutputStream().write("1\n".getBytes(StandardCharsets.UTF_8));
-        socket.getOutputStream().flush();
         return socket;
     }
 
@@ -176,6 +174,9 @@ final class EngineTest {
     void engineAdministrationIsAlwaysSeparate() {
         var defaults = EngineLauncher.parseLaunchOptions(new String[0]);
         assertEquals(4001, defaults.adminPort());
+        assertEquals(null, defaults.publicHost());
+        assertEquals("play.jvmud.org", EngineLauncher.parseLaunchOptions(new String[]{"--public-host", "play.jvmud.org"}).publicHost());
+        assertThrows(IllegalArgumentException.class, () -> EngineLauncher.parseLaunchOptions(new String[]{"--public-host"}));
         var options = EngineLauncher.parseLaunchOptions(new String[]{"--port", "4500", "--admin-port", "4600", "--state-dir", "target/engine"});
         assertEquals(4600, options.adminPort());
         for (String[] args : new String[][] {{"--admin-port", "4000"}, {"--admin-port", "0"}, {"--admin-port", "bad"}, {"--admin-port"}})

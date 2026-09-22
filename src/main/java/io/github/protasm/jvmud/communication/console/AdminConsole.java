@@ -112,12 +112,12 @@ public final class AdminConsole {
 
     /**
      * Accepts an optional server and port, defaulting to localhost:4001.
-     * The standalone --local flag selects the standard engine's recovery socket
+     * The standalone --owner flag selects the standard engine's recovery socket
      * under the current user's home; --socket selects a custom local endpoint.
      * Named options remain available for scripting.
      */
     static Map<String, String> parseOptions(String[] args) {
-        if (args.length == 1 && args[0].equals("--local"))
+        if (args.length == 1 && args[0].equals("--owner"))
             return Map.of("--socket", Path.of(System.getProperty("user.home"), ".jvmud", "engine-4000", "engine.sock").toString());
         Map<String, String> result = new HashMap<>();
         int firstOption = 0;
@@ -150,9 +150,9 @@ public final class AdminConsole {
     private static String usage() {
         return "Usage: jvmud-console [<server> [<port>]] [--user <name>] [--fingerprint <SHA-256>] [--token-file <path>]\n"
                 + "   or: jvmud-console [--host <host>] [--port <admin-port>] [--user <name>] [--fingerprint <SHA-256>] [--token-file <path>]\n"
-                + "   or: jvmud-console --local\n"
+                + "   or: jvmud-console --owner\n"
                 + "   or: jvmud-console --socket <engine.sock>\n"
-                + "--local: connect to ~/.jvmud/engine-4000/engine.sock as the engine's OS account; no token or fingerprint needed.\n"
+                + "--owner: connect to ~/.jvmud/engine-4000/engine.sock as the engine state directory's OS owner; no token or fingerprint needed.\n"
                 + "Use --socket for a custom state directory or an engine using a different player port.\n"
                 + "Defaults: localhost:4001 over TLS. Prompts for the trusted certificate fingerprint, administrator name, and token.\n"
                 + "Obtain the fingerprint from the engine operator through a trusted channel. Tokens are entered without echo.\n"
