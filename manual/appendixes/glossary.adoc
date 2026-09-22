@@ -400,7 +400,7 @@ MU* is an umbrella spelling for related multi-user text environments. MUSH is co
 
 [[glossary-mud]]
 MUD::
-Historically “Multi-User Dungeon”; “Multi-User Domain,” “Multi-User Dimension,” and “Multiple User Dialogue” are also used. The broad historical family includes varied text worlds. JVMud adopts a specific definition: an interactive, multiplayer, text-only game set in a persistent, temporal, player-present world.
+Historically “Multi-User Dungeon”; “Multi-User Domain,” “Multi-User Dimension,” and “Multiple User Dialogue” are also used. The broad historical family includes varied text worlds. JVMud adopts a specific definition: an interactive, multiplayer, text-centric game set in a persistent, temporal, player-present world.
 
 [[glossary-mud-driver-hook]]
 Mud driver hook::

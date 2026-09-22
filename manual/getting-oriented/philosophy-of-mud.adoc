@@ -13,7 +13,7 @@ JVMud is built around eight core concepts:
 
 Together, these concepts define what JVMud means by MUD.
 
-A MUD is an interactive, multiplayer, text-only game set in a persistent,
+A MUD is an interactive, multiplayer, text-centric game set in a persistent,
 temporal, player-present world.
 
 JVMud is not a general-purpose simulation framework, chat server,
