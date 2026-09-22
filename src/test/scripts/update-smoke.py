@@ -110,6 +110,12 @@ def main():
                 direct_port = wait_world(root,state,world)
                 # Reap stopped children just as a launching shell would.
                 threading.Thread(target=processes[-1].wait, daemon=True).start()
+            # Add an admin-started mudlib to the first engine; it must be reported, not auto-restored.
+            manual = subprocess.run([str(root/'scripts/jvmud-console'), '--socket', str(states[0]/'engine.sock')],
+                                    input='start lp245 0 0\nquit\n', text=True, capture_output=True, timeout=60)
+            assert manual.returncode == 0 and 'state=RUNNING' in manual.stdout, manual.stdout + manual.stderr
+            match = re.search(r'playerPort=(\d+), adminPort=(\d+)', manual.stdout)
+            manual_command = f'start lp245 {match[1]} {match[2]}'
             with socket.create_connection(('127.0.0.1',direct_port)) as player:
                 player.settimeout(.5)
                 dist.until(player,'What is your name: ')
@@ -125,6 +131,9 @@ def main():
                 publish(sha(served_archive))
                 updated=subprocess.run(args,cwd=root,text=True,capture_output=True,timeout=150)
                 assert updated.returncode==0,updated.stdout+updated.stderr
+            assert manual_command in updated.stdout, updated.stdout
+            assert 'smallmercies' in updated.stdout and 'restarted automatically' in updated.stdout, updated.stdout
+            assert 'manual restart required' in updated.stdout, updated.stdout
             for p in processes:p.wait(timeout=10)
             assert len(live_records(root))==2
             for world,state in zip(['smallmercies','lp245'],states):wait_world(root,state,world)

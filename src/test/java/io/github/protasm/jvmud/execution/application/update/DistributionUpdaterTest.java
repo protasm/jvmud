@@ -8,6 +8,21 @@ import org.junit.jupiter.api.io.TempDir;
 
 class DistributionUpdaterTest {
     @TempDir Path temp;
+    @Test void restartReportRetainsPortsAndOmitsAutomaticallyRestartedMudlibs() throws Exception {
+        var inventory = InstallationServers.JSON.readTree("""
+                {"ownerSocket":"/tmp/engine state/engine.sock","mudlibs":[
+                  {"id":"smallmercies","playerPort":4100,"adminPort":4101},
+                  {"id":"lp245","playerPort":4200,"adminPort":4201}]}
+                """);
+        String report = DistributionUpdater.mudlibRestartReport(inventory, Set.of("smallmercies"));
+        assertTrue(report.contains("smallmercies (player 4100, admin 4101) — restarted automatically"));
+        assertTrue(report.contains("start lp245 4200 4201"));
+        assertFalse(report.contains("start smallmercies"));
+        assertTrue(report.contains("--socket '/tmp/engine state/engine.sock'"));
+        assertEquals("  None.\n", DistributionUpdater.mudlibRestartReport(
+                InstallationServers.JSON.readTree("{\"mudlibs\":[]}"), Set.of()));
+    }
+
     @Test void preservesLocalConfigurationAndRejectsConflictingAdapterChanges() throws Exception {
         Path old = temp.resolve("old"), next = temp.resolve("next");
         String config = "mudlibs/example/jvmud/example.config";

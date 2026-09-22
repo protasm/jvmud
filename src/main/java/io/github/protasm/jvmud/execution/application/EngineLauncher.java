@@ -30,14 +30,14 @@ final class EngineLauncher {
                 engine.start();
                 System.out.print(engine.describe());
                 System.out.println("Administration TLS fingerprint: " + Files.readString(options.stateDirectory().resolve("admin-tls.sha256")).trim());
-                registration.ready();
                 for (MudlibSpec spec : options.mudlibs()) {
                     try { System.out.println(engine.startMudlib(spec, 0, 0)); }
                     catch (IOException | RuntimeException e) { System.err.println("Mudlib startup failed: " + e.getMessage()); }
                 }
+                registration.ready(engine.mudlibs(), options.stateDirectory().resolve("engine.sock"));
                 engine.await();
             } finally {
-                engine.close();
+                closeForProcessExit(engine, registration);
                 try { Runtime.getRuntime().removeShutdownHook(shutdown); }
                 catch (IllegalStateException ignored) { /* Process shutdown already began. */ }
             }
@@ -48,7 +48,9 @@ final class EngineLauncher {
      * Records shutdown after worker save hooks finish, before the JVM exits.
      * Signal-driven shutdown does not wait for the main thread's resource cleanup.
      */
-    private static void closeForProcessExit(JVMud engine, InstallationServers registration) {
+    private static synchronized void closeForProcessExit(JVMud engine, InstallationServers registration) {
+        try { registration.stopping(engine.mudlibs()); }
+        catch (IOException e) { System.err.println("Cannot record mudlibs before shutdown: " + e.getMessage()); }
         engine.close();
         try { registration.close(); }
         catch (IOException e) { System.err.println("Cannot record completed engine shutdown: " + e.getMessage()); }

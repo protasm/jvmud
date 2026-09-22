@@ -1008,7 +1008,7 @@ it. Database requirements depend on the selected profile.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="shell">mkdir current &amp;&amp;
-tar -xzf jvmud-0.1.0-preview.8-macos-aarch64.tar.gz --strip-components=1 -C current &amp;&amp;
+tar -xzf jvmud-0.1.0-preview.9-macos-aarch64.tar.gz --strip-components=1 -C current &amp;&amp;
 cd current &amp;&amp;
 scripts/jvmud-start smallmercies</code></pre>
 </div>
@@ -1048,6 +1048,14 @@ to verify both. The previous flag <code>--local</code> is replaced by <code>--ow
 </div>
 <div class="paragraph">
 <p>The installation folder keeps its name across releases; the updater reports the installed version. Do not rename a running installation. Stop its servers cleanly first, then relaunch them from the new location with their original options and update any external paths. The bundled Java runtime is available through <code>jre</code>; engine logs live in <code>.jvmud/log/</code> and worker logs in the private engine state directory. Players must reconnect after an update. Earlier previews without the updater require a manual migration; see the package README for recovery and migration details.</p>
+</div>
+<div class="paragraph">
+<p>Starting with preview.9, the updater prints the mudlibs that were running before
+shutdown, their original player/admin ports, and console commands for those
+that require a manual restart. The inventory is retained in the backup&#8217;s
+<code>.jvmud/servers</code> records. It also identifies mudlibs restarted from launch
+arguments. When upgrading from an older release, record <code>status</code> yourself:
+the updater performing that upgrade is still the older installed version.</p>
 </div>
 </div>
 <div class="sect3">

@@ -9,7 +9,7 @@ In a terminal, go to the writable folder containing your download. For Apple Sil
 [source,shell]
 ----
 mkdir current &&
-tar -xzf jvmud-0.1.0-preview.8-macos-aarch64.tar.gz --strip-components=1 -C current &&
+tar -xzf jvmud-0.1.0-preview.9-macos-aarch64.tar.gz --strip-components=1 -C current &&
 cd current &&
 scripts/jvmud-start smallmercies
 ----
@@ -41,6 +41,14 @@ example `start smallmercies 4100 4101` and `start lp245 4200 4201`. Use `status`
 to verify both. The previous flag `--local` is replaced by `--owner` in preview.8.
 
 The installation folder keeps its name across releases; the updater reports the installed version. Do not rename a running installation. Stop its servers cleanly first, then relaunch them from the new location with their original options and update any external paths. The bundled Java runtime is available through `jre`; engine logs live in `.jvmud/log/` and worker logs in the private engine state directory. Players must reconnect after an update. Earlier previews without the updater require a manual migration; see the package README for recovery and migration details.
+
+
+Starting with preview.9, the updater prints the mudlibs that were running before
+shutdown, their original player/admin ports, and console commands for those
+that require a manual restart. The inventory is retained in the backup's
+`.jvmud/servers` records. It also identifies mudlibs restarted from launch
+arguments. When upgrading from an older release, record `status` yourself:
+the updater performing that upgrade is still the older installed version.
 
 ==== Building from source
 

@@ -22,7 +22,7 @@ Apple Silicon example; substitute your package filename for another platform:
 
 ```sh
 mkdir current &&
-tar -xzf jvmud-0.1.0-preview.8-macos-aarch64.tar.gz --strip-components=1 -C current &&
+tar -xzf jvmud-0.1.0-preview.9-macos-aarch64.tar.gz --strip-components=1 -C current &&
 cd current
 ```
 
@@ -220,3 +220,10 @@ Older previews without `jvmud-update` need one manual migration: stop their
 servers, extract the new package, and transfer your saved data and local changes.
 Future updates can then use the command above. Backups are retained until you
 choose to remove them.
+
+Starting with preview.9, the updater prints the mudlibs that were running before
+shutdown, their original player/admin ports, and console commands for those
+that require a manual restart. The inventory is retained in the backup's
+`.jvmud/servers` records. It also identifies mudlibs restarted from launch
+arguments. When upgrading from an older release, record `status` yourself:
+the updater performing that upgrade is still the older installed version.

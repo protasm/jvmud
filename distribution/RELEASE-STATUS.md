@@ -1,4 +1,4 @@
-# JVMud 0.1.0-preview.8
+# JVMud 0.1.0-preview.9
 
 This preview includes Small Mercies and LP245.
 
@@ -33,6 +33,13 @@ administration checks, and update/rollback checks before writing checksums.
 Platform .validation.json files record checks actually completed. Cross-packaging
 verifies archive and vendor-runtime integrity but does not establish execution
 on that platform. LP245 compatibility remains experimental. Classes target Java 21.
+
+## Update restart report
+
+Preview.9 records the running mudlibs before orderly engine shutdown and prints
+original port pairs and manual restart commands after update or rollback.
+Initial mudlibs confirmed running after restart are identified separately.
+Older installed updaters do not gain this behavior until they have been upgraded.
 
 ## Licensing status
 

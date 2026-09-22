@@ -125,7 +125,8 @@ public final class DistributionUpdater {
                 for (Server server : stopped) restart(root, server, restarted);
                 Files.deleteIfExists(journal);
                 System.out.println("Update complete: " + version + ". Restarted " + restarted.size() + " server(s).");
-                System.out.println("Backup: " + backup + "\nRestart logs: " + "each mudlib's jvmud/log/ directory");
+                System.out.println("Backup: " + backup + "\nRestart logs: each engine's .jvmud/log/ directory");
+                printMudlibRestartReport(stopped, restarted, root, System.out);
             } catch (Exception failure) {
                 System.err.println("Update failed: " + failure.getMessage());
                 // Never restore files underneath a still-running replacement process.
@@ -139,13 +140,62 @@ public final class DistributionUpdater {
                     System.err.println("Previous JVMud files restored. Backup retained: " + backup);
                 }
                 Files.deleteIfExists(journal);
+                List<Process> recovered = new ArrayList<>();
                 for (Server server : stopped) {
-                    try { restart(root, server, new ArrayList<>()); }
+                    try { restart(root, server, recovered); }
                     catch (Exception restartFailure) { failure.addSuppressed(restartFailure); System.err.println("Restart failed: " + restartFailure.getMessage()); }
                 }
+                printMudlibRestartReport(stopped, recovered, root, System.err);
                 throw failure;
             }
         } finally { deleteTree(work); }
+    }
+
+    /** Reports the shutdown inventory, omitting commands for mudlibs confirmed running after restart.
+     * The original records remain in the installation backup for later recovery.
+     */
+    static void printMudlibRestartReport(List<Server> stopped, List<Process> restarted, Path root, PrintStream out) {
+        for (int i = 0; i < stopped.size(); i++) {
+            Server server = stopped.get(i);
+            try {
+                JsonNode before = read(server.record());
+                out.println("Mudlibs running before update (engine " + server.pid() + "):");
+                if (!before.has("mudlibs")) {
+                    out.println("  Inventory unavailable: this engine predates restart reporting. Check your recorded status.");
+                    continue;
+                }
+                Set<String> running = new HashSet<>();
+                if (i < restarted.size()) {
+                    JsonNode after = read(root.resolve(".jvmud/servers/" + restarted.get(i).pid() + ".json"));
+                    after.path("mudlibs").forEach(m -> running.add(m.path("id").asText()));
+                }
+                out.print(mudlibRestartReport(before, running));
+            } catch (IOException e) {
+                out.println("  Cannot read restart inventory: " + e.getMessage() + ". Check the backup's .jvmud/servers records.");
+            }
+        }
+    }
+
+    /** Formats retained ports as console commands; unknown restart state is explicitly qualified. */
+    static String mudlibRestartReport(JsonNode before, Set<String> running) {
+        StringBuilder text = new StringBuilder();
+        if (before.path("mudlibs").isEmpty()) return "  None.\n";
+        List<String> commands = new ArrayList<>();
+        for (JsonNode mudlib : before.path("mudlibs")) {
+            String id = mudlib.path("id").asText();
+            text.append("  ").append(id).append(" (player ").append(mudlib.path("playerPort").asInt())
+                    .append(", admin ").append(mudlib.path("adminPort").asInt()).append(")")
+                    .append(running.contains(id) ? " — restarted automatically\n" : " — manual restart required\n");
+            if (!running.contains(id)) commands.add("start " + id + " " + mudlib.path("playerPort").asInt()
+                    + " " + mudlib.path("adminPort").asInt());
+        }
+        if (!commands.isEmpty()) {
+            text.append("Open the owner console: scripts/jvmud-console --socket '")
+                    .append(before.path("ownerSocket").asText().replace("'", "'\"'\"'"))
+                    .append("'\nCheck status first, then start any missing mudlibs:\n");
+            commands.forEach(command -> text.append("  ").append(command).append('\n'));
+        }
+        return text.toString();
     }
 
     record Server(Path record, long pid, String started, Path cwd, Path logDirectory, List<String> args, Map<String, String> environment) {}

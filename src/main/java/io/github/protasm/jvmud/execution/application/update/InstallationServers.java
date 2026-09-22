@@ -1,6 +1,7 @@
 package io.github.protasm.jvmud.execution.application.update;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.protasm.jvmud.execution.application.MudlibStatus;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
@@ -56,8 +57,27 @@ public final class InstallationServers implements AutoCloseable {
         }
     }
 
-    public synchronized void ready() throws IOException {
-        if (record != null) { values.put("state", "ready"); write(); }
+    /** Records the initial running mudlibs and the owner endpoint after startup finishes. */
+    public synchronized void ready(List<MudlibStatus> mudlibs, Path ownerSocket) throws IOException {
+        if (record != null) {
+            values.put("ownerSocket", ownerSocket.toAbsolutePath().toString());
+            values.put("mudlibs", runningMudlibs(mudlibs));
+            values.put("state", "ready"); write();
+        }
+    }
+
+    /** Captures the final running set once, before worker shutdown changes their states. */
+    public synchronized void stopping(List<MudlibStatus> mudlibs) throws IOException {
+        if (record != null && values.get("state").equals("ready")) {
+            values.put("mudlibs", runningMudlibs(mudlibs));
+            values.put("state", "stopping"); write();
+        }
+    }
+
+    /** Keeps restart instructions independent of worker PIDs and diagnostic messages. */
+    private static List<Map<String, Object>> runningMudlibs(List<MudlibStatus> mudlibs) {
+        return mudlibs.stream().filter(m -> m.state() == MudlibStatus.State.RUNNING)
+                .map(m -> Map.<String, Object>of("id", m.id(), "playerPort", m.playerPort(), "adminPort", m.adminPort())).toList();
     }
 
     @Override public synchronized void close() throws IOException {
