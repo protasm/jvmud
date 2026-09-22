@@ -59,3 +59,32 @@ p, li, dd, td, th { font-family: inherit; }
   .glossary-page #toc > ul > li:last-child { grid-column: 1 / -1; }
   .glossary-page #toc > ul > li > a { display: block; padding-block: .2rem; }
 }
+
+/* Explicit labels keep glossary categories meaningful without color or CSS. */
+.glossary-native-term { color: var(--accent); }
+.glossary-pillar-term {
+  font-variant-caps: small-caps;
+  font-size: 1.12em;
+  letter-spacing: .035em;
+}
+.glossary-native-label {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: .5em;
+  padding: .12em .55em;
+  border: 1px solid currentColor;
+  border-radius: .25rem;
+  font-size: .68em;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.glossary-native-label { color: var(--accent); background: #edf3f3; }
+.glossary-key { max-width: 65ch; }
+.glossary-key .glossary-native-label { margin-left: 0; }
+@media print {
+  .glossary-native-term, .glossary-native-label {
+    color: black;
+    background: white;
+  }
+}

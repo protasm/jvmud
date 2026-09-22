@@ -29,7 +29,7 @@
 <h3 id="text">Text</h3>
 <p>Players perceive and manipulate the world through text. Descriptions, dialogue, and commands are part of the game itself. JVMud separates connections and text delivery from the mudlib's presentation, so the game controls what its world says. Structured client messages can accompany that text.</p>
 <h3 id="interactive">Interactive</h3>
-<p>Players can affect the world, and the world can affect players. A command can move an Entity, change an object, or provoke a response. JVMud routes input into mudlib behavior and provides world operations and perception delivery. The mudlib decides what an action means and whether it succeeds.</p>
+<p>Players can affect the world (through their Personas), and the world can affect players. A command can move an Entity, change an object, or provoke a response. JVMud routes input into mudlib behavior and provides world operations and perception delivery. The mudlib decides what an action means and whether it succeeds.</p>
 <h3 id="multiplayer">Multiplayer</h3>
 <p>Multiple players inhabit the same world simultaneously. Their actions meet in shared state. Within each running mudlib, JVMud serializes player input, callbacks, administration, and ticks on an execution queue, giving changes an ordered execution context. Separate mudlibs have independent runtime state.</p>
 <h3 id="world">World</h3>

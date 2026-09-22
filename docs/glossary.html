@@ -433,7 +433,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 @media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
 </style>
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="manual.css">
+<link rel="stylesheet" href="manual.css?v=glossary-categories-1">
 <meta name="description" content="MUD and LPMud terminology, from applies and simul-efuns to JVMud's engine, world, and player concepts.">
 </head>
 <body class="article toc2 toc-left glossary-page">
@@ -486,6 +486,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 Historical usage varies between communities and drivers; aliases are grouped together.
 It is a broad reference, not a claim that every local slang term or every legacy API is implemented.
 Use your browser&#8217;s Find command to locate any spelling, or browse the alphabetical sections.</p>
+</div>
+<div class="paragraph glossary-key">
+<p><span class="glossary-native-label">JVMud</span> marks a native concept or a distinct JVMud meaning of a shared term;
+it does not mean the word originated with JVMud.</p>
+</div>
+<div class="paragraph glossary-key">
+<p>Small caps identify the eight pillars of MUD on the website.
+Unmarked entries describe general or historical vocabulary.</p>
 </div>
 </div>
 </div>
@@ -576,7 +584,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-actor" class="dlist">
 <dl>
-<dt class="hdlist1">Actor</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Actor</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>An Entity capable of initiating change. An NPC or scripted effect can be an Actor without being a player&#8217;s Persona.</p>
 </dd>
@@ -698,7 +706,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-capability" class="dlist">
 <dl>
-<dt class="hdlist1">Capability</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Capability</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>An ability or authorization. World capabilities describe what an Entity can do, such as act or perceive. JVMud <code>engine_capabilities</code> grants authorize selected host operations; they are distinct from <code>language_features</code> syntax settings.</p>
 </dd>
@@ -762,7 +770,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-command-dispatch" class="dlist">
 <dl>
-<dt class="hdlist1">Command dispatch</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Command dispatch</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>Routing input to mudlib command behavior in its current context. JVMud serializes execution inside the instance; transport does not interpret LPC return values as command success or failure.</p>
 </dd>
@@ -778,7 +786,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-compatibility-profile" class="dlist">
 <dl>
-<dt class="hdlist1">Compatibility profile</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Compatibility profile</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>Configuration describing one mudlib&#8217;s language options, aliases, lifecycle mappings, capabilities, and supporting objects. Compatibility is explicit and scoped to that profile, not a promise that every LP dialect works unchanged.</p>
 </dd>
@@ -786,7 +794,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-compatibility-shim" class="dlist">
 <dl>
-<dt class="hdlist1">Compatibility shim</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Compatibility shim</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>A dedicated mudlib-side adapter translating legacy names or behavior into JVMud operations. It preserves the distinction between historical conventions and native engine concepts.</p>
 </dd>
@@ -802,7 +810,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-containment" class="dlist">
 <dl>
-<dt class="hdlist1">Containment</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Containment</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>An Entity&#8217;s immediate Location in another Entity: a coin in a bag, for example. JVMud&#8217;s single-containment rule gives each Entity exactly one immediate Location, either a Place or another Entity.</p>
 </dd>
@@ -900,7 +908,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-engine" class="dlist">
 <dl>
-<dt class="hdlist1">Engine</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Engine</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>JVMud&#8217;s application and hosting machinery. <code>JVMud</code> owns application lifetime, endpoints, and worker supervision. Each mudlib executes in a separate worker, and its World is distinct from the hosting application.</p>
 </dd>
@@ -908,7 +916,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-entity" class="dlist">
 <dl>
-<dt class="hdlist1">Entity</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Entity</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>A thing in JVMud&#8217;s World: a Persona, coin, bag, vehicle, NPC, or effect. It is a world-model concept, not a synonym for every LPC object; service objects need not represent in-world things.</p>
 </dd>
@@ -961,7 +969,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 <div class="sectionbody">
 <div id="glossary-game" class="dlist">
 <dl>
-<dt class="hdlist1">Game</dt>
+<dt class="hdlist1"><span class="glossary-pillar-term">Game</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>The playable system with rules, mechanics, goals, challenges, progression, or other game-like structures. One of JVMud&#8217;s eight defining MUD concepts.</p>
 </dd>
@@ -1075,7 +1083,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-instance" class="dlist">
 <dl>
-<dt class="hdlist1">Instance; MudInstance</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Instance; MudInstance</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>In JVMud, one running mudlib assembled and executed within a worker JVM, with its own serialized execution queue and clock. In general game language, “instance” can instead mean a private copy of an area; that is a different use.</p>
 </dd>
@@ -1083,7 +1091,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-interaction-scope" class="dlist">
 <dl>
-<dt class="hdlist1">Interaction scope</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Interaction scope</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>The Persona and local context that can contribute commands or perception: its Location, carried Entities, and nearby Entities. It describes locality, not access to every object in the mudlib.</p>
 </dd>
@@ -1091,7 +1099,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-interactive" class="dlist">
 <dl>
-<dt class="hdlist1">Interactive</dt>
+<dt class="hdlist1"><span class="glossary-pillar-term">Interactive</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>As a MUD property, players and the World can affect one another. As a legacy LPC predicate, “interactive” means an object is associated with a live connection. JVMud represents connection state with a Session; these two meanings should not be conflated.</p>
 </dd>
@@ -1120,7 +1128,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-jvmud" class="dlist">
 <dl>
-<dt class="hdlist1">JVMud</dt>
+<dt class="hdlist1"><span class="glossary-native-term">JVMud</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>The project&#8217;s LPC compiler and LPMud hosting application, including world-model, transport, storage, and administrative facilities. Its native terminology keeps runtime services, world concepts, and legacy mudlib conventions distinct.</p>
 </dd>
@@ -1149,7 +1157,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-lifecycle-hook" class="dlist">
 <dl>
-<dt class="hdlist1">Lifecycle hook</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Lifecycle hook</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>An explicitly configured call from JVMud into mudlib code at an event boundary. The event belongs to the engine contract; the mapped method name belongs to the mudlib. Some named events are reserved rather than invoked; consult the lifecycle reference for status.</p>
 </dd>
@@ -1157,7 +1165,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-link" class="dlist">
 <dl>
-<dt class="hdlist1">Link</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Link</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>A traversable relationship between JVMud Places. It is the world-model counterpart of a conventional room exit, not a network connection or website hyperlink.</p>
 </dd>
@@ -1189,7 +1197,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-location" class="dlist">
 <dl>
-<dt class="hdlist1">Location</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Location</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>An Entity&#8217;s immediate position in JVMud: a Place or another Entity. It describes where something is; Presence describes a player&#8217;s experience through a located Persona.</p>
 </dd>
@@ -1250,7 +1258,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-mfun" class="dlist">
 <dl>
-<dt class="hdlist1">Mfun</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Mfun</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>JVMud&#8217;s term for a mudlib-global function supplied by a configured <code>mfun_object</code>. It fills the traditional simul-efun role while making the provider explicit. “Mfun” describes the role; function names need not begin with <code>mfun_</code>.</p>
 </dd>
@@ -1290,7 +1298,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-movement" class="dlist">
 <dl>
-<dt class="hdlist1">Movement</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Movement</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>Changing an Entity&#8217;s Location, whether traversing a Link or entering/leaving another Entity&#8217;s containment. In JVMud movement is world behavior; transferring a network connection is a different operation.</p>
 </dd>
@@ -1338,7 +1346,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-mudlib-boundary" class="dlist">
 <dl>
-<dt class="hdlist1">Mudlib boundary; boundary object</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Mudlib boundary; boundary object</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>JVMud&#8217;s declared contract between engine services and authored code. Configuration selects policy objects, event mappings, aliases, and capabilities. A boundary object supplies configured mudlib callbacks; it does not own application startup or public listeners.</p>
 </dd>
@@ -1362,7 +1370,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-multiplayer" class="dlist">
 <dl>
-<dt class="hdlist1">Multiplayer</dt>
+<dt class="hdlist1"><span class="glossary-pillar-term">Multiplayer</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>The property that multiple Players can inhabit the same shared World simultaneously. One of JVMud&#8217;s defining MUD concepts.</p>
 </dd>
@@ -1375,7 +1383,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 <div class="sectionbody">
 <div id="glossary-native-efun" class="dlist">
 <dl>
-<dt class="hdlist1">Native efun; jvmud_ prefix</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Native efun; jvmud_ prefix</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>A JVMud engine function with an engine-owned name. <code>jvmud_</code> is reserved for engine symbols. <code>jvmud::name(&#8230;&#8203;)</code> requests the exact native efun name; <code>efun::name(&#8230;&#8203;)</code> bypasses ordinary mudlib function resolution but can use the configured efun surface.</p>
 </dd>
@@ -1425,7 +1433,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 <div class="sectionbody">
 <div id="glossary-perception" class="dlist">
 <dl>
-<dt class="hdlist1">Perception; perceptive</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Perception; perceptive</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>Information reaching an Entity about events in the World, and the capability to receive it. JVMud delivers world perception events; a legacy <code>catch_tell</code> method is a compatibility interpretation of delivered text, not the engine&#8217;s universal perception model.</p>
 </dd>
@@ -1433,7 +1441,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-persistence" class="dlist">
 <dl>
-<dt class="hdlist1">Persistence</dt>
+<dt class="hdlist1"><span class="glossary-pillar-term">Persistence</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>World/state continuity independent of an individual Session. Durable save/restore is related but separate: persistence does not promise that every live value survives a reboot, or that all rooms are stored in a database.</p>
 </dd>
@@ -1441,7 +1449,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-persona" class="dlist">
 <dl>
-<dt class="hdlist1">Persona</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Persona</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>The Entity serving as a Player&#8217;s current in-world point of perception and action. A located Persona creates Presence. It is distinct from a durable account, the remote client, and the active Session.</p>
 </dd>
@@ -1457,7 +1465,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-place" class="dlist">
 <dl>
-<dt class="hdlist1">Place</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Place</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>A discrete location in JVMud&#8217;s World where Entities can exist and interact. It can represent a forest clearing or road as well as an interior room. “Place” avoids making a conventional LP room object the engine&#8217;s universal spatial model.</p>
 </dd>
@@ -1465,7 +1473,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-player" class="dlist">
 <dl>
-<dt class="hdlist1">Player</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Player</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>In ordinary MUD conversation, a human participant and sometimes their character or player object. In JVMud, the human-facing controller endpoint associated with a Session. It is not itself an Entity, durable account, or proof of a unique real-world person.</p>
 </dd>
@@ -1489,7 +1497,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-presence" class="dlist">
 <dl>
-<dt class="hdlist1">Presence</dt>
+<dt class="hdlist1"><span class="glossary-pillar-term">Presence</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>Experiencing the game from within its World through a located Persona. An Entity can have a Location without being a player&#8217;s perspective; Presence therefore means more than position alone.</p>
 </dd>
@@ -1568,7 +1576,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-scheduled-tick" class="dlist">
 <dl>
-<dt class="hdlist1">Scheduled tick; scheduler</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Scheduled tick; scheduler</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>A recurring execution opportunity and the machinery scheduling work. JVMud&#8217;s per-instance clock and execution queue order timed work with player input and other callbacks. A tick is not necessarily a combat round or one second.</p>
 </dd>
@@ -1576,7 +1584,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-session" class="dlist">
 <dl>
-<dt class="hdlist1">Session</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Session</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>An active connection/control context carrying input, output, terminal state, and disconnect lifecycle. JVMud associates a live Session with a Player; the Persona supplies the in-world perspective.</p>
 </dd>
@@ -1600,7 +1608,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-single-containment" class="dlist">
 <dl>
-<dt class="hdlist1">Single containment</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Single containment</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>JVMud&#8217;s rule that each Entity has exactly one immediate Location. Nested containers are possible; ambiguous multiple immediate locations and containment cycles are not a useful world structure.</p>
 </dd>
@@ -1661,7 +1669,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-temporality" class="dlist">
 <dl>
-<dt class="hdlist1">Temporality</dt>
+<dt class="hdlist1"><span class="glossary-pillar-term">Temporality</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>The World&#8217;s capacity to change through time. It covers active time and scheduled work without conflating them with durable saved state.</p>
 </dd>
@@ -1669,7 +1677,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-text" class="dlist">
 <dl>
-<dt class="hdlist1">Text</dt>
+<dt class="hdlist1"><span class="glossary-pillar-term">Text</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>JVMud&#8217;s primary medium for perceiving and manipulating the World. Structured client messages can accompany text without redefining the game as a graphical world.</p>
 </dd>
@@ -1764,7 +1772,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-worker" class="dlist">
 <dl>
-<dt class="hdlist1">Worker</dt>
+<dt class="hdlist1"><span class="glossary-native-term">Worker</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>The separate JVM process executing one JVMud mudlib. It provides independent runtime state and process fault isolation while retaining the host account&#8217;s OS permissions; it is not an OS security boundary.</p>
 </dd>
@@ -1772,7 +1780,7 @@ Use your browser&#8217;s Find command to locate any spelling, or browse the alph
 </div>
 <div id="glossary-world" class="dlist">
 <dl>
-<dt class="hdlist1">World</dt>
+<dt class="hdlist1"><span class="glossary-pillar-term">World</span> <span class="glossary-native-label">JVMud</span></dt>
 <dd>
 <p>The shared virtual domain of a game, composed in JVMud of Places, Links, Entities, Locations, Containment, and Movement. It is part of a mudlib, not another name for the engine or the mudlib&#8217;s worker process.</p>
 </dd>
