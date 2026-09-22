@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key Concepts — JVMud</title>
+<meta name="description" content="The eight pillars of MUD and JVMud's approach to LPC-authored worlds, presence, persistence, and separation of concerns.">
+<link rel="stylesheet" href="styles.css?v=text-1">
+</head>
+<body class="site">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><nav aria-label="Main navigation"><a href="index.html" class="brand">JVMud</a>
+<a href="about.html">About</a>
+<a href="faq.html">FAQ</a>
+<a href="downloads.html">Downloads</a>
+<a href="documentation.html">Documentation</a>
+<a href="glossary.html">Glossary</a></nav></header>
+<main id="main">
+<header class="page-heading"><p class="kicker">Philosophy and design</p><h1>Key Concepts</h1><p class="lead">What makes a MUD, and how JVMud gives those ideas a concrete form.</p></header>
+<div class="prose">
+<section aria-labelledby="definition"><h2 id="definition">What we mean by MUD</h2>
+<p>A MUD is an interactive, multiplayer, text-only game set in a persistent, temporal, player-present world.</p>
+<p>This is JVMud's design commitment. Each part matters: there is a game to play, a shared world to inhabit, and a particular place within it from which each player acts and perceives.</p>
+<nav aria-label="On this page"><ul><li><a href="#pillars">The eight pillars</a></li><li><a href="#lpmud">An LPMud engine by design</a></li><li><a href="#separation">Separation of concerns</a></li><li><a href="#example">The design in play</a></li><li><a href="#source-quality">The code is the product</a></li></ul></nav>
+</section>
+<section aria-labelledby="pillars"><h2 id="pillars">The eight pillars</h2>
+<h3 id="game">Game</h3>
+<p>The world exists to be played. Rules, challenges, goals, discovery, and progression give actions meaning. JVMud supplies the machinery for running the game; the mudlib authors its rules and fiction. Combat systems, character classes, and victory conditions belong to that authored layer.</p>
+<h3 id="text">Text</h3>
+<p>Players perceive and manipulate the world through text. Descriptions, dialogue, and commands are part of the game itself. JVMud separates connections and text delivery from the mudlib's presentation, so the game controls what its world says. Structured client messages can accompany that text.</p>
+<h3 id="interactive">Interactive</h3>
+<p>Players can affect the world, and the world can affect players. A command can move an Entity, change an object, or provoke a response. JVMud routes input into mudlib behavior and provides world operations and perception delivery. The mudlib decides what an action means and whether it succeeds.</p>
+<h3 id="multiplayer">Multiplayer</h3>
+<p>Multiple players inhabit the same world simultaneously. Their actions meet in shared state. Within each running mudlib, JVMud serializes player input, callbacks, administration, and ticks on an execution queue, giving changes an ordered execution context. Separate mudlibs have independent runtime state.</p>
+<h3 id="world">World</h3>
+<p>The game has a concrete virtual domain. JVMud models it with <a href="glossary.html#glossary-place">Places</a>, traversable <a href="glossary.html#glossary-link">Links</a>, and <a href="glossary.html#glossary-entity">Entities</a>. A situated Entity has one immediate Location: a Place or another Entity. That supports a sword in a bag carried by a character, as well as movement between rooms. The engine maintains spatial and containment rules; the mudlib gives those structures their meaning.</p>
+<h3 id="persistence">Persistence</h3>
+<p>The world and its state endure independently of any one player's connection. World continuity and durable storage are related but distinct: a world can continue after a player leaves, while selected state is saved and restored across restarts. JVMud supplies storage adapters; the mudlib determines what game state to preserve. Persistence does not require every live value to survive forever, and it can coexist with reboots and resets.</p>
+<h3 id="temporality">Temporality</h3>
+<p>The world changes through time. A storm can arrive, a torch can burn down, or a creature can act while a player waits. Each JVMud instance has its own clock and scheduled work. Recurring ticks and delayed callbacks provide timing; the mudlib supplies the events and their consequences. Active time is a different concern from saving state.</p>
+<h3 id="presence">Presence</h3>
+<p>A player experiences the game from within its world through a located <a href="glossary.html#glossary-persona">Persona</a>. Location shapes what can be perceived and which interactions are nearby, making exploration, concealment, and surprise possible.</p>
+<p>JVMud distinguishes the Player, the Session carrying the connection, and the Persona providing an in-world perspective. A durable account is another mudlib-defined concept. Keeping these roles distinct lets a game decide what happens when someone disconnects, reconnects, or controls a different character.</p>
+</section>
+<section aria-labelledby="lpmud"><h2 id="lpmud">An LPMud engine by design</h2>
+<p>JVMud specifically targets LPC-authored games in the LPMud tradition. The mudlib is the source and content that define a game: its objects, commands, rules, and presentation. JVMud compiles LPC to JVM bytecode and loads it as live objects.</p>
+<p>Live development is central to this approach: authors should be able to rewrite, recompile, and reload behavior while the game continues. Reloading code and migrating existing object state are separate operations; the lifecycle and compatibility contracts determine the behavior available to a particular mudlib.</p>
+<p>JVMud is specific about its language and game model while remaining independent of any one legacy LP dialect. It gives compatibility an explicit home in profile configuration, lifecycle mappings, aliases, and dedicated mudlib shims. A legacy <code>init</code> method can be selected for an interaction-scope event; a simulated efun becomes a mudlib-global function, or <a href="glossary.html#glossary-mfun">mfun</a>, supplied by a configured object.</p>
+<p>This keeps the distinction between a conventional room object and a Place, or a legacy player object and the Player/Session/Persona roles. Compatibility preserves useful mudlib conventions without making each convention a universal engine rule. The <a href="glossary.html">Glossary</a> explains those correspondences in detail.</p>
+</section>
+<section aria-labelledby="separation"><h2 id="separation">Separation of concerns</h2>
+<p>Each part of JVMud owns a specific responsibility. These boundaries make it possible to reason about the code, adapt existing mudlibs, and change one facility without spreading its assumptions throughout the system.</p>
+<h3>Application, instance, and world</h3>
+<p>The application owns startup, public endpoints, administrator authority, and worker supervision. It can run with zero mudlibs. Each mudlib runs in its own worker JVM; its instance assembles the runtime, boots authored content, and orders execution. The world model owns Places, Entities, movement, and time. A World is part of a mudlib, and a mudlib's lifetime is distinct from the application's.</p>
+<p>Separate workers provide process fault isolation. They retain the host account's operating-system permissions, so that isolation is not an OS security sandbox.</p>
+<h3>Language and game policy</h3>
+<p>The language subsystem compiles and executes LPC and exposes engine operations through efuns. The mudlib defines what the game does with those operations. The compiler need not know the rules of a particular guild, and transport need not know how a combat command succeeds.</p>
+<h3>Communication and execution</h3>
+<p>Communication handles sockets, Telnet, protocol messages, text output, and administration interfaces. Player input is delivered to the instance for mudlib interpretation. Keeping transport separate from game rules allows connection handling and world behavior to evolve independently.</p>
+<h3>Storage and live state</h3>
+<p>Storage owns durable representations and filesystem or database adapters. Execution uses those services without taking ownership of their formats. A network Session, a live Entity, and a saved profile have different lifetimes, even when a legacy mudlib represents them through one LPC object.</p>
+<p>These responsibilities are reflected in the Java packages <code>language</code>, <code>execution</code>, <code>communication</code>, and <code>storage</code>. The manual's <a href="manual/index.html#_architecture">architecture chapter</a> follows them into the implementation.</p>
+</section>
+<section aria-labelledby="example"><h2 id="example">The design in play</h2>
+<p>Consider a player typing <code>north</code>. Transport receives a line of text. The instance queues it, and the mudlib interprets it as a request to travel. Game policy decides whether the route is available; world operations update the Persona's Location through a Link. The mudlib describes the destination and responds to relevant perception events.</p>
+<p>A delayed event may then change that Place, and a later save may preserve selected state. Command interpretation, movement, time, perception, and storage cooperate, with each retaining a clear responsibility.</p>
+</section>
+<section aria-labelledby="source-quality"><h2 id="source-quality">The code is the product</h2>
+<p>Reading, learning from, extending, and contributing to JVMud's source are primary ways of using it. Clear names, deliberate boundaries, documentation, and consistent implementation are product qualities. Correct behavior and understandable code belong together.</p>
+<p>Continue with the manual's <a href="manual/index.html#_the_jvmud_philosophy_of_mud">full philosophy</a>, the <a href="manual/index.html#lifecycle-reference">lifecycle reference</a>, or the <a href="api/index.html">Java API</a>.</p>
+</section>
+</div>
+</main>
+<footer class="site-footer"><span>JVMud</span><a href="https://github.com/protasm/jvmud">Source code</a><a href="https://github.com/protasm/jvmud/issues">Issue tracker</a></footer>
+</body>
+</html>

@@ -1,7 +1,7 @@
 # Documentation maintenance
 
 The static site is a directory to the project and its documentation. About and
-FAQ provide brief orientation; Downloads lists release artifacts and requirements.
+FAQ provide brief orientation; Key Concepts explains the philosophy and design; Downloads lists release artifacts and requirements.
 The glossary is also available as a standalone website reference generated from the manual source.
 Other procedures and technical reference material belong in the User Manual or Javadocs,
 not in parallel website guides.
@@ -10,7 +10,7 @@ not in parallel website guides.
 
 | Surface | Authored source | Published output |
 | --- | --- | --- |
-| Site navigation, About, FAQ, Downloads | `docs/*.html`, `docs/styles.css` | Same static files |
+| Site navigation, About, FAQ, Downloads, Key Concepts | `docs/*.html`, `docs/styles.css` | Same static files |
 | User Manual, including efun catalog, lifecycle reference, and glossary | `manual/**/*.adoc`, `manual/docinfo*.html`, `manual/pdf-theme.yml`, `docs/manual.css` | `docs/manual/index.html`, `docs/manual/jvmud-user-manual.pdf` |
 | Standalone glossary | `manual/glossary.adoc`, `manual/appendixes/glossary.adoc`, `manual/glossary-docinfo*.html` | `docs/glossary.html` |
 | Java API | Java Javadocs, `pom.xml` profile `site-docs`, and `scripts/build-api-docs.py` | `docs/api/index.html`, `docs/api/packages/`, `docs/api/apidocs/` |
