@@ -1,7 +1,7 @@
 package io.github.protasm.jvmud.language.efun;
 
+import io.github.protasm.jvmud.language.compiler.parser.ast.Symbol;
 import io.github.protasm.jvmud.language.runtime.RuntimeContext;
-import io.github.protasm.jvmud.language.parser.ast.Symbol;
 
 /**
  * Runtime implementation of one LPC-facing engine function.
@@ -11,11 +11,10 @@ import io.github.protasm.jvmud.language.parser.ast.Symbol;
  * {@link RuntimeContext}; and the implementation receives already-evaluated LPC argument values as
  * ordinary Java objects.</p>
  *
- * <p>Efuns should keep their surface area engine-facing and stable. Mudlib compatibility layers may
- * expose traditional driver names, but those names should delegate into these implementations rather
- * than redefine engine concepts. The runtime context supplies the execution state an efun normally
- * needs: current object, previous object, command Persona, output/session sinks, object loading,
- * containment, scheduling, persistence, and host integration.</p>
+ * <p>The host supplies implementations and adapts the active context at registration time. The
+ * language contract exposes LPC invocation without depending on that host's world, connection,
+ * persistence or installation classes. Compatibility policy belongs to the selecting host and its
+ * mudlib.</p>
  *
  * <p>Implementations are looked up by compatible arity. Fixed-arity signatures match only their
  * declared argument count; varargs signatures match their fixed prefix plus any number of tail

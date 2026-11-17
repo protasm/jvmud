@@ -3,6 +3,7 @@ package io.github.protasm.jvmud.storage.jdbc;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.nio.charset.StandardCharsets;
+
 import org.junit.jupiter.api.Test;
 
 final class RuntimeDatabaseServiceTest {

@@ -1,21 +1,19 @@
 /**
- * LPC compilation, language runtime support, and standalone compilation diagnostics.
+ * LPC compilation, execution contracts, generated-code support, and source formatting.
  *
- * <p>The compiler module is organized as a coherent pipeline whose stages and relationships are
- * designed to be readable and understandable to people working with the source: preprocessing,
- * scanning, token modeling, parsing, AST construction, semantic analysis, IR lowering, and
- * bytecode generation.
- * The {@link io.github.protasm.jvmud.language.JVMudCompiler} class provides a command-line facade
- * for compiling one LPC source file into a JVM class file.</p>
+ * <p>{@code compiler} follows LPC source through preprocessing, scanning, parsing, semantic
+ * analysis, typed IR, and bytecode generation. Start with {@link
+ * io.github.protasm.jvmud.language.compiler.pipeline.CompilationPipeline} or the command-line
+ * {@link io.github.protasm.jvmud.language.compiler.JVMudCompiler}. Explicit compatibility
+ * transformations live under {@code compiler.transpiler}.</p>
  *
- * <p>Most embedders use {@link io.github.protasm.jvmud.language.pipeline.CompilationPipeline} or
- * {@link io.github.protasm.jvmud.language.exec.LPCRuntime} rather than calling stage classes
- * directly.</p>
+ * <p>{@code execution} provides compiled-class and object invocation contracts. {@code runtime}
+ * defines the context consumed by generated code and implements LPC value operations. The
+ * {@code efun} package defines callable signatures and implementations, while {@code formatter}
+ * handles LPC source layout.</p>
  *
- * <p>The {@code transpiler} subpackage applies opt-in legacy LPC compatibility transformations
- * before compilation, preserving original source files and source locations.</p>
- *
- * <p>The compiler module does not own JVMud engine ontology. Engine concepts live under {@code
- * io.github.protasm.jvmud.execution.model}; mudlib source lives under repository mudlib trees.</p>
+ * <p>These language facilities do not own worlds, player connections, manifest files, or durable
+ * storage. The engine supplies those services when it assembles a running mudlib. Package boundaries
+ * keep that collaboration visible to readers of the source.</p>
  */
 package io.github.protasm.jvmud.language;

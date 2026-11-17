@@ -1,27 +1,29 @@
 package io.github.protasm.jvmud.communication.admin;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.protasm.jvmud.language.efun.builtin.CoreEfuns;
-import io.github.protasm.jvmud.language.exec.LPCRuntime;
-import io.github.protasm.jvmud.language.exec.LPCRuntimeConfig;
-import io.github.protasm.jvmud.execution.model.world.Capability;
-import io.github.protasm.jvmud.execution.model.world.Entity;
-import io.github.protasm.jvmud.execution.model.world.Link;
-import io.github.protasm.jvmud.execution.model.mudlib.MudlibBoundary;
-import io.github.protasm.jvmud.execution.model.mudlib.MudlibLifecycleEvent;
-import io.github.protasm.jvmud.execution.model.world.Place;
-import io.github.protasm.jvmud.execution.model.world.World;
-import io.github.protasm.jvmud.execution.model.world.WorldRuntime;
+import io.github.protasm.jvmud.engine.configuration.MudlibConfiguration;
+import io.github.protasm.jvmud.engine.instance.efun.EngineEfuns;
+import io.github.protasm.jvmud.engine.instance.lpc.MudlibRuntime;
+import io.github.protasm.jvmud.engine.model.mudlib.MudlibLifecycleEvent;
+import io.github.protasm.jvmud.engine.model.world.Capability;
+import io.github.protasm.jvmud.engine.model.world.Entity;
+import io.github.protasm.jvmud.engine.model.world.Link;
+import io.github.protasm.jvmud.engine.model.world.Place;
+import io.github.protasm.jvmud.engine.model.world.World;
+import io.github.protasm.jvmud.engine.model.world.WorldRuntime;
+import io.github.protasm.jvmud.language.execution.LPCExecutionOptions;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

@@ -9,7 +9,7 @@ Mudlib code can also qualify calls. `efun::name(...)` bypasses mudlib shim metho
 
 ===== Current Core Efuns
 
-This page mirrors the built-in catalog registered by `CoreEfuns`. Overloaded families are shown with arity ranges when each overload has the same behavior.
+This page mirrors the built-in catalog registered by `EngineEfuns`. Overloaded families are shown with arity ranges when each overload has the same behavior.
 
 ===== Output And Perception
 

@@ -3,7 +3,7 @@
 Manifests use `key = value`, one declaration per line. Lists are comma-separated.
 Blank lines and `#` comments are ignored. Simple surrounding quotes are removed;
 this is not a general-purpose quoted-string format, and `#` still starts a
-comment. Unknown keys are rejected by `MudlibBoundaryConfigReader`.
+comment. Unknown keys are rejected by `MudlibConfigurationReader`.
 
 Use a checked-in profile as the complete example. The following groups cover the
 reader's exact keys and supported key prefixes. Optional values can still become

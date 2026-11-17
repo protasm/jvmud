@@ -1,11 +1,13 @@
 package io.github.protasm.jvmud.communication.support;
 
-import io.github.protasm.jvmud.communication.transport.admin.*;
-import javax.net.ssl.SSLSocket;
+import io.github.protasm.jvmud.communication.transport.admin.AdminTLS;
+import io.github.protasm.jvmud.communication.transport.admin.AdminWire;
+
 import java.io.*;
 import java.net.*;
 import java.nio.channels.*;
 import java.nio.file.Path;
+import javax.net.ssl.SSLSocket;
 
 /** Actual protocol client used by transport and process-boundary integration tests. */
 public final class AdminConnection implements AutoCloseable {

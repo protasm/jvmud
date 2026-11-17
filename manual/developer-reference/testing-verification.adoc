@@ -14,6 +14,13 @@ For a targeted change, select the relevant JUnit class, for example:
 mvn -Dtest=MudlibAdminCommandSessionTest,EngineArchitectureTest test
 ----
 
+`PackageArchitectureTest` checks that production package names match their source
+paths and preserves the direction of dependencies. Language facilities remain
+independent of hosting and adapters; model invariants remain independent of
+configuration and LPC; storage owns formats without depending on a running engine.
+Hosted LPC integration tests live under `engine.instance.lpc`, while pure compiler
+and generated-code contract tests live under `language`.
+
 Some integration checks require an external database and configured password
 environment variable. A missing prerequisite is an incomplete integration check,
 not a passing compatibility result. Read the failing test and profile before

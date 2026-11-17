@@ -2,4 +2,4 @@
 
 Use the core package map to choose where a change belongs, then follow the
 compiler and hosted-instance flows below. The link:{site-url}/api/index.html[Java API]
-provides class and method contracts for all six core package families.
+provides class and method contracts for all four core package families.

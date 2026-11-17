@@ -3,7 +3,7 @@
 
 ===== How Mudlibs Register Events
 
-A mudlib registers interest through its `MudlibBoundary`. Configuration keys such as `lifecycle.object_loaded = reset` map an engine event to a mudlib method. A mudlib can also declare `handled_lifecycle_events` as metadata before a concrete method mapping exists.
+A mudlib registers interest through its `MudlibConfiguration`. Configuration keys such as `lifecycle.object_loaded = reset` map an engine event to a mudlib method. A mudlib can also declare `handled_lifecycle_events` as metadata before a concrete method mapping exists.
 
 No lifecycle event is globally required. If no method is configured, JVMud continues the engine-owned operation. If a method is configured but the target object does not define it, JVMud skips the call unless a future event contract marks that call required.
 

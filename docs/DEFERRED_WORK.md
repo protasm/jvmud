@@ -42,53 +42,40 @@ Possible future shape:
 - keep legacy names such as `environment` and `set_environment` in mudlib
   compatibility config or shims.
 
-## Runtime Location Bookkeeping And WorldRuntime
+## Complete Native Place And Persona Integration
 
-The compiler/runtime path currently owns object environment and inventory
-bookkeeping for generated LPC objects. The engine package also has
-`WorldRuntime`, where JVMud's longer-term world model lives.
+`WorldRuntime` is the authoritative containment graph. `MudlibWorldProjection`
+associates opaque LPC objects with that graph; it does not maintain a second
+location/inventory graph. The engine's `MudlibRuntimeContext` handles the LPC
+lifecycle and interaction behavior around movement.
 
-This split is useful during compatibility work but should not become permanent
-confusion. Eventually, object movement, location, containment, and presence
-should line up with the engine's world model rather than existing only as
-compiler-runtime helper maps.
+Native integration is still incomplete. Boot explicitly binds the starting room
+as a Place, while other LPC destinations can become container Entities on demand.
+Legacy exits can remain scripted LPC policy; the host does not derive a full
+native Link graph from arbitrary mudlib code. Persona identity and live Entity
+attachment also need a single, explicit retention and rebind policy.
 
-We are postponing this because LPC compatibility is still shaking out the
-minimum required LPC surface. Revisit once the startup path is stable enough to
-separate "make legacy code run" from "make the engine model authoritative."
+Revisit these boundaries when adding native topology inspection, explicit Place
+registration, or persistent Personas. An opt-in Small Mercies route through
+native Places and Links would provide a small acceptance example without changing
+LP245's original room definitions.
 
-## Single Runtime Context And World Event Lane
+## Keep Hosted Mutation On The Instance Queue
 
-Each hosted mud instance currently has one main `LPCRuntime`, and that runtime
-has one authoritative `RuntimeContext`. That shape is acceptable: loaded LPC
-objects, object ids, locations, inventories, sessions, command registrations,
-efuns, and scheduler hooks should belong to the running instance, not to each
-individual player thread.
+Each hosted mudlib has one `MudlibRuntime` and one `MudlibRuntimeContext`, owned
+by its worker. `MudlibExecution` serializes player input, protocol callbacks,
+administration, and ticks. That event lane is implemented; it is not deferred.
+The language compiler and generated-code interfaces do not own this hosted state.
 
-The active execution stacks inside `RuntimeContext`, such as current object,
-previous object, current command actor, and current verb, are thread-local. That
-keeps simultaneous Java threads from sharing the same immediate call context.
-However, most of the underlying instance state is ordinary mutable collection
-state and should not be treated as broadly thread-safe.
+The remaining concern is preserving this ownership as integrations grow.
+Standalone test runtimes allow direct deterministic calls. Production callers
+must enter through the instance queue, and future asynchronous database or
+network results must return there before mutating world state. Do not infer broad
+thread safety from thread-local immediate call stacks or synchronized methods.
 
-The long-term design should keep one authoritative runtime context per mud
-instance, but protect it with a single world event lane. Player session threads,
-world-clock ticks, admin commands, object loading/reloading, and future async
-callbacks should enqueue work into the instance rather than mutating LPC runtime
-state directly.
-
-Possible future shape:
-
-- session threads enqueue player commands;
-- the world clock enqueues scheduled ticks;
-- admin tools enqueue load, reload, inspect, or mutation requests;
-- one mud instance loop executes LPC/runtime mutations in deterministic order.
-
-We are postponing this because the current `MudInstance` synchronized boundary
-is serviceable for early development. Revisit before treating JVMud as a real
-multi-user hosted server, before adding async database/network callbacks, or
-before allowing compilation/reload paths to run concurrently with player/world
-events.
+Revisit when adding asynchronous integrations or expanding the hosted public API.
+Use instance-level tests that prove callback ordering, and keep blocking external
+I/O from delaying every command and tick in the same mudlib.
 
 ## Complete Protected Evaluation Semantics
 

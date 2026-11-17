@@ -1,7 +1,8 @@
 package io.github.protasm.jvmud.language.efun;
 
-import io.github.protasm.jvmud.language.parser.ast.Symbol;
-import io.github.protasm.jvmud.language.parser.type.LPCType;
+import io.github.protasm.jvmud.language.compiler.parser.ast.Symbol;
+import io.github.protasm.jvmud.language.compiler.type.LPCType;
+
 import java.util.List;
 import java.util.Objects;
 

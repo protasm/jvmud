@@ -3,7 +3,7 @@
 The product documentation pass uses Small Mercies for the runnable introduction, replaces the manual's empty sections, preserves
 its philosophy/LPC/compiler material, adds task workflows and complete manifest
 key coverage, introduces a top-down documentation hub and core package guide,
-and expands Java API generation to all six core package families.
+and expands Java API generation to all four core package families.
 
 ## Remaining coverage gaps
 

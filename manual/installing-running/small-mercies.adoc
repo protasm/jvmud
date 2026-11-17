@@ -15,15 +15,17 @@ From the repository root:
 scripts/jvmud-start mudlibs/smallmercies/jvmud/smallmercies.config
 ----
 
-Wait for the engine endpoint report and the mudlib's `state=RUNNING` status. In a second terminal or
-Telnet-capable MUD client, connect to `127.0.0.1` on port `4000`:
+Wait for the engine endpoint report and Small Mercies' `state=RUNNING` status.
+In a second terminal or Telnet-capable MUD client, use `127.0.0.1` and the
+reported `playerPort`:
 
 [source,shell]
 ----
-telnet 127.0.0.1 4000
+telnet 127.0.0.1 <player-port>
 ----
 
-Answer each prompt separately:
+Replace `<player-port>` with that number. Port 4000 displays the engine's mudlib
+directory; it does not enter Small Mercies. Answer each login prompt separately:
 
 . Choose a name containing 2–16 letters. It must be different from the names of
   players currently connected.
@@ -130,4 +132,5 @@ source before changing behavior, then replay the relevant route after restarting
 Use a separate copy for experiments you do not intend to keep in the distribution.
 
 The two-guest live Telnet check lives at
-`src/test/scripts/smallmercies/smoke-play.py`.
+`src/test/scripts/smallmercies/smoke-play.py`. Supply `--port <player-port>` with
+the direct Small Mercies port from the startup report; see <<_smoke_tests>>.

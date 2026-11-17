@@ -21,7 +21,8 @@ class ApiDirectoryTest(unittest.TestCase):
         api.JAVADOC.mkdir(parents=True)
         (api.DOCS / 'index.html').write_text('<header class="site-header"><nav><a href="index.html" aria-current="page">JVMud</a></nav></header>')
         (api.JAVADOC / 'index.html').write_text('<html><head></head><body><header role="banner"></header></body></html>')
-        for name in ('compiler', 'compiler/parser', 'compiler/parser/ast', 'engine'):
+        for name in ('language', 'language/compiler', 'language/compiler/parser',
+                     'language/compiler/parser/ast', 'engine', 'communication', 'storage'):
             directory = api.JAVADOC / api.PREFIX / name
             directory.mkdir(parents=True)
             (directory / 'package-summary.html').write_text('''<html><head></head><body><header role="banner"></header>
@@ -33,19 +34,19 @@ class ApiDirectoryTest(unittest.TestCase):
     def test_directory_shows_only_immediate_children(self):
         api.render_directory('', self.packages)
         home = api.directory().read_text()
-        self.assertIn('packages/compiler/index.html', home)
-        self.assertNotIn('packages/compiler/parser/index.html', home)
-        api.render_directory('compiler', self.packages)
-        branch = api.directory('compiler').read_text()
+        self.assertIn('packages/language/index.html', home)
+        self.assertNotIn('packages/language/compiler/index.html', home)
+        api.render_directory('language/compiler', self.packages)
+        branch = api.directory('language/compiler').read_text()
         self.assertIn('href="parser/index.html"', branch)
         self.assertNotIn('parser/ast/index.html', branch)
         self.assertIn('A &amp; B.', branch)
         self.assertNotIn('More detail.', branch)
-        self.assertIn('compiler/Example.html', branch)
+        self.assertIn('language/compiler/Example.html', branch)
 
     def test_only_reference_links_open_new_tabs(self):
-        api.render_directory('compiler', self.packages)
-        tree = api.Document(api.directory('compiler').read_text()).root
+        api.render_directory('language/compiler', self.packages)
+        tree = api.Document(api.directory('language/compiler').read_text()).root
         for anchor in tree.find(lambda n: n.tag == 'a'):
             href = anchor.attrs['href']
             if 'apidocs/' in href:
@@ -55,7 +56,7 @@ class ApiDirectoryTest(unittest.TestCase):
                 self.assertNotIn('target', anchor.attrs)
 
     def test_cleanup_preserves_reference_and_is_repeatable(self):
-        path = api.JAVADOC / api.PREFIX / 'compiler/Example.html'
+        path = api.JAVADOC / api.PREFIX / 'language/compiler/Example.html'
         original = path.read_text()
         path.write_text(original.replace('</head>',
             '<!-- JVMUD NAV START --><link href="custom.css"><!-- JVMUD NAV END -->\n</head>'))
@@ -65,11 +66,11 @@ class ApiDirectoryTest(unittest.TestCase):
         self.assertEqual(original, path.read_text())
 
     def test_missing_namespace_gets_a_traversable_parent(self):
-        parent = api.JAVADOC / api.PREFIX / 'compiler/parser/package-summary.html'
+        parent = api.JAVADOC / api.PREFIX / 'language/compiler/parser/package-summary.html'
         parent.unlink()
         packages = api.package_data()
-        self.assertIn('compiler/parser', packages)
-        self.assertIsNone(packages['compiler/parser']['source'])
+        self.assertIn('language/compiler/parser', packages)
+        self.assertIsNone(packages['language/compiler/parser']['source'])
 
 
 if __name__ == '__main__':

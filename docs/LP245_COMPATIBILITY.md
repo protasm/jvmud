@@ -124,7 +124,7 @@ exit pairs, item/description pairs, and number words. `property` becomes `mixed`
 because the original contract explicitly accepts either a string or an array.
 All substitutions remain checked, source-specific rules in `transpilation.json`.
 
-`Lp245BridgeTest.originalRoomBaseSupportsInheritedExitsItemsAndProperties`
+`LP245BridgeTest.originalRoomBaseSupportsInheritedExitsItemsAndProperties`
 loads the original parent before the original village green, executes its reset,
 and verifies inherited exits, its short description, and shared number lookup.
 A typed test child also verifies item lookup and switching property values between
@@ -174,7 +174,7 @@ results satisfy the same declared `mixed` contract.
 `MixedReturnContractTest` reproduces the failure with explicitly typed source
 and verifies generated return descriptors, inherited virtual calls across three
 levels, and continued rejection of incompatible narrow signatures and untyped
-methods. `Lp245BridgeTest` also loads the unchanged `obj/monster.talk.c` and
+methods. `LP245BridgeTest` also loads the unchanged `obj/monster.talk.c` and
 executes its `can_put_and_get` implementation. Neither a new transpiler flag nor
 an LP245-specific compiler exception is involved.
 
@@ -250,7 +250,7 @@ order, and `command_actions.arguments_only` passes parsed arguments to empty-ver
 handlers. Both default to false. Native exact-first dispatch and whole-line
 catch-all input remain covered by regression checks.
 
-`Lp245BridgeTest` exercises original Quicktyper alias creation, expansion,
+`LP245BridgeTest` exercises original Quicktyper alias creation, expansion,
 replacement and removal; last-command and numbered-history replay; history
 listing; queue pause/resume and heartbeats; manual and scheduled refresh through
 original storage; and alias autoload serialization. It uses a disposable archive
@@ -313,7 +313,7 @@ save result. Adding owner-write permission to the directory allows new character
 files at the existing `players/<name>.o` paths; no storage redirection is used.
 Every original file retains its read-only permissions and archive checksum.
 
-`Lp245BridgeTest.originalPlayerSaveRestoresAcrossRuntimeRestart` exercises the
+`LP245BridgeTest.originalPlayerSaveRestoresAcrossRuntimeRestart` exercises the
 original player's save routine in an isolated archive copy, restores its name
 and gold in an independent runtime, and confirms subsequent saves update the
 same file. The bridge suite passes eight tests. Live reconnect/authentication

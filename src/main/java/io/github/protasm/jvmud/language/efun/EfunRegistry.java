@@ -11,7 +11,7 @@ import java.util.Objects;
  *
  * <p>The registry is owned by a runtime context rather than by global process state, so each hosted
  * mudlib/runtime can choose which efuns it exposes. Built-in JVMud efuns are registered from
- * {@code CoreEfuns}; embedders and tests may register additional implementations before compiled
+ * {@code EngineEfuns}; embedders and tests may register additional implementations before compiled
  * LPC code executes.</p>
  *
  * <p>Lookup is by function name and compatible arity. Exact fixed-arity signatures are preferred
@@ -21,6 +21,7 @@ import java.util.Objects;
  */
 public final class EfunRegistry {
     private final Map<String, List<Efun>> registry = new HashMap<>();
+    private final Map<String, List<EfunSignature>> declarations = new HashMap<>();
 
     /**
      * Registers an engine function implementation.
@@ -30,7 +31,42 @@ public final class EfunRegistry {
      */
     public void register(Efun efun) {
         Objects.requireNonNull(efun, "efun");
-        registry.computeIfAbsent(efun.signature().name(), k -> new ArrayList<>()).add(efun);
+        EfunSignature signature = efun.signature();
+        registry.computeIfAbsent(signature.name(), k -> new ArrayList<>()).add(efun);
+        registerSignature(signature);
+    }
+
+    /**
+     * Registers a declaration for compilation without providing an executable implementation.
+     *
+     * <p>A compiler-only host needs names and types, not callbacks or a live runtime. A runtime host
+     * should use {@link #register(Efun)}, which registers both declaration and implementation.</p>
+     */
+    public void registerSignature(EfunSignature signature) {
+        Objects.requireNonNull(signature, "signature");
+        declarations.computeIfAbsent(signature.name(), ignored -> new ArrayList<>()).add(signature);
+    }
+
+    /** Selects a callable declaration without exposing its runtime implementation. */
+    public EfunSignature lookupSignature(String name, int arity) {
+        EfunSignature exact = null;
+        EfunSignature varargs = null;
+        for (EfunSignature signature : declarations.getOrDefault(name, List.of())) {
+            if (!signature.acceptsArity(arity)) continue;
+            if (!signature.isVarargs()) {
+                if (exact != null) throw ambiguous(name, arity);
+                exact = signature;
+            } else {
+                if (varargs != null) throw ambiguous(name, arity);
+                varargs = signature;
+            }
+        }
+        return exact != null ? exact : varargs;
+    }
+
+    private IllegalStateException ambiguous(String name, int arity) {
+        return new IllegalStateException(
+                "Ambiguous engine function overload for '" + name + "' with arity " + arity);
     }
 
     /**
@@ -82,6 +118,6 @@ public final class EfunRegistry {
      * @return immutable list of signatures currently registered for {@code name}
      */
     public List<EfunSignature> signatures(String name) {
-        return registry.getOrDefault(name, List.of()).stream().map(Efun::signature).toList();
+        return List.copyOf(declarations.getOrDefault(name, List.of()));
     }
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise a running Small Mercies server on loopback; create disposable guests."""
+import argparse
 import re
 import socket
 import time
@@ -8,8 +9,8 @@ import uuid
 
 class Guest:
     """A minimal Telnet client with bounded reads and explicit output assertions."""
-    def __init__(self, name, gender, profession):
-        self.socket = socket.create_connection(("127.0.0.1", 4000), timeout=5)
+    def __init__(self, host, port, name, gender, profession):
+        self.socket = socket.create_connection((host, port), timeout=5)
         self.socket.settimeout(0.2)
         self.until("Name (2-16 letters): ")
         self.command(name, "Gender (male/female): ")
@@ -48,12 +49,17 @@ def contains(text, expected):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, required=True,
+                        help="Direct Small Mercies playerPort from the startup report")
+    options = parser.parse_args()
     # Hex digits mapped to letters keep names valid and avoid existing visitors.
     suffix = uuid.uuid4().hex[:8].translate(str.maketrans("0123456789", "ghijklmnop"))
-    alice = Guest("Ada" + suffix, "female", "warrior")
+    alice = Guest(options.host, options.port, "Ada" + suffix, "female", "warrior")
     bob = None
     try:
-        bob = Guest("Ben" + suffix, "male", "mage")
+        bob = Guest(options.host, options.port, "Ben" + suffix, "male", "mage")
         contains(alice.command("score"), "STR 12  INT 6  DEX 9")
         contains(bob.command("score"), "STR 6  INT 12  DEX 9")
         contains(alice.command("say Tea first"), "says: Tea first")

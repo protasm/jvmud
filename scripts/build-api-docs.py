@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 import argparse
 import os
 import re
+import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -224,12 +225,23 @@ def main():
                         help='Reuse existing Javadocs and regenerate the package directory.')
     args = parser.parse_args()
     if not args.directory_only:
+        # Javadoc overwrites current pages but does not remove renamed packages.
+        # This tree is generated exclusively by this build; retain no obsolete API.
+        if JAVADOC.exists():
+            shutil.rmtree(JAVADOC)
         subprocess.run(['mvn', '-Psite-docs', '-DskipTests', 'javadoc:javadoc'], cwd=ROOT, check=True)
     packages = package_data()
     # Remove only generator-owned directory pages for packages that disappeared.
     for old in (API / 'packages').rglob('index.html'):
         if old.parent.relative_to(API / 'packages').as_posix() not in packages:
             old.unlink()
+    # Empty directories also mislead readers browsing the generated tree locally.
+    for directory_path in sorted((API / 'packages').rglob('*'), reverse=True):
+        if directory_path.is_dir():
+            try:
+                directory_path.rmdir()
+            except OSError:
+                pass  # Current packages and any non-generated content remain intact.
     for name in ['', *sorted(packages)]:
         render_directory(name, packages)
     remove_site_chrome()

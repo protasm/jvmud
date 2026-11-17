@@ -1,7 +1,8 @@
 package io.github.protasm.jvmud.communication.admin;
 
-import io.github.protasm.jvmud.execution.application.JVMud;
+import io.github.protasm.jvmud.engine.application.JVMud;
 import io.github.protasm.jvmud.storage.admin.AdminRegistry;
+
 import java.io.IOException;
 
 /** Engine command language. No mudlib runtime objects or player permissions cross this boundary. */

@@ -16,16 +16,18 @@ scripts/jvmud-start <mudlib-config-file>
 
 Replace `<mudlib-config-file>` with the absolute path to your manifest, or a path
 relative to the repository root. Do not type the angle brackets. The script
-compiles Java, resolves the dependency classpath, and runs the Telnet server in
-the foreground. Wait for the preload summary followed by
-the engine endpoint report and the mudlib's `state=RUNNING` status before connecting.
+compiles Java, resolves the dependency classpath, and runs the engine in the
+foreground. It boots the mudlib in a separate worker JVM. Wait for the engine
+endpoint report and the mudlib's `state=RUNNING` status before connecting to the
+mudlib's reported `playerPort`.
 
-The launcher defaults to loopback port 4000. Use `--bind 0.0.0.0 --port 4000`
-to accept incoming connections on all IPv4 interfaces, or choose a specific
-local address and a different port. Clients use the server's actual address;
-allow the selected TCP port through applicable firewalls and router forwarding.
-Each listener needs an available address/port pair. Mounted profiles, if declared,
-must also be present and valid. See <<_configuration_reference>> for manifest keys.
+The engine directory defaults to loopback port 4000; its TLS admin port defaults
+to 4001. A mudlib receives separate player and admin ports. Use
+`--bind 0.0.0.0 --port 4000` to accept incoming connections on all IPv4 interfaces,
+or choose a specific local address. Clients use the server's actual address and
+the mudlib's player port; allow that port through firewalls and router forwarding.
+Use the engine console's `start` command to select a predictable mudlib port pair.
+See <<_configuration_reference>> for manifest keys.
 
 To capture detailed startup failures:
 
@@ -50,10 +52,11 @@ Use the administration console workflow described in the next section.
 scripts/jvmud-start smallmercies lp245
 ----
 
-The engine player port presents a selection menu, including for a single mudlib.
-Each mudlib receives a direct player port and a separate TLS admin port, shown in
-engine status. Each worker owns its execution queue and configurable clock.
-Quitting a mudlib closes the connection; reconnect to select another.
+The engine player port presents a public directory, including for a single
+mudlib. A numbered selection displays direct connection details; it does not
+enter a game. Each mudlib has a direct player port and a separate TLS admin port,
+shown in engine status. Each worker owns its execution queue and configurable
+clock. Quitting closes the connection; reconnect to a mudlib's player port to play.
 
 Starting with no manifests is valid. Use engine administration to start mudlibs
 later and to request explicit player/admin port pairs. A failed mudlib startup

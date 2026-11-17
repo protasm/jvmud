@@ -1,30 +1,31 @@
 package io.github.protasm.jvmud.communication.admin;
 
-import io.github.protasm.jvmud.language.efun.builtin.CoreEfuns;
-import io.github.protasm.jvmud.language.exec.LPCObjectInspection;
-import io.github.protasm.jvmud.language.exec.LPCObjectHandle;
-import io.github.protasm.jvmud.language.exec.LPCRuntime;
-import io.github.protasm.jvmud.language.exec.LPCRuntimeConfig;
-import io.github.protasm.jvmud.language.ir.IRPrettyPrinter;
-import io.github.protasm.jvmud.language.ir.TypedIR;
-import io.github.protasm.jvmud.language.parser.Parser;
-import io.github.protasm.jvmud.language.parser.ParserOptions;
-import io.github.protasm.jvmud.language.parser.ast.ASTObject;
-import io.github.protasm.jvmud.language.parser.ast.visitor.PrintVisitor;
-import io.github.protasm.jvmud.language.pipeline.CompilationObserver;
-import io.github.protasm.jvmud.language.pipeline.CompilationProblem;
-import io.github.protasm.jvmud.language.pipeline.CompilationResult;
-import io.github.protasm.jvmud.language.pipeline.CompilationStage;
-import io.github.protasm.jvmud.language.pipeline.CompilationUnit;
-import io.github.protasm.jvmud.language.preproc.Preprocessor;
-import io.github.protasm.jvmud.language.preproc.SearchPathIncludeResolver;
-import io.github.protasm.jvmud.language.scanner.Scanner;
-import io.github.protasm.jvmud.language.token.Token;
-import io.github.protasm.jvmud.language.token.TokenList;
-import io.github.protasm.jvmud.execution.instance.MudlibBoot;
-import io.github.protasm.jvmud.execution.instance.MudlibBootResult;
-import io.github.protasm.jvmud.execution.model.mudlib.MudlibBoundary;
-import io.github.protasm.jvmud.execution.model.mudlib.MudlibBoundaryConfigReader;
+import io.github.protasm.jvmud.engine.configuration.MudlibConfiguration;
+import io.github.protasm.jvmud.engine.configuration.MudlibConfigurationReader;
+import io.github.protasm.jvmud.engine.instance.MudlibBoot;
+import io.github.protasm.jvmud.engine.instance.MudlibBootResult;
+import io.github.protasm.jvmud.engine.instance.efun.EngineEfuns;
+import io.github.protasm.jvmud.engine.instance.lpc.MudlibRuntime;
+import io.github.protasm.jvmud.language.compiler.ir.IRPrettyPrinter;
+import io.github.protasm.jvmud.language.compiler.ir.TypedIR;
+import io.github.protasm.jvmud.language.compiler.parser.Parser;
+import io.github.protasm.jvmud.language.compiler.parser.ParserOptions;
+import io.github.protasm.jvmud.language.compiler.parser.ast.ASTObject;
+import io.github.protasm.jvmud.language.compiler.parser.ast.visitor.PrintVisitor;
+import io.github.protasm.jvmud.language.compiler.pipeline.CompilationObserver;
+import io.github.protasm.jvmud.language.compiler.pipeline.CompilationProblem;
+import io.github.protasm.jvmud.language.compiler.pipeline.CompilationResult;
+import io.github.protasm.jvmud.language.compiler.pipeline.CompilationStage;
+import io.github.protasm.jvmud.language.compiler.pipeline.CompilationUnit;
+import io.github.protasm.jvmud.language.compiler.preprocessor.Preprocessor;
+import io.github.protasm.jvmud.language.compiler.preprocessor.SearchPathIncludeResolver;
+import io.github.protasm.jvmud.language.compiler.scanner.Scanner;
+import io.github.protasm.jvmud.language.compiler.token.Token;
+import io.github.protasm.jvmud.language.compiler.token.TokenList;
+import io.github.protasm.jvmud.language.execution.LPCExecutionOptions;
+import io.github.protasm.jvmud.language.execution.LPCObjectHandle;
+import io.github.protasm.jvmud.language.execution.LPCObjectInspection;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -40,14 +41,14 @@ import java.util.stream.Stream;
  * object handles, and output preferences. Connection handling and terminal input belong to
  * the transport and console client; this session receives complete command lines.
  *
- * <p>Attached sessions execute within {@link io.github.protasm.jvmud.execution.instance.InstanceHost#administer}
+ * <p>Attached sessions execute within {@link io.github.protasm.jvmud.engine.instance.InstanceHost#administer}
  * so administrative operations share the instance execution queue with player input and ticks.</p>
  */
 public final class MudlibAdminCommandSession {
     private final PrintWriter out;
     private final Map<String, Object> handles = new java.util.LinkedHashMap<>();
     private final Map<Object, String> objectNames = new IdentityHashMap<>();
-    private LPCRuntime runtime;
+    private MudlibRuntime runtime;
     private Path mudlibRoot;
     private Path virtualCwd = Path.of("");
     private Verbosity verbosity = Verbosity.NORMAL;
@@ -65,10 +66,10 @@ public final class MudlibAdminCommandSession {
      * execute call must occur inside InstanceHost.administer; runtime access never escapes
      * that execution boundary. The host supplies its already configured runtime.
      */
-    public static MudlibAdminCommandSession attach(PrintWriter out, LPCRuntime runtime, Path root) {
+    public static MudlibAdminCommandSession attach(PrintWriter out, MudlibRuntime runtime, Path root) {
         MudlibAdminCommandSession session = new MudlibAdminCommandSession(out);
         session.runtime = Objects.requireNonNull(runtime, "runtime");
-        session.mudlibRoot = runtime.mudlibBoundary().mudlibRootPath().orElse(root)
+        session.mudlibRoot = runtime.configuration().mudlibRootPath().orElse(root)
                 .toAbsolutePath().normalize();
         session.attached = true;
         return session;
@@ -152,13 +153,13 @@ public final class MudlibAdminCommandSession {
         }
         this.mudlibRoot = mudlibRoot.toAbsolutePath().normalize();
         this.virtualCwd = Path.of("");
-        runtime = new LPCRuntime(LPCRuntimeConfig.builder()
+        runtime = new MudlibRuntime(LPCExecutionOptions.builder()
                 .baseIncludePath(this.mudlibRoot)
                 .compilationObserver(new CompilationDiagnostics())
                 .build());
         try {
-            MudlibBoundary declaredBoundary = MudlibBoundaryConfigReader.read(this.mudlibRoot, configObjectPath);
-            CoreEfuns.registerCore(runtime, declaredBoundary.engineCapabilities());
+            MudlibConfiguration declaredBoundary = MudlibConfigurationReader.read(this.mudlibRoot, configObjectPath);
+            EngineEfuns.registerCore(runtime, declaredBoundary.engineCapabilities());
         } catch (IOException | RuntimeException e) {
             throw new IllegalStateException("Could not read mudlib configuration: " + configObjectPath, e);
         }

@@ -5,9 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 final class JSONValueCodecTest {

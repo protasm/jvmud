@@ -16,7 +16,7 @@ fault isolation, not an OS security sandbox. Java is the only runtime prerequisi
 
 `jvmud-console --owner` replaces `--local`: the engine state directory's OS owner
 has full engine access through a Unix socket. Named administrators use TLS,
-tokens and explicit grants. Java packages separate language, execution,
+tokens and explicit grants. Java packages separate language, engine,
 communication and storage.
 
 ## Updating

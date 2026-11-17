@@ -1,58 +1,48 @@
 === Compiler Pipeline
 
-JVMud is easiest to understand as a collaboration between compiler, engine, and
-mudlib. The compiler turns LPC source into JVM classes. The engine owns the live
-world model. The mudlib supplies authored behavior and compatibility policy.
+The compiler turns LPC source into JVM classes. The engine owns live world
+state and supplies host services. The mudlib supplies authored behavior and
+compatibility policy. The compiler can be used without starting a game.
 
-The compiler pipeline is deliberately staged so each step has a small job and a
-clear artifact:
+The pipeline is deliberately staged so each step has a small job and a clear
+artifact:
 
 [cols="1,2,2", options="header"]
 |===
-| Stage
-| Input
-| Output
-
-| Preprocess
-| LPC source text plus include paths and macro definitions
-| Expanded source with mappings back to the original files
-
-| Scan
-| Preprocessed source
-| A token stream
-
-| Parse
-| Tokens
-| An abstract syntax tree for one LPC object
-
-| Analyze
-| AST plus inherited object metadata and registered efun signatures
-| A semantic model with resolved names, signatures, and type information
-
-| Lower
-| Semantic model
-| Typed intermediate representation
-
-| Compile
-| Typed IR
-| JVM bytecode
-
-| Execute
-| Bytecode plus host runtime configuration
-| A loaded LPC object instance managed by the host-facing LPC runtime
+| Stage | Input | Output
+| Preprocess | LPC text, include resolution, and macro definitions
+| Expanded source with mappings to original files
+| Scan | Preprocessed source | A token stream
+| Transform | Tokens and explicitly selected compatibility settings
+| Normalized tokens, preserving original source
+| Parse | Tokens | An abstract syntax tree for one LPC object
+| Transform declarations | AST and selected declaration overrides
+| Explicit declarations for semantic analysis
+| Analyze | AST, inherited metadata, and callable signatures
+| A semantic model with resolved names and types
+| Lower | Semantic model | Typed intermediate representation
+| Compile | Typed IR | JVM bytecode
 |===
 
-The package layout follows that path. `preproc`, `scanner`, `token`, `parser`,
-`semantic`, `ir`, and `bytecode` are compiler stages. `pipeline` coordinates the
-stages and reports `CompilationProblem` values when a source unit cannot move
-forward. `efun` defines the LPC-facing function contract, and
-`efun.builtin.CoreEfuns` provides JVMud's built-in catalog.
+All stages live under `io.github.protasm.jvmud.language.compiler`.
+`preprocessor`, `scanner`, `token`, `parser`, `type`, `semantic`, `ir`, and
+`bytecode` name their responsibilities directly. `pipeline` coordinates them
+and reports `CompilationProblem` values. `transpiler` applies the compatibility
+transformations selected for a profile; it preserves upstream source files.
 
-The package `io.github.protasm.jvmud.language.runtime` is support code for
-compiled LPC bytecode: active execution context, truthiness, coercions,
-indexing, strings, arrays, and runtime type descriptors. It is not the JVMud
-engine ontology. Engine-owned concepts live under `io.github.protasm.jvmud.execution.application`
-with `execution.model.world` for `WorldRuntime`,
-`Place`, and `Entity`; `execution.model.identity` for `Player`, `Session`, and `Persona`
-records; `execution.model.time` for scheduling; and `execution.model.mudlib` for mudlib lifecycle
-boundaries.
+Compilation uses language-owned source resolution, settings, and callable
+signatures. Runtime implementations of efuns are separate from the signatures
+used for analysis. `language.efun` defines that callable contract; the engine's
+`instance.efun.EngineEfuns` supplies JVMud's host operations.
+
+After compilation, `language.execution` supplies class-loading and invocation
+contracts. `language.runtime` contains the generated-code context contract and
+LPC value operations: truthiness, coercions, indexing, strings, arrays, and
+runtime type descriptors. These packages do not construct world or storage
+services. `engine.instance.lpc.MudlibRuntime` hosts the authored objects, using
+`MudlibRuntimeContext` to connect their requests to engine services.
+
+The world model lives under `engine.model.world`, identity records under
+`engine.model.identity`, scheduling under `engine.model.time`, and lifecycle
+contracts under `engine.model.mudlib`. Manifest parsing and policy belong to
+`engine.configuration`.

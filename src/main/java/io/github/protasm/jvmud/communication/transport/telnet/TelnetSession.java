@@ -1,15 +1,16 @@
 package io.github.protasm.jvmud.communication.transport.telnet;
 
-import io.github.protasm.jvmud.execution.instance.InstanceHost;
-import io.github.protasm.jvmud.execution.instance.InstancePersona;
+import io.github.protasm.jvmud.engine.instance.InstanceHost;
+import io.github.protasm.jvmud.engine.instance.InstancePersona;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.io.Writer;
 import java.io.UncheckedIOException;
+import java.io.Writer;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;

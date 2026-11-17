@@ -4,7 +4,7 @@ JVMud is an experimental LPC/LPMud text-world engine for the JVM. It compiles LP
 to JVM classes and hosts authored worlds through a native model of Places,
 Links, Entities, Players, Sessions, Personas, persistence, and time.
 
-The project is one Maven artifact with six core Java package families. Mudlibs
+The project is one Maven artifact with four core Java package families. Mudlibs
 own fiction, rules, commands, presentation, and compatibility policy. Shared
 engine and launcher code remains independent of any bundled game.
 
@@ -38,10 +38,12 @@ scripts/jvmud-start smallmercies
 ```
 
 This starts the engine and **Small Mercies**, the bundled five-room example
-world, in one process. No separate engine daemon, database, or account setup is
-needed. Wait for the engine endpoint report and the mudlib's `state=RUNNING` status and the address before connecting.
-The default is localhost, TCP port **4000**, accessible from this computer only.
-Leave the terminal running; press **Ctrl+C** there to stop the server.
+world, in its own worker JVM. No separate daemon setup, database, or player
+account is needed. Wait for the engine endpoint report and Small Mercies'
+`state=RUNNING` status. Its `playerPort` is the port to use for gameplay.
+The engine directory defaults to localhost TCP **4000**; selecting a mudlib
+there displays its direct player address. Leave the terminal running; press
+**Ctrl+C** there to stop the engine and its workers.
 
 The argument is resolved as a config file first, then as
 `mudlibs/<arg>/jvmud/<arg>.config`. If neither file exists, startup stops with an error.
@@ -52,21 +54,21 @@ To start another compatible world, provide its manifest path:
 scripts/jvmud-start /absolute/path/to/world/jvmud/world.config
 ```
 
-The engine requires one or more explicit world manifests. To offer both bundled
-mudlibs through one listener:
+The engine can start with zero or more mudlibs. To start both bundled mudlibs
+and list them in its directory:
 
 ```sh
 scripts/jvmud-start smallmercies lp245
 ```
 
-Every connection receives a menu, even when only one mudlib is configured. Select
-by number or game id to enter that mudlib's login flow. There is no default world
-and no travel between worlds; reconnect to choose another mudlib.
+The engine directory lists the available mudlibs. A numbered selection displays
+the mudlib's direct Telnet address; connect to that address to enter its login
+flow. The directory does not forward connections or move players between mudlibs.
 
-`execution.application.JVMud` owns application startup and shutdown and starts `TelnetServer`
-as a transport component. Each `MudInstance` owns its own execution queue and
-clock. Player input, administration, and scheduled work execute serially on that
-instance's thread, using its `temporal_tick_interval`. A slow world does not
+`engine.application.JVMud` owns application startup, endpoints, and worker
+supervision. Each worker boots one `MudInstance` and its Telnet server. The
+instance owns its execution queue and clock. Player input, administration, and
+scheduled work execute serially on that instance's thread, using its `temporal_tick_interval`. A slow world does not
 hold up another world's commands or ticks. A zero interval disables automatic
 ticks for that instance. Tick intervals are delays between completed ticks;
 busy worlds do not accumulate catch-up ticks.
@@ -78,16 +80,17 @@ In Mudlet or another Telnet-capable MUD client, create a connection with:
 | Setting | Value for local play |
 | --- | --- |
 | Host / server address | `127.0.0.1` |
-| Port | `4000` |
+| Port | Small Mercies' `playerPort` from the startup status |
 | Connection | Plain Telnet / TCP; SSL/TLS disabled |
 
 If a command-line Telnet client is installed, open a second terminal and run:
 
 ```sh
-telnet 127.0.0.1 4000
+telnet 127.0.0.1 <player-port>
 ```
 
-Choose a guest name (2–16 letters), `male` or `female`, and `warrior` or `mage`.
+Replace `<player-port>` with the reported Small Mercies player port. Choose a
+guest name (2–16 letters), `male` or `female`, and `warrior` or `mage`.
 Try `help`, `look`, `score`, and `north`. Type `quit` to leave Small Mercies;
 `//quit` also disconnects the client. Guest characters last for one connection.
 See the [Small Mercies walkthrough](https://jvmud.org/manual/index.html#small-mercies)
@@ -96,30 +99,34 @@ for the map and combat.
 Mudlet is a client that connects over Telnet. JVMud's current listener supports
 Telnet text and GMCP negotiation; game-specific GMCP messages depend on the
 selected mudlib. This is not a promise of every MUD protocol or client extension.
-There is no native TLS or WebSocket listener.
+There is no native player TLS or WebSocket listener; administration uses its own
+TLS endpoints.
 
 ## Accept connections from other computers
 
-Start Small Mercies on all IPv4 network interfaces:
+Start the engine on all IPv4 network interfaces:
 
 ```sh
-scripts/jvmud-start --bind 0.0.0.0 --port 4000 mudlibs/smallmercies/jvmud/smallmercies.config
+scripts/jvmud-start --bind 0.0.0.0 --port 4000
 ```
 
-For another computer on your LAN, enter the server computer's LAN IP address
-in the MUD client and port `4000`. `0.0.0.0` is the server's listening setting;
-clients use its actual address. Allow inbound **TCP 4000** through the server's
-firewall.
+In another terminal, use `scripts/jvmud-console --owner` and enter
+`start smallmercies 4100 4101` to choose a predictable player/admin pair.
+For another computer on your LAN, use the server computer's LAN IP address
+and player port **4100** in the MUD client. `0.0.0.0` is a listener setting;
+clients use the server's actual address. Allow inbound **TCP 4100** through the
+server's firewall. Port 4000 serves only the optional mudlib directory.
 
-For Internet players, use the server's public hostname or IP address. If the
-server is behind a router, forward external TCP port 4000 to that computer's LAN
-address and TCP port 4000. Hosting-provider firewalls must allow the port too.
+For Internet players, use the server's public hostname or IP address and forward
+the selected player port through applicable routers and hosting firewalls.
+`--public-host <hostname>` tells the directory which hostname to advertise.
 A private LAN address is not directly reachable from the Internet; networks
 behind carrier-grade NAT may require a public endpoint or tunnel.
 
-You can bind a specific local interface instead of `0.0.0.0`, or choose a different
-ports with `--port 4010 --admin-port 4011`. Give clients the corresponding address and port. Telnet
-traffic is unencrypted; Small Mercies uses disposable guests without passwords.
+Use `--bind` to choose an interface and `--port` / `--admin-port` to choose engine
+ports. Select each mudlib's ports with the administration `start` command.
+Telnet player traffic is unencrypted; Small Mercies uses disposable guests
+without passwords.
 
 To see all launcher options:
 
@@ -130,7 +137,7 @@ scripts/jvmud-start --help
 ## Engine and mudlib administration
 
 The engine runs independently of its mudlibs. `scripts/jvmud-start` with no
-manifests opens an unauthenticated player menu on localhost:4000, a TLS engine-admin
+manifests opens a public mudlib directory on localhost:4000, a TLS engine-admin
 listener on localhost:4001, and a same-account Unix recovery socket. Each mudlib
 runs in a separate worker JVM with its own player/admin port pair.
 
@@ -171,9 +178,9 @@ operator sets `--mudlib-dir` when starting the engine (default: the launch root'
 `mudlibs` directory). Administration rejects filesystem paths and symlinks that
 escape that directory or the selected mudlib tree.
 
-Use a mudlib's admin port for its live object commands. Both engine-menu and
-direct player connections enter the same mudlib. Quitting closes the connection;
-players reconnect to return to the menu.
+Use a mudlib's admin port for its live object commands and its player port for
+login and gameplay. Quitting closes the player connection; connect to a mudlib's
+player port again to play, or visit the engine directory for connection details.
 
 See [Engine and administration](docs/ENGINE-ADMINISTRATION.md) for exact bootstrap,
 remote access, lifecycle commands, fault isolation, limitations and migration.
@@ -201,8 +208,8 @@ local site. Website changes appear online only after publication.
 
 | Path | Responsibility |
 | --- | --- |
-| `src/main/java/io/github/protasm/jvmud/language/` | LPC pipeline, efuns, language runtime, generated-code helpers, and diagnostics |
-| `src/main/java/io/github/protasm/jvmud/execution/` | Application supervision and updates (`application`), game concepts (`model`), and running mudlibs (`instance`) |
+| `src/main/java/io/github/protasm/jvmud/language/` | Compiler stages (`compiler`), compiled-code contracts (`execution`), generated-code support (`runtime`), efun contracts, and formatting |
+| `src/main/java/io/github/protasm/jvmud/engine/` | Application supervision (`application`), game concepts (`model`), manifest policy (`configuration`), mudlib assembly and host integration (`instance`), and startup diagnostics |
 | `src/main/java/io/github/protasm/jvmud/communication/` | Connection transports, administrative commands, terminal client, structured messages, and text output |
 | `src/main/java/io/github/protasm/jvmud/storage/` | Filesystem, JDBC, and administrator-registry storage adapters |
 | `src/test/` | Java tests, smoke checks, and documentation validation; see [testing guide](src/test/README.md) |
@@ -212,8 +219,12 @@ local site. Website changes appear online only after publication.
 | `docs/` | Static site, generated manual and Java API, design records |
 | `scripts/` | Shared manifest-driven launch and development tools |
 
-`language.runtime` supports generated LPC bytecode; it is distinct from the
-engine's world model. These packages are not separately released Maven modules.
+Start a source tour at `language.compiler.pipeline.CompilationPipeline` for LPC
+compilation, `engine.application.JVMud` for application operation, or
+`engine.instance.MudInstance` for a running mudlib. `engine.instance.lpc.MudlibRuntime`
+connects authored objects to the engine; `language.runtime` defines generated-code
+support without owning worlds, sessions, or storage. The four package families
+are responsibility boundaries within one Maven artifact.
 
 ## Verification and status
 

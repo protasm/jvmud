@@ -1,11 +1,12 @@
 === Instance And Transport Internals
 
-`execution.application.JVMud` starts engine endpoints independently of mudlibs and supervises
-one separate worker JVM per mudlib. `MudlibWorker` boots through `MudlibBoot` and
-reports readiness over private pipes. The engine then publishes the mudlib's
-player/admin pair. `PlayerGateway` provides the engine menu and direct relays;
-worker-side `TelnetServer` handles only its own mudlib's protocol sessions.
-There is no return-to-menu operation after a player selects a mudlib.
+`engine.application.JVMud` starts engine endpoints independently of mudlibs and
+supervises one separate worker JVM per mudlib. `MudlibWorker` boots through
+`MudlibBoot` and reports readiness over private pipes. The engine then publishes
+the mudlib's player/admin pair. `PlayerDirectory` displays connection details;
+it does not enter a mudlib. A mudlib's `PlayerGateway` relays its direct player
+connections, and worker-side `TelnetServer` handles that mudlib's Telnet sessions.
+Quitting a mudlib closes the connection.
 
 Each `MudInstance` owns a `MudlibExecution`: one thread serving its command queue
 and clock. Player input, protocol callbacks, administration, and scheduled work
@@ -15,20 +16,24 @@ completes, without accumulating catch-up ticks. No router-wide tick loop or
 cross-world execution lock exists.
 
 Telnet delivers input without interpreting LPC command results or generating
-rejected-command messages. The selected mudlib owns that meaning and output.
+rejected-command messages. The mudlib owns that meaning and output.
 
 Follow an input from transport to instance to LPC command handling when debugging
-player behavior. Follow an efun from its catalog through runtime context and
-instance services when debugging host effects. `language.runtime` is generated-code
-support; `execution.model.world` owns the engine's world model.
+player behavior. `engine.instance.lpc.MudlibRuntime` owns hosted object execution;
+`MudlibRuntimeContext` implements the language's generated-code context against
+world, identity, scheduling, and storage services. Follow an efun from
+`engine.instance.efun.EngineEfuns` to those services when debugging host effects.
+`language.runtime` supports LPC values and generated code; `engine.model.world`
+owns the world's containment graph.
 
-`communication.console.AdminConsole` connects to an engine or mudlib administration endpoint.
-The engine owns TLS authentication and grants. Engine commands execute in
-`EngineAdminCommandSession`; mudlib commands cross private worker pipes and execute
-in `MudlibAdminCommandSession` on that instance's execution queue. No administrator
-credentials are sent to worker JVMs. Player listeners relay bytes to a selected
-worker, where Telnet negotiation, player login and game commands are handled.
+`communication.console.AdminConsole` connects to an engine or mudlib administration
+endpoint. The engine owns TLS authentication and grants. Engine commands execute
+in `EngineAdminCommandSession`; mudlib commands cross private worker pipes and
+execute in `MudlibAdminCommandSession` on the instance's execution queue. No
+administrator credentials are sent to worker JVMs. Direct player listeners relay
+bytes to their worker, where Telnet negotiation, login, and commands are handled.
 
 Storage adapters live under `storage`; engine administrator identities are
-separate from mudlib player accounts. See `docs/ENGINE-ADMINISTRATION.md` for the
-process fault isolation, supervision deadlines and platform limitations.
+separate from mudlib player accounts. Manifest files are interpreted under
+`engine.configuration`, outside the world model. See
+`docs/ENGINE-ADMINISTRATION.md` for supervision and platform limitations.

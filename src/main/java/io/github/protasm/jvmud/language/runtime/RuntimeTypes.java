@@ -1,7 +1,8 @@
 package io.github.protasm.jvmud.language.runtime;
 
-import io.github.protasm.jvmud.language.parser.type.JType;
-import io.github.protasm.jvmud.language.parser.type.LPCType;
+import io.github.protasm.jvmud.language.compiler.type.JType;
+import io.github.protasm.jvmud.language.compiler.type.LPCType;
+
 import java.util.Objects;
 
 /** Centralizes canonical runtime types and conversions from LPC surface types. */

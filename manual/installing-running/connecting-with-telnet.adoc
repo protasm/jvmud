@@ -1,16 +1,22 @@
 === Connecting With Telnet
 
-In a second terminal, use a Telnet client:
+Read the selected mudlib's `playerPort` from the startup status. In a second
+terminal, connect to that port with a Telnet client:
 
 [source,shell]
 ----
-telnet 127.0.0.1 4000
+telnet 127.0.0.1 <player-port>
 ----
 
-If your system has no `telnet` command, use a Telnet-capable MUD client with host
-`127.0.0.1` and port `4000`. Follow the mudlib's login prompts, then try `help`
-and `look`. Use `//quit` to disconnect from profiles using the default transport prefix. The listener keeps
+Replace `<player-port>` with the reported number. If your system has no `telnet`
+command, use a Telnet-capable MUD client with host `127.0.0.1` and the same player
+port. Follow the mudlib's login prompts, then try `help` and `look`. Use `//quit`
+to disconnect from profiles using the default transport prefix. The engine keeps
 running until stopped in its own terminal.
+
+The engine's default port 4000 is a directory. Connect there to see available
+mudlibs and select a number for a direct address, then open a new connection to
+that mudlib's player port. The directory does not forward players into a game.
 
 ==== Optional GMCP integration
 

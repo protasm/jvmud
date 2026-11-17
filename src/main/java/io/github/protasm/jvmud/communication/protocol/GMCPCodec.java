@@ -1,13 +1,14 @@
 package io.github.protasm.jvmud.communication.protocol;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /** Encodes and decodes the UTF-8, JSON-bearing messages carried by GMCP Telnet frames. */
 public final class GMCPCodec {

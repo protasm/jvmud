@@ -1,11 +1,12 @@
 package io.github.protasm.jvmud.language.runtime;
 
-import io.github.protasm.jvmud.language.parser.type.JType;
+import io.github.protasm.jvmud.language.compiler.type.JType;
+
 import java.util.Objects;
 
 /**
  * Represents the runtime type carried through IR and code generation. Unlike {@link
- * io.github.protasm.jvmud.language.parser.type.LPCType}, this model encodes how values are represented on
+ * io.github.protasm.jvmud.language.compiler.type.LPCType}, this model encodes how values are represented on
  * the JVM (primitive descriptors, reference internal names, and array element shapes).
  */
 public record RuntimeType(

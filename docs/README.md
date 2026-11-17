@@ -51,8 +51,9 @@ The site is published from `docs/` using the repository's existing Pages setup
 and `CNAME`. A local rebuild does not update the public website.
 
 The API build script runs Maven, generates the package directory, and removes any
-previously added site chrome from the standard Javadoc pages. Use this
-script instead of the bare Maven goal when preparing API output for publication.
+previously added site chrome from the standard Javadoc pages. A full rebuild
+replaces the generator-owned Javadoc tree so renamed packages leave no stale API
+pages. Use this script instead of the bare Maven goal when preparing API output for publication.
 `--directory-only` regenerates the directory from existing Javadocs without
 rebuilding Java documentation. Both operations are repeatable.
 Styling lives in `docs/api.css`; the main navigation is read from `docs/index.html`.

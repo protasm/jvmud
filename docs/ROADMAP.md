@@ -36,20 +36,21 @@ separate evidence. Do not treat a historical green build as current acceptance.
    adapters rather than broad source rewrites or legacy-driver emulation.
 3. **Object lifecycle.** Clarify load, clone, reload, destruction, reference, and
    state-preservation contracts. Verify both direct invocation and live callers.
-4. **Engine world model.** Align LPC environment/inventory bookkeeping with
-   `WorldRuntime`, valid containment, navigable Links, and world-present Entities.
+4. **Engine world model.** Build on the authoritative `WorldRuntime` containment
+   graph to clarify explicit Place registration, navigable Links, and the
+   distinction between world-present Entities and service objects.
 5. **Command and session behavior.** Keep Persona context, command registration,
    captured input, text output, disconnect cleanup, and account resolution coherent.
    Transport controls use an explicit escape prefix; admin work remains separate.
 6. **Manifest-driven boot.** Validate source roots, initial Place, Persona paths,
    preloads, lifecycle mappings, language features, and capabilities before play.
    Fail with actionable diagnostics when declared requirements cannot be met.
-7. **Hosted-world routing.** Use explicit mounted-world declarations; verify
-   transfer, identity, session, and lifecycle boundaries with independent content.
+7. **Hosted mudlibs.** Preserve the directory and direct-endpoint model; verify
+   worker, identity, session, and lifecycle boundaries with independent content.
 8. **Time and persistence.** Strengthen deterministic scheduling, save/restore,
    storage boundaries, failure recovery, and documented backup/rollback contracts.
-9. **Multi-user operation.** Serialize world mutation appropriately, verify output
-   isolation and multi-session behavior, then establish public-hosting policy,
+9. **Multi-user operation.** Preserve the instance queue's serialized mutation,
+   verify output isolation and multi-session behavior, then establish public-hosting policy,
    observability, packaging, and long-running reliability.
 10. **Documentation and delivery.** Keep the manual task-oriented, generated API
     coverage complete, and source/output builds reproducible. Add documentation CI

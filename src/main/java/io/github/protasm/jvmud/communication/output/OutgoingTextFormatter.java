@@ -1,9 +1,14 @@
 package io.github.protasm.jvmud.communication.output;
 
-import io.github.protasm.jvmud.execution.model.mudlib.MudlibBoundary;
-
 /** Applies engine-owned presentation formatting to text leaving the runtime. */
 public final class OutgoingTextFormatter {
+    /** Default presentation width for mudlib output. */
+    public static final int DEFAULT_LINE_LENGTH = 80;
+    /** Minimum supported presentation width. */
+    public static final int MIN_LINE_LENGTH = 20;
+    /** Maximum supported presentation width. */
+    public static final int MAX_LINE_LENGTH = 140;
+
     private static final char ESCAPE = '\u001B';
 
     private OutgoingTextFormatter() {}
@@ -115,10 +120,10 @@ public final class OutgoingTextFormatter {
     }
 
     private static void validateMaxLineLength(int maxLineLength) {
-        if (maxLineLength < MudlibBoundary.MIN_MAX_LINE_LENGTH
-                || maxLineLength > MudlibBoundary.MAX_MAX_LINE_LENGTH) {
+        if (maxLineLength < MIN_LINE_LENGTH
+                || maxLineLength > MAX_LINE_LENGTH) {
             throw new IllegalArgumentException("maxLineLength must be between "
-                    + MudlibBoundary.MIN_MAX_LINE_LENGTH + " and " + MudlibBoundary.MAX_MAX_LINE_LENGTH + ".");
+                    + MIN_LINE_LENGTH + " and " + MAX_LINE_LENGTH + ".");
         }
     }
 }

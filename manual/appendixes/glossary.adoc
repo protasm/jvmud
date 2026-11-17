@@ -194,7 +194,7 @@ Ending a connection, requesting departure, and connecting again. Character clean
 
 [[glossary-driver]]
 Driver; gamedriver::
-The traditional LP runtime hosting LPC programs and supplying compilation, execution, networking, and built-ins. JVMud separates these responsibilities among language, execution, communication, and storage packages; “engine” is not just a replacement name for every driver responsibility.
+The traditional LP runtime hosting LPC programs and supplying compilation, execution, networking, and built-ins. JVMud separates these responsibilities among language, engine, communication, and storage packages; “engine” is not just a replacement name for every driver responsibility.
 
 ==== E
 

@@ -1,14 +1,15 @@
 package io.github.protasm.jvmud.communication.transport.telnet;
 
-import io.github.protasm.jvmud.execution.instance.InstanceHost;
-import java.io.IOException;
+import io.github.protasm.jvmud.communication.protocol.UTF8Frames;
+import io.github.protasm.jvmud.engine.instance.InstanceHost;
+
 import java.io.DataInputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import io.github.protasm.jvmud.communication.transport.admin.AdminWire;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,11 +101,11 @@ public final class TelnetServer implements AutoCloseable {
                         try {
                             socket.setSoTimeout(5000);
                             var input = new DataInputStream(socket.getInputStream());
-                            String secret = AdminWire.read(input, 256);
+                            String secret = UTF8Frames.read(input, 256);
                             if (!MessageDigest.isEqual(secret.getBytes(StandardCharsets.UTF_8), workerSecret.getBytes(StandardCharsets.UTF_8))) {
                                 closeSocket(socket); return;
                             }
-                            String address = AdminWire.read(input, 256);
+                            String address = UTF8Frames.read(input, 256);
                             socket.setSoTimeout(0);
                             new TelnetSession(socket, mud, address).run();
                         } catch (IOException e) { closeSocket(socket); }

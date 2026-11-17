@@ -16,14 +16,29 @@ the walkthrough. Keep it running, then use a second terminal:
 
 [source,shell]
 ----
-python3 src/test/scripts/smallmercies/smoke-play.py
+python3 src/test/scripts/smallmercies/smoke-play.py --port <player-port>
 ----
 
-The script connects to loopback port 4000, creates two disposable guests, and
+Replace `<player-port>` with Small Mercies' reported `playerPort`. The script
+connects to loopback at that direct player port, creates two disposable guests, and
 checks login, both classes, chat, an emote, the tutorial route, combat, score,
 rest, and quit. Success prints `PASS: live guest login...`. It does not launch
 or stop the server. Use a dedicated development listener so another player's
-sparring match or a resting NPC does not interfere.
+sparring match or a resting NPC does not interfere. Port 4000 serves the engine
+directory; it does not enter Small Mercies. `--host` selects another test host.
+
+LP245 also has a self-contained live check:
+
+[source,shell]
+----
+src/test/scripts/lp245/smoke-start
+----
+
+It copies the mudlib into disposable state, starts an engine and worker on
+available ports, discovers the worker's direct player endpoint, and checks the
+login and movement route. It stops both processes on completion. Successful
+runs remove their disposable world; failed runs retain `listener.log` under
+`target/test-artifacts/` for diagnosis.
 
 To compile every object in Small Mercies' `source/preload_objects` manifest:
 
@@ -37,8 +52,8 @@ The scanner checks compilation; the focused test above also exercises gameplay.
 A host smoke test should prove the complete route from launch to interaction,
 using the profile you intend to run:
 
-. Start the listener with its explicit manifest and wait for the listening message.
-. Connect a Telnet client and complete the configured login or entry flow.
+. Start the engine with its explicit manifest and wait for the mudlib's `state=RUNNING` report.
+. Connect a Telnet client to its direct `playerPort` and complete the configured login or entry flow.
 . Exercise a known command and verify its expected text.
 . Move through a known Link and verify the new Place.
 . Disconnect and reconnect to check cleanup and any state the profile promises to save.

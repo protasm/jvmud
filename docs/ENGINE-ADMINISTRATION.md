@@ -1,6 +1,6 @@
 # Engine, mudlibs and administration
 
-`execution.application.JVMud` owns application lifetime. It starts the public player directory, the
+`engine.application.JVMud` owns application lifetime. It starts the public player directory, the
 TLS engine-admin listener, and a local recovery socket before booting any mudlib.
 An engine with zero running mudlibs is a normal, administratively accessible state.
 
@@ -248,16 +248,19 @@ still an explicit mudlib/storage responsibility.
 
 ## Code responsibilities
 
-- `execution.application`: application configuration, lifecycle, and worker supervision.
-- `execution.application.worker`: Java worker launch and private control protocol.
-- `execution.application.update`: installation updates and server tracking.
-- `execution.model`: worlds, identities, time, and mudlib contracts.
-- `execution.instance`: one worker's mudlib assembly, execution queue, and clock.
+- `engine.application`: application configuration, lifecycle, and worker supervision.
+- `engine.application.worker`: Java worker launch and supervision.
+- `communication.protocol.worker`: shared private worker messages.
+- `engine.application.update`: installation updates and server tracking.
+- `engine.model`: worlds, identities, time, and mudlib lifecycle contracts.
+- `engine.configuration`: manifest parsing and selected compilation/host policy.
+- `engine.instance`: one worker's mudlib assembly, execution queue, and clock;
+  `lpc` and `efun` adapt language execution to engine services.
 - `communication.transport`: player and administration connection protocols.
 - `communication.admin`: engine and mudlib command languages.
 - `communication.console`: shared interactive administration client.
 - `storage.admin`: engine-owned identities and grants.
-- `language.diagnostics`: standalone compilation diagnostics.
+- `engine.diagnostics`: preload compilation checks for a configured mudlib.
 
 The former `jvmud-cli`, `--admin-game` and `--admin-token-file` interfaces are
 replaced by `jvmud-console`, endpoint-specific administration and named

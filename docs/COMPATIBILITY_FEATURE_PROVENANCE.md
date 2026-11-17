@@ -185,14 +185,18 @@ voice.
 - Motivation: original Lysator LP 2.4.5 declarations such as `reset(arg)` and
   `close(str)` in `mudlibs/lp245/obj/chest.c`, preserved without source changes.
 - Bridge setting: `transpilation.untyped_methods = true` (default false).
-- Implementation: `io.github.protasm.jvmud.language.transpiler` subpackage adds
+- Implementation: `io.github.protasm.jvmud.language.compiler.transpiler` subpackage adds
   explicit `mixed` signature types to expanded tokens before strict compilation.
   Existing type declarations remain authoritative. Other legacy syntax is outside
   this transformation's scope.
-- Verification: `UntypedMethodTranspilerTest` covers profile isolation, explicit
-  type errors, includes/macros, inheritance, global helpers, source positions,
-  prototypes, and preservation of existing tokens. `CompilerSmokeTest` verifies
-  that native compilation rejects untyped methods and parameters.
+- Verification: [UntypedMethodTranspilerTest](../src/test/java/io/github/protasm/jvmud/language/compiler/transpiler/UntypedMethodTranspilerTest.java)
+  checks preservation of typed declarations, bodies, and source positions.
+  [UntypedMethodTranspilationIntegrationTest](../src/test/java/io/github/protasm/jvmud/engine/instance/lpc/UntypedMethodTranspilationIntegrationTest.java)
+  covers profile isolation, explicit type errors, includes/macros, inheritance,
+  global helpers, prototypes, and the unchanged LP245 chest.
+  [TranspilationConfigurationTest](../src/test/java/io/github/protasm/jvmud/engine/configuration/TranspilationConfigurationTest.java)
+  checks manifest selection and strict defaults. `LPCExecutionIntegrationTest`
+  verifies that native compilation rejects untyped methods and parameters.
 
 ## Checked field-type overrides
 
@@ -204,9 +208,11 @@ voice.
 - Implementation: `FieldTypeTranspiler` checks a named field's original type,
   scopes edits by compilation unit, preserves neighboring declarations and source
   positions, and reports mismatches before parsing/code generation.
-- Verification: `FieldTypeTranspilerTest` covers negative expectations, grouped
-  declarations, arrays, includes/inheritance, global helpers, hosted startup,
-  explicit selection, and numeric execution of the unchanged original torch.
+- Verification: [FieldTypeTranspilerTest](../src/test/java/io/github/protasm/jvmud/language/compiler/transpiler/FieldTypeTranspilerTest.java)
+  covers invalid expectations and rules, source positions, and file scope.
+  [FieldTypeTranspilationIntegrationTest](../src/test/java/io/github/protasm/jvmud/engine/instance/lpc/FieldTypeTranspilationIntegrationTest.java)
+  covers grouped declarations, arrays, includes/inheritance, global helpers,
+  hosted startup, explicit selection, and numeric execution of the unchanged torch.
 
 ## Opt-in implicit self calls
 
@@ -221,10 +227,12 @@ voice.
   retain their existing checks. It does not synthesize abstract declarations.
 - Tradeoff: unknown-name typos and missing services may also compile; this flag
   shifts their detection to invocation and does not prove gameplay compatibility.
-- Verification: `ImplicitSelfCallTranspilerTest` covers inherited dispatch,
-  missing implementations, single evaluation of arguments, strict mode,
-  known-function/alias checks and hosted startup. `Lp245BridgeTest` executes
-  the unchanged living base's `show_stats()` against a concrete child.
+- Verification: [ImplicitSelfCallTranspilerTest](../src/test/java/io/github/protasm/jvmud/language/compiler/transpiler/ImplicitSelfCallTranspilerTest.java)
+  checks that only unresolved calls are transformed and ordinary type checks remain strict.
+  [ImplicitSelfCallTranspilationIntegrationTest](../src/test/java/io/github/protasm/jvmud/engine/instance/lpc/ImplicitSelfCallTranspilationIntegrationTest.java)
+  covers inherited dispatch, missing implementations, single evaluation of
+  arguments, profile selection, known-function/alias checks, and hosted startup.
+  `LP245BridgeTest` executes the unchanged living base's `show_stats()` against a concrete child.
 
 ## Checked local-type overrides
 
@@ -236,9 +244,12 @@ voice.
 - Implementation: `LocalTypeTranspiler` validates parsed local declarations before
   semantic analysis, excluding parameters and fields and rejecting ambiguous
   names. Replacing the declaration preserves local identity and initializer order.
-- Verification: `LocalTypeTranspilerTest` covers scope, inherited execution,
-  included declarations, malformed rules, ambiguity and hosted boot propagation.
-  `Lp245BridgeTest` exercises the unchanged player's user lists and login prompt.
+- Verification: [LocalTypeTranspilerTest](../src/test/java/io/github/protasm/jvmud/language/compiler/transpiler/LocalTypeTranspilerTest.java)
+  checks missing or changed declarations, parameter exclusion, ambiguity, and malformed rules.
+  [LocalTypeTranspilationIntegrationTest](../src/test/java/io/github/protasm/jvmud/engine/instance/lpc/LocalTypeTranspilationIntegrationTest.java)
+  covers scoped and inherited execution, included declarations, explicit manifest
+  selection, and hosted boot propagation.
+  `LP245BridgeTest` exercises the unchanged player's user lists and login prompt.
 
 ## Contextual foreach delimiter and remaining LP245 declarations
 
@@ -248,13 +259,13 @@ voice.
 - Implementation: the scanner classifies `in` as an identifier; the parser
   recognizes it as a delimiter only after the foreach variable declaration.
   Explicit method and parameter types remain required by the compiler.
-- Verification: `CompilerSmokeTest.inIsContextualInForeachAndCanNameMethodsAndLocals`
+- Verification: `LPCExecutionIntegrationTest.inIsContextualInForeachAndCanNameMethodsAndLocals`
   executes methods and locals named `in`, alongside both foreach delimiters.
 - Profile adaptations: checked field/local rules cover tracer storage, marker
   captures, roommaker lists, Go grids and color captures, random-distribution
   counters, death-room player/tick pairs, and room flags. The shop's two-argument
   `add_worth` is handled in LPC, preserving the existing accounting no-op.
-- Archive verification: `Lp245BridgeTest` compiles 283 original objects and loads
+- Archive verification: `LP245BridgeTest` compiles 283 original objects and loads
   281 in disposable storage, with five explicit historical exceptions documented
   in `mudlibs/lp245/jvmud/README.md`. Behavior tests exercise tracer value storage
   and inventory selection, death-room player removal, shop payouts and inventory
@@ -270,7 +281,7 @@ voice.
   sale has the same mismatch for value.
 - Adaptation: checked `field_type_overrides` change only those two declarations
   from `string` to `int`, preserving the original armour source.
-- Verification: `Lp245BridgeTest.originalForestJacketCanBePickedUpWornDroppedAndSold`
+- Verification: `LP245BridgeTest.originalForestJacketCanBePickedUpWornDroppedAndSold`
   reproduces the String-to-Number failure without the overrides, then verifies
   actual command dispatch for pickup, wear, drop, repeat pickup, and a 50-coin
   sale into shop inventory with the overrides enabled.
@@ -288,9 +299,9 @@ voice.
   mappings or methods do not invoke cleanup. Skip stale arrival if cleanup
   redirects or destroys the actor.
 - Profile mapping: LP245 selects `exit`; its original source remains unchanged.
-- Verification: `Lp245BridgeTest.originalDeathSequenceReturnsGhostsToChurchAndClearsItsQueue`
+- Verification: `LP245BridgeTest.originalDeathSequenceReturnsGhostsToChurchAndClearsItsQueue`
   reproduced the scheduled-tick overflow before the fix and now completes the
-  full 70-tick sequence for two ghosts. `CompilerSmokeTest` checks callback
+  full 70-tick sequence for two ghosts. `LPCExecutionIntegrationTest` checks callback
   ordering, actor identity, excluded moves, missing methods, zero-argument hooks,
   and movement redirected during cleanup.
 
