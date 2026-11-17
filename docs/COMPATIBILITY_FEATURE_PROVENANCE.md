@@ -322,3 +322,21 @@ voice.
 - Verification: `DynamicTypesTest`, `MudlibBootTranspilationTest`, and the original
   LP245 archive/gameplay tests. The generic checked override facilities remain
   available to strict mudlibs; LP245 retains only its method-varargs rule.
+
+## LP245 command receivers
+
+- Motivation: village-road departure messages make Harry call his original
+  `obj/monster.init_command`. The bridge's one-argument `command` selected the
+  ambient player instead of Harry. His stored follow direction then moved the
+  player: a delayed south command could pull the player back into the adventurers
+  guild after leaving north.
+- Adaptation: the LPC bridge dispatches `command(text)` on the currently executing
+  LPC object. Its `command(text, actor)` overload retains the explicitly supplied
+  actor. JVMud's native operation continues to require an explicit receiver; the
+  legacy default belongs to the mudlib adapter. Original rooms and NPCs are unchanged.
+- Verification: `LP245BridgeTest.originalGuildNorthExitReturnsPlayerToVillageRoad`
+  exercises command dispatch with the original guild, player and Harry.
+  `implicitAndExplicitCommandsSelectTheirOwnActor` checks both receiver forms
+  while another actor's command is active. The standalone LP245 smoke leaves the
+  guild and continues the world route in the same player session; the archive hash
+  test guards preservation of upstream sources.

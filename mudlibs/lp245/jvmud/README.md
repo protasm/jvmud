@@ -177,6 +177,14 @@ in LPC.
 This lets original objects keep using their existing vocabulary while the bridge
 provides the corresponding JVMud operations.
 
+The `command(text)` adapter dispatches on the currently executing LPC object;
+`command(text, actor)` dispatches on the supplied actor. The receiver matters when
+an NPC reacts to a message during a player's command. Harry's follow callback calls
+`command` from his monster object, so Harry receives that command even while the
+player's action is still on the call stack. Using the ambient player as the default
+would execute Harry's stored follow direction on the player; a delayed south command
+could pull the player back into the adventurers guild after leaving north.
+
 ## 7. Map the driver's lifecycle to LP245 conventions
 
 LP245 expects the driver to call methods such as `reset`, `init`, and `logon`.

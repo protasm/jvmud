@@ -48,8 +48,7 @@ find "$RUN_DIR/world" -type d -exec chmod u+w {} +
 python3 - "$RUN_DIR/world/players" <<'SAVE'
 from pathlib import Path
 import sys
-for name in ("smoketest", "smokeroute"):
-    (Path(sys.argv[1]) / (name + ".o")).unlink(missing_ok=True)
+(Path(sys.argv[1]) / "smoketest.o").unlink(missing_ok=True)
 SAVE
 
 scripts/jvmud-start --port "$ENGINE_PORT" --admin-port "$ADMIN_PORT" \
@@ -241,14 +240,13 @@ with connect_with_retry() as sock:
     command(sock, "cost", "Str: ", "gold coins to advance to level")
     command(sock, "exa book", "There is a book hanging in a chain from the wall.")
 
-    disconnect(sock)
-
-# The guild exit has a baseline compatibility defect. Exercise the remaining world route with
-# another new character rather than allowing an unrelated exit failure to hide that coverage.
-with connect_with_retry() as sock:
-    log_in(sock, "smokeroute")
-    move_and_look(sock, "south", "You are at an open green place south of the village church.")
-    move_and_look(sock, "west", "An old humpbacked bridge.")
+    for direction, description in [
+            ("north", "south is the adventurers guild"),
+            ("west", "A long road going east through the village."),
+            ("west", "A track going into the village."),
+            ("west", "You are at an open green place south of the village church."),
+            ("west", "An old humpbacked bridge.")]:
+        move_and_look(sock, direction, description)
 
     command(sock, "get all", "Ok.")
     transcript = command(sock, "light stick")

@@ -135,7 +135,8 @@ mixed creator(mixed ob) {
 }
 
 mixed command(string command_line) {
-  return jvmud_dispatch_entity_command(jvmud_current_actor(), command_line);
+  // A callback may still carry another actor's context. The caller issues its own command.
+  return jvmud_dispatch_entity_command(jvmud_current_lpc_object(), command_line);
 }
 
 mixed command(string command_line, mixed actor) {

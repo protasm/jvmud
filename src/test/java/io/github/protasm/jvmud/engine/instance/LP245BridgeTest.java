@@ -290,6 +290,92 @@ final class LP245BridgeTest {
         assertEquals(310, player.invoke("query_money"));
     }
 
+    /** Keeps the player on the road when Harry's departure callback issues its own command. */
+    @Test
+    void originalGuildNorthExitReturnsPlayerToVillageRoad() throws Exception {
+        copyOriginalArchive();
+        var mudlib = MudInstance.boot(temp, "jvmud/lp245.config");
+        var transcript = new java.io.StringWriter();
+        var output = new java.io.PrintWriter(transcript, true);
+        var player = mudlib.attachPersona(output, "127.0.0.1");
+        try {
+            for (String input : List.of("guildtest", "secret1", "secret1", "none", "o",
+                    "south", "east", "east", "east", "south", "cost", "exa book")) {
+                mudlib.dispatch(player, output, input);
+            }
+            assertEquals("room/adv_guild", mudlib.administer(runtime ->
+                    runtime.objectId(runtime.environment(player.actor()))), transcript.toString());
+
+            mudlib.dispatch(player, output, "north");
+
+            assertEquals("room/vill_road2", mudlib.administer(runtime ->
+                    runtime.objectId(runtime.environment(player.actor()))), transcript.toString());
+        } finally {
+            mudlib.shutdown(0);
+        }
+    }
+
+    /** An NPC callback commands itself unless it explicitly selects another actor. */
+    @Test
+    void implicitAndExplicitCommandsSelectTheirOwnActor() throws Exception {
+        var runtime = runtime();
+        var blueprint = runtime.loadSource("command_probe.c", """
+                int calls;
+                object last_actor;
+                object actor_after_command;
+                string verb_after_command;
+                object delegate;
+
+                void setup(object other) {
+                    delegate = other;
+                    add_action("record_command", "probe");
+                    add_action("issue_nested_commands", "outer");
+                }
+
+                int record_command() {
+                    calls += 1;
+                    last_actor = this_player();
+                    return 1;
+                }
+
+                int issue_command(object selected) {
+                    if (selected) return command("probe", selected);
+                    return command("probe");
+                }
+
+                int issue_nested_commands() {
+                    call_other(delegate, "issue_command", 0);
+                    call_other(delegate, "issue_command", this_object());
+                    actor_after_command = this_player();
+                    verb_after_command = query_verb();
+                    return 1;
+                }
+
+                int query_calls() { return calls; }
+                object query_actor() { return last_actor; }
+                object query_restored_actor() { return actor_after_command; }
+                string query_restored_verb() { return verb_after_command; }
+                """);
+        Object player = blueprint.instance();
+        Object npc = runtime.cloneObject("command_probe");
+        runtime.invokeObject(player, "setup", npc);
+        runtime.invokeObject(npc, "setup", 0);
+
+        assertEquals(1, runtime.dispatchCommand(player, "outer"));
+
+        assertEquals(1, runtime.invokeObject(npc, "query_calls"));
+        assertSame(npc, runtime.invokeObject(npc, "query_actor"));
+        assertEquals(1, runtime.invokeObject(player, "query_calls"));
+        assertSame(player, runtime.invokeObject(player, "query_actor"));
+        assertSame(player, runtime.invokeObject(player, "query_restored_actor"));
+        assertEquals("outer", runtime.invokeObject(player, "query_restored_verb"));
+
+        // NPC commands must also work without a surrounding player command, as in a timer.
+        assertEquals(1, runtime.invokeObject(npc, "issue_command", 0));
+        assertEquals(2, runtime.invokeObject(npc, "query_calls"));
+        assertEquals(1, runtime.invokeObject(player, "query_calls"));
+    }
+
     /** Uses the original monster's configuration, conversation matching and heartbeat paths. */
     @Test
     void originalMonsterUsesChatArraysAndGuildExperience() throws Exception {

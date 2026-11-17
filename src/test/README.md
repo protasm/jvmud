@@ -16,11 +16,10 @@ Production mudlibs contain playable content and runtime profiles.
   including Small Mercies and LP245 login/movement and attached administration.
   Run through `python3 scripts/build-distribution.py` from the repository root.
 
-The standalone LP245 smoke checks guild entry, advancement costs and the book in one session,
-then uses another disposable character for the bridge, wilderness and orc route. Leaving the
-adventurers guild currently leaves the player inside; this limitation also reproduces in the
-pre-reorganization preview.9 build. The smoke does not claim to verify that exit. Failed runs
-retain `transcript.log` beside `listener.log` in their disposable test directory.
+The standalone LP245 smoke uses one disposable character to enter the guild, check
+advancement costs and the book, and return north to the village road. The same
+session continues through the bridge, wilderness and orc route. Failed runs retain
+`transcript.log` beside `listener.log` in their disposable test directory.
 
 Run from the repository root:
 
