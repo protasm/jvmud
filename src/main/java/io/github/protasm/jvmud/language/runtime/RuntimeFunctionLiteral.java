@@ -139,6 +139,11 @@ public final class RuntimeFunctionLiteral implements RuntimeCallable {
             return runtime.invokeOptionalObject(target, methodName, args != null ? args : new Object[0]);
         }
 
+        return runtime.withObjectReceiver(target, () -> invokeGeneratedHelper(runtime, args));
+    }
+
+    /** Inline helpers retain their lexical code even after the host replaces ordinary behavior. */
+    private Object invokeGeneratedHelper(RuntimeContext runtime, Object[] args) {
         RuntimeContext previous = RuntimeContextHolder.current();
         try {
             RuntimeContextHolder.setCurrent(runtime);

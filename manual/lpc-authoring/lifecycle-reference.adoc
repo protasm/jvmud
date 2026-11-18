@@ -17,7 +17,7 @@ Event names are case-insensitive in mudlib config, and hyphens or spaces normali
 Implemented. After the declared boundary object and preload manifest have loaded, JVMud invokes the configured no-argument method on the boundary object. A compatibility profile can map a driver-specific master-startup convention here without teaching that convention to the engine.
 
 `OBJECT_LOADED`::
-Implemented. Invoked on a loaded or cloned object with one argument, `mixed first_load`; current compatibility passes `0`. Example compatibility mapping: `reset`.
+Implemented. Invoked on a newly loaded or cloned object with one argument, `mixed first_load`; current compatibility passes `0`. Example compatibility mapping: `reset`. Safe <<live-object-reload,live reload>> preserves existing state and does not invoke this hook or rerun LPC field initializers.
 
 `OBJECT_ACTIVATED`::
 Reserved. Names a reactivation moment for reload, reset, or world maintenance, but JVMud does not currently invoke it.

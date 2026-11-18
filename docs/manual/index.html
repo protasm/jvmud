@@ -979,8 +979,10 @@ callable signatures and implementations; <code>formatter</code> formats LPC sour
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>application</code> owns startup, worker supervision, and updates;
 <code>model</code> defines worlds, identities, time, and mudlib lifecycle contracts;
 <code>configuration</code> reads and assembles manifest policy; <code>instance</code> runs one mudlib.
-Its <code>lpc.MudlibRuntime</code> and <code>lpc.MudlibRuntimeContext</code> connect LPC execution to
-world, session, and storage services. <code>instance.efun.EngineEfuns</code> registers the
+Its <code>lpc.MudlibRuntime</code> loads authored behavior; <code>lpc.LPCObjectLifecycle</code> keeps
+live object identity and state separate from that behavior&#8217;s program revision.
+<code>lpc.MudlibRuntimeContext</code> connects execution to world, session, and storage services.
+<code>instance.efun.EngineEfuns</code> registers the
 engine operations, and <code>diagnostics</code> checks a selected mudlib&#8217;s preload manifest.</p></td>
 </tr>
 <tr>
@@ -1957,6 +1959,62 @@ need not be native Links. Do not assume every loaded service object is a
 world-present Entity. The repository&#8217;s <code>docs/DEFERRED_WORK.md</code> records the
 remaining Place, Persona, and callback-ownership work.</p>
 </div>
+<div class="sect3">
+<h4 id="live-object-reload"><a class="anchor" href="#live-object-reload"></a><a class="link" href="#live-object-reload">Reload a live object&#8217;s behavior</a></h4>
+<div class="paragraph">
+<p>Connect to the mudlib&#8217;s authenticated administration endpoint and use
+<code>reload &lt;path&gt;</code> to install a new program revision for its shared object:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">reload room/square
+inspect room/square</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Reload compiles and links the replacement before changing the live object. The
+replacement must have the same instance fields, with the same declaring programs,
+names, and types. A compilation, linking, or field-layout error leaves the last
+working object and its administration handle available.</p>
+</div>
+<div class="paragraph">
+<p>The object&#8217;s identity and current field values survive. Its location, contents,
+sessions, command registrations, and timers remain bound to that identity. Players
+standing in a room remain there and can continue playing. Subsequent method calls
+use the new behavior. Existing clones retain their own revisions; clones created
+after successful reload use the new revision and normal initialization.</p>
+</div>
+<div class="paragraph">
+<p>Reload does not rerun LPC field initializers or creation/reset hooks. This matters
+for Small Mercies: <code>room/square.create()</code> creates the mayor, so rerunning it during
+an edit would duplicate the resident. A prose literal changed inside a description
+method becomes visible on the next call after reload. A title or description
+assigned to a field by <code>create()</code> remains the object&#8217;s current state; editing that
+source default affects newly initialized objects instead. Added, removed, or
+type-changed instance fields require a separate migration or restart; automatic
+schema migration is not implemented.</p>
+</div>
+<div class="paragraph">
+<p>For an occupied-room check, put two guests in Village Square, change the text
+literal printed by <code>lib/room.describe()</code>, and reload <code>room/square</code>. Verify both
+guests see the revised text, each other, and one mayor, then walk north and return.
+Introduce a syntax error and reload again: the previous text and movement must
+remain usable. Reloading the child compiles its inherited behavior too; other
+already loaded rooms keep their own revisions.</p>
+</div>
+<div class="paragraph">
+<p>The source separates these responsibilities deliberately:
+<code>language.execution.LPCProgramRevision</code> names compiled behavior,
+<code>engine.instance.lpc.LPCObjectLifecycle</code> owns identity and behavior replacement,
+and <code>MudlibRuntimeContext</code> owns world and session bindings. Existing inline
+closures retain their captured code while sharing live object fields through the
+invocation boundary. Calls nested inside such a closure on the same object stay
+on its captured revision until it returns. Outside that scope, ordinary calls and
+named function references follow the installed revision.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_persistent_state"><a class="anchor" href="#_persistent_state"></a><a class="link" href="#_persistent_state">Persistent state</a></h4>
 <div class="paragraph">
 <p>The <code>filesystem_accounts</code> policy stores account records under <code>accounts/</code> in its
 selected mudlib root. LPC object save/restore and JDBC data are separate storage
@@ -1964,6 +2022,7 @@ surfaces. Before an upgrade or reset, identify the active profile&#8217;s state 
 and database, stop writers, and preserve those stores. The project does not yet
 provide a universal backup/restore command or a verified production recovery
 procedure; test restoration on a disposable copy of the profile&#8217;s data.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -3341,7 +3400,7 @@ command/scheduler error handling and can interrupt the remaining recipients.</p>
 </dd>
 <dt class="hdlist1"><code>OBJECT_LOADED</code></dt>
 <dd>
-<p>Implemented. Invoked on a loaded or cloned object with one argument, <code>mixed first_load</code>; current compatibility passes <code>0</code>. Example compatibility mapping: <code>reset</code>.</p>
+<p>Implemented. Invoked on a newly loaded or cloned object with one argument, <code>mixed first_load</code>; current compatibility passes <code>0</code>. Example compatibility mapping: <code>reset</code>. Safe <a href="#live-object-reload">live reload</a> preserves existing state and does not invoke this hook or rerun LPC field initializers.</p>
 </dd>
 <dt class="hdlist1"><code>OBJECT_ACTIVATED</code></dt>
 <dd>
@@ -4114,7 +4173,7 @@ spaces. Numeric text is not automatically converted to LPC integers. <code>help<
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>reload &lt;path&gt;</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>r</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Recompile and replace a loaded LPC object.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Install new behavior for a shared object while preserving its identity, state, and world bindings. See <a href="#live-object-reload">Reload a live object&#8217;s behavior</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>scan &lt;path&gt;</code></p></td>

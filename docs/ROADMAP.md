@@ -34,8 +34,10 @@ separate evidence. Do not treat a historical green build as current acceptance.
 2. **Compatibility evidence.** Classify failures by compilation stage or runtime
    behavior. Keep syntax gates and host capability grants explicit. Use focused
    adapters rather than broad source rewrites or legacy-driver emulation.
-3. **Object lifecycle.** Clarify load, clone, reload, destruction, reference, and
-   state-preservation contracts. Verify both direct invocation and live callers.
+3. **Object lifecycle.** Preserve the separation between program revisions, live
+   identities, and engine bindings. Extend the safe behavior-reload contract only
+   with explicit state-migration and dependent-object policies. Verify both direct
+   invocation and live callers.
 4. **Engine world model.** Build on the authoritative `WorldRuntime` containment
    graph to clarify explicit Place registration, navigable Links, and the
    distinction between world-present Entities and service objects.

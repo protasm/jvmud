@@ -1,5 +1,7 @@
 package io.github.protasm.jvmud.language.runtime;
 
+import java.util.function.Supplier;
+
 /**
  * Language operations available to generated LPC bytecode and callable values.
  *
@@ -23,6 +25,14 @@ public abstract class RuntimeContext {
 
     /** Returns whether an LPC object exposes a method accepting the supplied argument count. */
     public abstract boolean hasObjectMethod(Object target, String methodName, int arity);
+
+    /**
+     * Runs an inline callable with the Java receiver that owns its captured code.
+     * Hosts that replace object behavior override this boundary to retain live state and identity.
+     */
+    public <T> T withObjectReceiver(Object receiver, Supplier<T> action) {
+        return action.get();
+    }
 
     /** Returns whether a value represents a destroyed object and therefore tests false in LPC. */
     public abstract boolean isDestroyedObject(Object value);

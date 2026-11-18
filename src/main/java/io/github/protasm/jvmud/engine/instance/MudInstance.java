@@ -219,16 +219,15 @@ public final class MudInstance implements InstanceHost {
     }
 
     /**
-     * Recompiles and replaces one shared mudlib object while this instance remains online.
+     * Replaces one shared object's behavior while preserving its identity, fields and world bindings.
      *
-     * <p>The path is an LPC object id relative to the selected mudlib's active source root, such
-     * as {@code system/quests}. Existing callers resolve the replacement through the same stable
-     * object id. Host administration code should use this operation only for shared service or
-     * content objects whose own reload policy is safe; it is intentionally not exposed as an
-     * unauthenticated player transport command.</p>
+     * <p>The path is an LPC object id relative to the active source root, such as
+     * {@code room/square}. Preparation and installation run on the instance queue. Failed
+     * compilation, linking or state compatibility leaves the working revision available. Reload
+     * does not rerun LPC initialization or creation hooks.</p>
      *
      * @param objectPath mudlib-relative LPC object id, with or without a {@code .c} suffix
-     * @return handle for the newly compiled shared object
+     * @return handle for the preserved identity and newly installed program revision
      * @throws IllegalArgumentException if the path is blank or escapes the active mudlib root
      */
     public LPCObjectHandle reloadMudlibObject(String objectPath) {

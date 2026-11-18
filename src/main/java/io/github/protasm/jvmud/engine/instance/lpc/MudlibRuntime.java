@@ -12,7 +12,6 @@ import io.github.protasm.jvmud.engine.model.mudlib.MudlibProjection;
 import io.github.protasm.jvmud.engine.model.time.WorldScheduler;
 import io.github.protasm.jvmud.engine.model.world.MudlibWorldProjection;
 import io.github.protasm.jvmud.language.compiler.parser.ParserOptions;
-import io.github.protasm.jvmud.language.compiler.parser.ast.ASTObject;
 import io.github.protasm.jvmud.language.compiler.pipeline.CompilationPipeline;
 import io.github.protasm.jvmud.language.compiler.pipeline.CompilationProblem;
 import io.github.protasm.jvmud.language.compiler.pipeline.CompilationResult;
@@ -25,6 +24,7 @@ import io.github.protasm.jvmud.language.execution.LPCLoadResult;
 import io.github.protasm.jvmud.language.execution.LPCObjectHandle;
 import io.github.protasm.jvmud.language.execution.LPCObjectInspection;
 import io.github.protasm.jvmud.language.execution.LPCObjectLoadObserver;
+import io.github.protasm.jvmud.language.execution.LPCProgramRevision;
 import io.github.protasm.jvmud.language.execution.LPCRuntimeClassLoader;
 import io.github.protasm.jvmud.language.execution.LPCRuntimeException;
 import io.github.protasm.jvmud.language.runtime.JSONValueCodec;
@@ -79,7 +79,8 @@ import java.util.zip.GZIPInputStream;
 public final class MudlibRuntime implements LPCExecution {
     private static final String LPC_INIT_METHOD_NAME = "$lpc$init";
 
-    private LPCRuntimeClassLoader classLoader;
+    private final ClassLoader parentClassLoader;
+    private final Map<String, LPCProgramRevision> programRevisions = new java.util.LinkedHashMap<>();
     private final MudlibRuntimeContext runtimeContext;
     private final CompilationPipeline pipeline;
     private final Path baseIncludePath;
@@ -117,7 +118,7 @@ public final class MudlibRuntime implements LPCExecution {
         this.runtimeContext.setLPCObjectStateRestorer(this::restoreLPCObjectState);
         this.runtimeContext.setTimedRuntimeErrorHandler(this::notifyTimedRuntimeError);
         this.runtimeContext.setObjectDestructionRequestedHandler(this::notifyObjectDestructionRequested);
-        this.classLoader = new LPCRuntimeClassLoader(config.parentClassLoader());
+        this.parentClassLoader = config.parentClassLoader();
         this.pipeline = new CompilationPipeline(config.parentInternalName(), runtimeContext, config.compilationObserver());
     }
 
@@ -165,31 +166,40 @@ public final class MudlibRuntime implements LPCExecution {
         return load(normalized).instance();
     }
 
-    /** Reloads an LPC source path, replacing the shared registered object if it already exists. */
+    /**
+     * Replaces a shared object's behavior while preserving its identity and live state.
+     *
+     * <p>Compilation, linking and compatible field transfer finish before the revision is installed.
+     * Reload does not run LPC initialization or creation hooks. Existing clones retain their own
+     * revision; subsequent clones use the newly installed program.</p>
+     */
     public LPCObjectHandle reload(String sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         return reload(resolveSourcePathWithExtensions(sourcePath));
     }
 
     /**
-     * Reloads a source file from a filesystem path.
-     *
-     * <p>Reloading creates a fresh class loader because generated JVM classes cannot be redefined in
-     * the same loader.</p>
+     * Reloads a source file under the same state-preserving contract as {@link #reload(String)}.
+     * A failed preparation leaves the current object and future-clone revision unchanged.
      */
     public LPCObjectHandle reload(Path sourcePath) {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
         String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
-        Object existing = runtimeContext.getObject(objectId);
-        if (existing != null) {
-            runtimeContext.destructObject(existing);
+        Object identity = runtimeContext.getObject(objectId);
+        if (identity == null) {
+            return load(normalized);
+        }
+        if (runtimeContext.isObjectExecuting(identity)) {
+            throw new LPCRuntimeException("Cannot reload an LPC object while it is executing: " + objectId);
         }
 
-        // JVM classes cannot be redefined in the same classloader. A fresh loader lets the
-        // reloaded LPC source produce a new generated class while old live objects keep working.
-        classLoader = new LPCRuntimeClassLoader(classLoader.getParent());
-        return load(normalized);
+        LPCProgramRevision revision = linkProgram(objectId, compile(normalized));
+        LPCObjectLifecycle.PreparedReload prepared = withRuntimeContext(() ->
+                runtimeContext.objectLifecycle().prepareReload(identity, revision));
+        runtimeContext.objectLifecycle().install(prepared);
+        programRevisions.put(objectId, revision);
+        return new LPCObjectHandle(this, objectId, revision.objectClass(), identity);
     }
 
     /** Loads, compiles, instantiates, registers, and initializes one source file. */
@@ -225,37 +235,53 @@ public final class MudlibRuntime implements LPCExecution {
     }
 
     private LPCObjectHandle loadUnchecked(Path normalized, String objectId) {
-        CompilationResult result = compile(normalized);
+        return materialize(objectId, linkProgram(objectId, compile(normalized)));
+    }
 
-        if (!result.getProblems().isEmpty()) {
-            throw compilationFailure(objectId, result.getProblems());
-        }
-
-        CompilationUnit compilationUnit = result.getCompilationUnit();
-        if (compilationUnit != null) {
-            defineInheritedClasses(compilationUnit.directParentUnits());
-        }
-
-        byte[] bytecode = result.getBytecode();
-        if (bytecode == null) {
-            throw new LPCRuntimeException("Compilation did not produce bytecode for " + objectId);
-        }
-
-        String internalName = (result.getAstObject() != null) ? result.getAstObject().name() : jvmInternalName(objectId);
-        internalName = jvmInternalName(normalizeInternalName(internalName));
-        Class<?> compiledClass = classLoader.defineClass(internalName, bytecode);
-        Object instance = instantiate(compiledClass);
-
+    /** Registers a new identity before authored initialization can resolve circular references. */
+    private LPCObjectHandle materialize(String objectId, LPCProgramRevision revision) {
+        Object instance = instantiate(revision.objectClass());
         registerObject(objectId, instance);
+        runtimeContext.objectLifecycle().register(instance, revision);
+        LPCProgramRevision previous = programRevisions.put(objectId, revision);
         try {
             initializeLPCObject(instance);
             resetIfPresent(instance);
         } catch (RuntimeException | Error e) {
             runtimeContext.destructObject(instance);
+            if (previous == null) {
+                programRevisions.remove(objectId);
+            } else {
+                programRevisions.put(objectId, previous);
+            }
             throw e;
         }
+        return new LPCObjectHandle(this, runtimeContext.objectId(instance), revision.objectClass(), instance);
+    }
 
-        return new LPCObjectHandle(this, objectId, compiledClass, instance);
+    /** Links one analyzed inheritance graph in its own class loader, without changing live objects. */
+    private LPCProgramRevision linkProgram(String objectId, CompilationResult result) {
+        if (!result.getProblems().isEmpty()) {
+            throw compilationFailure(objectId, result.getProblems());
+        }
+        try {
+            LPCRuntimeClassLoader loader = new LPCRuntimeClassLoader(parentClassLoader);
+            CompilationUnit unit = result.getCompilationUnit();
+            if (unit != null) {
+                defineInheritedClasses(unit.directParentUnits(), loader);
+            }
+            byte[] bytecode = result.getBytecode();
+            if (bytecode == null) {
+                throw new LPCRuntimeException("Compilation did not produce bytecode for " + objectId);
+            }
+            String internalName = result.getAstObject() != null ? result.getAstObject().name() : objectId;
+            Class<?> compiledClass = loader.defineClass(jvmInternalName(normalizeInternalName(internalName)), bytecode);
+            // Force JVM verification and method-signature resolution before any live revision changes.
+            compiledClass.getDeclaredMethods();
+            return new LPCProgramRevision(objectId, compiledClass);
+        } catch (LinkageError e) {
+            throw new LPCRuntimeException("Failed to link LPC program revision: " + objectId, e);
+        }
     }
 
     private void beginObjectLoad(String objectId) {
@@ -349,35 +375,7 @@ public final class MudlibRuntime implements LPCExecution {
         CompilationResult result =
                 pipeline.run(null, source, jvmInternalName(objectId), displayPath, runtimeContext.parserOptions());
 
-        if (!result.getProblems().isEmpty()) {
-            throw compilationFailure(objectId, result.getProblems());
-        }
-
-        CompilationUnit compilationUnit = result.getCompilationUnit();
-        if (compilationUnit != null) {
-            defineInheritedClasses(compilationUnit.directParentUnits());
-        }
-
-        byte[] bytecode = result.getBytecode();
-        if (bytecode == null) {
-            throw new LPCRuntimeException("Compilation did not produce bytecode for " + objectId);
-        }
-
-        String internalName = (result.getAstObject() != null) ? result.getAstObject().name() : jvmInternalName(objectId);
-        internalName = jvmInternalName(normalizeInternalName(internalName));
-        Class<?> compiledClass = classLoader.defineClass(internalName, bytecode);
-        Object instance = instantiate(compiledClass);
-
-        registerObject(objectId, instance);
-        try {
-            initializeLPCObject(instance);
-            resetIfPresent(instance);
-        } catch (RuntimeException | Error e) {
-            runtimeContext.destructObject(instance);
-            throw e;
-        }
-
-        return new LPCObjectHandle(this, objectId, compiledClass, instance);
+        return materialize(objectId, linkProgram(objectId, result));
     }
 
     /**
@@ -390,11 +388,14 @@ public final class MudlibRuntime implements LPCExecution {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Path normalized = resolveSourcePathWithExtensions(sourcePath);
         String objectId = normalizeInternalName(deriveSourceName(normalized, sourceNameBasePath(normalized)));
-        String internalName = jvmInternalName(objectId);
-
-        Class<?> objectClass = ensureClassDefined(normalized, objectId, internalName);
-        Object instance = instantiate(objectClass);
+        LPCProgramRevision revision = programRevisions.get(objectId);
+        if (revision == null) {
+            revision = linkProgram(objectId, compile(normalized));
+            programRevisions.put(objectId, revision);
+        }
+        Object instance = instantiate(revision.objectClass());
         registerObject(nextCloneId(objectId), instance);
+        runtimeContext.objectLifecycle().register(instance, revision);
         try {
             initializeLPCObject(instance);
             resetIfPresent(instance);
@@ -699,7 +700,7 @@ public final class MudlibRuntime implements LPCExecution {
             return 0;
         }
 
-        return objectStateStore.save(resolved, object);
+        return objectStateStore.save(resolved, runtimeContext.objectReceiver(object));
     }
 
     /** Restores scalar LPC object fields from mudlib-rooted storage, returning LP-style success. */
@@ -710,7 +711,7 @@ public final class MudlibRuntime implements LPCExecution {
         if (resolved == null) {
             return 0;
         }
-        return objectStateStore.restore(resolved, object);
+        return objectStateStore.restore(resolved, runtimeContext.objectReceiver(object));
     }
 
     /** Returns the selected mudlib configuration that assembles this engine host. */
@@ -832,13 +833,14 @@ public final class MudlibRuntime implements LPCExecution {
             child = runtimeContext.nextInventory(child);
         }
 
+        Object receiver = runtimeContext.objectReceiver(object);
         return new LPCObjectInspection(
                 runtimeContext.objectId(object),
-                object.getClass().getName(),
+                receiver.getClass().getName(),
                 environment == null ? null : objectReference(environment),
                 inventoryIds,
-                inspectFields(object),
-                inspectMethods(object));
+                inspectFields(receiver),
+                inspectMethods(receiver));
     }
 
     /** Registers one LPC-facing engine function in this runtime. */
@@ -1166,41 +1168,6 @@ public final class MudlibRuntime implements LPCExecution {
             return "mixed";
         }
         return type.getSimpleName();
-    }
-
-    private Class<?> ensureClassDefined(Path sourcePath, String objectId, String internalName) {
-        if (classLoader.isDefined(internalName)) {
-            try {
-                return classLoader.loadClass(internalName.replace('/', '.'));
-            } catch (ClassNotFoundException e) {
-                throw new LPCRuntimeException("Defined LPC class could not be loaded: " + internalName, e);
-            }
-        }
-
-        String source;
-        try {
-            source = Files.readString(sourcePath);
-        } catch (IOException e) {
-            throw new LPCRuntimeException("Failed to read source file: " + sourcePath, e);
-        }
-
-        CompilationResult result =
-                pipeline.run(sourcePath, source, internalName, "/" + objectId, runtimeContext.parserOptions());
-        if (!result.getProblems().isEmpty()) {
-            throw compilationFailure(objectId, result.getProblems());
-        }
-
-        CompilationUnit compilationUnit = result.getCompilationUnit();
-        if (compilationUnit != null) {
-            defineInheritedClasses(compilationUnit.directParentUnits());
-        }
-
-        byte[] bytecode = result.getBytecode();
-        if (bytecode == null) {
-            throw new LPCRuntimeException("Compilation did not produce bytecode for " + internalName);
-        }
-
-        return classLoader.defineClass(internalName, bytecode);
     }
 
     private void registerObject(String baseName, Object object) {
@@ -1619,48 +1586,24 @@ public final class MudlibRuntime implements LPCExecution {
         return (dot == -1) ? name : name.substring(0, dot);
     }
 
-    /** Defines every direct inherited LPC class, including secondary multiple-inherit parents. */
-    private void defineInheritedClasses(List<CompilationUnit> units) {
-        if (units == null || units.isEmpty()) {
-            return;
-        }
-
+    /** Defines the exact parent units analyzed with this revision, never older loaded classes. */
+    private void defineInheritedClasses(List<CompilationUnit> units, LPCRuntimeClassLoader loader) {
         for (CompilationUnit unit : units) {
-            defineInheritedClasses(unit);
+            String internalName = jvmInternalName(normalizeInternalName(unit.astObject().name()));
+            if (loader.isDefined(internalName)) {
+                continue;
+            }
+            defineInheritedClasses(unit.directParentUnits(), loader);
+            CompilationResult result = pipeline.generateBytecode(unit);
+            if (!result.getProblems().isEmpty()) {
+                throw compilationFailure(internalName, result.getProblems());
+            }
+            byte[] bytecode = result.getBytecode();
+            if (bytecode == null) {
+                throw new LPCRuntimeException("Compilation did not produce bytecode for " + internalName);
+            }
+            loader.defineClass(internalName, bytecode);
         }
-    }
-
-    /** Defines one inherited LPC class after recursively defining its own inherited classes. */
-    private void defineInheritedClasses(CompilationUnit unit) {
-        if (unit == null) {
-            return;
-        }
-
-        defineInheritedClasses(unit.directParentUnits());
-
-        ASTObject astObject = unit.astObject();
-        if (astObject == null) {
-            return;
-        }
-
-        String internalName = normalizeInternalName(astObject.name());
-        if (classLoader.isDefined(internalName)) {
-            return;
-        }
-
-        CompilationResult result =
-                pipeline.run(unit.sourcePath(), unit.source(), unit.sourceName(), unit.displayPath(), runtimeContext.parserOptions());
-
-        if (!result.getProblems().isEmpty()) {
-            throw compilationFailure(internalName, result.getProblems());
-        }
-
-        byte[] bytecode = result.getBytecode();
-        if (bytecode == null) {
-            throw new LPCRuntimeException("Compilation did not produce bytecode for " + internalName);
-        }
-
-        classLoader.defineClass(internalName, bytecode);
     }
 
     private Path stripExtension(Path path) {

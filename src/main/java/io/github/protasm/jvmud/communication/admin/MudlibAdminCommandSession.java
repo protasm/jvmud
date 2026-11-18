@@ -248,7 +248,7 @@ public final class MudlibAdminCommandSession {
         helpLine("p", "parse <path>", "Preprocess, scan, parse, and print the LPC AST.");
         helpLine("pp", "preprocess <path>", "Expand includes, macros, and preprocessor directives.");
         helpLine("", "pwd", "Print the current virtual mudlib directory.");
-        helpLine("r", "reload <path>", "Recompile and replace a loaded LPC object.");
+        helpLine("r", "reload <path>", "Install new behavior, preserving live identity and state.");
         helpLine("s", "scan <path>", "Preprocess and print scanner tokens for an LPC source file.");
         helpLine("v", "verbosity [quiet|normal|watch]", "Show or change compiler/shell output detail.");
         helpLine("w", "where <handle>", "Show the environment containing an object.");
@@ -406,12 +406,11 @@ public final class MudlibAdminCommandSession {
     private void reload(String path) {
         ensureBooted();
         String runtimePath = runtimePath(path);
+        LPCObjectHandle handle = runtime.reload(resolveVirtualPath(path));
         Object previous = handles.remove(runtimePath);
         if (previous != null) {
             objectNames.remove(previous);
         }
-
-        LPCObjectHandle handle = runtime.reload(resolveVirtualPath(path));
         remember(handle.internalName(), handle.instance());
         info("Reloaded " + handle.internalName());
     }

@@ -15,8 +15,10 @@ callable signatures and implementations; `formatter` formats LPC source.
 |`engine` |`application` owns startup, worker supervision, and updates;
 `model` defines worlds, identities, time, and mudlib lifecycle contracts;
 `configuration` reads and assembles manifest policy; `instance` runs one mudlib.
-Its `lpc.MudlibRuntime` and `lpc.MudlibRuntimeContext` connect LPC execution to
-world, session, and storage services. `instance.efun.EngineEfuns` registers the
+Its `lpc.MudlibRuntime` loads authored behavior; `lpc.LPCObjectLifecycle` keeps
+live object identity and state separate from that behavior's program revision.
+`lpc.MudlibRuntimeContext` connects execution to world, session, and storage services.
+`instance.efun.EngineEfuns` registers the
 engine operations, and `diagnostics` checks a selected mudlib's preload manifest.
 |`communication` |`transport` owns connection mechanics, `admin` interprets
 administrative commands, and `console` supplies the terminal client.

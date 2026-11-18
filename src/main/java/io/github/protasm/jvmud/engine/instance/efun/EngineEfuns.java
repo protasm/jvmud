@@ -533,11 +533,11 @@ public final class EngineEfuns {
         efuns.add(efun("jvmud_lpc_object_id", LPCType.LPCSTRING, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.objectId(args[0])));
         efuns.add(efun("jvmud_method_exists", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING),
-                (runtime, args) -> methodExists(runtime.currentObject(), String.valueOf(args[0])) ? 1 : 0));
+                (runtime, args) -> methodExists(runtime, runtime.currentObject(), String.valueOf(args[0])) ? 1 : 0));
         efuns.add(efun("jvmud_method_exists", LPCType.LPCSTATUS, List.of(LPCType.LPCSTRING, LPCType.LPCMIXED),
-                (runtime, args) -> methodExists(args[1], String.valueOf(args[0])) ? 1 : 0));
+                (runtime, args) -> methodExists(runtime, args[1], String.valueOf(args[0])) ? 1 : 0));
         efuns.add(efun("jvmud_lpc_object_methods", LPCType.LPCARRAY, List.of(LPCType.LPCMIXED),
-                (runtime, args) -> lpcObjectMethods(args[0])));
+                (runtime, args) -> lpcObjectMethods(runtime, args[0])));
         efuns.add(efun("jvmud_inherited_programs", LPCType.LPCARRAY, List.of(LPCType.LPCMIXED),
                 (runtime, args) -> runtime.inheritedPrograms(args[0])));
         efuns.add(efun("jvmud_size", LPCType.LPCINT, List.of(LPCType.LPCMIXED),
@@ -952,11 +952,11 @@ public final class EngineEfuns {
         throw new IllegalArgumentException("jvmud_mapping_delete expects a mapping value");
     }
 
-    private static boolean methodExists(Object target, String methodName) {
+    private static boolean methodExists(MudlibRuntimeContext runtime, Object target, String methodName) {
         if (target == null || (target instanceof Number number && number.intValue() == 0) || methodName == null) {
             return false;
         }
-        for (Method method : target.getClass().getMethods()) {
+        for (Method method : runtime.objectReceiver(target).getClass().getMethods()) {
             if (!isPublicMudlibMethod(method)) {
                 continue;
             }
@@ -982,7 +982,7 @@ public final class EngineEfuns {
 
     private static boolean playerNameMatches(MudlibRuntimeContext runtime, Object user, String normalizedName) {
         for (String methodName : List.of("RealName", "Name", "query_name", "name")) {
-            if (!methodExists(user, methodName)) {
+            if (!methodExists(runtime, user, methodName)) {
                 continue;
             }
             Object value = runtime.invokeOptionalObject(user, methodName);
@@ -1000,12 +1000,12 @@ public final class EngineEfuns {
         return String.valueOf(value).trim().toLowerCase(Locale.ROOT);
     }
 
-    private static List<String> lpcObjectMethods(Object target) {
+    private static List<String> lpcObjectMethods(MudlibRuntimeContext runtime, Object target) {
         if (target == null || (target instanceof Number number && number.intValue() == 0)) {
             return List.of();
         }
         List<String> names = new ArrayList<>();
-        for (Method method : target.getClass().getMethods()) {
+        for (Method method : runtime.objectReceiver(target).getClass().getMethods()) {
             if (!isPublicMudlibMethod(method) || names.contains(method.getName())) {
                 continue;
             }
@@ -1772,20 +1772,11 @@ public final class EngineEfuns {
         }
 
         if (arguments.length == 1 && isNoArgumentSentinel(arguments[0])) {
-            if (hasMethod(resolvedTarget, methodName, 0) && !hasMethod(resolvedTarget, methodName, 1)) {
+            if (runtime.hasObjectMethod(resolvedTarget, methodName, 0) && !runtime.hasObjectMethod(resolvedTarget, methodName, 1)) {
                 return runtime.invokeOptionalObject(resolvedTarget, methodName);
             }
         }
         return runtime.invokeOptionalObject(resolvedTarget, methodName, arguments);
-    }
-
-    private static boolean hasMethod(Object target, String methodName, int arity) {
-        for (var method : target.getClass().getMethods()) {
-            if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static Object resolveTarget(MudlibRuntimeContext runtime, Object target) {

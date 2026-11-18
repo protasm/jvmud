@@ -17,6 +17,56 @@ need not be native Links. Do not assume every loaded service object is a
 world-present Entity. The repository's `docs/DEFERRED_WORK.md` records the
 remaining Place, Persona, and callback-ownership work.
 
+[[live-object-reload]]
+==== Reload a live object's behavior
+
+Connect to the mudlib's authenticated administration endpoint and use
+`reload <path>` to install a new program revision for its shared object:
+
+[source,text]
+----
+reload room/square
+inspect room/square
+----
+
+Reload compiles and links the replacement before changing the live object. The
+replacement must have the same instance fields, with the same declaring programs,
+names, and types. A compilation, linking, or field-layout error leaves the last
+working object and its administration handle available.
+
+The object's identity and current field values survive. Its location, contents,
+sessions, command registrations, and timers remain bound to that identity. Players
+standing in a room remain there and can continue playing. Subsequent method calls
+use the new behavior. Existing clones retain their own revisions; clones created
+after successful reload use the new revision and normal initialization.
+
+Reload does not rerun LPC field initializers or creation/reset hooks. This matters
+for Small Mercies: `room/square.create()` creates the mayor, so rerunning it during
+an edit would duplicate the resident. A prose literal changed inside a description
+method becomes visible on the next call after reload. A title or description
+assigned to a field by `create()` remains the object's current state; editing that
+source default affects newly initialized objects instead. Added, removed, or
+type-changed instance fields require a separate migration or restart; automatic
+schema migration is not implemented.
+
+For an occupied-room check, put two guests in Village Square, change the text
+literal printed by `lib/room.describe()`, and reload `room/square`. Verify both
+guests see the revised text, each other, and one mayor, then walk north and return.
+Introduce a syntax error and reload again: the previous text and movement must
+remain usable. Reloading the child compiles its inherited behavior too; other
+already loaded rooms keep their own revisions.
+
+The source separates these responsibilities deliberately:
+`language.execution.LPCProgramRevision` names compiled behavior,
+`engine.instance.lpc.LPCObjectLifecycle` owns identity and behavior replacement,
+and `MudlibRuntimeContext` owns world and session bindings. Existing inline
+closures retain their captured code while sharing live object fields through the
+invocation boundary. Calls nested inside such a closure on the same object stay
+on its captured revision until it returns. Outside that scope, ordinary calls and
+named function references follow the installed revision.
+
+==== Persistent state
+
 The `filesystem_accounts` policy stores account records under `accounts/` in its
 selected mudlib root. LPC object save/restore and JDBC data are separate storage
 surfaces. Before an upgrade or reset, identify the active profile's state paths

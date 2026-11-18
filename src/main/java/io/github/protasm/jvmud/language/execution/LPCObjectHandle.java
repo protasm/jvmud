@@ -3,7 +3,13 @@ package io.github.protasm.jvmud.language.execution;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-/** A materialized LPC object and the execution boundary through which it is invoked. */
+/**
+ * A stable LPC object identity and the execution boundary through which it is invoked.
+ *
+ * <p>The class is the revision observed when this handle was created. The owning host can replace
+ * executable behavior later while {@link #instance()} and existing handles keep the same identity.
+ * Invoke through this boundary rather than reflecting on the identity's original Java class.</p>
+ */
 public final class LPCObjectHandle {
     private final LPCExecution execution;
     private final String internalName;
@@ -23,12 +29,12 @@ public final class LPCObjectHandle {
         return internalName;
     }
 
-    /** Returns the generated class that supplies this object's compiled behavior. */
+    /** Returns the generated class for the revision observed when this handle was created. */
     public Class<?> objectClass() {
         return objectClass;
     }
 
-    /** Returns the materialized LPC receiver. */
+    /** Returns the stable LPC identity, which need not be the host's current Java behavior receiver. */
     public Object instance() {
         return instance;
     }

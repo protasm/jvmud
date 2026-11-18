@@ -16,7 +16,7 @@ and expands Java API generation to all four core package families.
 | Medium | Efun and lifecycle reference completeness | Audit every documented signature, capability, event argument, dispatch order, and error case against source; generate catalogs where practical. This pass improves access but does not claim an exhaustive per-function audit. |
 | Medium | Dialect compatibility matrix | Tests separating accepted syntax, compile/load success, and runtime semantics for every optional language feature. Preserve provenance rather than claiming universal LPC parity. |
 | Medium | Admin argument types | The shell currently passes arguments as strings. The manual documents this limit and uses a no-argument wrapper; richer typed invocation needs an explicit implementation decision. |
-| Medium | Reload contract | Tested state/reference migration examples for object replacement and clones, with limits documented explicitly. |
+| Medium | Reload state migration | The current contract documents behavior replacement with preserved state, compatible fields, clone revision rules, and failure safety. A future schema-migration facility needs its own tested authoring examples and failure contract. |
 | Low | Automatic companion-page synchronization | Generate Principles/Glossary HTML from their controlling Markdown to remove manual synchronization. |
 | Low | Documentation CI | Run manual/API generation and `src/test/scripts/check-docs.py` automatically; retain render review for PDF and responsive website changes. |
 

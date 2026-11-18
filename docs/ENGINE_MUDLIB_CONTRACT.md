@@ -37,6 +37,57 @@ The boundary has two directions:
 Both directions should use JVMud-native terms in engine design. Compatibility
 objects translate legacy mudlib terms into those native operations.
 
+## Live LPC Object Reload
+
+Reload replaces a loaded shared object's compiled behavior while preserving the
+object that participates in the world. Three concepts have distinct owners:
+
+- `language.execution.LPCProgramRevision` identifies one source object and its
+  generated class. The class's defining loader contains the inherited program
+  revisions used for that compilation; analysis and linking use that same graph.
+- `engine.instance.lpc.LPCObjectLifecycle` associates a stable live object identity
+  with its current behavior receiver and copies compatible instance state between
+  receivers. An LPC object reference continues to identify the same live object.
+- `MudlibRuntimeContext` retains the object's engine bindings: containment,
+  sessions, command registrations, and scheduled work. A new program revision does
+  not require destroying or recreating those bindings.
+
+The authenticated mudlib administration command `reload <path>` prepares a fresh
+program revision and Java receiver before installing either. It checks that the
+replacement has the same instance fields, with the same declaring program, names,
+and types, then copies their current values. Installation runs on the mudlib's
+execution queue. Compilation, linking, or field-layout failure leaves the previous
+revision, live object, and administration handle available.
+
+Reload does **not** run LPC field initialization, `object_loaded`, `create`,
+`reset`, or a destruction hook. It preserves current field values, including
+object references and collection values, rather than replacing them with source
+defaults. An occupied room keeps its location binding and contents; connected
+players keep their sessions; commands and timers continue to target the same
+object. Ordinary method calls and named function references use its installed
+revision. Existing inline closures retain their captured code and local values;
+the invocation boundary shares the object's current field state with that code.
+While such a closure runs, calls nested within it on the same object also use the
+captured revision. Ordinary dispatch returns to the installed revision when the
+closure returns.
+
+This gives source edits a deliberate scope:
+
+| Edit or operation | Effect on existing objects |
+| --- | --- |
+| Change a method body; reload its shared object | Subsequent ordinary calls use the new behavior. |
+| Change an inherited method; reload a child shared object | That child uses the newly compiled inheritance graph. Other live objects retain their revisions. |
+| Change a field initializer or creation hook | The live object's fields remain unchanged. Newly initialized objects receive the new defaults. |
+| Add, remove, or change the type of an instance field | Reload is rejected. Automatic schema migration is not implemented. |
+| Create a clone after successful reload | The new clone uses the installed program revision and normal initialization. Existing clones keep their own state and revisions. |
+
+For example, Small Mercies' `room/square.create()` creates its mayor. Rerunning
+that hook during a prose edit would create another resident. Reload instead keeps
+the existing mayor and players and changes only behavior. Prose stored in a field
+by `create()` is live state; changing its source default requires a newly created
+object or an explicit mudlib state-editing operation. A literal changed inside a
+description method takes effect on the next call after reload.
+
 ## Engine-To-Mudlib Lifecycle Hooks
 
 JVMud lifecycle events are engine concepts. LPC method names are mudlib boundary
@@ -89,7 +140,7 @@ The currently defined JVMud lifecycle events are:
 
 | Event key | Current status | Target | Arguments | Meaning |
 | --- | --- | --- | --- | --- |
-| `object_loaded` | Implemented, optional mapping | Loaded or cloned object | `mixed first_load` | A mudlib object has been materialized and may initialize object state. Current compatibility passes `0` for `first_load`. |
+| `object_loaded` | Implemented, optional mapping | Newly loaded or cloned object | `mixed first_load` | A mudlib object has been materialized and may initialize object state. Current compatibility passes `0` for `first_load`. Safe reload preserves existing state and does not emit this event. |
 | `object_activated` | Reserved | Activated object | none yet | An existing object has been reactivated by an explicit reload, reset, or world maintenance policy. |
 | `object_source_missing` | Implemented, optional mapping | Boundary object | requested object path | A shared object path has no source; mudlib policy may supply a substitute object. |
 | `object_destruction_requested` | Implemented, optional mapping | Boundary object | target object | An object is about to be removed and mudlib policy may perform pre-destruction cleanup. |

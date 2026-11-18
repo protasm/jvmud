@@ -71,6 +71,7 @@ import java.util.function.Supplier;
  * this host usable by deterministic runtime tests before the instance starts that thread.</p>
  */
 public final class MudlibRuntimeContext extends RuntimeContext implements LPCCompilationEnvironment {
+    private final LPCObjectLifecycle objectLifecycle = new LPCObjectLifecycle();
     private final EfunRegistry efunRegistry;
     private final LPCCompilerContext compilerContext;
     private final Map<String, Object> objects = new LinkedHashMap<>();
@@ -691,12 +692,27 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     }
 
     private boolean hasMethod(Object target, String methodName, int arity) {
-        for (Method method : target.getClass().getMethods()) {
+        for (Method method : objectReceiver(target).getClass().getMethods()) {
             if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** Owns the stable identity and replaceable behavior of this instance's LPC objects. */
+    LPCObjectLifecycle objectLifecycle() {
+        return objectLifecycle;
+    }
+
+    /** Returns the current Java behavior receiver for an LPC identity or historical receiver. */
+    public Object objectReceiver(Object object) {
+        return objectLifecycle.receiverOf(object);
+    }
+
+    /** Reports whether an object's code is currently on this instance's execution stack. */
+    boolean isObjectExecuting(Object object) {
+        return currentObjectStack.get().contains(objectLifecycle.identityOf(object));
     }
 
     /**
@@ -719,6 +735,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         if (previousObject != null && previousObject != object) {
             objectIds.remove(previousObject);
         }
+        objectLifecycle.register(object);
         destroyedObjects.remove(object);
         objects.put(name, object);
         objectIds.put(object, name);
@@ -749,7 +766,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     }
 
     public String objectId(Object object) {
-        return objectIds.get(object);
+        return objectIds.get(objectLifecycle.identityOf(object));
     }
 
     /**
@@ -772,8 +789,9 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
             programs.add(ownProgram);
         }
         try {
-            Method method = object.getClass().getMethod("$jvmud$inherited_programs");
-            Object value = method.invoke(object);
+            Object receiver = objectReceiver(object);
+            Method method = receiver.getClass().getMethod("$jvmud$inherited_programs");
+            Object value = method.invoke(receiver);
             if (value instanceof String[] paths) {
                 for (String path : paths) {
                     if (!programs.contains(path)) {
@@ -811,7 +829,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     }
 
     public boolean isDestroyedObject(Object object) {
-        return destroyedObjects.contains(object);
+        return destroyedObjects.contains(objectLifecycle.identityOf(object));
     }
 
     public Object cloneObject(String sourcePath) {
@@ -1467,8 +1485,8 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         String methodName = configuration.lifecycleMethod(MudlibLifecycleEvent.ENTITY_DEPARTED_FROM_PLACE)
                 .orElse(null);
         if (methodName == null) return;
-        boolean acceptsActor = hasMethod(previousLocation.getClass(), methodName, 1);
-        if (!acceptsActor && !hasMethod(previousLocation.getClass(), methodName, 0)) return;
+        boolean acceptsActor = hasMethod(objectReceiver(previousLocation).getClass(), methodName, 1);
+        if (!acceptsActor && !hasMethod(objectReceiver(previousLocation).getClass(), methodName, 0)) return;
 
         RuntimeContext previous = RuntimeContextHolder.current();
         RuntimeContextHolder.setCurrent(this);
@@ -1679,6 +1697,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     }
 
     public void destructObject(Object object) {
+        object = objectLifecycle.identityOf(object);
         if (object == null) {
             return;
         }
@@ -1714,6 +1733,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
             objects.remove(id);
         }
         destroyedObjects.add(object);
+        objectLifecycle.remove(object);
     }
 
     private boolean isLpcFalse(Object value) {
@@ -1841,7 +1861,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         }
 
         String methodName = configuration.temporalTickMethod().orElse(null);
-        if (methodName == null || !hasMethod(target.getClass(), methodName, 0)) {
+        if (methodName == null || !hasMethod(objectReceiver(target).getClass(), methodName, 0)) {
             return;
         }
 
@@ -1878,7 +1898,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         }
 
         if (!objectIds.containsKey(target)
-                || !hasMethodAcceptingMissingArguments(target.getClass(), methodName, args.length)) {
+                || !hasMethodAcceptingMissingArguments(objectReceiver(target).getClass(), methodName, args.length)) {
             return;
         }
 
@@ -1968,7 +1988,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
     public void pushCurrentObject(Object object) {
         Objects.requireNonNull(object, "object");
-        currentObjectStack.get().push(object);
+        currentObjectStack.get().push(objectLifecycle.identityOf(object));
     }
 
     public void popCurrentObject() {
@@ -1989,6 +2009,19 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         }
     }
 
+    /**
+     * Runs a captured inline closure on its original code while sharing the object's live fields.
+     * Nested calls on the same identity use that receiver until the closure returns.
+     */
+    @Override
+    public <T> T withObjectReceiver(Object receiver, Supplier<T> action) {
+        Object identity = objectLifecycle.identityOf(receiver);
+        if (isDestroyedObject(identity)) {
+            return null;
+        }
+        return objectLifecycle.withReceiver(receiver, () -> withCurrentObject(identity, action));
+    }
+
     public void runWithCurrentObject(Object object, Runnable action) {
         Objects.requireNonNull(action, "action");
         withCurrentObject(object, () -> {
@@ -2000,7 +2033,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     public <T> T withCommandActor(Object actor, Supplier<T> action) {
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(action, "action");
-        commandActorStack.get().push(actor);
+        commandActorStack.get().push(objectLifecycle.identityOf(actor));
         try {
             return action.get();
         } finally {
@@ -2163,7 +2196,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
     private boolean tryEnvironmentMovementAction(Object actor, String verb, String argument) {
         Object environment = environment(actor);
-        if (environment == null || !hasMethod(environment.getClass(), "move", 1)) {
+        if (environment == null || !hasMethod(objectReceiver(environment).getClass(), "move", 1)) {
             return false;
         }
         Object exits = invokeOptionalObject(environment, "exits");
@@ -2271,8 +2304,8 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         String actionArgument = action.verb().isEmpty() && !configuration.commandActionsArgumentsOnly()
                 ? commandLine : argument;
         boolean hasOneArgument = hasMethodAcceptingMissingArguments(
-                action.handler().getClass(), action.methodName(), 1);
-        boolean hasNoArguments = hasMethod(action.handler().getClass(), action.methodName(), 0);
+                objectReceiver(action.handler()).getClass(), action.methodName(), 1);
+        boolean hasNoArguments = hasMethod(objectReceiver(action.handler()).getClass(), action.methodName(), 0);
         if (actionArgument != null && hasOneArgument) {
             return invokeObject(action.handler(), action.methodName(), actionArgument);
         }
@@ -2487,12 +2520,12 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
     private Object resolveInvocationTarget(Object target) {
         if (target instanceof String path) {
-            return loadOrGetObject(path);
+            target = loadOrGetObject(path);
         }
-        if (destroyedObjects.contains(target)) {
+        if (isDestroyedObject(target)) {
             return null;
         }
-        return target;
+        return objectReceiver(target);
     }
 
     private boolean hasMethod(Class<?> targetClass, String methodName, int arity) {
@@ -2702,12 +2735,17 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         }
 
         try {
-            InvocationPlan invocation = findInvocation(object.getClass(), "id", new Object[] {id});
-            return Truth.isTruthy(invocation.method().invoke(object, invocation.arguments()));
+            Object receiver = objectReceiver(object);
+            InvocationPlan invocation = findInvocation(receiver.getClass(), "id", new Object[] {id});
+            return withCurrentObject(object, () -> {
+                try {
+                    return Truth.isTruthy(invocation.method().invoke(receiver, invocation.arguments()));
+                } catch (ReflectiveOperationException e) {
+                    return false;
+                }
+            });
         } catch (NoSuchMethodException e) {
             // Fall back to exact object id matching below.
-        } catch (ReflectiveOperationException e) {
-            return false;
         }
 
         return id.equals(objectId(object));

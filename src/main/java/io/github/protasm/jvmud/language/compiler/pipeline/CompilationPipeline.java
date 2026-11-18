@@ -211,6 +211,26 @@ public final class CompilationPipeline {
         if (!includeCodegen)
             return new CompilationResult(unit, tokens, astObject, semanticModel, typedIr, bytecode, problems);
 
+        return generateBytecode(unit);
+    }
+
+    /**
+     * Generates bytecode from an already analyzed source unit without resolving source again.
+     *
+     * <p>A host uses this for inherited units in the same program revision. Re-reading a parent
+     * here could link the child against declarations different from those used in its analysis.</p>
+     *
+     * @param unit source and semantic model produced by this pipeline
+     * @return lowering and bytecode results for that exact analyzed unit
+     */
+    public CompilationResult generateBytecode(CompilationUnit unit) {
+        Objects.requireNonNull(unit, "unit");
+        SemanticModel semanticModel = Objects.requireNonNull(unit.semanticModel(), "unit.semanticModel");
+        TokenList tokens = unit.tokens();
+        ASTObject astObject = unit.astObject();
+        List<CompilationProblem> problems = new ArrayList<>();
+        TypedIR typedIr = null;
+        byte[] bytecode = null;
         IRLowerer lowerer = new IRLowerer(parentInternalName);
         try {
             observer.stageStarted(unit, CompilationStage.LOWER);
