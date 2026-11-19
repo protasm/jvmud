@@ -915,6 +915,8 @@ one running mudlib. <code>lpc.MudlibRuntime</code> loads authored behavior;
 <code>lpc.LPCMethodInvoker</code> owns method selection and argument adaptation.
 <code>lpc.LPCObjectLifecycle</code> owns live receivers and behavior replacement.
 <code>lpc.LPCCommands</code> owns command context, action registration, and dispatch.
+<code>lpc.LPCScheduledCallbacks</code> owns authored callback registration and delivery
+using the model&#8217;s deterministic <code>WorldScheduler</code>.
 <code>efun.EngineEfuns</code> composes language-only functions with engine-service adapters.
 Input, administration, and ticks run on the instance&#8217;s execution queue.</p>
 </li>
@@ -991,6 +993,8 @@ live object identity and state separate from that behavior&#8217;s program revis
 <code>lpc.LPCInvocationStack</code> owns current/previous-object identity and call scopes;
 <code>lpc.LPCMethodInvoker</code> selects methods, adapts arguments, and reports call failures.
 <code>lpc.LPCCommands</code> owns command context, action registration, and dispatch.
+<code>lpc.LPCScheduledCallbacks</code> owns recurring and deferred LPC callbacks;
+<code>model.time.WorldScheduler</code> owns deterministic time and generic queued work.
 <code>instance.session.InstanceSessions</code> owns connection and attachment transitions;
 <code>InstanceSession</code> represents a connection before and after login, and
 <code>PersonaAttachment</code> relates its selected Persona, Entity, and authored behavior.
@@ -1996,8 +2000,8 @@ single queue.</p>
 <p>Native integration is still partial. The starting room is explicitly bound as a
 Place; other LPC destinations can become container Entities, and scripted exits
 need not be native Links. Do not assume every loaded service object is a
-world-present Entity. The repository&#8217;s <code>docs/DEFERRED_WORK.md</code> records the
-remaining topology, persistent-Persona, and callback-ownership work.</p>
+world-present Entity. The repository&#8217;s <code>docs/DEFERRED_WORK.md</code> records remaining
+work on topology, persistent Personas, and asynchronous integrations.</p>
 </div>
 <div class="sect3">
 <h4 id="instance-sessions"><a class="anchor" href="#instance-sessions"></a><a class="link" href="#instance-sessions">Connection and Persona attachment</a></h4>
@@ -2036,6 +2040,31 @@ messages, then disconnect. The same connection must retain its Player identity
 through the handoff, and disconnected objects must no longer receive session
 input or output. Production checks use a real worker and authenticated
 administration; isolated runtime tests cover the individual state transitions.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_scheduled_authored_behavior"><a class="anchor" href="#_scheduled_authored_behavior"></a><a class="link" href="#_scheduled_authored_behavior">Scheduled authored behavior</a></h4>
+<div class="paragraph">
+<p><code>engine.model.time.WorldScheduler</code> owns deterministic ticks and a generic queue
+of due work. It runs callbacks only when its caller advances time, without a
+background thread. The instance advances that scheduler on its execution queue.
+<code>engine.instance.lpc.LPCScheduledCallbacks</code> owns authored recurring ticks and
+one-shot callbacks, including their registrations, cancellation, delivery, and
+failure policy. <code>MudlibRuntimeContext</code> adapts the existing scheduling API and
+coordinates callback cleanup when an object is destroyed.</p>
+</div>
+<div class="paragraph">
+<p>Callback delays and intervals count scheduler ticks. The selected manifest&#8217;s
+<code>temporal_tick_interval</code> governs the automatic clock cadence.</p>
+</div>
+<div class="paragraph">
+<p>One-shot registrations for the same method remain independent. Cancellation
+removes the earliest pending match, breaking ties by registration order. Each
+registration retains its own arguments and captures the initiating command actor.
+A recurring failure cancels that object&#8217;s recurring task before error reporting;
+a deferred failure reports the error after consuming only that registration.
+Method calls use the live receiver, so reload preserves the registrations and
+changes subsequent named-method behavior.</p>
 </div>
 </div>
 <div class="sect3">
@@ -2087,7 +2116,8 @@ already loaded rooms keep their own revisions.</p>
 <code>engine.instance.lpc.LPCObjectLifecycle</code> owns identity and behavior replacement,
 <code>MudlibWorldProjection</code> owns world bindings, and <code>InstanceSessions</code> owns session
 attachments. <code>LPCCommands</code> owns command registrations bound to the same stable
-identity. <code>MudlibRuntimeContext</code> adapts authored calls to those owners.
+identity, and <code>LPCScheduledCallbacks</code> owns its scheduled callbacks.
+<code>MudlibRuntimeContext</code> adapts authored calls to those owners.
 <code>LPCInvocationStack</code> tracks canonical current/previous-object identities and the
 execution membership used to guard reload; <code>LPCMethodInvoker</code> selects and invokes
 authored methods. Existing inline closures retain their captured code while
@@ -2968,6 +2998,11 @@ families are shown with arity ranges when each overload has the same behavior.</
 </div>
 <div class="sect4">
 <h5 id="_time_and_scheduling"><a class="anchor" href="#_time_and_scheduling"></a><a class="link" href="#_time_and_scheduling">Time And Scheduling</a></h5>
+<div class="paragraph">
+<p>Authored callback delays and intervals count scheduler ticks, including parameters
+whose legacy names end in <code>Seconds</code>. The instance&#8217;s configured clock cadence
+determines when automatic ticks advance.</p>
+</div>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><code>int jvmud_time ()</code></dt>
@@ -2992,11 +3027,13 @@ families are shown with arity ranges when each overload has the same behavior.</
 </dd>
 <dt class="hdlist1"><code>void jvmud_schedule_deferred_callback (string methodName, int delaySeconds, mixed arg&#8230;&#8203;)</code></dt>
 <dd>
-<p>Schedules a one-shot callback with one to four mudlib-supplied arguments.</p>
+<p>Schedules a one-shot callback with mudlib-supplied arguments.</p>
 </dd>
 <dt class="hdlist1"><code>int jvmud_cancel_deferred_callback (string methodName)</code></dt>
 <dd>
-<p>Cancels matching deferred callbacks and returns the runtime cancellation result.</p>
+<p>Cancels the current object&#8217;s earliest pending callback for that method, ordered
+by due tick and then registration order. Returns <code>0</code> when cancelled or <code>-1</code> when
+none is pending.</p>
 </dd>
 </dl>
 </div>
@@ -4009,7 +4046,7 @@ on that receiver until its scope ends.</p>
 active verbs and failures, registration scopes, action tables, aliases, command
 enablement, ordering, and dispatch. <code>MudlibRuntimeContext</code> delegates its existing
 command API. The hosted runtime retains interaction refresh, and the context
-coordinates movement, lifecycle, sessions, and timers on the instance queue.</p>
+coordinates movement, lifecycle, and sessions on the instance queue.</p>
 </div>
 <div class="paragraph">
 <p>The command owner uses <code>LPCInvocationStack</code> for lexical handlers,
@@ -4032,6 +4069,38 @@ not a dispatch gate. Destruction removes actor and handler registrations; reload
 keeps their stable object identity.</p>
 </div>
 </div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_scheduled_lpc_callbacks"><a class="anchor" href="#_scheduled_lpc_callbacks"></a><a class="link" href="#_scheduled_lpc_callbacks">Scheduled LPC callbacks</a></h4>
+<div class="paragraph">
+<p>The package-private <code>engine.instance.lpc.LPCScheduledCallbacks</code> owns authored
+recurring and deferred registrations, task identities, cancellation, delivery,
+and failure policy. <code>engine.model.time.WorldScheduler</code> owns deterministic time
+and generic queued work; callbacks run when callers advance it, without a
+background thread. The hosted instance advances time on its execution queue.
+<code>MudlibRuntimeContext</code> delegates scheduling and coordinates destruction cleanup.
+Its narrow host seam supplies the current tick method, live-registration checks,
+runtime binding, and timed-error reporting. The context retains its public
+<code>TimedRuntimeErrorHandler</code> and setter; the bridge uses the currently installed
+reporter after lexical object and captured-actor scopes unwind.</p>
+</div>
+<div class="paragraph">
+<p>Deferred registrations retain separate identities, argument arrays, and captured
+actors even when they share a method name. Cancellation selects the earliest
+pending match, breaking due-tick ties by registration order. Delivery consumes
+the registration before checking the live target and compatible method. Captured
+actors use <code>LPCCommands</code> scopes; null captures leave any ambient actor unchanged.
+Recurring registration replaces the previous task. Missing tick methods skip an
+occurrence without cancelling it. Recurring failures cancel before reporting;
+deferred failures consume only their own registration. Runtime bindings restore
+after both successful and failed invocation and error reporting. Target and
+method preflight checks run outside the runtime binding.</p>
+</div>
+<div class="paragraph">
+<p><code>LPCInvocationStack</code> supplies the lexical target identity, <code>LPCMethodInvoker</code>
+performs live named-method dispatch, and <code>LPCObjectLifecycle</code> owns the selected
+receiver. Changing the selected scheduler does not migrate existing tasks.</p>
 </div>
 </div>
 <div class="sect3">

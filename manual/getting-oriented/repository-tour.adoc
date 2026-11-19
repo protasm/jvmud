@@ -22,6 +22,8 @@ live object identity and state separate from that behavior's program revision.
 `lpc.LPCInvocationStack` owns current/previous-object identity and call scopes;
 `lpc.LPCMethodInvoker` selects methods, adapts arguments, and reports call failures.
 `lpc.LPCCommands` owns command context, action registration, and dispatch.
+`lpc.LPCScheduledCallbacks` owns recurring and deferred LPC callbacks;
+`model.time.WorldScheduler` owns deterministic time and generic queued work.
 `instance.session.InstanceSessions` owns connection and attachment transitions;
 `InstanceSession` represents a connection before and after login, and
 `PersonaAttachment` relates its selected Persona, Entity, and authored behavior.

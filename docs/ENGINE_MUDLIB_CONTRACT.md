@@ -117,7 +117,7 @@ The package-private `engine.instance.lpc.LPCCommands` owns command actor scopes,
 active verbs and failure text, pending and scoped registration, command enablement,
 aliases, action tables, dispatch order, and command cleanup on destruction.
 `MudlibRuntimeContext` keeps its existing LPC-facing methods and delegates command
-operations to that owner. Movement, lifecycle, session, and timer orchestration
+operations to that owner. Movement, lifecycle, and session orchestration
 remain with the context and hosted runtime; all mutations run on the instance's
 execution queue.
 
@@ -145,6 +145,46 @@ Command dispatch follows these rules:
 - Destruction removes the object's actor table, enablement, and registrations as a
   handler in other actors' tables. Reload retains bindings to its stable identity.
 
+## Scheduled LPC Callbacks
+
+The package-private `engine.instance.lpc.LPCScheduledCallbacks` owns recurring
+and deferred LPC registrations, task identities, cancellation, delivery, and
+failure policy. `engine.model.time.WorldScheduler` remains the owner of
+deterministic time and generic queued work. It runs due work when time is
+explicitly advanced and does not create a background thread. The hosted instance
+advances time on its execution queue.
+
+`MudlibRuntimeContext` delegates its existing scheduling methods and coordinates
+callback cleanup at object destruction. A narrow host seam supplies current
+tick-method policy, runtime binding, live-registration checks, and error reporting.
+The context's public `TimedRuntimeErrorHandler` and setter remain the host's error
+integration point; the bridge forwards to the currently installed reporter.
+`LPCInvocationStack` supplies the current target identity, `LPCCommands` supplies
+actor scopes, and `LPCMethodInvoker` dispatches named methods to the live receiver
+selected by `LPCObjectLifecycle`.
+
+- Deferred registrations for the same method are independent. Each has a unique
+  identity, argument array, due tick, and captured command actor. Cancellation
+  removes the earliest pending match on the current object, breaking ties by
+  registration order; it returns `0` on cancellation or `-1` when none exists.
+- A deferred registration is consumed before checking its target or calling LPC.
+  An unregistered target or missing compatible method is skipped. A captured
+  actor enters its own scope; a null capture leaves any ambient actor untouched.
+- A recurring registration replaces the object's previous recurring task. An
+  enabled task uses at least one tick between calls. An absent configured tick
+  method or missing exact zero-argument method skips that occurrence without
+  cancelling the task.
+- A `RuntimeException` or `LinkageError` from callback invocation reports through
+  the existing timed-error integration. A recurring failure cancels its task before
+  reporting; a deferred failure consumes only its own registration. Both delivery
+  paths restore the previous runtime binding, including when error reporting
+  throws. Target and method preflight checks remain outside that binding.
+
+Registrations retain stable object identity across reload and dispatch named
+methods through the selected live receiver. Callback ownership does not change
+the scheduler's tick units. Changing the scheduler reference does not migrate
+existing tasks.
+
 ## Live LPC Object Reload
 
 Reload replaces a loaded shared object's compiled behavior while preserving the
@@ -158,9 +198,9 @@ object that participates in the world. Three concepts have distinct owners:
   receivers. An LPC object reference continues to identify the same live object.
 - Engine owners retain the object's bindings: `MudlibWorldProjection` supplies
   containment, `InstanceSessions` supplies session attachment, and
-  `LPCCommands` supplies command bindings. `MudlibRuntimeContext` adapts authored
-  requests to those owners and schedules work. A new program revision does not
-  require destroying or recreating those bindings.
+  `LPCCommands` supplies command bindings. `LPCScheduledCallbacks` retains timed
+  registrations. `MudlibRuntimeContext` adapts authored requests to those owners.
+  A new program revision does not require destroying or recreating those bindings.
 
 The authenticated mudlib administration command `reload <path>` prepares a fresh
 program revision and Java receiver before installing either. It checks that the

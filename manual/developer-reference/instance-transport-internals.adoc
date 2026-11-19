@@ -60,7 +60,7 @@ The package-private `engine.instance.lpc.LPCCommands` owns command actor scopes,
 active verbs and failures, registration scopes, action tables, aliases, command
 enablement, ordering, and dispatch. `MudlibRuntimeContext` delegates its existing
 command API. The hosted runtime retains interaction refresh, and the context
-coordinates movement, lifecycle, sessions, and timers on the instance queue.
+coordinates movement, lifecycle, and sessions on the instance queue.
 
 The command owner uses `LPCInvocationStack` for lexical handlers,
 `LPCObjectLifecycle` for canonical actors and live receivers, and
@@ -80,6 +80,34 @@ before failure text is written. Command enablement remains lifecycle metadata,
 not a dispatch gate. Destruction removes actor and handler registrations; reload
 keeps their stable object identity.
 --
+
+==== Scheduled LPC callbacks
+
+The package-private `engine.instance.lpc.LPCScheduledCallbacks` owns authored
+recurring and deferred registrations, task identities, cancellation, delivery,
+and failure policy. `engine.model.time.WorldScheduler` owns deterministic time
+and generic queued work; callbacks run when callers advance it, without a
+background thread. The hosted instance advances time on its execution queue.
+`MudlibRuntimeContext` delegates scheduling and coordinates destruction cleanup.
+Its narrow host seam supplies the current tick method, live-registration checks,
+runtime binding, and timed-error reporting. The context retains its public
+`TimedRuntimeErrorHandler` and setter; the bridge uses the currently installed
+reporter after lexical object and captured-actor scopes unwind.
+
+Deferred registrations retain separate identities, argument arrays, and captured
+actors even when they share a method name. Cancellation selects the earliest
+pending match, breaking due-tick ties by registration order. Delivery consumes
+the registration before checking the live target and compatible method. Captured
+actors use `LPCCommands` scopes; null captures leave any ambient actor unchanged.
+Recurring registration replaces the previous task. Missing tick methods skip an
+occurrence without cancelling it. Recurring failures cancel before reporting;
+deferred failures consume only their own registration. Runtime bindings restore
+after both successful and failed invocation and error reporting. Target and
+method preflight checks run outside the runtime binding.
+
+`LPCInvocationStack` supplies the lexical target identity, `LPCMethodInvoker`
+performs live named-method dispatch, and `LPCObjectLifecycle` owns the selected
+receiver. Changing the selected scheduler does not migrate existing tasks.
 
 ==== Administration and storage
 

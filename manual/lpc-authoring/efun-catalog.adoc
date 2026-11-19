@@ -77,6 +77,10 @@ Registers a verb for the most recently remembered action method in the current i
 
 ===== Time And Scheduling
 
+Authored callback delays and intervals count scheduler ticks, including parameters
+whose legacy names end in `Seconds`. The instance's configured clock cadence
+determines when automatic ticks advance.
+
 `int jvmud_time ()`::
 Returns Unix epoch seconds from the host clock.
 
@@ -93,10 +97,12 @@ Schedules or disables recurring temporal ticks for the current object.
 Schedules a one-shot callback on the current object.
 
 `void jvmud_schedule_deferred_callback (string methodName, int delaySeconds, mixed arg...)`::
-Schedules a one-shot callback with one to four mudlib-supplied arguments.
+Schedules a one-shot callback with mudlib-supplied arguments.
 
 `int jvmud_cancel_deferred_callback (string methodName)`::
-Cancels matching deferred callbacks and returns the runtime cancellation result.
+Cancels the current object's earliest pending callback for that method, ordered
+by due tick and then registration order. Returns `0` when cancelled or `-1` when
+none is pending.
 
 ===== Objects, Entities, And Containment
 

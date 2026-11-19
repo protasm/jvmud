@@ -84,8 +84,12 @@ adaptation, and invocation diagnostics. Keep required, optional, lifecycle, and
 caller-preserving global calls explicit. `LPCObjectLifecycle` remains the owner
 of live receivers, reload, and historical-closure field sharing. `LPCCommands`
 owns command actors, verbs, failures, registration scopes, enablement, aliases,
-action tables, and dispatch. The context retains movement, lifecycle, session,
-and timer orchestration; command enablement is metadata, not a dispatch gate.
+action tables, and dispatch; command enablement is metadata, not a dispatch gate.
+`LPCScheduledCallbacks` owns authored recurring and deferred registrations,
+cancellation, delivery, and failure policy. `engine.model.time.WorldScheduler`
+owns deterministic time and generic queued work. The context retains movement,
+lifecycle, session, and destruction orchestration and adapts callback policy,
+runtime binding, and error reporting to the scheduled-callback owner.
 Keep target loading, destroyed-object checks, and specialized probe absence and
 failure rules in the hosted context; method plans supply reflection mechanics.
 

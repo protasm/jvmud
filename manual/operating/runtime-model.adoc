@@ -14,8 +14,8 @@ single queue.
 Native integration is still partial. The starting room is explicitly bound as a
 Place; other LPC destinations can become container Entities, and scripted exits
 need not be native Links. Do not assume every loaded service object is a
-world-present Entity. The repository's `docs/DEFERRED_WORK.md` records the
-remaining topology, persistent-Persona, and callback-ownership work.
+world-present Entity. The repository's `docs/DEFERRED_WORK.md` records remaining
+work on topology, persistent Personas, and asynchronous integrations.
 
 [[instance-sessions]]
 ==== Connection and Persona attachment
@@ -51,6 +51,27 @@ messages, then disconnect. The same connection must retain its Player identity
 through the handoff, and disconnected objects must no longer receive session
 input or output. Production checks use a real worker and authenticated
 administration; isolated runtime tests cover the individual state transitions.
+
+==== Scheduled authored behavior
+
+`engine.model.time.WorldScheduler` owns deterministic ticks and a generic queue
+of due work. It runs callbacks only when its caller advances time, without a
+background thread. The instance advances that scheduler on its execution queue.
+`engine.instance.lpc.LPCScheduledCallbacks` owns authored recurring ticks and
+one-shot callbacks, including their registrations, cancellation, delivery, and
+failure policy. `MudlibRuntimeContext` adapts the existing scheduling API and
+coordinates callback cleanup when an object is destroyed.
+
+Callback delays and intervals count scheduler ticks. The selected manifest's
+`temporal_tick_interval` governs the automatic clock cadence.
+
+One-shot registrations for the same method remain independent. Cancellation
+removes the earliest pending match, breaking ties by registration order. Each
+registration retains its own arguments and captures the initiating command actor.
+A recurring failure cancels that object's recurring task before error reporting;
+a deferred failure reports the error after consuming only that registration.
+Method calls use the live receiver, so reload preserves the registrations and
+changes subsequent named-method behavior.
 
 [[live-object-reload]]
 ==== Reload a live object's behavior
@@ -96,7 +117,8 @@ The source separates these responsibilities deliberately:
 `engine.instance.lpc.LPCObjectLifecycle` owns identity and behavior replacement,
 `MudlibWorldProjection` owns world bindings, and `InstanceSessions` owns session
 attachments. `LPCCommands` owns command registrations bound to the same stable
-identity. `MudlibRuntimeContext` adapts authored calls to those owners.
+identity, and `LPCScheduledCallbacks` owns its scheduled callbacks.
+`MudlibRuntimeContext` adapts authored calls to those owners.
 `LPCInvocationStack` tracks canonical current/previous-object identities and the
 execution membership used to guard reload; `LPCMethodInvoker` selects and invokes
 authored methods. Existing inline closures retain their captured code while

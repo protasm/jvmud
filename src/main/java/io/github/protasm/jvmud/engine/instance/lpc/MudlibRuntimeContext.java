@@ -14,7 +14,6 @@ import io.github.protasm.jvmud.engine.model.identity.SessionID;
 import io.github.protasm.jvmud.engine.model.identity.SessionRecord;
 import io.github.protasm.jvmud.engine.model.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.model.mudlib.MudlibProjection;
-import io.github.protasm.jvmud.engine.model.time.ScheduledTask;
 import io.github.protasm.jvmud.engine.model.time.WorldScheduler;
 import io.github.protasm.jvmud.engine.model.world.MudlibWorldProjection;
 import io.github.protasm.jvmud.engine.model.world.PerceptionEvent;
@@ -44,7 +43,6 @@ import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,7 +59,7 @@ import java.util.function.Supplier;
 /**
  * Engine-owned state and services for executing LPC inside one mudlib instance.
  *
- * <p>World projection, scheduling and storage integration live here. Connection and
+ * <p>World projection and storage integration live here. Connection and
  * Player/Persona attachment state belongs to {@link InstanceSessions}; this context adapts LPC calls
  * to that owner. Generated code sees only the language's {@link RuntimeContext} contract. Compilation uses a
  * separate {@link LPCCompilerContext}; this adapter shares callable signatures with it without
@@ -71,6 +69,8 @@ import java.util.function.Supplier;
  * {@code LPCMethodInvoker} owns method selection, argument adaptation and diagnostics, with named
  * policies for required, optional, lifecycle and caller-preserving global calls.
  * {@code LPCCommands} owns command actors, registration, dispatch and failure scopes.
+ * {@code LPCScheduledCallbacks} owns recurring and deferred registrations, cancellation, delivery
+ * and timed-failure policy, using the host's runtime binding and error reporter.
  * {@link LPCObjectLifecycle} retains ownership of live identities and behavior receivers.</p>
  *
  * <p>A running instance confines mutations to its execution thread. The isolated defaults also make
@@ -82,6 +82,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private final LPCMethodInvoker methodInvoker = new LPCMethodInvoker(
             invocationStack, this::resolveInvocationTarget, this::objectIdOrDescription);
     private final LPCCommands commands;
+    private final LPCScheduledCallbacks scheduledCallbacks;
     private final EfunRegistry efunRegistry;
     private final LPCCompilerContext compilerContext;
     private final Map<String, Object> objects = new LinkedHashMap<>();
@@ -95,10 +96,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private final Map<Object, Integer> lightLevels = new IdentityHashMap<>();
     private final Set<Object> opaqueEntities =
             Collections.newSetFromMap(new IdentityHashMap<>());
-    private final Map<Object, ScheduledTask> recurringTickTasks = new IdentityHashMap<>();
-    private final Map<Object, Map<String, List<DeferredCallback>>> deferredCallbackTasks =
-            new IdentityHashMap<>();
-    private long nextDeferredCallbackId = 1;
     private final InstanceSessions instanceSessions;
     private final RuntimeDatabaseService databaseService = new RuntimeDatabaseService();
     private final StringBuilder outputTranscript = new StringBuilder();
@@ -120,7 +117,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private TimedRuntimeErrorHandler timedRuntimeErrorHandler = (target, context, operation, error) -> {};
     private Function<Object, Object> objectDestructionRequestedHandler = target -> 0;
     private MudlibConfiguration configuration = MudlibConfiguration.empty();
-    private WorldScheduler scheduler = new WorldScheduler();
 
     public MudlibRuntimeContext(IncludeResolver includeResolver) {
         this(includeResolver, new EfunRegistry());
@@ -154,6 +150,34 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
             @Override
             public boolean catchAllArgumentsOnly() {
                 return configuration.commandActionsArgumentsOnly();
+            }
+        });
+        this.scheduledCallbacks = new LPCScheduledCallbacks(
+                objectLifecycle, invocationStack, methodInvoker, commands, new LPCScheduledCallbacks.Host() {
+            @Override
+            public String temporalTickMethod() {
+                return configuration.temporalTickMethod().orElse(null);
+            }
+
+            @Override
+            public boolean isRegisteredTarget(Object target) {
+                return objectIds.containsKey(target);
+            }
+
+            @Override
+            public void withRuntimeContext(Runnable action) {
+                RuntimeContext previous = RuntimeContextHolder.current();
+                RuntimeContextHolder.setCurrent(MudlibRuntimeContext.this);
+                try {
+                    action.run();
+                } finally {
+                    RuntimeContextHolder.setCurrent(previous);
+                }
+            }
+
+            @Override
+            public void reportError(Object target, String context, String operation, Throwable error) {
+                timedRuntimeErrorHandler.onError(target, context, operation, error);
             }
         });
     }
@@ -279,6 +303,10 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         this.lpcObjectStateRestorer = (lpcObjectStateRestorer != null) ? lpcObjectStateRestorer : (path, object) -> 0;
     }
 
+    /**
+     * Installs the host's timed-failure reporter; null restores the standalone no-op reporter.
+     * Reporting occurs after object and captured-actor scopes unwind, inside the runtime binding.
+     */
     public void setTimedRuntimeErrorHandler(TimedRuntimeErrorHandler timedRuntimeErrorHandler) {
         this.timedRuntimeErrorHandler = timedRuntimeErrorHandler != null
                 ? timedRuntimeErrorHandler
@@ -363,8 +391,12 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return compilerContext.engineFunctionName(mudlibName);
     }
 
+    /**
+     * Selects the clock for future registrations, or a fresh isolated clock when null.
+     * Pending handles stay on their original scheduler; this does not migrate or reset registrations.
+     */
     public void setScheduler(WorldScheduler scheduler) {
-        this.scheduler = scheduler != null ? scheduler : new WorldScheduler();
+        scheduledCallbacks.setScheduler(scheduler);
     }
 
     public void setOutputSink(Consumer<String> outputSink) {
@@ -1420,8 +1452,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         }
 
         instanceSessions.discardObject(object);
-        cancelRecurringTick(object);
-        cancelDeferredCallbacks(object);
+        scheduledCallbacks.discardObject(object);
         List<Object> contents = new ArrayList<>(inventoryFor(object));
         for (Object child : contents) {
             moveObject(child, null);
@@ -1453,181 +1484,39 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      * same delivery method once per subscriber. Each registration therefore remains independently
      * cancellable and deliverable. The active command actor is also captured per registration so
      * delayed work observes the same actor that initiated it.</p>
+     *
+     * @param methodName authored method name; null or blank names are ignored
+     * @param delaySeconds non-negative delay in scheduler ticks, retaining the legacy parameter name
+     * @param args callback values, retained through a shallow copy of the argument array
      */
     public void scheduleDeferredCallback(String methodName, int delaySeconds, Object... args) {
-        if (methodName == null || methodName.isBlank()) {
-            return;
-        }
-        if (delaySeconds < 0) {
-            throw new IllegalArgumentException("delaySeconds cannot be negative.");
-        }
-
-        Object target = currentObject();
-        if (target == null) {
-            return;
-        }
-
-        Map<String, List<DeferredCallback>> tasks =
-                deferredCallbackTasks.computeIfAbsent(target, ignored -> new LinkedHashMap<>());
-        long callbackId = nextDeferredCallbackId++;
-        long dueTick = scheduler.currentTick() + delaySeconds;
-        Object commandActor = currentCommandActor();
-        Object[] invocationArgs = args == null ? new Object[0] : args.clone();
-        ScheduledTask task = scheduler.scheduleAfter(
-                delaySeconds,
-                () -> deliverDeferredCallback(
-                        target, methodName, callbackId, commandActor, invocationArgs));
-        tasks.computeIfAbsent(methodName, ignored -> new ArrayList<>())
-                .add(new DeferredCallback(callbackId, dueTick, commandActor, task));
+        scheduledCallbacks.scheduleDeferred(methodName, delaySeconds, args);
     }
 
-    /** Cancels the earliest pending callback for the named method on the current object. */
+    /**
+     * Cancels the earliest matching registration by due tick, then registration order.
+     * Returns zero on cancellation or minus one when absent, preserving the LPC compatibility result.
+     */
     public int cancelDeferredCallback(String methodName) {
-        if (methodName == null) {
-            return -1;
-        }
-
-        Object target = currentObject();
-        if (target == null) {
-            return -1;
-        }
-
-        Map<String, List<DeferredCallback>> tasks = deferredCallbackTasks.get(target);
-        if (tasks == null) {
-            return -1;
-        }
-
-        List<DeferredCallback> callbacks = tasks.get(methodName);
-        if (callbacks == null || callbacks.isEmpty()) {
-            return -1;
-        }
-
-        DeferredCallback callback = callbacks.stream()
-                .min(Comparator.comparingLong(DeferredCallback::dueTick)
-                        .thenComparingLong(DeferredCallback::id))
-                .orElseThrow();
-        callbacks.remove(callback);
-        callback.task().cancel();
-        if (callbacks.isEmpty()) {
-            tasks.remove(methodName);
-        }
-        if (tasks.isEmpty()) {
-            deferredCallbackTasks.remove(target);
-        }
-        return 0;
+        return scheduledCallbacks.cancelDeferred(methodName);
     }
 
+    /**
+     * Replaces or disables the current object's recurring tick.
+     *
+     * @param enabled zero to disable; any nonzero value enables the recurring callback
+     * @param intervalSeconds interval in scheduler ticks despite the legacy name; zero uses one tick
+     */
     public void scheduleRecurringTick(int enabled, int intervalSeconds) {
-        if (intervalSeconds < 0) {
-            throw new IllegalArgumentException("intervalSeconds cannot be negative.");
-        }
-
-        Object target = currentObject();
-        if (target == null) {
-            return;
-        }
-
-        cancelRecurringTick(target);
-        if (enabled == 0) {
-            return;
-        }
-
-        long intervalTicks = intervalSeconds > 0 ? intervalSeconds : 1;
-        ScheduledTask task = scheduler.scheduleRecurring(
-                intervalTicks,
-                intervalTicks,
-                () -> deliverRecurringTick(target));
-        recurringTickTasks.put(target, task);
+        scheduledCallbacks.scheduleRecurring(enabled, intervalSeconds);
     }
 
-    private void cancelRecurringTick(Object target) {
-        ScheduledTask task = recurringTickTasks.remove(target);
-        if (task != null) {
-            task.cancel();
-        }
-    }
-
-    private void cancelDeferredCallbacks(Object target) {
-        Map<String, List<DeferredCallback>> tasks = deferredCallbackTasks.remove(target);
-        if (tasks == null) {
-            return;
-        }
-
-        for (List<DeferredCallback> callbacks : tasks.values()) {
-            for (DeferredCallback callback : callbacks) {
-                callback.task().cancel();
-            }
-        }
-    }
-
-    private void deliverRecurringTick(Object target) {
-        if (!recurringTickTasks.containsKey(target)) {
-            return;
-        }
-
-        String methodName = configuration.temporalTickMethod().orElse(null);
-        if (methodName == null || !methodInvoker.hasMethod(objectReceiver(target).getClass(), methodName, 0)) {
-            return;
-        }
-
-        RuntimeContext previous = RuntimeContextHolder.current();
-        RuntimeContextHolder.setCurrent(this);
-        try {
-            invokeObject(target, methodName);
-        } catch (RuntimeException | LinkageError e) {
-            cancelRecurringTick(target);
-            timedRuntimeErrorHandler.onError(target, "scheduled_tick", methodName, e);
-        } finally {
-            RuntimeContextHolder.setCurrent(previous);
-        }
-    }
-
-    private void deliverDeferredCallback(
-            Object target,
-            String methodName,
-            long callbackId,
-            Object commandActor,
-            Object[] args) {
-        Map<String, List<DeferredCallback>> tasks = deferredCallbackTasks.get(target);
-        if (tasks != null) {
-            List<DeferredCallback> callbacks = tasks.get(methodName);
-            if (callbacks != null) {
-                callbacks.removeIf(callback -> callback.id() == callbackId);
-                if (callbacks.isEmpty()) {
-                    tasks.remove(methodName);
-                }
-            }
-            if (tasks.isEmpty()) {
-                deferredCallbackTasks.remove(target);
-            }
-        }
-
-        if (!objectIds.containsKey(target)
-                || !methodInvoker.hasMethodAcceptingMissingArguments(objectReceiver(target).getClass(), methodName, args.length)) {
-            return;
-        }
-
-        RuntimeContext previous = RuntimeContextHolder.current();
-        RuntimeContextHolder.setCurrent(this);
-        try {
-            if (commandActor == null) {
-                invokeObject(target, methodName, args);
-            } else {
-                withCommandActor(commandActor, () -> invokeObject(target, methodName, args));
-            }
-        } catch (RuntimeException | LinkageError e) {
-            timedRuntimeErrorHandler.onError(target, "deferred_callback", methodName, e);
-        } finally {
-            RuntimeContextHolder.setCurrent(previous);
-        }
-    }
-
+    /** Host observer for timed invocation failures, called with the active generated-code runtime bound. */
     @FunctionalInterface
     public interface TimedRuntimeErrorHandler {
+        /** Reports a scheduled_tick or deferred_callback failure; reporter exceptions propagate to the clock caller. */
         void onError(Object target, String context, String operation, Throwable error);
     }
-
-    private record DeferredCallback(long id, long dueTick, Object commandActor, ScheduledTask task) {}
 
     @Override
     public Object currentObject() {
@@ -1914,6 +1803,5 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
         return id.equals(objectId(object));
     }
-
 
 }
