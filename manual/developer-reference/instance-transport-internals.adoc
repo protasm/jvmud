@@ -26,6 +26,36 @@ world, identity, scheduling, and storage services. Follow an efun from
 `language.runtime` supports LPC values and generated code; `engine.model.world`
 owns the world's containment graph.
 
+==== Hosted LPC invocation
+
+Invocation policy lives under `engine.instance.lpc`. `LPCInvocationStack` owns
+canonical current/previous-object identities and restores call scopes after
+normal returns and exceptions. Its execution-membership query also guards live
+object reload. `LPCMethodInvoker` owns reflective selection, argument adaptation,
+and invocation diagnostics. `MudlibRuntimeContext` delegates to those owners.
+Command actor, verb, failure text, and pending-action registration remain context
+state; they describe command dispatch rather than the LPC object call stack.
+Both invocation owners are package-private collaborators of the context. Target
+loading and destroyed-object checks stay in the context, as do the absence and
+failure rules for identifier and message-permission probes; those probes use the
+invoker's prepared method-and-argument plans.
+
+Required object calls prefer exact arity and can pad omitted trailing arguments
+with LPC zero values. Optional calls also trim extra arguments and return LPC
+zero for an absent method. Configured lifecycle hooks prefer the most-derived
+declaring class before choosing arity, so an inherited exact match cannot bypass
+a descendant's hook. Mudlib global functions use optional argument matching but
+retain the caller's object context and fail if the method is absent. Keep these
+entry points distinct when following a call through compatibility wrappers.
+
+`LPCObjectLifecycle` remains the owner of selected receivers and reload state.
+Ordinary calls and named-method callables follow the selected live revision;
+inline closures retain captured code and share current fields with their
+historical receiver. Nested same-object calls inside a historical closure stay
+on that receiver until its scope ends.
+
+==== Administration and storage
+
 `communication.console.AdminConsole` connects to an engine or mudlib administration
 endpoint. The engine owns TLS authentication and grants. Engine commands execute
 in `EngineAdminCommandSession`; mudlib commands cross private worker pipes and

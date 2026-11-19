@@ -70,6 +70,48 @@ inside the mudlib's filesystem is an engine file operation and retains its
 `MUDLIB_FILES` grant. A reader should find that access boundary in the service
 adapter that owns it.
 
+## Authored LPC Invocation
+
+Hosted LPC invocation has three collaborators under `engine.instance.lpc`:
+
+- `LPCInvocationStack` owns the canonical live identities reported as the current
+  and previous LPC object. Its scopes restore the caller even when authored code
+  throws, and its execution-membership check guards reload of an executing object.
+- `LPCMethodInvoker` owns reflective method selection, LPC argument adaptation,
+  and call diagnostics. Its entry points make each invocation policy explicit.
+- `LPCObjectLifecycle` owns the selected behavior receiver, revision replacement,
+  and field sharing with historical receivers captured by inline closures.
+
+`MudlibRuntimeContext` delegates these operations while remaining the adapter to
+generated code and hosted services. Command actor, verb, failure text, and pending
+action registration remain separate state in that context; they describe command
+dispatch independently of LPC object call scopes.
+
+`LPCInvocationStack` and `LPCMethodInvoker` are package-private implementation
+owners behind the context. Target loading and destroyed-object checks remain
+host policy there. Identifier and message-permission probes request prepared
+method-and-argument plans from the invoker while retaining their own rules:
+only an absent identifier method permits object-ID fallback; an absent
+message-permission hook allows delivery, while a failing hook reports its error.
+
+The invocation policies preserve existing LPC behavior:
+
+| Call policy | Method and caller behavior |
+| --- | --- |
+| Required object call | Prefer exact arity; otherwise supply LPC zero values for omitted trailing arguments. A missing method on a resolved target fails. Enter the target's current-object scope. |
+| Optional object call | Also permit trimming extra arguments. A missing method returns LPC zero. Enter the target's current-object scope. |
+| Configured lifecycle hook | Prefer the most-derived declaring class before matching arity, then pad or trim arguments. A missing hook returns LPC zero. Enter the target's current-object scope. |
+| Mudlib global function | Use optional argument matching on the global object's selected receiver, but preserve the caller's current/previous-object context. A missing method fails. This lets compatibility wrappers act for their caller. |
+
+A target resolution that yields no live receiver retains the existing LPC-zero
+result; source-loading failures can still propagate. Target loading and destruction
+checks remain host policy in `MudlibRuntimeContext`.
+
+Object calls and named-method callables use the selected live receiver. Inline
+closures deliberately retain their captured receiver and code while sharing live
+field state through `LPCObjectLifecycle`; invocation must preserve that distinction
+across reload.
+
 ## Live LPC Object Reload
 
 Reload replaces a loaded shared object's compiled behavior while preserving the

@@ -77,6 +77,16 @@ manifest readers and host-resource selection belong under `engine.configuration`
 Keep the package tree and package Javadocs accurate: they are the reader's first
 map of the product.
 
+Within `engine.instance.lpc`, `MudlibRuntimeContext` adapts generated-code calls
+to hosted owners. `LPCInvocationStack` owns current/previous-object identity and
+scoped execution membership; `LPCMethodInvoker` owns method selection, argument
+adaptation, and invocation diagnostics. Keep required, optional, lifecycle, and
+caller-preserving global calls explicit. `LPCObjectLifecycle` remains the owner
+of live receivers, reload, and historical-closure field sharing. Command actor,
+verb, failure, and pending-action state are separate from the LPC object stack.
+Keep target loading, destroyed-object checks, and specialized probe absence and
+failure rules in the hosted context; method plans supply reflection mechanics.
+
 ## Naming
 
 In class and file names, always spell acronyms in uppercase, regardless of their

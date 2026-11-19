@@ -95,11 +95,14 @@ The source separates these responsibilities deliberately:
 `language.execution.LPCProgramRevision` names compiled behavior,
 `engine.instance.lpc.LPCObjectLifecycle` owns identity and behavior replacement,
 `MudlibWorldProjection` owns world bindings, and `InstanceSessions` owns session
-attachments. `MudlibRuntimeContext` adapts authored calls to those owners. Existing
-inline closures retain their captured code while sharing live object fields
-through the invocation boundary. Calls nested inside such a closure on the same
-object stay on its captured revision until it returns. Outside that scope, ordinary calls and
-named function references follow the installed revision.
+attachments. `MudlibRuntimeContext` adapts authored calls to those owners.
+`LPCInvocationStack` tracks canonical current/previous-object identities and the
+execution membership used to guard reload; `LPCMethodInvoker` selects and invokes
+authored methods. Existing inline closures retain their captured code while
+`LPCObjectLifecycle` shares live object fields with their historical receiver.
+Calls nested inside such a closure on the same object stay on its captured
+revision until it returns. Outside that scope, ordinary calls and named function
+references follow the installed revision.
 
 ==== Persistent state
 

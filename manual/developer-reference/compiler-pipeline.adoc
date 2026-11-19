@@ -42,6 +42,11 @@ LPC value operations: truthiness, coercions, indexing, strings, arrays, and
 runtime type descriptors. These packages do not construct world or storage
 services. `engine.instance.lpc.MudlibRuntime` hosts the authored objects, using
 `MudlibRuntimeContext` to connect their requests to engine services.
+The hosted context delegates current/previous-object scopes to
+`LPCInvocationStack` and method selection, argument adaptation, and call
+diagnostics to `LPCMethodInvoker`. Those hosted invocation policies remain under
+`engine.instance.lpc`, separate from compiler analysis and the neutral runtime
+contract.
 
 The world model lives under `engine.model.world`, identity records under
 `engine.model.identity`, scheduling under `engine.model.time`, and lifecycle

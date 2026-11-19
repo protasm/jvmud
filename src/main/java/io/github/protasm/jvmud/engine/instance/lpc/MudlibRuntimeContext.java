@@ -34,7 +34,6 @@ import io.github.protasm.jvmud.language.efun.Efun;
 import io.github.protasm.jvmud.language.efun.EfunRegistry;
 import io.github.protasm.jvmud.language.efun.EfunSignature;
 import io.github.protasm.jvmud.language.runtime.RuntimeCallable;
-import io.github.protasm.jvmud.language.runtime.RuntimeCoercions;
 import io.github.protasm.jvmud.language.runtime.RuntimeContext;
 import io.github.protasm.jvmud.language.runtime.RuntimeContextHolder;
 import io.github.protasm.jvmud.language.runtime.Truth;
@@ -70,11 +69,19 @@ import java.util.function.Supplier;
  * separate {@link LPCCompilerContext}; this adapter shares callable signatures with it without
  * allowing compiler passes to access live engine state.</p>
  *
+ * <p>{@code LPCInvocationStack} owns lexical object scopes and execution membership.
+ * {@code LPCMethodInvoker} owns method selection, argument adaptation and diagnostics, with named
+ * policies for required, optional, lifecycle and caller-preserving global calls.
+ * {@link LPCObjectLifecycle} retains ownership of live identities and behavior receivers.</p>
+ *
  * <p>A running instance confines mutations to its execution thread. The isolated defaults also make
  * this host usable by deterministic runtime tests before the instance starts that thread.</p>
  */
 public final class MudlibRuntimeContext extends RuntimeContext implements LPCCompilationEnvironment {
     private final LPCObjectLifecycle objectLifecycle = new LPCObjectLifecycle();
+    private final LPCInvocationStack invocationStack = new LPCInvocationStack(objectLifecycle);
+    private final LPCMethodInvoker methodInvoker = new LPCMethodInvoker(
+            invocationStack, this::resolveInvocationTarget, this::objectIdOrDescription);
     private final EfunRegistry efunRegistry;
     private final LPCCompilerContext compilerContext;
     private final Map<String, Object> objects = new LinkedHashMap<>();
@@ -100,8 +107,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private final InstanceSessions instanceSessions;
     private final RuntimeDatabaseService databaseService = new RuntimeDatabaseService();
     private final StringBuilder outputTranscript = new StringBuilder();
-    private final ThreadLocal<Deque<Object>> currentObjectStack =
-            ThreadLocal.withInitial(ArrayDeque::new);
     private final ThreadLocal<Deque<Object>> commandActorStack =
             ThreadLocal.withInitial(ArrayDeque::new);
     private final ThreadLocal<Deque<String>> commandVerbStack =
@@ -479,6 +484,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         }
     }
 
+    /** Message permission defaults to allowed when absent, while a failing hook reports its error. */
     private boolean receivesPlayerBoundMessages(Object target) {
         Object resolvedTarget = resolveInvocationTarget(target);
         if (resolvedTarget == null) {
@@ -486,18 +492,18 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         }
 
         try {
-            InvocationPlan invocation = findOptionalInvocation(
+            LPCMethodInvoker.InvocationPlan invocation = methodInvoker.findOptionalInvocation(
                     resolvedTarget.getClass(),
                     "receives_player_bound_messages",
                     new Object[0]);
             Object allowed = withCurrentObject(resolvedTarget, () -> {
                 try {
-                    return invocation.method().invoke(resolvedTarget, invocation.arguments());
+                    return invocation.invoke(resolvedTarget);
                 } catch (ReflectiveOperationException e) {
                     throw new IllegalArgumentException(
                             "Failed to call " + invocation.method().getName() + " on "
                                     + objectIdOrDescription(resolvedTarget)
-                                    + causeSummary(e),
+                                    + LPCMethodInvoker.causeSummary(e),
                             e);
                 }
             });
@@ -633,7 +639,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
             @Override
             public Object call(RuntimeContext context, Object[] args) {
                 Object globalObject = loadGlobalObject(declaration.objectPath());
-                return invokeObjectPreservingCurrentObject(globalObject, name, args);
+                return methodInvoker.invokePreservingCaller(globalObject, name, args);
             }
         };
     }
@@ -662,15 +668,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return loaded;
     }
 
-    private boolean hasMethod(Object target, String methodName, int arity) {
-        for (Method method : objectReceiver(target).getClass().getMethods()) {
-            if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /** Owns the stable identity and replaceable behavior of this instance's LPC objects. */
     LPCObjectLifecycle objectLifecycle() {
         return objectLifecycle;
@@ -681,9 +678,9 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return objectLifecycle.receiverOf(object);
     }
 
-    /** Reports whether an object's code is currently on this instance's execution stack. */
+    /** Reports lexical execution membership used to reject reload of an active object. */
     boolean isObjectExecuting(Object object) {
-        return currentObjectStack.get().contains(objectLifecycle.identityOf(object));
+        return invocationStack.isExecuting(object);
     }
 
     /**
@@ -1113,46 +1110,16 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return normalized.isBlank() ? null : normalized;
     }
 
+    /** Invokes a required authored method in the target's lexical object scope. */
+    @Override
     public Object invokeObject(Object target, String methodName, Object... args) {
-        Object resolvedTarget = resolveInvocationTarget(target);
-        if (resolvedTarget == null) {
-            return 0;
-        }
-
-        Object[] actualArgs = args == null ? new Object[0] : args;
-        try {
-            InvocationPlan invocation = findInvocation(resolvedTarget.getClass(), methodName, actualArgs);
-            return withCurrentObject(resolvedTarget, () -> {
-                try {
-                    return invocation.method().invoke(resolvedTarget, invocation.arguments());
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException(
-                            "Failed to call " + describeInvocation(invocation, resolvedTarget)
-                                    + causeSummary(e),
-                            e);
-                } catch (InvocationTargetException e) {
-                    Throwable targetException = e.getTargetException();
-                    if (targetException instanceof LinkageError linkageError) {
-                        throw new IllegalStateException("Failed to call generated LPC method", linkageError);
-                    }
-                    throw new IllegalArgumentException("Failed to call generated LPC method" + causeSummary(targetException), e);
-                } catch (ReflectiveOperationException e) {
-                    throw new IllegalArgumentException(
-                            "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(resolvedTarget)
-                                    + causeSummary(e),
-                            e);
-                }
-            });
-        } catch (NoSuchMethodException e) {
-            throw new IllegalArgumentException(
-                    "Failed to call " + methodName + " on " + objectIdOrDescription(resolvedTarget)
-                            + causeSummary(e),
-                    e);
-        }
+        return methodInvoker.invokeRequired(target, methodName, args);
     }
 
+    /** Invokes an optional authored method, allowing argument trimming and returning zero when absent. */
+    @Override
     public Object invokeOptionalObject(Object target, String methodName, Object... args) {
-        return invokeOptionalObject(target, methodName, args, false);
+        return methodInvoker.invokeOptional(target, methodName, args);
     }
 
     /**
@@ -1161,53 +1128,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      * inherited exact-arity method must not bypass a descendant's hook.
      */
     public Object invokeLifecycleObject(Object target, String methodName, Object... args) {
-        return invokeOptionalObject(target, methodName, args, true);
-    }
-
-    private Object invokeOptionalObject(Object target, String methodName, Object[] args, boolean lifecycle) {
-        Object resolvedTarget = resolveInvocationTarget(target);
-        if (resolvedTarget == null) {
-            return 0;
-        }
-
-        Object[] actualArgs = args == null ? new Object[0] : args;
-        try {
-            InvocationPlan invocation = lifecycle
-                    ? findLifecycleInvocation(resolvedTarget.getClass(), methodName, actualArgs)
-                    : findOptionalInvocation(resolvedTarget.getClass(), methodName, actualArgs);
-            return withCurrentObject(resolvedTarget, () -> {
-                try {
-                    return invocation.method().invoke(resolvedTarget, invocation.arguments());
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException(
-                            "Failed to call " + describeInvocation(invocation, resolvedTarget)
-                                    + causeSummary(e),
-                            e);
-                } catch (InvocationTargetException e) {
-                    Throwable targetException = e.getTargetException();
-                    String message = new StringBuilder("Failed to call ")
-                            .append(safeDescribeInvocation(invocation, resolvedTarget))
-                            .append(safeCauseSummary(targetException))
-                            .toString();
-                    if (targetException instanceof LinkageError linkageError) {
-                        throw new IllegalStateException(message, linkageError);
-                    }
-                    throw new IllegalArgumentException(message, e);
-                } catch (ReflectiveOperationException e) {
-                    throw new IllegalArgumentException(
-                            "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(resolvedTarget)
-                                    + causeSummary(e),
-                            e);
-                } catch (LinkageError e) {
-                    throw new IllegalStateException(
-                            "Failed to link " + describeInvocation(invocation, resolvedTarget)
-                                    + causeSummary(e),
-                            e);
-                }
-            });
-        } catch (NoSuchMethodException e) {
-            return 0;
-        }
+        return methodInvoker.invokeLifecycle(target, methodName, args);
     }
 
     /**
@@ -1223,48 +1144,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      */
     public boolean hasObjectMethod(Object target, String methodName, int arity) {
         Object resolvedTarget = resolveInvocationTarget(target);
-        return resolvedTarget != null && hasMethod(resolvedTarget.getClass(), methodName, arity);
-    }
-
-    private Object invokeObjectPreservingCurrentObject(Object target, String methodName, Object... args) {
-        target = resolveInvocationTarget(target);
-        if (target == null) {
-            return 0;
-        }
-
-        Object[] actualArgs = args == null ? new Object[0] : args;
-        try {
-            InvocationPlan invocation = findOptionalInvocation(target.getClass(), methodName, actualArgs);
-            try {
-                return invocation.method().invoke(target, invocation.arguments());
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException(
-                        "Failed to call " + describeInvocation(invocation, target)
-                                + causeSummary(e),
-                        e);
-            } catch (InvocationTargetException e) {
-                Throwable targetException = e.getTargetException();
-                if (targetException instanceof LinkageError linkageError) {
-                    throw new IllegalStateException("Failed to call generated LPC method", linkageError);
-                }
-                throw new IllegalArgumentException("Failed to call generated LPC method" + causeSummary(targetException), e);
-            } catch (ReflectiveOperationException e) {
-                throw new IllegalArgumentException(
-                        "Failed to call " + invocation.method().getName() + " on " + objectIdOrDescription(target)
-                                + causeSummary(e),
-                        e);
-            } catch (LinkageError e) {
-                throw new IllegalStateException(
-                        "Failed to link " + describeInvocation(invocation, target)
-                                + causeSummary(e),
-                        e);
-            }
-        } catch (NoSuchMethodException e) {
-            throw new IllegalArgumentException(
-                    "Failed to call " + methodName + " on " + objectIdOrDescription(target)
-                            + causeSummary(e),
-                    e);
-        }
+        return resolvedTarget != null && methodInvoker.hasMethod(resolvedTarget.getClass(), methodName, arity);
     }
 
     /**
@@ -1308,8 +1188,8 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         String methodName = configuration.lifecycleMethod(MudlibLifecycleEvent.ENTITY_DEPARTED_FROM_PLACE)
                 .orElse(null);
         if (methodName == null) return;
-        boolean acceptsActor = hasMethod(objectReceiver(previousLocation).getClass(), methodName, 1);
-        if (!acceptsActor && !hasMethod(objectReceiver(previousLocation).getClass(), methodName, 0)) return;
+        boolean acceptsActor = methodInvoker.hasMethod(objectReceiver(previousLocation).getClass(), methodName, 1);
+        if (!acceptsActor && !methodInvoker.hasMethod(objectReceiver(previousLocation).getClass(), methodName, 0)) return;
 
         RuntimeContext previous = RuntimeContextHolder.current();
         RuntimeContextHolder.setCurrent(this);
@@ -1678,7 +1558,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         }
 
         String methodName = configuration.temporalTickMethod().orElse(null);
-        if (methodName == null || !hasMethod(objectReceiver(target).getClass(), methodName, 0)) {
+        if (methodName == null || !methodInvoker.hasMethod(objectReceiver(target).getClass(), methodName, 0)) {
             return;
         }
 
@@ -1715,7 +1595,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         }
 
         if (!objectIds.containsKey(target)
-                || !hasMethodAcceptingMissingArguments(objectReceiver(target).getClass(), methodName, args.length)) {
+                || !methodInvoker.hasMethodAcceptingMissingArguments(objectReceiver(target).getClass(), methodName, args.length)) {
             return;
         }
 
@@ -1743,18 +1623,12 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
     @Override
     public Object currentObject() {
-        return currentObjectStack.get().peek();
+        return invocationStack.currentObject();
     }
 
+    /** Returns the enclosing lexical object, or the current object when it is the only frame. */
     public Object previousObject() {
-        Deque<Object> stack = currentObjectStack.get();
-        if (stack.size() < 2) {
-            return stack.peek();
-        }
-
-        java.util.Iterator<Object> iterator = stack.iterator();
-        iterator.next();
-        return iterator.next();
+        return invocationStack.previousObject();
     }
 
     public Object currentCommandActor() {
@@ -1804,27 +1678,19 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return 0;
     }
 
+    /** Enters a canonical lexical frame; prefer {@link #withCurrentObject(Object, Supplier)} for scoped calls. */
     public void pushCurrentObject(Object object) {
-        Objects.requireNonNull(object, "object");
-        currentObjectStack.get().push(objectLifecycle.identityOf(object));
+        invocationStack.push(object);
     }
 
+    /** Leaves a manually entered lexical frame, rejecting an unbalanced pop. */
     public void popCurrentObject() {
-        Deque<Object> stack = currentObjectStack.get();
-        if (stack.isEmpty()) {
-            throw new IllegalStateException("No current LPC object is available to pop.");
-        }
-        stack.pop();
+        invocationStack.pop();
     }
 
+    /** Runs within an object's lexical frame and restores the caller on return or failure. */
     public <T> T withCurrentObject(Object object, Supplier<T> action) {
-        Objects.requireNonNull(action, "action");
-        pushCurrentObject(object);
-        try {
-            return action.get();
-        } finally {
-            popCurrentObject();
-        }
+        return invocationStack.withCurrentObject(object, action);
     }
 
     /**
@@ -2014,7 +1880,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
     private boolean tryEnvironmentMovementAction(Object actor, String verb, String argument) {
         Object environment = environment(actor);
-        if (environment == null || !hasMethod(objectReceiver(environment).getClass(), "move", 1)) {
+        if (environment == null || !methodInvoker.hasMethod(objectReceiver(environment).getClass(), "move", 1)) {
             return false;
         }
         Object exits = invokeOptionalObject(environment, "exits");
@@ -2121,9 +1987,9 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private Object invokeCommandAction(CommandAction action, String commandLine, String argument) {
         String actionArgument = action.verb().isEmpty() && !configuration.commandActionsArgumentsOnly()
                 ? commandLine : argument;
-        boolean hasOneArgument = hasMethodAcceptingMissingArguments(
+        boolean hasOneArgument = methodInvoker.hasMethodAcceptingMissingArguments(
                 objectReceiver(action.handler()).getClass(), action.methodName(), 1);
-        boolean hasNoArguments = hasMethod(objectReceiver(action.handler()).getClass(), action.methodName(), 0);
+        boolean hasNoArguments = methodInvoker.hasMethod(objectReceiver(action.handler()).getClass(), action.methodName(), 0);
         if (actionArgument != null && hasOneArgument) {
             return invokeObject(action.handler(), action.methodName(), actionArgument);
         }
@@ -2136,206 +2002,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return 0;
     }
 
-    /**
-     * Reports whether an LPC method can receive the supplied leading arguments after omitted
-     * trailing parameters are padded with their LPC zero values.
-     */
-    private boolean hasMethodAcceptingMissingArguments(Class<?> targetClass, String methodName, int arity) {
-        for (Method method : targetClass.getMethods()) {
-            if (method.getName().equals(methodName) && method.getParameterCount() >= arity) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private Method findMethod(Class<?> targetClass, String methodName, int arity) throws NoSuchMethodException {
-        Method best = null;
-        for (Method method : targetClass.getMethods()) {
-            if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
-                if (best == null || declaredCloserToTarget(method, best, targetClass)) {
-                    best = method;
-                }
-            }
-        }
-        if (best != null) {
-            return best;
-        }
-        throw new NoSuchMethodException(targetClass.getName() + "." + methodName + "/" + arity);
-    }
-
-    private InvocationPlan findInvocation(Class<?> targetClass, String methodName, Object[] args)
-            throws NoSuchMethodException {
-        try {
-            Method method = findMethod(targetClass, methodName, args.length);
-            return new InvocationPlan(method, adaptArguments(method, args));
-        } catch (NoSuchMethodException exactMiss) {
-            Method best = null;
-            for (Method method : targetClass.getMethods()) {
-                if (!method.getName().equals(methodName) || method.getParameterCount() < args.length) {
-                    continue;
-                }
-                if (best == null || method.getParameterCount() < best.getParameterCount()
-                        || (method.getParameterCount() == best.getParameterCount()
-                                && declaredCloserToTarget(method, best, targetClass))) {
-                    best = method;
-                }
-            }
-            if (best == null) {
-                throw exactMiss;
-            }
-            return new InvocationPlan(best, adaptArguments(best, padMissingArguments(best, args)));
-        }
-    }
-
-    private InvocationPlan findOptionalInvocation(Class<?> targetClass, String methodName, Object[] args)
-            throws NoSuchMethodException {
-        try {
-            return findInvocation(targetClass, methodName, args);
-        } catch (NoSuchMethodException exactMiss) {
-            Method best = null;
-            for (Method method : targetClass.getMethods()) {
-                if (!method.getName().equals(methodName) || method.getParameterCount() > args.length) {
-                    continue;
-                }
-                if (best == null || method.getParameterCount() > best.getParameterCount()
-                        || (method.getParameterCount() == best.getParameterCount()
-                                && declaredCloserToTarget(method, best, targetClass))) {
-                    best = method;
-                }
-            }
-            if (best == null) {
-                throw exactMiss;
-            }
-            Object[] trimmed = new Object[best.getParameterCount()];
-            System.arraycopy(args, 0, trimmed, 0, trimmed.length);
-            return new InvocationPlan(best, adaptArguments(best, trimmed));
-        }
-    }
-
-    private InvocationPlan findLifecycleInvocation(Class<?> targetClass, String methodName, Object[] args)
-            throws NoSuchMethodException {
-        Method method = java.util.Arrays.stream(targetClass.getMethods())
-                .filter(candidate -> candidate.getName().equals(methodName))
-                .min(java.util.Comparator
-                        .comparingInt((Method candidate) -> inheritanceDistance(targetClass, candidate.getDeclaringClass()))
-                        .thenComparingInt(candidate -> candidate.getParameterCount() >= args.length ? 0 : 1)
-                        .thenComparingInt(candidate -> Math.abs(candidate.getParameterCount() - args.length)))
-                .orElseThrow(() -> new NoSuchMethodException(targetClass.getName() + "." + methodName));
-        Object[] supplied = method.getParameterCount() >= args.length
-                ? padMissingArguments(method, args)
-                : java.util.Arrays.copyOf(args, method.getParameterCount());
-        return new InvocationPlan(method, adaptArguments(method, supplied));
-    }
-
-    private boolean declaredCloserToTarget(Method candidate, Method current, Class<?> targetClass) {
-        return inheritanceDistance(targetClass, candidate.getDeclaringClass())
-                < inheritanceDistance(targetClass, current.getDeclaringClass());
-    }
-
-    private int inheritanceDistance(Class<?> targetClass, Class<?> declaringClass) {
-        int distance = 0;
-        Class<?> cursor = targetClass;
-        while (cursor != null) {
-            if (cursor.equals(declaringClass)) {
-                return distance;
-            }
-            cursor = cursor.getSuperclass();
-            distance++;
-        }
-        return Integer.MAX_VALUE;
-    }
-
-    private Object[] adaptArguments(Method method, Object[] args) {
-        Object[] adapted = new Object[args.length];
-        Class<?>[] parameterTypes = method.getParameterTypes();
-        for (int i = 0; i < args.length; i++) {
-            adapted[i] = adaptArgument(parameterTypes[i], args[i]);
-        }
-        return adapted;
-    }
-
-    private Object adaptArgument(Class<?> parameterType, Object arg) {
-        if (arg == null) {
-            return defaultArgumentValue(parameterType);
-        }
-        if (parameterType == String.class) {
-            if (arg instanceof Number number && number.intValue() == 0) {
-                return null;
-            }
-            return String.valueOf(arg);
-        }
-        if (List.class.isAssignableFrom(parameterType)) {
-            return RuntimeCoercions.toArrayValue(arg);
-        }
-        if (parameterType == boolean.class && arg instanceof Number number) {
-            return number.intValue() != 0;
-        }
-        if (parameterType == int.class && arg instanceof Number number) {
-            return number.intValue();
-        }
-        if (parameterType == long.class && arg instanceof Number number) {
-            return number.longValue();
-        }
-        if (parameterType == float.class && arg instanceof Number number) {
-            return number.floatValue();
-        }
-        if (parameterType == double.class && arg instanceof Number number) {
-            return number.doubleValue();
-        }
-        if (parameterType == byte.class && arg instanceof Number number) {
-            return number.byteValue();
-        }
-        if (parameterType == short.class && arg instanceof Number number) {
-            return number.shortValue();
-        }
-        if (parameterType == char.class && arg instanceof Number number) {
-            return (char) number.intValue();
-        }
-        if (!parameterType.isPrimitive()) {
-            return arg;
-        }
-        return arg;
-    }
-
-    private Object[] padMissingArguments(Method method, Object[] args) {
-        Object[] padded = new Object[method.getParameterCount()];
-        System.arraycopy(args, 0, padded, 0, args.length);
-        Class<?>[] parameterTypes = method.getParameterTypes();
-        for (int i = args.length; i < padded.length; i++) {
-            padded[i] = defaultArgumentValue(parameterTypes[i]);
-        }
-        return padded;
-    }
-
-    private Object defaultArgumentValue(Class<?> parameterType) {
-        if (!parameterType.isPrimitive()) {
-            return null;
-        }
-        if (parameterType == boolean.class) {
-            return false;
-        }
-        if (parameterType == float.class) {
-            return 0.0f;
-        }
-        if (parameterType == double.class) {
-            return 0.0d;
-        }
-        if (parameterType == long.class) {
-            return 0L;
-        }
-        if (parameterType == byte.class) {
-            return (byte) 0;
-        }
-        if (parameterType == short.class) {
-            return (short) 0;
-        }
-        if (parameterType == char.class) {
-            return (char) 0;
-        }
-        return 0;
-    }
-
+    /** Resolves paths and tombstones through host policy, then selects the lifecycle's live receiver. */
     private Object resolveInvocationTarget(Object target) {
         if (target instanceof String path) {
             target = loadOrGetObject(path);
@@ -2346,21 +2013,10 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return objectReceiver(target);
     }
 
-    private boolean hasMethod(Class<?> targetClass, String methodName, int arity) {
-        for (Method method : targetClass.getMethods()) {
-            if (method.getName().equals(methodName) && method.getParameterCount() == arity) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private String objectIdOrDescription(Object object) {
         String id = objectId(object);
         return id != null ? id : String.valueOf(object);
     }
-
-    private record InvocationPlan(Method method, Object[] arguments) {}
 
     private Object outputTarget() {
         Object actor = currentCommandActor();
@@ -2400,72 +2056,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return normalized.isEmpty() ? null : normalized;
     }
 
-    private String causeSummary(Throwable throwable) {
-        Throwable cause = throwable;
-        int depth = 0;
-        while (cause.getCause() != null && depth < 25) {
-            cause = cause.getCause();
-            depth++;
-        }
-        String message = cause.getMessage();
-        if (message == null || message.isBlank()) {
-            message = cause.getClass().getSimpleName();
-        }
-        return new StringBuilder(": ").append(message).toString();
-    }
-
-    /**
-     * Summarizes a reflected failure while preserving the original throwable if cause inspection
-     * itself trips over a linkage problem.
-     */
-    private String safeCauseSummary(Throwable throwable) {
-        try {
-            return causeSummary(throwable);
-        } catch (LinkageError | RuntimeException e) {
-            return ": " + throwable.getClass().getSimpleName();
-        }
-    }
-
-    private String describeInvocation(InvocationPlan invocation, Object target) {
-        Method method = invocation.method();
-        StringBuilder builder = new StringBuilder(method.getName())
-                .append("/")
-                .append(method.getParameterCount())
-                .append(" on ")
-                .append(objectIdOrDescription(target))
-                .append(" with parameter types [");
-        Class<?>[] parameterTypes = method.getParameterTypes();
-        for (int i = 0; i < parameterTypes.length; i++) {
-            if (i > 0) {
-                builder.append(", ");
-            }
-            builder.append(parameterTypes[i].getSimpleName());
-        }
-        builder.append("] and argument types [");
-        Object[] args = invocation.arguments();
-        for (int i = 0; i < args.length; i++) {
-            if (i > 0) {
-                builder.append(", ");
-            }
-            builder.append(args[i] == null ? "null" : args[i].getClass().getSimpleName());
-        }
-        builder.append("]");
-        return builder.toString();
-    }
-
-    /**
-     * Describes a reflective LPC call without letting diagnostic formatting hide the original
-     * invocation failure.
-     */
-    private String safeDescribeInvocation(InvocationPlan invocation, Object target) {
-        try {
-            return describeInvocation(invocation, target);
-        } catch (LinkageError | RuntimeException e) {
-            return invocation.method().getName() + "/" + invocation.method().getParameterCount()
-                    + " on " + target.getClass().getName();
-        }
-    }
-
     private void removeCommandHandler(Object handler) {
         for (Map<String, List<CommandAction>> actionsByVerb : commandActions.values()) {
             actionsByVerb.values().forEach(actions -> actions.removeIf(action -> action.handler() == handler));
@@ -2474,6 +2064,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         commandActions.entrySet().removeIf(entry -> entry.getValue().isEmpty());
     }
 
+    /** An existing identifier method decides the match; only absence permits canonical-ID fallback. */
     private boolean matchesIdentifier(Object object, Object identifier) {
         if (identifier == null) {
             return false;
@@ -2485,10 +2076,11 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
         try {
             Object receiver = objectReceiver(object);
-            InvocationPlan invocation = findInvocation(receiver.getClass(), "id", new Object[] {id});
+            LPCMethodInvoker.InvocationPlan invocation = methodInvoker.findInvocation(
+                    receiver.getClass(), "id", new Object[] {id});
             return withCurrentObject(object, () -> {
                 try {
-                    return Truth.isTruthy(invocation.method().invoke(receiver, invocation.arguments()));
+                    return Truth.isTruthy(invocation.invoke(receiver));
                 } catch (ReflectiveOperationException e) {
                     return false;
                 }

@@ -911,6 +911,9 @@ valid movement. The model does not read manifests or operate sockets.</p>
 <p><code>instance</code> assembles language facilities, model state, and host services into
 one running mudlib. <code>lpc.MudlibRuntime</code> loads authored behavior;
 <code>lpc.MudlibRuntimeContext</code> implements its interaction with the engine.
+<code>lpc.LPCInvocationStack</code> owns current/previous-object identity and call scopes;
+<code>lpc.LPCMethodInvoker</code> owns method selection and argument adaptation.
+<code>lpc.LPCObjectLifecycle</code> owns live receivers and behavior replacement.
 <code>efun.EngineEfuns</code> composes language-only functions with engine-service adapters.
 Input, administration, and ticks run on the instance&#8217;s execution queue.</p>
 </li>
@@ -984,6 +987,8 @@ callable signatures and language-only built-ins through <code>LanguageEfuns</cod
 Its <code>lpc.MudlibRuntime</code> loads authored behavior; <code>lpc.LPCObjectLifecycle</code> keeps
 live object identity and state separate from that behavior&#8217;s program revision.
 <code>lpc.MudlibRuntimeContext</code> adapts execution to world, session, and storage services.
+<code>lpc.LPCInvocationStack</code> owns current/previous-object identity and call scopes;
+<code>lpc.LPCMethodInvoker</code> selects methods, adapts arguments, and reports call failures.
 <code>instance.session.InstanceSessions</code> owns connection and attachment transitions;
 <code>InstanceSession</code> represents a connection before and after login, and
 <code>PersonaAttachment</code> relates its selected Persona, Entity, and authored behavior.
@@ -2071,11 +2076,14 @@ already loaded rooms keep their own revisions.</p>
 <code>language.execution.LPCProgramRevision</code> names compiled behavior,
 <code>engine.instance.lpc.LPCObjectLifecycle</code> owns identity and behavior replacement,
 <code>MudlibWorldProjection</code> owns world bindings, and <code>InstanceSessions</code> owns session
-attachments. <code>MudlibRuntimeContext</code> adapts authored calls to those owners. Existing
-inline closures retain their captured code while sharing live object fields
-through the invocation boundary. Calls nested inside such a closure on the same
-object stay on its captured revision until it returns. Outside that scope, ordinary calls and
-named function references follow the installed revision.</p>
+attachments. <code>MudlibRuntimeContext</code> adapts authored calls to those owners.
+<code>LPCInvocationStack</code> tracks canonical current/previous-object identities and the
+execution membership used to guard reload; <code>LPCMethodInvoker</code> selects and invokes
+authored methods. Existing inline closures retain their captured code while
+<code>LPCObjectLifecycle</code> shares live object fields with their historical receiver.
+Calls nested inside such a closure on the same object stay on its captured
+revision until it returns. Outside that scope, ordinary calls and named function
+references follow the installed revision.</p>
 </div>
 </div>
 <div class="sect3">
@@ -3905,7 +3913,12 @@ contracts. <code>language.runtime</code> contains the generated-code context con
 LPC value operations: truthiness, coercions, indexing, strings, arrays, and
 runtime type descriptors. These packages do not construct world or storage
 services. <code>engine.instance.lpc.MudlibRuntime</code> hosts the authored objects, using
-<code>MudlibRuntimeContext</code> to connect their requests to engine services.</p>
+<code>MudlibRuntimeContext</code> to connect their requests to engine services.
+The hosted context delegates current/previous-object scopes to
+<code>LPCInvocationStack</code> and method selection, argument adaptation, and call
+diagnostics to <code>LPCMethodInvoker</code>. Those hosted invocation policies remain under
+<code>engine.instance.lpc</code>, separate from compiler analysis and the neutral runtime
+contract.</p>
 </div>
 <div class="paragraph">
 <p>The world model lives under <code>engine.model.world</code>, identity records under
@@ -3946,6 +3959,40 @@ world, identity, scheduling, and storage services. Follow an efun from
 <code>language.runtime</code> supports LPC values and generated code; <code>engine.model.world</code>
 owns the world&#8217;s containment graph.</p>
 </div>
+<div class="sect3">
+<h4 id="_hosted_lpc_invocation"><a class="anchor" href="#_hosted_lpc_invocation"></a><a class="link" href="#_hosted_lpc_invocation">Hosted LPC invocation</a></h4>
+<div class="paragraph">
+<p>Invocation policy lives under <code>engine.instance.lpc</code>. <code>LPCInvocationStack</code> owns
+canonical current/previous-object identities and restores call scopes after
+normal returns and exceptions. Its execution-membership query also guards live
+object reload. <code>LPCMethodInvoker</code> owns reflective selection, argument adaptation,
+and invocation diagnostics. <code>MudlibRuntimeContext</code> delegates to those owners.
+Command actor, verb, failure text, and pending-action registration remain context
+state; they describe command dispatch rather than the LPC object call stack.
+Both invocation owners are package-private collaborators of the context. Target
+loading and destroyed-object checks stay in the context, as do the absence and
+failure rules for identifier and message-permission probes; those probes use the
+invoker&#8217;s prepared method-and-argument plans.</p>
+</div>
+<div class="paragraph">
+<p>Required object calls prefer exact arity and can pad omitted trailing arguments
+with LPC zero values. Optional calls also trim extra arguments and return LPC
+zero for an absent method. Configured lifecycle hooks prefer the most-derived
+declaring class before choosing arity, so an inherited exact match cannot bypass
+a descendant&#8217;s hook. Mudlib global functions use optional argument matching but
+retain the caller&#8217;s object context and fail if the method is absent. Keep these
+entry points distinct when following a call through compatibility wrappers.</p>
+</div>
+<div class="paragraph">
+<p><code>LPCObjectLifecycle</code> remains the owner of selected receivers and reload state.
+Ordinary calls and named-method callables follow the selected live revision;
+inline closures retain captured code and share current fields with their
+historical receiver. Nested same-object calls inside a historical closure stay
+on that receiver until its scope ends.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_administration_and_storage"><a class="anchor" href="#_administration_and_storage"></a><a class="link" href="#_administration_and_storage">Administration and storage</a></h4>
 <div class="paragraph">
 <p><code>communication.console.AdminConsole</code> connects to an engine or mudlib administration
 endpoint. The engine owns TLS authentication and grants. Engine commands execute
@@ -3959,6 +4006,7 @@ bytes to their worker, where Telnet negotiation, login, and commands are handled
 separate from mudlib player accounts. Manifest files are interpreted under
 <code>engine.configuration</code>, outside the world model. See
 <code>docs/ENGINE-ADMINISTRATION.md</code> for supervision and platform limitations.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
