@@ -60,9 +60,9 @@ class ApiDirectoryTest(unittest.TestCase):
         original = path.read_text()
         path.write_text(original.replace('</head>',
             '<!-- JVMUD NAV START --><link href="custom.css"><!-- JVMUD NAV END -->\n</head>'))
-        api.remove_site_chrome()
+        api.clean_reference_pages()
         self.assertEqual(original, path.read_text())
-        api.remove_site_chrome()
+        api.clean_reference_pages()
         self.assertEqual(original, path.read_text())
 
     def test_missing_namespace_gets_a_traversable_parent(self):

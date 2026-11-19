@@ -5,7 +5,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Engine-owned record for the human or account-like controller.
+ * Engine-owned record for the human-controller endpoint associated with one or more Sessions.
  *
  * <p>The mudlib profile projection is opaque to the runtime model. Compatibility layers may use it
  * to associate mudlib-authored profile state without making that state part of the engine ontology.</p>

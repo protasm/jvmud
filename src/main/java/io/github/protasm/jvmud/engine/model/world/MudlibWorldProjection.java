@@ -4,6 +4,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Identity adapter between opaque mudlib objects and JVMud-native world locations.
@@ -55,6 +56,17 @@ public final class MudlibWorldProjection {
             worldRuntime.removeEntity(prior.id());
         }
         bind(object, entity);
+    }
+
+    /** Returns the existing native Entity for a behavior projection without creating one. */
+    public Optional<Entity> projectedEntity(Object object) {
+        Location location = locationsByObject.get(object);
+        return location instanceof Entity entity ? Optional.of(entity) : Optional.empty();
+    }
+
+    /** Realizes a world-present behavior object as an Entity, initially detached when newly created. */
+    public Entity realizeEntity(Object object) {
+        return entityFor(object);
     }
 
     /** Moves an opaque mudlib object using the native containment graph. */

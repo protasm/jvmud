@@ -52,11 +52,16 @@ lifecycle and interaction behavior around movement.
 Native integration is still incomplete. Boot explicitly binds the starting room
 as a Place, while other LPC destinations can become container Entities on demand.
 Legacy exits can remain scripted LPC policy; the host does not derive a full
-native Link graph from arbitrary mudlib code. Persona identity and live Entity
-attachment also need a single, explicit retention and rebind policy.
+native Link graph from arbitrary mudlib code.
 
-Revisit these boundaries when adding native topology inspection, explicit Place
-registration, or persistent Personas. An opt-in Small Mercies route through
+Hosted connection and Persona attachment now have one owner in `InstanceSessions`.
+An `InstanceSession` spans pre-Persona login and attached play; `PersonaAttachment`
+records the selected Persona's actual native Entity and authored behavior identity.
+That live relationship is implemented. Persistent Persona identity and retention
+across worker restarts still need an explicit persistence policy.
+
+Revisit the remaining boundaries when adding native topology inspection, explicit
+Place registration, or persistent Personas. An opt-in Small Mercies route through
 native Places and Links would provide a small acceptance example without changing
 LP245's original room definitions.
 

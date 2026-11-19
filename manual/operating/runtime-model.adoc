@@ -15,7 +15,42 @@ Native integration is still partial. The starting room is explicitly bound as a
 Place; other LPC destinations can become container Entities, and scripted exits
 need not be native Links. Do not assume every loaded service object is a
 world-present Entity. The repository's `docs/DEFERRED_WORK.md` records the
-remaining Place, Persona, and callback-ownership work.
+remaining topology, persistent-Persona, and callback-ownership work.
+
+[[instance-sessions]]
+==== Connection and Persona attachment
+
+`engine.instance.session.InstanceSessions` owns the instance's connections and
+updates their Player, Persona, Entity, and authored-behavior relationships through
+explicit attach, rebind, and detach operations. `MudInstance` coordinates those
+operations on its execution queue; `MudlibRuntimeContext` adapts LPC session calls
+to the same owner.
+
+An `InstanceSession` lasts for the connection's full lifetime. During managed
+login it has a login flow and no selected Persona. Once policy selects a Persona,
+its `PersonaAttachment` names the Persona, actual native Entity, and stable LPC
+behavior identity. `session.isOpen()` describes the connection's liveness;
+`session.attachment().isPresent()` answers whether Persona attachment has
+completed. Model records under `engine.model.identity` describe the identities.
+Login policies under `engine.instance.session.login` consume input and return an
+outcome with an optional neutral profile. `MudInstance` carries out attachment or
+disconnection; account interpretation remains selected mudlib policy.
+
+A compatibility rebind changes the authored-behavior attachment while preserving
+`SessionID`, `PlayerID`, connection time, text and protocol output routing, and
+negotiated protocol state. It clears the previous attachment's captured-input
+callback; the newly attached object may capture its own input. Disconnect removes
+the live connection binding, attachment, routing, and the former attachment's
+world presence. The mudlib's disconnect hook may save or clean up authored state
+before that cleanup; persistent Persona retention is a separate policy.
+
+For a full lifecycle check, connect through the mudlib's direct player endpoint,
+complete login, and verify the selected Persona refers to its native Entity.
+Exercise a mudlib-owned LPC handoff, captured input, and negotiated protocol
+messages, then disconnect. The same connection must retain its Player identity
+through the handoff, and disconnected objects must no longer receive session
+input or output. Production checks use a real worker and authenticated
+administration; isolated runtime tests cover the individual state transitions.
 
 [[live-object-reload]]
 ==== Reload a live object's behavior
@@ -59,10 +94,11 @@ already loaded rooms keep their own revisions.
 The source separates these responsibilities deliberately:
 `language.execution.LPCProgramRevision` names compiled behavior,
 `engine.instance.lpc.LPCObjectLifecycle` owns identity and behavior replacement,
-and `MudlibRuntimeContext` owns world and session bindings. Existing inline
-closures retain their captured code while sharing live object fields through the
-invocation boundary. Calls nested inside such a closure on the same object stay
-on its captured revision until it returns. Outside that scope, ordinary calls and
+`MudlibWorldProjection` owns world bindings, and `InstanceSessions` owns session
+attachments. `MudlibRuntimeContext` adapts authored calls to those owners. Existing
+inline closures retain their captured code while sharing live object fields
+through the invocation boundary. Calls nested inside such a closure on the same
+object stay on its captured revision until it returns. Outside that scope, ordinary calls and
 named function references follow the installed revision.
 
 ==== Persistent state

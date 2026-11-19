@@ -981,7 +981,11 @@ callable signatures and implementations; <code>formatter</code> formats LPC sour
 <code>configuration</code> reads and assembles manifest policy; <code>instance</code> runs one mudlib.
 Its <code>lpc.MudlibRuntime</code> loads authored behavior; <code>lpc.LPCObjectLifecycle</code> keeps
 live object identity and state separate from that behavior&#8217;s program revision.
-<code>lpc.MudlibRuntimeContext</code> connects execution to world, session, and storage services.
+<code>lpc.MudlibRuntimeContext</code> adapts execution to world, session, and storage services.
+<code>instance.session.InstanceSessions</code> owns connection and attachment transitions;
+<code>InstanceSession</code> represents a connection before and after login, and
+<code>PersonaAttachment</code> relates its selected Persona, Entity, and authored behavior.
+Managed login policies and prompt flows live under <code>instance.session.login</code>.
 <code>instance.efun.EngineEfuns</code> registers the
 engine operations, and <code>diagnostics</code> checks a selected mudlib&#8217;s preload manifest.</p></td>
 </tr>
@@ -1066,8 +1070,15 @@ Former package: <code>language.exec</code></p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>RuntimeContext</code><br>
 Hosted state and services</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MudlibRuntimeContext</code> in <code>engine.instance.lpc</code> owns hosted state.
-<code>language.runtime.RuntimeContext</code> defines the neutral generated-code contract.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MudlibRuntimeContext</code> in <code>engine.instance.lpc</code> adapts authored calls to hosted
+owners, including <code>InstanceSessions</code>. <code>language.runtime.RuntimeContext</code> defines
+the neutral generated-code contract.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>InstancePersona</code><br>
+Former package: <code>engine.instance</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>InstanceSession</code> in <code>engine.instance.session</code> represents the connection lifetime;
+<code>PersonaAttachment</code> explicitly represents its selected Persona and Entity.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CoreEfuns</code><br>
@@ -1090,6 +1101,15 @@ Former package: <code>language</code></p></td>
 <code>language.parser.type</code>. The former built-in catalog was
 <code>language.efun.builtin.CoreEfuns</code>. The declaration and reader were
 <code>MudlibBoundary</code> and <code>MudlibBoundaryConfigReader</code> in <code>execution.model.mudlib</code>.</p>
+</div>
+<div class="paragraph">
+<p>On <code>InstanceHost</code>, replace <code>attachPersona(&#8230;&#8203;)</code> and <code>detachPersona(&#8230;&#8203;)</code> with
+<code>attachSession(&#8230;&#8203;)</code> and <code>detachSession(&#8230;&#8203;)</code>, using <code>InstanceSession</code> as the
+connection handle. Replace <code>isAttached(InstancePersona)</code> with
+<code>isOpen(InstanceSession)</code> when checking connection lifetime. An open session can
+still be awaiting login; use <code>session.attachment().isPresent()</code> when the caller
+requires an attached Persona. Obtain the selected Persona through that attachment
+rather than treating login as an LPC actor.</p>
 </div>
 <div class="paragraph">
 <p>On the hosted runtime, replace <code>mudlibBoundary()</code> with <code>configuration()</code> and
@@ -1957,7 +1977,46 @@ single queue.</p>
 Place; other LPC destinations can become container Entities, and scripted exits
 need not be native Links. Do not assume every loaded service object is a
 world-present Entity. The repository&#8217;s <code>docs/DEFERRED_WORK.md</code> records the
-remaining Place, Persona, and callback-ownership work.</p>
+remaining topology, persistent-Persona, and callback-ownership work.</p>
+</div>
+<div class="sect3">
+<h4 id="instance-sessions"><a class="anchor" href="#instance-sessions"></a><a class="link" href="#instance-sessions">Connection and Persona attachment</a></h4>
+<div class="paragraph">
+<p><code>engine.instance.session.InstanceSessions</code> owns the instance&#8217;s connections and
+updates their Player, Persona, Entity, and authored-behavior relationships through
+explicit attach, rebind, and detach operations. <code>MudInstance</code> coordinates those
+operations on its execution queue; <code>MudlibRuntimeContext</code> adapts LPC session calls
+to the same owner.</p>
+</div>
+<div class="paragraph">
+<p>An <code>InstanceSession</code> lasts for the connection&#8217;s full lifetime. During managed
+login it has a login flow and no selected Persona. Once policy selects a Persona,
+its <code>PersonaAttachment</code> names the Persona, actual native Entity, and stable LPC
+behavior identity. <code>session.isOpen()</code> describes the connection&#8217;s liveness;
+<code>session.attachment().isPresent()</code> answers whether Persona attachment has
+completed. Model records under <code>engine.model.identity</code> describe the identities.
+Login policies under <code>engine.instance.session.login</code> consume input and return an
+outcome with an optional neutral profile. <code>MudInstance</code> carries out attachment or
+disconnection; account interpretation remains selected mudlib policy.</p>
+</div>
+<div class="paragraph">
+<p>A compatibility rebind changes the authored-behavior attachment while preserving
+<code>SessionID</code>, <code>PlayerID</code>, connection time, text and protocol output routing, and
+negotiated protocol state. It clears the previous attachment&#8217;s captured-input
+callback; the newly attached object may capture its own input. Disconnect removes
+the live connection binding, attachment, routing, and the former attachment&#8217;s
+world presence. The mudlib&#8217;s disconnect hook may save or clean up authored state
+before that cleanup; persistent Persona retention is a separate policy.</p>
+</div>
+<div class="paragraph">
+<p>For a full lifecycle check, connect through the mudlib&#8217;s direct player endpoint,
+complete login, and verify the selected Persona refers to its native Entity.
+Exercise a mudlib-owned LPC handoff, captured input, and negotiated protocol
+messages, then disconnect. The same connection must retain its Player identity
+through the handoff, and disconnected objects must no longer receive session
+input or output. Production checks use a real worker and authenticated
+administration; isolated runtime tests cover the individual state transitions.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="live-object-reload"><a class="anchor" href="#live-object-reload"></a><a class="link" href="#live-object-reload">Reload a live object&#8217;s behavior</a></h4>
@@ -2006,10 +2065,11 @@ already loaded rooms keep their own revisions.</p>
 <p>The source separates these responsibilities deliberately:
 <code>language.execution.LPCProgramRevision</code> names compiled behavior,
 <code>engine.instance.lpc.LPCObjectLifecycle</code> owns identity and behavior replacement,
-and <code>MudlibRuntimeContext</code> owns world and session bindings. Existing inline
-closures retain their captured code while sharing live object fields through the
-invocation boundary. Calls nested inside such a closure on the same object stay
-on its captured revision until it returns. Outside that scope, ordinary calls and
+<code>MudlibWorldProjection</code> owns world bindings, and <code>InstanceSessions</code> owns session
+attachments. <code>MudlibRuntimeContext</code> adapts authored calls to those owners. Existing
+inline closures retain their captured code while sharing live object fields
+through the invocation boundary. Calls nested inside such a closure on the same
+object stay on its captured revision until it returns. Outside that scope, ordinary calls and
 named function references follow the installed revision.</p>
 </div>
 </div>

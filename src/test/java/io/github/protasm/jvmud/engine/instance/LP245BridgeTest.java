@@ -297,19 +297,19 @@ final class LP245BridgeTest {
         var mudlib = MudInstance.boot(temp, "jvmud/lp245.config");
         var transcript = new java.io.StringWriter();
         var output = new java.io.PrintWriter(transcript, true);
-        var player = mudlib.attachPersona(output, "127.0.0.1");
+        var player = mudlib.attachSession(output, "127.0.0.1");
         try {
             for (String input : List.of("guildtest", "secret1", "secret1", "none", "o",
                     "south", "east", "east", "east", "south", "cost", "exa book")) {
                 mudlib.dispatch(player, output, input);
             }
             assertEquals("room/adv_guild", mudlib.administer(runtime ->
-                    runtime.objectId(runtime.environment(player.actor()))), transcript.toString());
+                    runtime.objectId(runtime.environment(player.personaObject()))), transcript.toString());
 
             mudlib.dispatch(player, output, "north");
 
             assertEquals("room/vill_road2", mudlib.administer(runtime ->
-                    runtime.objectId(runtime.environment(player.actor()))), transcript.toString());
+                    runtime.objectId(runtime.environment(player.personaObject()))), transcript.toString());
         } finally {
             mudlib.shutdown(0);
         }

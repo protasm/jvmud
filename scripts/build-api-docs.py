@@ -210,11 +210,11 @@ def render_directory(name, packages):
 ''')
 
 
-def remove_site_chrome():
-    """Remove only our marked additions from previously decorated Javadoc output."""
+def clean_reference_pages():
+    """Remove our marked additions and normalize whitespace in generated Javadoc pages."""
     for page in JAVADOC.rglob('*.html'):
         original = page.read_text()
-        cleaned = MARKER.sub('', original)
+        cleaned = re.sub(r'(?m)[ \t]+$', '', MARKER.sub('', original))
         if cleaned != original:
             page.write_text(cleaned)
 
@@ -244,7 +244,7 @@ def main():
                 pass  # Current packages and any non-generated content remain intact.
     for name in ['', *sorted(packages)]:
         render_directory(name, packages)
-    remove_site_chrome()
+    clean_reference_pages()
     print(f'Generated package directory for {len(packages)} packages with references opening in new tabs.')
 
 

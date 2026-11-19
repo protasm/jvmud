@@ -1,5 +1,7 @@
 package io.github.protasm.jvmud.engine.instance;
 
+import io.github.protasm.jvmud.engine.instance.session.InstanceSession;
+
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -26,30 +28,35 @@ public interface InstanceHost {
 
     void shutdown(Object reason);
 
-    InstancePersona attachPersona(PrintWriter out, String remoteAddress);
+    /** Opens a connection, which may enter login before attaching a Persona. */
+    InstanceSession attachSession(PrintWriter out, String remoteAddress);
 
     /** Binds the transport callback used for negotiated out-of-band protocol messages. */
     default void bindClientProtocolSink(
-            InstancePersona persona, BiConsumer<String, String> protocolOutputSink) {}
+            InstanceSession session, BiConsumer<String, String> protocolOutputSink) {}
 
     /** Notifies the hosted runtime that a client protocol has been enabled or disabled. */
-    default void setClientProtocolEnabled(InstancePersona persona, String protocol, boolean enabled) {}
+    default void setClientProtocolEnabled(InstanceSession session, String protocol, boolean enabled) {}
 
     /** Delivers one decoded-text message received over a negotiated client protocol. */
-    default void receiveClientProtocolMessage(InstancePersona persona, String protocol, String message) {}
+    default void receiveClientProtocolMessage(InstanceSession session, String protocol, String message) {}
 
-    void detachPersona(InstancePersona persona);
+    /** Closes the connection and its current Persona attachment. */
+    void detachSession(InstanceSession session);
 
     /** Delivers input; player-facing command meaning and responses belong to the mudlib. */
-    void dispatch(InstancePersona persona, PrintWriter out, String commandLine);
+    void dispatch(InstanceSession session, PrintWriter out, String commandLine);
 
-    void printPromptIfReady(InstancePersona persona, PrintWriter out);
+    void printPromptIfReady(InstanceSession session, PrintWriter out);
 
-    boolean isCapturingInput(InstancePersona persona);
+    /** Returns whether managed login or an authored callback is waiting for the next input line. */
+    boolean isCapturingInput(InstanceSession session);
 
-    boolean isCapturingNoEchoInput(InstancePersona persona);
+    /** Returns whether the current login prompt or authored input callback requests hidden input. */
+    boolean isCapturingNoEchoInput(InstanceSession session);
 
-    boolean isAttached(InstancePersona persona);
+    /** Returns connection liveness; a managed login can be open without a Persona attachment. */
+    boolean isOpen(InstanceSession session);
 
     /** Prefix that escapes a line into transport control rather than mudlib command dispatch. */
     default String transportControlPrefix() {

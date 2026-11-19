@@ -41,9 +41,11 @@ separate evidence. Do not treat a historical green build as current acceptance.
 4. **Engine world model.** Build on the authoritative `WorldRuntime` containment
    graph to clarify explicit Place registration, navigable Links, and the
    distinction between world-present Entities and service objects.
-5. **Command and session behavior.** Keep Persona context, command registration,
-   captured input, text output, disconnect cleanup, and account resolution coherent.
-   Transport controls use an explicit escape prefix; admin work remains separate.
+5. **Command and session behavior.** Preserve `InstanceSessions` as the owner of
+   connection and Persona attachment transitions. Keep captured input, protocol
+   routing, disconnect cleanup, and account resolution coherent through that owner.
+   Extend command registration with equally explicit ownership. Transport controls
+   use an explicit escape prefix; admin work remains separate.
 6. **Manifest-driven boot.** Validate source roots, initial Place, Persona paths,
    preloads, lifecycle mappings, language features, and capabilities before play.
    Fail with actionable diagnostics when declared requirements cannot be met.

@@ -8,8 +8,8 @@ import java.util.Optional;
 /**
  * Engine-owned record for the Player's in-World manifestation.
  *
- * <p>The entity link may be absent while a compatibility runtime is still attaching a legacy
- * mudlib object before full World entity integration.</p>
+ * <p>Detached or not-yet-realized model records may omit the Entity. A live session attachment
+ * requires the actual native Entity that supplies its world presence.</p>
  *
  * <p>The mudlib behavior projection is opaque to the runtime model. Compatibility layers may use it
  * to associate LPC-authored behavior, including a mudlib's combined player/Persona object.</p>

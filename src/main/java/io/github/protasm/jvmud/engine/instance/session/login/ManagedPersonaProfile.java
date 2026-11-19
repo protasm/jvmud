@@ -1,15 +1,15 @@
-package io.github.protasm.jvmud.engine.instance;
+package io.github.protasm.jvmud.engine.instance.session.login;
 
 import java.util.Map;
 import java.util.Objects;
 
 /** Mudlib-neutral Persona information resolved by an optional host-managed session policy. */
-record ManagedPersonaProfile(
+public record ManagedPersonaProfile(
         String externalUserId,
         String displayName,
         String gender,
         Map<String, Object> attributes) {
-    ManagedPersonaProfile {
+    public ManagedPersonaProfile {
         externalUserId = Objects.requireNonNull(externalUserId, "externalUserId");
         displayName = Objects.requireNonNull(displayName, "displayName");
         gender = Objects.requireNonNullElse(gender, "");

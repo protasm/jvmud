@@ -1,17 +1,18 @@
-package io.github.protasm.jvmud.engine.instance;
+package io.github.protasm.jvmud.engine.instance.session.login;
 
 import io.github.protasm.jvmud.storage.filesystem.FilesystemAccountStore.Account;
 
-import java.io.PrintWriter;
+import java.nio.file.Path;
+import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.Map;
 import java.util.Optional;
 
 /** Filesystem-backed account-login state machine selected explicitly by a mudlib manifest. */
 final class FilesystemAccountLoginSession implements ManagedLoginSession {
-    private final MudInstance mud;
+    private final String gameName;
+    private final Consumer<String> output;
     private final FilesystemAccountService accounts;
-    private final String sessionId;
-    private final String remoteAddress;
     private State state = State.ACCOUNT_ID;
     private String accountId = "";
     private String pendingPassword = "";
@@ -20,11 +21,10 @@ final class FilesystemAccountLoginSession implements ManagedLoginSession {
     private String passwordHash = "";
     private int passwordAttempts;
 
-    FilesystemAccountLoginSession(MudInstance mud, String sessionId, String remoteAddress) {
-        this.mud = mud;
-        this.accounts = new FilesystemAccountService(mud.mudlibRoot());
-        this.sessionId = sessionId;
-        this.remoteAddress = remoteAddress;
+    FilesystemAccountLoginSession(Path mudlibRoot, String gameName, Consumer<String> output) {
+        this.accounts = new FilesystemAccountService(mudlibRoot);
+        this.gameName = Objects.requireNonNull(gameName, "gameName");
+        this.output = Objects.requireNonNull(output, "output");
     }
 
     @Override
@@ -40,16 +40,16 @@ final class FilesystemAccountLoginSession implements ManagedLoginSession {
     }
 
     @Override
-    public ManagedLoginResult handle(String line, PrintWriter out) {
+    public ManagedLoginResult handle(String line) {
         return switch (state) {
             case ACCOUNT_ID -> handleAccountId(line);
             case CREATE_CONFIRMATION -> handleCreateConfirmation(line);
-            case LOGIN_PASSWORD -> handleLoginPassword(line, out);
+            case LOGIN_PASSWORD -> handleLoginPassword(line);
             case NEW_PASSWORD -> handleNewPassword(line);
             case CONFIRM_PASSWORD -> handleConfirmPassword(line);
             case EMAIL -> handleEmail(line);
             case PERSONA_NAME -> handlePersonaName(line);
-            case GENDER -> handleGender(line, out);
+            case GENDER -> handleGender(line);
         };
     }
 
@@ -73,7 +73,7 @@ final class FilesystemAccountLoginSession implements ManagedLoginSession {
             return ManagedLoginResult.continueLogin();
         }
 
-        message("No " + mud.gameName() + " account exists for " + accountId + ". Create it? (yes/no) ");
+        message("No " + gameName + " account exists for " + accountId + ". Create it? (yes/no) ");
         state = State.CREATE_CONFIRMATION;
         return ManagedLoginResult.continueLogin();
     }
@@ -86,17 +86,17 @@ final class FilesystemAccountLoginSession implements ManagedLoginSession {
             return ManagedLoginResult.continueLogin();
         }
         if ("no".equals(answer) || "n".equals(answer)) {
-            message("No account was created. Please visit " + mud.gameName() + " again when you are ready.\n");
+            message("No account was created. Please visit " + gameName + " again when you are ready.\n");
             return ManagedLoginResult.disconnectSession();
         }
         message("Please answer yes or no: ");
         return ManagedLoginResult.continueLogin();
     }
 
-    private ManagedLoginResult handleLoginPassword(String line, PrintWriter out) {
+    private ManagedLoginResult handleLoginPassword(String line) {
         Optional<Account> account = accounts.load(accountId);
         if (account.isPresent() && accounts.verifyPassword(line, account.orElseThrow().passwordHash())) {
-            return enter(out, account.orElseThrow());
+            return enter(account.orElseThrow());
         }
 
         passwordAttempts++;
@@ -169,7 +169,7 @@ final class FilesystemAccountLoginSession implements ManagedLoginSession {
         return ManagedLoginResult.continueLogin();
     }
 
-    private ManagedLoginResult handleGender(String line, PrintWriter out) {
+    private ManagedLoginResult handleGender(String line) {
         String normalized = line.toLowerCase();
         if (!("female".equals(normalized) || "male".equals(normalized) || "neutral".equals(normalized)
                 || "none".equals(normalized) || "other".equals(normalized))) {
@@ -179,24 +179,17 @@ final class FilesystemAccountLoginSession implements ManagedLoginSession {
 
         Account account = new Account(accountId, personaName, normalized, email, passwordHash);
         accounts.save(account);
-        return enter(out, account);
+        return enter(account);
     }
 
-    private ManagedLoginResult enter(PrintWriter out, Account account) {
-        InstancePersona replacement = mud.attachAuthenticatedPersona(
-                sessionId,
-                out,
-                remoteAddress,
-                new ManagedPersonaProfile(
-                        account.accountId(),
-                        account.personaName(),
-                        account.gender(),
-                        Map.of("email", account.email(), "password_hash", account.passwordHash())));
-        return ManagedLoginResult.replaceWith(replacement);
+    private ManagedLoginResult enter(Account account) {
+        return ManagedLoginResult.authenticated(new ManagedPersonaProfile(
+                account.accountId(), account.personaName(), account.gender(),
+                Map.of("email", account.email(), "password_hash", account.passwordHash())));
     }
 
     private void message(String text) {
-        mud.messageLoginPlayer(sessionId, text);
+        output.accept(text);
     }
 
     private static String normalizeAccountId(String value) {

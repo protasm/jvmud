@@ -17,7 +17,11 @@ callable signatures and implementations; `formatter` formats LPC source.
 `configuration` reads and assembles manifest policy; `instance` runs one mudlib.
 Its `lpc.MudlibRuntime` loads authored behavior; `lpc.LPCObjectLifecycle` keeps
 live object identity and state separate from that behavior's program revision.
-`lpc.MudlibRuntimeContext` connects execution to world, session, and storage services.
+`lpc.MudlibRuntimeContext` adapts execution to world, session, and storage services.
+`instance.session.InstanceSessions` owns connection and attachment transitions;
+`InstanceSession` represents a connection before and after login, and
+`PersonaAttachment` relates its selected Persona, Entity, and authored behavior.
+Managed login policies and prompt flows live under `instance.session.login`.
 `instance.efun.EngineEfuns` registers the
 engine operations, and `diagnostics` checks a selected mudlib's preload manifest.
 |`communication` |`transport` owns connection mechanics, `admin` interprets
@@ -70,8 +74,13 @@ Former package: `language.exec`
 |`MudlibRuntime` in `engine.instance.lpc` owns hosted LPC objects and engine integration
 |`RuntimeContext` +
 Hosted state and services
-|`MudlibRuntimeContext` in `engine.instance.lpc` owns hosted state.
-`language.runtime.RuntimeContext` defines the neutral generated-code contract.
+|`MudlibRuntimeContext` in `engine.instance.lpc` adapts authored calls to hosted
+owners, including `InstanceSessions`. `language.runtime.RuntimeContext` defines
+the neutral generated-code contract.
+|`InstancePersona` +
+Former package: `engine.instance`
+|`InstanceSession` in `engine.instance.session` represents the connection lifetime;
+`PersonaAttachment` explicitly represents its selected Persona and Entity.
 |`CoreEfuns` +
 Built-in engine operations
 |`EngineEfuns` in `engine.instance.efun`
@@ -86,6 +95,14 @@ The former source packages were `language.preproc`, `language.sourcepos`, and
 `language.parser.type`. The former built-in catalog was
 `language.efun.builtin.CoreEfuns`. The declaration and reader were
 `MudlibBoundary` and `MudlibBoundaryConfigReader` in `execution.model.mudlib`.
+
+On `InstanceHost`, replace `attachPersona(...)` and `detachPersona(...)` with
+`attachSession(...)` and `detachSession(...)`, using `InstanceSession` as the
+connection handle. Replace `isAttached(InstancePersona)` with
+`isOpen(InstanceSession)` when checking connection lifetime. An open session can
+still be awaiting login; use `session.attachment().isPresent()` when the caller
+requires an attached Persona. Obtain the selected Persona through that attachment
+rather than treating login as an LPC actor.
 
 On the hosted runtime, replace `mudlibBoundary()` with `configuration()` and
 `registerMudlibBoundary(...)` with `configureMudlib(...)`. The hosted context's

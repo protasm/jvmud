@@ -1,5 +1,12 @@
 package io.github.protasm.jvmud.engine.instance;
 
+import io.github.protasm.jvmud.engine.instance.session.InstanceSession;
+import io.github.protasm.jvmud.engine.instance.session.InstanceSessions;
+import io.github.protasm.jvmud.engine.instance.session.PersonaAttachment;
+import io.github.protasm.jvmud.engine.instance.session.login.ManagedLoginPolicies;
+import io.github.protasm.jvmud.engine.instance.session.login.ManagedLoginResult;
+import io.github.protasm.jvmud.engine.instance.session.login.ManagedLoginSession;
+import io.github.protasm.jvmud.engine.instance.session.login.ManagedPersonaProfile;
 import io.github.protasm.jvmud.communication.output.OutgoingTextFormatter;
 import io.github.protasm.jvmud.communication.protocol.GMCPCodec;
 import io.github.protasm.jvmud.communication.protocol.GMCPMessage;
@@ -29,6 +36,7 @@ import java.util.function.BiConsumer;
 /** Runtime and serialized world operations for one independently hosted mudlib. */
 public final class MudInstance implements InstanceHost {
     private final MudlibRuntime runtime;
+    private final InstanceSessions sessions;
     private final WorldRuntime worldRuntime;
     private final String gameId;
     private final Path mudlibRoot;
@@ -77,6 +85,7 @@ public final class MudInstance implements InstanceHost {
             String runtimeErrorMethod,
             MudlibBootResult bootResult) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
+        this.sessions = runtime.sessions();
         this.worldRuntime = Objects.requireNonNull(worldRuntime, "worldRuntime");
         this.gameId = Objects.requireNonNull(gameId, "gameId");
         this.mudlibRoot = Objects.requireNonNull(mudlibRoot, "mudlibRoot");
@@ -176,6 +185,7 @@ public final class MudInstance implements InstanceHost {
                 boundary.lifecycleMethod(MudlibLifecycleEvent.PLAYER_SESSION_DISCONNECTED).orElse(null),
                 boundary.lifecycleMethod(MudlibLifecycleEvent.RUNTIME_ERROR).orElse(null),
                 result);
+        mud.sessions.setAttachmentListener(mud::attachmentChanged);
         return mud;
     }
 
@@ -234,54 +244,54 @@ public final class MudInstance implements InstanceHost {
         return runOnWorldThread(() -> reloadMudlibObjectOnWorldThread(objectPath));
     }
 
-    /** Queues attachment to this mudlib before delivering player input. */
-    public InstancePersona attachPersona(PrintWriter out, String remoteAddress) {
-        return runOnWorldThread(() -> attachPersonaOnWorldThread(out, remoteAddress));
+    /** Opens a connection on the instance queue, entering the selected login policy if needed. */
+    public InstanceSession attachSession(PrintWriter out, String remoteAddress) {
+        return runOnWorldThread(() -> attachSessionOnWorldThread(out, remoteAddress));
     }
 
-    /** Queues the transport output binding for a selected persona. */
-    public void bindClientProtocolSink(InstancePersona persona, BiConsumer<String, String> protocolOutputSink) {
-        runOnWorldThread(() -> { bindClientProtocolSinkOnWorldThread(persona, protocolOutputSink); return null; });
+    /** Binds protocol output to the connection, including time before Persona attachment. */
+    public void bindClientProtocolSink(InstanceSession session, BiConsumer<String, String> protocolOutputSink) {
+        runOnWorldThread(() -> { bindClientProtocolSinkOnWorldThread(session, protocolOutputSink); return null; });
     }
 
     /** Queues a client protocol state change. */
-    public void setClientProtocolEnabled(InstancePersona persona, String protocol, boolean enabled) {
-        runOnWorldThread(() -> { setClientProtocolEnabledOnWorldThread(persona, protocol, enabled); return null; });
+    public void setClientProtocolEnabled(InstanceSession session, String protocol, boolean enabled) {
+        runOnWorldThread(() -> { setClientProtocolEnabledOnWorldThread(session, protocol, enabled); return null; });
     }
 
     /** Queues a decoded client protocol message. */
-    public void receiveClientProtocolMessage(InstancePersona persona, String protocol, String message) {
-        runOnWorldThread(() -> { receiveClientProtocolMessageOnWorldThread(persona, protocol, message); return null; });
+    public void receiveClientProtocolMessage(InstanceSession session, String protocol, String message) {
+        runOnWorldThread(() -> { receiveClientProtocolMessageOnWorldThread(session, protocol, message); return null; });
     }
 
-    /** Queues session detachment after prior world work. */
-    public void detachPersona(InstancePersona persona) {
-        runOnWorldThread(() -> { detachPersonaOnWorldThread(persona); return null; });
+    /** Closes a connection and its Persona attachment after prior world work. */
+    public void detachSession(InstanceSession session) {
+        runOnWorldThread(() -> { detachSessionOnWorldThread(session); return null; });
     }
 
     /** Delivers input on the world queue; mudlib command results stay inside the instance. */
-    public void dispatch(InstancePersona persona, PrintWriter out, String commandLine) {
-        runOnWorldThread(() -> { dispatchOnWorldThread(persona, out, commandLine); return null; });
+    public void dispatch(InstanceSession session, PrintWriter out, String commandLine) {
+        runOnWorldThread(() -> { dispatchOnWorldThread(session, out, commandLine); return null; });
     }
 
     /** Queues prompt delivery after preceding world work. */
-    public void printPromptIfReady(InstancePersona persona, PrintWriter out) {
-        runOnWorldThread(() -> { printPromptIfReadyOnWorldThread(persona, out); return null; });
+    public void printPromptIfReady(InstanceSession session, PrintWriter out) {
+        runOnWorldThread(() -> { printPromptIfReadyOnWorldThread(session, out); return null; });
     }
 
     /** Reads input capture state in order with world work. */
-    public boolean isCapturingInput(InstancePersona persona) {
-        return runOnWorldThread(() -> isCapturingInputOnWorldThread(persona));
+    public boolean isCapturingInput(InstanceSession session) {
+        return runOnWorldThread(() -> isCapturingInputOnWorldThread(session));
     }
 
     /** Reads hidden-input state in order with world work. */
-    public boolean isCapturingNoEchoInput(InstancePersona persona) {
-        return runOnWorldThread(() -> isCapturingNoEchoInputOnWorldThread(persona));
+    public boolean isCapturingNoEchoInput(InstanceSession session) {
+        return runOnWorldThread(() -> isCapturingNoEchoInputOnWorldThread(session));
     }
 
-    /** Reads attachment state in order with world work. */
-    public boolean isAttached(InstancePersona persona) {
-        return runOnWorldThread(() -> isAttachedOnWorldThread(persona));
+    /** Reads connection liveness independently of whether a Persona has been attached. */
+    public boolean isOpen(InstanceSession session) {
+        return runOnWorldThread(() -> isOpenOnWorldThread(session));
     }
 
     /** Returns the unique identity used in the engine menu and administration. */
@@ -369,32 +379,33 @@ public final class MudInstance implements InstanceHost {
         return startingPlacePath;
     }
 
-    private synchronized InstancePersona attachPersonaOnWorldThread(PrintWriter out, String remoteAddress) {
+    private synchronized InstanceSession attachSessionOnWorldThread(PrintWriter out, String remoteAddress) {
         if (stopped) throw new IllegalStateException("Mudlib is stopped.");
-        return attachPersona("telnet/" + nextSessionId++, out, remoteAddress, true);
+        return attachSession("telnet/" + nextSessionId++, out, remoteAddress, true);
     }
 
     private synchronized void bindClientProtocolSinkOnWorldThread(
-            InstancePersona persona, BiConsumer<String, String> protocolOutputSink) {
-        if (persona != null && isAttached(persona)) {
-            runtime.bindSessionProtocolSink(persona.actor(), protocolOutputSink);
+            InstanceSession session, BiConsumer<String, String> protocolOutputSink) {
+        if (isOpenOnWorldThread(session)) {
+            sessions.bindProtocolSink(session.sessionId(), protocolOutputSink);
         }
     }
 
     private synchronized void setClientProtocolEnabledOnWorldThread(
-            InstancePersona persona, String protocol, boolean enabled) {
-        if (persona == null || !isAttached(persona)) {
+            InstanceSession session, String protocol, boolean enabled) {
+        if (!isOpenOnWorldThread(session)) {
             return;
         }
-        runtime.setSessionProtocolEnabled(persona.actor(), protocol, enabled);
-        runtime.withCommandActor(persona.actor(), () -> runtime.invokeOptionalObject(
-                persona.actor(), "client_protocol_changed", protocol, enabled ? 1 : 0));
+        sessions.setProtocolEnabled(session.sessionId(), protocol, enabled);
+        session.attachment().ifPresent(attachment -> runtime.withCommandActor(attachment.behavior(), () ->
+                runtime.invokeOptionalObject(attachment.behavior(), "client_protocol_changed", protocol, enabled ? 1 : 0)));
         runtime.clearOutputTranscript();
     }
 
     private synchronized void receiveClientProtocolMessageOnWorldThread(
-            InstancePersona persona, String protocol, String message) {
-        if (persona == null || !isAttached(persona) || !"GMCP".equalsIgnoreCase(protocol)) {
+            InstanceSession session, String protocol, String message) {
+        if (!isOpenOnWorldThread(session) || session.attachment().isEmpty()
+                || !"GMCP".equalsIgnoreCase(protocol)) {
             return;
         }
         GMCPMessage decoded;
@@ -403,32 +414,34 @@ public final class MudInstance implements InstanceHost {
         } catch (IllegalArgumentException ignored) {
             return;
         }
-        runtime.withCommandActor(persona.actor(), () -> runtime.invokeOptionalObject(
-                persona.actor(), "receive_gmcp", decoded.packageName(), decoded.payload()));
+        Object behavior = session.personaObject();
+        runtime.withCommandActor(behavior, () -> runtime.invokeOptionalObject(
+                behavior, "receive_gmcp", decoded.packageName(), decoded.payload()));
         runtime.clearOutputTranscript();
     }
 
-    synchronized InstancePersona attachPersona(
+    synchronized InstanceSession attachSession(
             String sessionId,
             PrintWriter out,
             String remoteAddress,
             boolean announceConnection) {
-        ManagedLoginSession managedLogin =
-                ManagedLoginPolicies.create(sessionPolicy, this, sessionId, remoteAddress);
-        if (managedLogin != null) {
+        Optional<ManagedLoginSession> managedLogin =
+                ManagedLoginPolicies.create(sessionPolicy, mudlibRoot, gameName(),
+                        text -> writeToPlayerForSession(sessionId, text));
+        if (managedLogin.isPresent()) {
             return attachManagedLoginSession(
-                    sessionId, out, remoteAddress, announceConnection, managedLogin);
+                    sessionId, out, remoteAddress, announceConnection, managedLogin.orElseThrow());
         }
 
         int id = nextPersonaId++;
-        InstancePersona persona = attachMudlibPlayer(id, sessionId, out, remoteAddress, announceConnection, null, "");
-        if (persona != null) {
-            return persona;
+        InstanceSession session = attachMudlibPlayer(id, sessionId, out, remoteAddress, announceConnection, null, "");
+        if (session != null) {
+            return session;
         }
         throw new IllegalStateException("Mudlib config must define player_object for hosted sessions.");
     }
 
-    private InstancePersona attachManagedLoginSession(
+    private InstanceSession attachManagedLoginSession(
             String sessionId,
             PrintWriter out,
             String remoteAddress,
@@ -442,15 +455,9 @@ public final class MudInstance implements InstanceHost {
         if (announceConnection) {
             writeConnectedBanner(sessionId);
         }
-        InstancePersona persona = new InstancePersona(
-                this,
-                sessionId,
-                "player/" + sessionId,
-                "login player",
-                login,
-                remoteAddress);
+        sessions.beginLogin(sessionId, login);
         login.start();
-        return persona;
+        return sessions.session(sessionId).orElseThrow();
     }
 
     /**
@@ -459,7 +466,7 @@ public final class MudInstance implements InstanceHost {
      * <p>Account interpretation remains mudlib policy: JVMud delivers neutral lifecycle events,
      * and the manifest maps those events to whatever methods the selected mudlib uses.</p>
      */
-    InstancePersona attachAuthenticatedPersona(
+    private InstanceSession attachAuthenticatedPersona(
             String sessionId,
             PrintWriter out,
             String remoteAddress,
@@ -481,6 +488,9 @@ public final class MudInstance implements InstanceHost {
             out.print(text);
             out.flush();
         }, projection);
+        InstanceSession session = sessions.session(sessionId).orElseThrow();
+        PersonaAttachment attachment = session.attachment().orElseThrow();
+        sessions.attach(sessionId, attachment.withProfile(profile));
         runtime.refreshCommandActions(actor);
         runtime.clearOutputTranscript();
         if (playerPersonaResolvedMethod != null) {
@@ -496,18 +506,10 @@ public final class MudInstance implements InstanceHost {
             runtime.invokeObject(actor, playerEnteredWorldMethod, startingPlaceObject);
         }
         runtime.clearOutputTranscript();
-        return new InstancePersona(
-                this,
-                sessionId,
-                objectId,
-                profile.displayName(),
-                profile.externalUserId(),
-                profile.gender(),
-                actor,
-                remoteAddress);
+        return session;
     }
 
-    private InstancePersona attachMudlibPlayer(
+    private InstanceSession attachMudlibPlayer(
             int id,
             String sessionId,
             PrintWriter out,
@@ -558,8 +560,7 @@ public final class MudInstance implements InstanceHost {
                 writeToPlayerForSession(sessionId, "Attached " + name + " as " + objectId
                         + " in " + startingPlacePath + ".\n");
             }
-            return new InstancePersona(this, sessionId, objectId, name, visitingUserId != null ? visitingUserId : name,
-                    visitingGender, actor, remoteAddress);
+            return sessions.session(sessionId).orElseThrow();
         } catch (RuntimeException | LinkageError e) {
             runtime.clearOutputTranscript();
             throw new IllegalStateException("Could not attach mudlib player object " + playerObjectPath + ".", e);
@@ -579,18 +580,12 @@ public final class MudInstance implements InstanceHost {
         runtime.clearOutputTranscript();
     }
 
-    private synchronized void detachPersonaOnWorldThread(InstancePersona persona) {
-        if (persona != null) {
-            if (persona.actor() instanceof ManagedLoginSession) {
-                runtime.unbindSession(persona.sessionId());
-                return;
-            }
-            if (isAttached(persona)) {
-                invokePlayerSessionDisconnected(persona.actor());
-                runtime.unbindSession(persona.sessionId());
-            }
-            removeWorldEntity(persona);
+    private synchronized void detachSessionOnWorldThread(InstanceSession session) {
+        if (!isOpenOnWorldThread(session)) {
+            return;
         }
+        session.attachment().ifPresent(attachment -> invokePlayerSessionDisconnected(attachment.behavior()));
+        runtime.unbindSession(session.sessionId());
     }
 
     private void invokePlayerSessionDisconnected(Object actor) {
@@ -606,50 +601,50 @@ public final class MudInstance implements InstanceHost {
         }
     }
 
-    private synchronized void dispatchOnWorldThread(InstancePersona persona, PrintWriter out, String commandLine) {
+    private synchronized void dispatchOnWorldThread(InstanceSession session, PrintWriter out, String commandLine) {
         try {
-            dispatchUnchecked(persona, out, commandLine);
+            dispatchUnchecked(session, out, commandLine);
         } catch (RuntimeException | LinkageError e) {
-            handleRuntimeError(persona, out, "command", commandLine, e);
+            handleRuntimeError(session, out, "command", commandLine, e);
         }
     }
 
-    private void dispatchUnchecked(InstancePersona persona, PrintWriter out, String commandLine) {
-        if (persona.actor() instanceof ManagedLoginSession login) {
-            ManagedLoginResult result = login.handle(commandLine, out);
-            if (result.replacement().isPresent()) {
-                persona.replaceWith(result.replacement().orElseThrow());
-                return;
-            }
-            if (result.shouldDisconnect()) {
-                runtime.unbindSession(persona.sessionId());
-                return;
+    private void dispatchUnchecked(InstanceSession session, PrintWriter out, String commandLine) {
+        if (!isOpenOnWorldThread(session)) {
+            return;
+        }
+        sessions.touchSession(session.sessionId());
+        if (session.login().isPresent()) {
+            ManagedLoginResult result = session.login().orElseThrow().handle(commandLine);
+            if (result.profile().isPresent()) {
+                attachAuthenticatedPersona(session.sessionId(), out,
+                        session.remoteAddress().orElse(null),
+                        result.profile().orElseThrow());
+            } else if (result.shouldDisconnect()) {
+                runtime.unbindSession(session.sessionId());
             }
             return;
         }
 
-        if (runtime.hasCapturedSessionInput(persona.actor())) {
+        if (runtime.hasCapturedSessionInput(session.personaObject())) {
             runtime.clearOutputTranscript();
-            runtime.deliverCapturedSessionInput(persona.actor(), commandLine);
+            runtime.deliverCapturedSessionInput(session.personaObject(), commandLine);
             runtime.clearOutputTranscript();
             runDueScheduledWork();
-            if (!isAttached(persona)) {
-                removeWorldEntity(persona);
+            if (!isOpenOnWorldThread(session)) {
                 return;
             }
-            refreshBoundActor(persona);
             return;
         }
 
         if (isLocationDiagnosticCommand(commandLine)) {
-            printCurrentLocationPath(persona, out);
+            printCurrentLocationPath(session, out);
             return;
         }
 
         runtime.clearOutputTranscript();
-        runtime.dispatchCommand(persona.actor(), commandLine);
+        runtime.dispatchCommand(session.personaObject(), commandLine);
         runDueScheduledWork();
-        refreshBoundActor(persona);
         runtime.clearOutputTranscript();
     }
 
@@ -657,8 +652,8 @@ public final class MudInstance implements InstanceHost {
         return locationDiagnosticCommand != null && locationDiagnosticCommand.equals(commandLine.trim());
     }
 
-    private void printCurrentLocationPath(InstancePersona persona, PrintWriter out) {
-        Object location = runtime.environment(persona.actor());
+    private void printCurrentLocationPath(InstanceSession session, PrintWriter out) {
+        Object location = runtime.environment(session.personaObject());
         String objectId = location != null ? runtime.objectId(location) : null;
         out.println(objectId != null ? "/" + objectId + ".c" : "No current location.");
     }
@@ -678,19 +673,24 @@ public final class MudInstance implements InstanceHost {
         worldRuntime.scheduler().advanceBy(0);
     }
 
-    private void refreshBoundActor(InstancePersona persona) {
-        runtime.lpcObjectForSession(persona.sessionId()).ifPresent(boundActor -> {
-            if (boundActor != persona.actor()) {
-                String objectId = Objects.requireNonNullElse(runtime.objectId(boundActor), persona.objectId());
-                // A mudlib-side session rebind replaces the live actor; the old entity must not
-                // reserve its object id or remain addressable as the connected player.
-                removeWorldEntity(persona);
-                persona.replaceActor(objectId, boundActor);
-                invokePlayerSessionPostRebind(boundActor);
-                runtime.refreshCommandActions(boundActor);
+    /** Reacts to the owner's committed attachment transition without keeping a second actor copy. */
+    private void attachmentChanged(InstanceSessions.AttachmentChange change) {
+        Object previous = change.previous().map(PersonaAttachment::behavior).orElse(null);
+        Object current = change.current().map(PersonaAttachment::behavior).orElse(null);
+        // Destruction moves carried objects through their lifecycle before removing the binding.
+        // A handoff may already have attached this same behavior to another live connection.
+        if (change.cause() != InstanceSessions.AttachmentChange.Cause.BEHAVIOR_DESTROYED
+                && previous != null && previous != current && sessions.sessionFor(previous).isEmpty()) {
+            runtime.worldProjection().remove(previous);
+        }
+        if (previous != null && current != null && previous != current) {
+            runtime.withCommandActor(current, () -> {
+                invokePlayerSessionPostRebind(current);
+                runtime.refreshCommandActions(current);
                 runDueScheduledWork();
-            }
-        });
+                return null;
+            });
+        }
     }
 
     private void invokePlayerSessionPostRebind(Object actor) {
@@ -701,14 +701,14 @@ public final class MudInstance implements InstanceHost {
     }
 
     private Object handleRuntimeError(
-            InstancePersona persona,
+            InstanceSession session,
             PrintWriter out,
             String context,
             String operation,
             Throwable error) {
         reportRuntimeError(context, error);
         runtime.clearOutputTranscript();
-        if (runtimeErrorMethod != null && invokeRuntimeErrorHandler(persona, context, operation, error)) {
+        if (runtimeErrorMethod != null && invokeRuntimeErrorHandler(session, context, operation, error)) {
             return 1;
         }
         out.println("Something goes wrong.");
@@ -724,25 +724,23 @@ public final class MudInstance implements InstanceHost {
     }
 
     private boolean invokeRuntimeErrorHandler(
-            InstancePersona persona,
+            InstanceSession session,
             String context,
             String operation,
             Throwable error) {
         try {
-            Object handler = errorHandlerObject(persona);
+            Object handler = errorHandlerObject(session);
             if (handler == null) {
                 return false;
             }
-            runtime.withCommandActor(persona.actor(), () -> {
-                runtime.invokeOptionalObject(
-                        handler,
-                        runtimeErrorMethod,
-                        persona.actor(),
-                        context,
-                        operation,
-                        error.getMessage());
-                return null;
-            });
+            Object actor = session != null ? session.attachment().map(PersonaAttachment::behavior).orElse(null) : null;
+            java.util.function.Supplier<Object> report = () -> runtime.invokeOptionalObject(
+                    handler, runtimeErrorMethod, actor != null ? actor : 0, context, operation, error.getMessage());
+            if (actor != null) {
+                runtime.withCommandActor(actor, report);
+            } else {
+                report.get();
+            }
             runtime.clearOutputTranscript();
             return true;
         } catch (RuntimeException | LinkageError handlerFailure) {
@@ -752,19 +750,19 @@ public final class MudInstance implements InstanceHost {
         }
     }
 
-    private Object errorHandlerObject(InstancePersona persona) {
+    private Object errorHandlerObject(InstanceSession session) {
         String boundaryObjectPath = bootResult.configuration().boundaryObjectPath().orElse(null);
         if (boundaryObjectPath != null) {
             return runtime.loadOrGetObject(boundaryObjectPath);
         }
-        return persona != null ? persona.actor() : null;
+        return session != null ? session.attachment().map(PersonaAttachment::behavior).orElse(null) : null;
     }
 
-    private synchronized void printPromptIfReadyOnWorldThread(InstancePersona persona, PrintWriter out) {
-        if (persona.actor() instanceof ManagedLoginSession) {
+    private synchronized void printPromptIfReadyOnWorldThread(InstanceSession session, PrintWriter out) {
+        if (!isOpenOnWorldThread(session) || session.login().isPresent() || session.attachment().isEmpty()) {
             return;
         }
-        if (playerPrompt == null || !isAttached(persona) || runtime.hasCapturedSessionInput(persona.actor())) {
+        if (playerPrompt == null || !isOpenOnWorldThread(session) || runtime.hasCapturedSessionInput(session.personaObject())) {
             return;
         }
         if (showRuler) {
@@ -774,28 +772,24 @@ public final class MudInstance implements InstanceHost {
         out.flush();
     }
 
-    private synchronized boolean isCapturingInputOnWorldThread(InstancePersona persona) {
-        if (persona != null && persona.actor() instanceof ManagedLoginSession) {
+    private synchronized boolean isCapturingInputOnWorldThread(InstanceSession session) {
+        if (isOpenOnWorldThread(session) && session.login().isPresent()) {
             return true;
         }
-        return isAttached(persona) && runtime.hasCapturedSessionInput(persona.actor());
+        return isOpenOnWorldThread(session) && session.attachment().isPresent()
+                && runtime.hasCapturedSessionInput(session.personaObject());
     }
 
-    private synchronized boolean isCapturingNoEchoInputOnWorldThread(InstancePersona persona) {
-        if (persona != null && persona.actor() instanceof ManagedLoginSession login) {
-            return login.noEcho();
+    private synchronized boolean isCapturingNoEchoInputOnWorldThread(InstanceSession session) {
+        if (isOpenOnWorldThread(session) && session.login().isPresent()) {
+            return session.login().orElseThrow().noEcho();
         }
-        return isAttached(persona) && runtime.capturedSessionInputNoEcho(persona.actor());
+        return isOpenOnWorldThread(session) && session.attachment().isPresent()
+                && runtime.capturedSessionInputNoEcho(session.personaObject());
     }
 
-    private synchronized boolean isAttachedOnWorldThread(InstancePersona persona) {
-        return persona != null && runtime.sessionRecord(persona.sessionId()).isPresent();
-    }
-
-    private void removeWorldEntity(InstancePersona persona) {
-        if (persona != null) {
-            runtime.worldProjection().remove(persona.actor());
-        }
+    private synchronized boolean isOpenOnWorldThread(InstanceSession session) {
+        return session != null && sessions.session(session.sessionId()).orElse(null) == session;
     }
 
     private void printRuntimeOutput(PrintWriter out) {
@@ -818,10 +812,6 @@ public final class MudInstance implements InstanceHost {
             throw new IllegalArgumentException("Starting location is not a place: " + path);
         }
         return worldRuntime.createPlace(path, path);
-    }
-
-    void messageLoginPlayer(String sessionId, String text) {
-        writeToPlayerForSession(sessionId, text);
     }
 
 }

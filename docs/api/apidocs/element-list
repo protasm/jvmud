@@ -16,6 +16,8 @@ io.github.protasm.jvmud.engine.diagnostics
 io.github.protasm.jvmud.engine.instance
 io.github.protasm.jvmud.engine.instance.efun
 io.github.protasm.jvmud.engine.instance.lpc
+io.github.protasm.jvmud.engine.instance.session
+io.github.protasm.jvmud.engine.instance.session.login
 io.github.protasm.jvmud.engine.model
 io.github.protasm.jvmud.engine.model.identity
 io.github.protasm.jvmud.engine.model.mudlib

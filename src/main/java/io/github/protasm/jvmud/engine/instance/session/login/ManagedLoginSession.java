@@ -1,9 +1,7 @@
-package io.github.protasm.jvmud.engine.instance;
-
-import java.io.PrintWriter;
+package io.github.protasm.jvmud.engine.instance.session.login;
 
 /** Host-managed login flow selected explicitly by a mudlib manifest session policy. */
-interface ManagedLoginSession {
+public interface ManagedLoginSession {
     /** Emits the first prompt for this login flow. */
     void start();
 
@@ -11,5 +9,5 @@ interface ManagedLoginSession {
     boolean noEcho();
 
     /** Consumes one input line and returns the resulting session action. */
-    ManagedLoginResult handle(String line, PrintWriter out);
+    ManagedLoginResult handle(String line);
 }

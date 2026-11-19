@@ -48,9 +48,10 @@ object that participates in the world. Three concepts have distinct owners:
 - `engine.instance.lpc.LPCObjectLifecycle` associates a stable live object identity
   with its current behavior receiver and copies compatible instance state between
   receivers. An LPC object reference continues to identify the same live object.
-- `MudlibRuntimeContext` retains the object's engine bindings: containment,
-  sessions, command registrations, and scheduled work. A new program revision does
-  not require destroying or recreating those bindings.
+- Engine owners retain the object's bindings: `MudlibWorldProjection` supplies
+  containment, `InstanceSessions` supplies session attachment, and
+  `MudlibRuntimeContext` adapts command and scheduled-work operations. A new program
+  revision does not require destroying or recreating those bindings.
 
 The authenticated mudlib administration command `reload <path>` prepares a fresh
 program revision and Java receiver before installing either. It checks that the
@@ -194,6 +195,47 @@ profile/account data, login prompts, passwords, character names, duplicate
 control rules, and Persona behavior. Those are mudlib-owned meanings layered on
 top of JVMud's anonymous Player/Session/Persona mechanics.
 
+### Connection And Attachment Ownership
+
+The hosted implementation expresses the connection lifecycle in
+`engine.instance.session`:
+
+- `InstanceSessions` owns the instance's active connections and the indexes that
+  associate Sessions, Players, Personas, and authored behavior. Attach, rebind, and
+  detach operations update those relationships together.
+- `InstanceSession` is the stable handle for one connection's entire lifetime,
+  including login before a Persona has been selected. Its `SessionID` identifies
+  state owned by `InstanceSessions`. A login flow is explicit connection state;
+  it does not stand in for a Persona.
+- `PersonaAttachment` explicitly relates the selected Persona to its native
+  Entity and stable authored LPC object identity. World location belongs to the
+  Entity; replacing compiled behavior does not replace that identity.
+
+`MudInstance` coordinates these transitions on its execution queue.
+`MudlibRuntimeContext` translates LPC-facing session operations to the same
+`InstanceSessions` owner rather than keeping another set of connection bindings.
+The records under `engine.model.identity` remain the engine's identity vocabulary.
+Managed login policies and prompt flows live under `engine.instance.session.login`.
+A policy consumes input and returns a `ManagedLoginResult`, optionally containing
+a neutral `ManagedPersonaProfile`; `MudInstance` performs the resulting attachment
+or disconnect transition. Account names and authentication policy remain mudlib
+choices.
+
+Connection liveness and Persona attachment are separate questions.
+`InstanceSession.isOpen()` remains true during login; `attachment()` is empty until
+a Persona is selected. Transport callers use `InstanceHost.isOpen(session)` to
+check the connection and inspect the optional attachment when they need in-world
+behavior.
+
+A compatibility handoff changes the authored behavior attachment while retaining
+its `SessionID`, `PlayerID`, connection timestamp, text and protocol output sinks,
+and negotiated protocol state. Captured input belongs to the attached Persona's
+scope: rebind clears the previous attachment's callback, and the newly attached
+object may request its own callback. Disconnect removes the live attachment,
+connection-only routing, callbacks, and the former attachment's world presence.
+The mudlib's disconnect hook may save or clean up authored state before routing
+is removed; persistent Persona retention is a separate policy.
+
 The optional `filesystem_accounts` host policy provides reusable local
 account-file, password-hashing, and pre-Persona prompt mechanics when a manifest
 selects it explicitly. It does not name or invoke mudlib methods directly.
@@ -210,8 +252,9 @@ object the engine ontology.
 
 The minimal JVMud-native attach sequence is:
 
-1. A telnet connection arrives. JVMud creates a Session record and records
-   transport details such as remote address, idle timestamp, and output sink.
+1. A telnet connection arrives. `InstanceSessions` creates an `InstanceSession`
+   and Session record, recording connection details such as remote address, idle
+   timestamp, and output sink.
 2. JVMud creates the Player endpoint associated with that Session. Login,
    character-selection, server notice, and other human-facing text can be
    messaged directly to the Player before any Persona exists.
@@ -219,7 +262,8 @@ The minimal JVMud-native attach sequence is:
    Persona that will serve as the Player's in-World perspective.
 4. JVMud ensures that the Persona has any required mudlib-side behavior
    projection, such as a compatibility player object.
-5. JVMud associates the Session, Player, and Persona as the active control
+5. `InstanceSessions` installs a `PersonaAttachment` that associates the Session,
+   Player, Persona, native Entity, and authored behavior as the active control
    relationship, without deciding mudlib account ownership or duplicate-control
    policy.
 6. JVMud gives the Persona's entity a location, using the configured initial
@@ -229,9 +273,10 @@ The minimal JVMud-native attach sequence is:
 8. Each gameplay input line is dispatched as that Persona. During dispatch,
    `this_player()` is the compatibility view of the active Persona and
    `query_verb()` is the parsed verb.
-9. When the Session disconnects, JVMud removes the session-only association.
-   Mudlib policy may save, move, preserve, or clean up the Persona or related
-   profile state.
+9. When the Session disconnects, `InstanceSessions` removes the active connection
+   and attachment, and the hosting instance removes the former attachment's world
+   presence. Mudlib policy may save or clean up authored Persona or profile state
+   before that cleanup.
 
 The player lifecycle hooks above correspond to this sequence. They are optional
 boundary hooks, not legacy driver applies. A mudlib may map them to LPC methods

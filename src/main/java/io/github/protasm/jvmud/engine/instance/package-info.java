@@ -4,6 +4,7 @@
  * <p>The instance layer assembles compiler output, engine runtime state, mudlib boundary metadata,
  * lifecycle hooks, player/persona attachment, and per-mudlib execution into one running mudlib. It
  * should know how a mudlib boots and lives, but it should not own Telnet protocol mechanics or durable
- * storage formats.</p>
+ * storage formats. The {@code session} subpackage owns connection identity and explicit Persona
+ * attachment; its {@code login} subpackage supplies optional policies that return profile data.</p>
  */
 package io.github.protasm.jvmud.engine.instance;

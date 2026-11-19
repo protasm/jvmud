@@ -1,4 +1,4 @@
-package io.github.protasm.jvmud.engine.instance;
+package io.github.protasm.jvmud.engine.instance.session.login;
 
 import io.github.protasm.jvmud.storage.filesystem.FilesystemAccountStore;
 import io.github.protasm.jvmud.storage.filesystem.FilesystemAccountStore.Account;

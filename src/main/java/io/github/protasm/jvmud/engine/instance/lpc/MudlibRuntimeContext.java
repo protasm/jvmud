@@ -2,6 +2,10 @@ package io.github.protasm.jvmud.engine.instance.lpc;
 
 import io.github.protasm.jvmud.communication.output.OutgoingTextFormatter;
 import io.github.protasm.jvmud.engine.configuration.MudlibConfiguration;
+import io.github.protasm.jvmud.engine.instance.session.InstanceSession;
+import io.github.protasm.jvmud.engine.instance.session.InstanceSessions;
+import io.github.protasm.jvmud.engine.instance.session.PersonaAttachment;
+import io.github.protasm.jvmud.engine.instance.session.login.ManagedPersonaProfile;
 import io.github.protasm.jvmud.engine.model.identity.PersonaID;
 import io.github.protasm.jvmud.engine.model.identity.PersonaRecord;
 import io.github.protasm.jvmud.engine.model.identity.PlayerID;
@@ -39,13 +43,11 @@ import io.github.protasm.jvmud.storage.jdbc.RuntimeDatabaseService;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -62,8 +64,9 @@ import java.util.function.Supplier;
 /**
  * Engine-owned state and services for executing LPC inside one mudlib instance.
  *
- * <p>World projection, player/session bindings, commands, scheduling and storage integration live
- * here. Generated code sees only the language's {@link RuntimeContext} contract. Compilation uses a
+ * <p>World projection, commands, scheduling and storage integration live here. Connection and
+ * Player/Persona attachment state belongs to {@link InstanceSessions}; this context adapts LPC calls
+ * to that owner. Generated code sees only the language's {@link RuntimeContext} contract. Compilation uses a
  * separate {@link LPCCompilerContext}; this adapter shares callable signatures with it without
  * allowing compiler passes to access live engine state.</p>
  *
@@ -94,13 +97,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private final Map<Object, Map<String, List<DeferredCallback>>> deferredCallbackTasks =
             new IdentityHashMap<>();
     private long nextDeferredCallbackId = 1;
-    private final Map<PlayerID, PlayerRecord> players = new LinkedHashMap<>();
-    private final Map<SessionID, SessionBinding> sessions = new LinkedHashMap<>();
-    private final Map<PersonaID, PersonaRecord> personas = new LinkedHashMap<>();
-    private final Map<Object, SessionBinding> sessionsByPersona = new IdentityHashMap<>();
-    private final Map<Object, PersonaID> personaIdsByProjection = new IdentityHashMap<>();
-    private final Map<Object, PendingSessionInput> pendingInputsByPersona = new IdentityHashMap<>();
-    private final Map<Object, StringBuilder> pendingTargetedOutputByPersona = new IdentityHashMap<>();
+    private final InstanceSessions instanceSessions;
     private final RuntimeDatabaseService databaseService = new RuntimeDatabaseService();
     private final StringBuilder outputTranscript = new StringBuilder();
     private final ThreadLocal<Deque<Object>> currentObjectStack =
@@ -142,6 +139,12 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     public MudlibRuntimeContext(IncludeResolver includeResolver, EfunRegistry efunRegistry) {
         this.efunRegistry = Objects.requireNonNull(efunRegistry, "efunRegistry");
         this.compilerContext = new LPCCompilerContext(includeResolver, efunRegistry);
+        this.instanceSessions = new InstanceSessions(this::objectReference, outputTranscript::append);
+    }
+
+    /** Returns the single owner of this instance's connection and Persona attachment state. */
+    public InstanceSessions sessions() {
+        return instanceSessions;
     }
 
     @Override
@@ -365,54 +368,28 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      * a Session, JVMud flushes the pending text to the target's own output sink.</p>
      */
     public void writeToLpcObject(Object target, Object value) {
-        SessionBinding binding = target != null ? sessionsByPersona.get(target) : null;
-        if (binding != null && receivesPlayerBoundMessages(target)) {
-            writeToSession(binding, value);
-        } else if (target != null && receivesPlayerBoundMessages(target)) {
-            pendingTargetedOutputByPersona
-                    .computeIfAbsent(target, ignored -> new StringBuilder())
-                    .append(formattedMessageText(value));
+        target = objectLifecycle.identityOf(target);
+        if (isLiveBehaviorObject(target) && receivesPlayerBoundMessages(target)) {
+            String text = formattedMessageText(value);
+            if (!instanceSessions.writeToObject(target, text)) {
+                instanceSessions.bufferOutput(target, text);
+            }
         }
     }
 
     /** Writes engine control-plane or transport text to one bound Session. */
     public boolean writeToSession(SessionID sessionId, Object value) {
-        Objects.requireNonNull(sessionId, "sessionId");
-        SessionBinding binding = sessions.get(sessionId);
-        if (binding == null) {
-            return false;
-        }
-        writeToSession(binding, value);
-        return true;
+        return instanceSessions.writeToSession(Objects.requireNonNull(sessionId, "sessionId"), formattedMessageText(value));
     }
 
     /** Writes engine control-plane text to all active Sessions for one Player. */
     public boolean writeToPlayer(PlayerID playerId, Object value) {
-        Objects.requireNonNull(playerId, "playerId");
-        PlayerRecord player = players.get(playerId);
-        if (player == null) {
-            return false;
-        }
-        boolean delivered = false;
-        for (SessionID sessionId : player.activeSessionIds()) {
-            delivered |= writeToSession(sessionId, value);
-        }
-        return delivered;
+        return instanceSessions.writeToPlayer(Objects.requireNonNull(playerId, "playerId"), formattedMessageText(value));
     }
 
     /** Writes engine gameplay text to the bound Session for one Persona. */
     public boolean writeToPersona(PersonaID personaId, Object value) {
-        Objects.requireNonNull(personaId, "personaId");
-        PersonaRecord persona = personas.get(personaId);
-        if (persona == null || persona.mudlibBehaviorProjection().isEmpty()) {
-            return false;
-        }
-        SessionBinding binding = sessionsByPersona.get(projectionObject(persona.mudlibBehaviorProjection().orElseThrow()));
-        if (binding == null) {
-            return false;
-        }
-        writeToSession(binding, value);
-        return true;
+        return instanceSessions.writeToPersona(Objects.requireNonNull(personaId, "personaId"), formattedMessageText(value));
     }
 
     public void emitPerceivable(Object emitter, Object value) {
@@ -462,7 +439,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         if (perceptionDepth >= 64) throw new IllegalStateException("Perception callback nesting exceeds 64");
         perceptionDepth++;
         try {
-            if (sessionsByPersona.containsKey(observer)) writeToProjection(observer, event.text(), true);
+            if (instanceSessions.isInteractive(observer)) writeToProjection(observer, event.text(), true);
             Supplier<Object> delivery = () -> {
                 String receiver = configuration.lifecycleMethod(MudlibLifecycleEvent.PERCEPTION_RECEIVED).orElse(null);
                 if (receiver != null) invokeOptionalObject(observer, receiver, event.toMapping());
@@ -490,10 +467,10 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     }
 
     private void writeToProjection(Object target, Object value, boolean playerBound) {
-        SessionBinding binding = target != null ? sessionsByPersona.get(target) : null;
-        if (binding != null) {
+        target = objectLifecycle.identityOf(target);
+        if (instanceSessions.isInteractive(target)) {
             if (!playerBound || receivesPlayerBoundMessages(target)) {
-                writeToSession(binding, value);
+                instanceSessions.writeToObject(target, formattedMessageText(value));
             }
         } else {
             String text = formattedMessageText(value);
@@ -528,12 +505,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         } catch (NoSuchMethodException e) {
             return true;
         }
-    }
-
-    private void writeToSession(SessionBinding binding, Object value) {
-        String text = formattedMessageText(value);
-        outputTranscript.append(text);
-        binding.outputSink().accept(text);
     }
 
     private String formattedMessageText(Object value) {
@@ -845,55 +816,16 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      * callback, such as a pager command, remain visible.</p>
      */
     public List<Object> users() {
-        return sessions.values().stream()
-                .map(SessionBinding::personaProjection)
-                .filter(Objects::nonNull)
-                .filter(persona -> !isSelfCapturedInputPersona(persona))
-                .toList();
-    }
-
-    private boolean isSelfCapturedInputPersona(Object persona) {
-        PendingSessionInput pendingInput = pendingInputsByPersona.get(persona);
-        return pendingInput != null && pendingInput.handler() == persona;
+        return instanceSessions.users();
     }
 
     /** Returns true when the supplied LPC object is currently bound to an active JVMud session. */
     public boolean isInteractive(Object user) {
-        return user != null && sessionsByPersona.containsKey(user);
+        return instanceSessions.isInteractive(objectLifecycle.identityOf(user));
     }
 
     public void bindPlayerSession(String sessionId, String remoteAddress, Consumer<String> sessionOutputSink) {
-        SessionID engineSessionId = new SessionID(sessionId);
-        PlayerID playerId = playerIdForSession(engineSessionId);
-        Consumer<String> sink = sessionOutputSink != null ? sessionOutputSink : ignored -> {};
-        SessionBinding existing = sessions.remove(engineSessionId);
-        Optional<Object> mudlibProfileProjection = Optional.empty();
-        if (existing != null) {
-            mudlibProfileProjection = existing.playerRecord().mudlibProfileProjection();
-            detachSessionFromRecords(existing);
-        }
-
-        Instant now = Instant.ofEpochMilli(System.currentTimeMillis());
-        SessionRecord sessionRecord = new SessionRecord(
-                engineSessionId,
-                playerId,
-                Optional.ofNullable(normalizeSessionText(remoteAddress)),
-                now,
-                now,
-                Optional.empty());
-        PlayerRecord playerRecord = new PlayerRecord(
-                playerId,
-                addSessionId(players.get(playerId), engineSessionId),
-                Optional.empty(),
-                mudlibProfileProjection);
-        SessionBinding binding = new SessionBinding(
-                sessionRecord,
-                playerRecord,
-                Optional.empty(),
-                sink,
-                existing != null ? existing.protocolState() : new SessionProtocolState());
-        players.put(playerId, playerRecord);
-        sessions.put(engineSessionId, binding);
+        instanceSessions.open(sessionId, remoteAddress, sessionOutputSink);
     }
 
     public void bindSession(String sessionId, Object persona, String remoteAddress, Consumer<String> sessionOutputSink) {
@@ -906,141 +838,79 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
             String remoteAddress,
             Consumer<String> sessionOutputSink,
             MudlibProjection mudlibProjection) {
-        Objects.requireNonNull(persona, "persona");
-        SessionID engineSessionId = new SessionID(sessionId);
-        PersonaID personaId = projectionPersonaIdFor(persona);
-        Consumer<String> sink = sessionOutputSink != null ? sessionOutputSink : ignored -> {};
-        SessionBinding existing = sessions.get(engineSessionId);
-        PlayerID playerId = existing != null ? existing.sessionRecord().playerId() : projectionPlayerIdFor(persona);
-        Optional<Object> mudlibProfileProjection = existing != null
-                ? existing.playerRecord().mudlibProfileProjection()
-                : Optional.ofNullable(mudlibProjection);
-        Instant connectedAt = existing != null ? existing.sessionRecord().connectedAt() : null;
-        if (existing != null) {
-            detachSessionFromRecords(existing);
-        }
-        SessionBinding previousPersonaBinding = sessionsByPersona.get(persona);
-        if (previousPersonaBinding != null) {
-            sessions.remove(previousPersonaBinding.sessionRecord().id());
-            detachSessionFromRecords(previousPersonaBinding);
-        }
-
-        long nowMillis = System.currentTimeMillis();
-        Instant now = Instant.ofEpochMilli(nowMillis);
-        SessionRecord sessionRecord = new SessionRecord(
-                engineSessionId,
-                playerId,
-                Optional.ofNullable(normalizeSessionText(remoteAddress)),
-                connectedAt != null ? connectedAt : now,
-                now,
-                Optional.of(personaId));
-        PlayerRecord playerRecord = new PlayerRecord(
-                playerId,
-                addSessionId(players.get(playerId), engineSessionId),
-                Optional.of(personaId),
-                mudlibProfileProjection);
-        PersonaRecord personaRecord = new PersonaRecord(
-                personaId,
-                Optional.empty(),
-                Optional.of(playerId),
-                Optional.ofNullable(mudlibProjection != null ? mudlibProjection : persona));
-        SessionBinding binding = new SessionBinding(
-                sessionRecord,
-                playerRecord,
-                Optional.of(personaRecord),
-                sink,
-                existing != null ? existing.protocolState() : new SessionProtocolState());
-        players.put(playerId, playerRecord);
-        personas.put(personaId, personaRecord);
-        sessions.put(engineSessionId, binding);
-        sessionsByPersona.put(persona, binding);
-        personaIdsByProjection.put(persona, personaId);
-        flushPendingTargetedOutput(persona, binding);
+        instanceSessions.bind(sessionId, remoteAddress, sessionOutputSink, attachmentFor(persona, mudlibProjection));
     }
 
-    /**
-     * Rebinds an existing host session from one LPC object projection to another.
-     *
-     * <p>The network session, output sink, Player record, and connection metadata stay in place
-     * while the mudlib-facing interactive projection changes.</p>
-     */
+    private PersonaAttachment attachmentFor(Object behavior, MudlibProjection projection) {
+        behavior = objectLifecycle.identityOf(behavior);
+        if (!isLiveBehaviorObject(behavior)) {
+            throw new IllegalArgumentException("Persona attachment requires a live authored object.");
+        }
+        Object identity = behavior;
+        var entity = worldProjection.projectedEntity(identity).orElseGet(() -> worldProjection.realizeEntity(identity));
+        MudlibProjection canonicalProjection = projection == null ? null : new MudlibProjection(
+                projection.sourcePath(), objectLifecycle.identityOf(projection.object()), projection.roles());
+        PersonaRecord record = new PersonaRecord(instanceSessions.personaId(behavior), Optional.of(entity),
+                Optional.empty(), Optional.of(canonicalProjection != null ? canonicalProjection : behavior));
+        return new PersonaAttachment(record, objectReference(behavior), behavior);
+    }
+
+    /** Distinguishes opaque authored/host objects from ordinary LPC values before world realization. */
+    private boolean isLiveBehaviorObject(Object behavior) {
+        return behavior != null && !isDestroyedObject(behavior)
+                && !(behavior instanceof Number) && !(behavior instanceof Boolean)
+                && !(behavior instanceof CharSequence) && !(behavior instanceof List<?>)
+                && !(behavior instanceof Map<?, ?>) && !(behavior instanceof RuntimeCallable)
+                && !behavior.getClass().isArray();
+    }
+
+    /** Rebinds authored behavior, retaining the connection and protocols while clearing its old input capture. */
     public boolean rebindSessionLpcObject(Object newObject, Object oldObject) {
-        if (newObject == null || oldObject == null) {
-            return false;
-        }
-        SessionBinding binding = sessionsByPersona.get(oldObject);
-        if (binding == null) {
-            return false;
-        }
-        bindSession(
-                binding.sessionRecord().id().value(),
-                newObject,
-                binding.sessionRecord().remoteAddress().orElse(null),
-                binding.outputSink(),
-                MudlibProjection.personaBehavior(
-                        Objects.requireNonNullElse(objectId(newObject), objectReference(newObject)),
-                        newObject));
+        newObject = objectLifecycle.identityOf(newObject);
+        oldObject = objectLifecycle.identityOf(oldObject);
+        if (!isLiveBehaviorObject(newObject) || !isLiveBehaviorObject(oldObject)) return false;
+        Optional<InstanceSession> session = instanceSessions.sessionFor(oldObject);
+        if (session.isEmpty()) return false;
+        PersonaAttachment attachment = attachmentFor(newObject, MudlibProjection.personaBehavior(
+                Objects.requireNonNullElse(objectId(newObject), objectReference(newObject)), newObject));
+        Optional<ManagedPersonaProfile> profile =
+                session.orElseThrow().attachment().flatMap(PersonaAttachment::profile);
+        if (profile.isPresent()) attachment = attachment.withProfile(profile.orElseThrow());
+        instanceSessions.attach(session.orElseThrow().sessionId(), attachment);
         return true;
     }
 
-    /** Installs the host transport sink used for out-of-band messages to an interactive persona. */
+    /** Installs the host transport sink used for out-of-band messages to an interactive Persona. */
     public void bindSessionProtocolSink(Object persona, BiConsumer<String, String> protocolOutputSink) {
-        SessionBinding binding = sessionsByPersona.get(persona);
-        if (binding != null) {
-            binding.protocolState().outputSink = protocolOutputSink != null
-                    ? protocolOutputSink
-                    : (ignoredProtocol, ignoredMessage) -> {};
-        }
+        instanceSessions.bindProtocolSink(objectLifecycle.identityOf(persona), protocolOutputSink);
     }
 
-    /** Records whether a negotiated client protocol is active for an interactive persona. */
+    /** Records whether a negotiated client protocol is active for an interactive Persona. */
     public void setSessionProtocolEnabled(Object persona, String protocol, boolean enabled) {
-        SessionBinding binding = sessionsByPersona.get(persona);
-        if (binding == null) {
-            return;
-        }
-        String normalized = normalizeProtocolName(protocol);
-        if (enabled) {
-            binding.protocolState().enabledProtocols.add(normalized);
-        } else {
-            binding.protocolState().enabledProtocols.remove(normalized);
-        }
+        instanceSessions.setProtocolEnabled(objectLifecycle.identityOf(persona), protocol, enabled);
     }
 
-    /** Returns whether a client protocol has been negotiated for an interactive persona. */
+    /** Returns whether a client protocol has been negotiated for an interactive Persona. */
     public boolean isSessionProtocolEnabled(Object persona, String protocol) {
-        SessionBinding binding = sessionsByPersona.get(persona);
-        return binding != null
-                && binding.protocolState().enabledProtocols.contains(normalizeProtocolName(protocol));
+        return instanceSessions.isProtocolEnabled(objectLifecycle.identityOf(persona), protocol);
     }
 
     /** Sends one already encoded out-of-band message through a negotiated client protocol. */
     public boolean sendSessionProtocolMessage(Object persona, String protocol, String message) {
-        SessionBinding binding = sessionsByPersona.get(persona);
-        String normalized = normalizeProtocolName(protocol);
-        if (binding == null || !binding.protocolState().enabledProtocols.contains(normalized)) {
-            return false;
-        }
-        binding.protocolState().outputSink.accept(normalized, Objects.requireNonNull(message, "message"));
-        return true;
-    }
-
-    private String normalizeProtocolName(String protocol) {
-        if (protocol == null || protocol.isBlank()) {
-            throw new IllegalArgumentException("Client protocol name must not be blank.");
-        }
-        return protocol.trim().toUpperCase(java.util.Locale.ROOT);
+        return instanceSessions.sendProtocolMessage(objectLifecycle.identityOf(persona), protocol, message);
     }
 
     /** Runs disconnect/save policy before shutdown; a failed save prevents a clean-shutdown record. */
     public void disconnectPlayerSessions(String method) {
         RuntimeException failure = null;
-        for (Object persona : List.copyOf(users())) {
-            SessionBinding binding = sessionsByPersona.get(persona);
-            if (binding == null) continue;
+        for (InstanceSession session : instanceSessions.openSessions()) {
             try {
-                if (method != null) withCommandActor(persona, () -> invokeOptionalObject(persona, method));
-                unbindSession(binding.sessionRecord().id().value());
+                Optional<PersonaAttachment> attachment = session.attachment();
+                if (method != null && attachment.isPresent()) {
+                    Object persona = attachment.orElseThrow().behavior();
+                    withCommandActor(persona, () -> invokeOptionalObject(persona, method));
+                }
+                instanceSessions.close(session.sessionId());
             } catch (RuntimeException e) {
                 if (failure == null) failure = new IllegalStateException("Player shutdown/save failed");
                 failure.addSuppressed(e);
@@ -1050,111 +920,70 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     }
 
     public void unbindSession(String sessionId) {
-        if (sessionId == null) {
-            return;
-        }
-        SessionBinding binding = sessions.remove(new SessionID(sessionId));
-        if (binding != null) {
-            detachSessionFromRecords(binding);
-        }
+        instanceSessions.close(sessionId);
     }
 
     public Optional<SessionRecord> sessionRecord(String sessionId) {
-        if (sessionId == null) {
-            return Optional.empty();
-        }
-        SessionBinding binding = sessions.get(new SessionID(sessionId));
-        return binding != null ? Optional.of(binding.sessionRecord()) : Optional.empty();
+        return instanceSessions.sessionRecord(sessionId);
     }
 
-    /** Returns the LPC object projection currently attached to a host session, when one exists. */
+    /** Returns the LPC object currently attached to a host session, when attachment has completed. */
     public Optional<Object> lpcObjectForSession(String sessionId) {
-        if (sessionId == null) {
-            return Optional.empty();
-        }
-        SessionBinding binding = sessions.get(new SessionID(sessionId));
-        return binding != null ? Optional.ofNullable(binding.personaProjection()) : Optional.empty();
+        return instanceSessions.objectForSession(sessionId);
     }
 
     public Optional<PlayerRecord> playerRecordForSession(String sessionId) {
-        return sessionRecord(sessionId)
-                .map(SessionRecord::playerId)
-                .map(players::get);
+        return instanceSessions.playerRecordForSession(sessionId);
     }
 
     public Optional<PersonaRecord> personaRecordForProjection(Object persona) {
-        PersonaID personaId = personaIdsByProjection.get(persona);
-        return personaId != null ? Optional.ofNullable(personas.get(personaId)) : Optional.empty();
+        return instanceSessions.personaRecordForProjection(objectLifecycle.identityOf(persona));
     }
 
-    /**
-     * Captures the next line of interactive session input for the current output persona.
-     *
-     * <p>The line is delivered to {@code methodName} on the current LPC object. Any supplied extra
-     * arguments are appended after the typed line, matching legacy {@code input_to()} callback
-     * shapes such as {@code input_to("method", flags, arg1, arg2)}.</p>
-     */
+    /** Captures the next input line for the current authored handler and active connection. */
     public void captureSessionInput(String methodName, boolean noEcho, Object... extraArgs) {
-        Objects.requireNonNull(methodName, "methodName");
         Object persona = outputTarget();
         Object handler = currentObject();
-        if (persona == null || handler == null || !sessionsByPersona.containsKey(persona)) {
-            return;
+        if (persona != null && handler != null) {
+            instanceSessions.captureInput(objectLifecycle.identityOf(persona), objectLifecycle.identityOf(handler), methodName, noEcho, extraArgs);
         }
-        Object[] capturedArgs = extraArgs == null ? new Object[0] : extraArgs.clone();
-        pendingInputsByPersona.put(persona, new PendingSessionInput(handler, methodName, noEcho, capturedArgs));
     }
 
     public boolean hasCapturedSessionInput(Object persona) {
-        return pendingInputsByPersona.containsKey(persona);
+        return instanceSessions.pendingInput(objectLifecycle.identityOf(persona)).isPresent();
     }
 
     public boolean capturedSessionInputNoEcho(Object persona) {
-        PendingSessionInput pendingInput = pendingInputsByPersona.get(persona);
-        return pendingInput != null && pendingInput.noEcho();
+        return instanceSessions.pendingInput(objectLifecycle.identityOf(persona)).map(InstanceSessions.CapturedInput::noEcho).orElse(false);
     }
 
-    /**
-     * Delivers one line to a pending {@code input_to()} callback while preserving that pending state
-     * for runtime queries made during the callback.
-     */
+    /** Delivers a captured callback without clearing a successor installed during its execution. */
     public Object deliverCapturedSessionInput(Object persona, String line) {
         Objects.requireNonNull(persona, "persona");
         Objects.requireNonNull(line, "line");
-        touchPersona(persona);
-        PendingSessionInput pendingInput = pendingInputsByPersona.get(persona);
-        if (pendingInput == null) {
-            return 0;
-        }
-        Object[] extraArgs = pendingInput.extraArgs();
+        Object identity = objectLifecycle.identityOf(persona);
+        touchPersona(identity);
+        Optional<InstanceSession> session = instanceSessions.sessionFor(identity);
+        Optional<InstanceSessions.CapturedInput> pending = instanceSessions.pendingInput(identity);
+        if (session.isEmpty() || pending.isEmpty()) return 0;
+        InstanceSessions.CapturedInput input = pending.orElseThrow();
+        Object[] extraArgs = input.extraArgs();
         Object[] invocationArgs = new Object[extraArgs.length + 1];
         invocationArgs[0] = line;
         System.arraycopy(extraArgs, 0, invocationArgs, 1, extraArgs.length);
         try {
-            return withCommandActor(persona, () ->
-                    invokeObject(pendingInput.handler(), pendingInput.methodName(), invocationArgs));
+            return withCommandActor(identity, () -> invokeObject(input.handler(), input.methodName(), invocationArgs));
         } finally {
-            pendingInputsByPersona.computeIfPresent(persona, (ignored, current) ->
-                    current == pendingInput ? null : current);
+            instanceSessions.completeInput(session.orElseThrow(), input);
         }
     }
 
     public int queryIdle(Object persona) {
-        SessionBinding binding = sessionsByPersona.get(persona);
-        if (binding == null) {
-            return 0;
-        }
-        long elapsedMillis = Math.max(0L, System.currentTimeMillis()
-                - binding.sessionRecord().lastActivityAt().toEpochMilli());
-        return (int) (elapsedMillis / 1000L);
+        return instanceSessions.idleSeconds(objectLifecycle.identityOf(persona));
     }
 
     public Object queryIpNumber(Object persona) {
-        SessionBinding binding = sessionsByPersona.get(persona);
-        if (binding == null || binding.sessionRecord().remoteAddress().isEmpty()) {
-            return 0;
-        }
-        return binding.sessionRecord().remoteAddress().orElseThrow();
+        return instanceSessions.remoteAddress(objectLifecycle.identityOf(persona)).<Object>map(address -> address).orElse(0);
     }
 
     public Object readMudlibText(String path) {
@@ -1264,13 +1093,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     }
 
     public void touchPersona(Object persona) {
-        SessionBinding binding = sessionsByPersona.get(persona);
-        if (binding == null) {
-            return;
-        }
-        SessionBinding touched = binding.touch(Instant.ofEpochMilli(System.currentTimeMillis()));
-        sessions.put(touched.sessionRecord().id(), touched);
-        sessionsByPersona.put(touched.personaProjection(), touched);
+        instanceSessions.touch(objectLifecycle.identityOf(persona));
     }
 
     private String normalizeMudlibPath(String path) {
@@ -1471,7 +1294,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
         worldProjection.move(object, destination);
         if (previousLocation != null
-                && (sessionsByPersona.containsKey(object) || commandEnabledEntities.contains(object))) {
+                && (instanceSessions.isInteractive(object) || commandEnabledEntities.contains(object))) {
             invokeDepartureLifecycle(object, previousLocation);
         }
         // Departure cleanup may destroy or redirect the actor. Do not deliver a stale arrival.
@@ -1500,17 +1323,17 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     }
 
     private void invokeArrivalLifecycle(Object object, Object destination) {
-        if (sessionsByPersona.containsKey(destination)) {
+        if (instanceSessions.isInteractive(destination)) {
             invokeInteractionLifecycle(destination, object);
         }
 
         for (Object nearby : List.copyOf(inventoryFor(destination))) {
-            if (nearby != object && sessionsByPersona.containsKey(nearby)) {
+            if (nearby != object && instanceSessions.isInteractive(nearby)) {
                 invokeInteractionLifecycle(nearby, object);
             }
         }
 
-        if (sessionsByPersona.containsKey(object)) {
+        if (instanceSessions.isInteractive(object)) {
             clearCommandActions(object);
             clearPendingActionMethods();
             try {
@@ -1706,11 +1529,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
             return;
         }
 
-        SessionBinding binding = sessionsByPersona.get(object);
-        if (binding != null) {
-            sessions.remove(binding.sessionRecord().id());
-            detachSessionFromRecords(binding);
-        }
+        instanceSessions.discardObject(object);
         cancelRecurringTick(object);
         cancelDeferredCallbacks(object);
         List<Object> contents = new ArrayList<>(inventoryFor(object));
@@ -1725,8 +1544,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         removeEntityAliases(object);
         commandEnabledEntities.remove(object);
         commandActions.remove(object);
-        pendingInputsByPersona.remove(object);
-        pendingTargetedOutputByPersona.remove(object);
         removeCommandHandler(object);
         String id = objectIds.remove(object);
         if (id != null) {
@@ -2549,81 +2366,12 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return actor != null ? actor : currentObject();
     }
 
-    private PlayerID projectionPlayerIdFor(Object persona) {
-        return new PlayerID("projection-player/" + objectReference(persona));
-    }
-
-    private PlayerID playerIdForSession(SessionID sessionId) {
-        return new PlayerID("session-player/" + sessionId.value());
-    }
-
-    private PersonaID projectionPersonaIdFor(Object persona) {
-        PersonaID existing = personaIdsByProjection.get(persona);
-        if (existing != null) {
-            return existing;
-        }
-        return new PersonaID("projection-persona/" + objectReference(persona));
-    }
-
     private String objectReference(Object object) {
         String id = objectId(object);
         if (id != null && !id.isBlank()) {
             return id;
         }
         return object.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(object));
-    }
-
-    private Object projectionObject(Object projection) {
-        return projection instanceof MudlibProjection mudlibProjection ? mudlibProjection.object() : projection;
-    }
-
-    private Set<SessionID> addSessionId(PlayerRecord playerRecord, SessionID sessionId) {
-        Set<SessionID> sessionIds = new HashSet<>();
-        if (playerRecord != null) {
-            sessionIds.addAll(playerRecord.activeSessionIds());
-        }
-        sessionIds.add(sessionId);
-        return sessionIds;
-    }
-
-    private void detachSessionFromRecords(SessionBinding binding) {
-        Object persona = binding.personaProjection();
-        if (persona != null) {
-            sessionsByPersona.remove(persona);
-            pendingInputsByPersona.remove(persona);
-        }
-
-        SessionRecord sessionRecord = binding.sessionRecord();
-        PlayerRecord playerRecord = players.get(sessionRecord.playerId());
-        if (playerRecord != null) {
-            Set<SessionID> remainingSessions = new HashSet<>(playerRecord.activeSessionIds());
-            remainingSessions.remove(sessionRecord.id());
-            PlayerRecord updatedPlayer = new PlayerRecord(
-                    playerRecord.id(),
-                    remainingSessions,
-                    Optional.empty(),
-                    playerRecord.mudlibProfileProjection());
-            players.put(updatedPlayer.id(), updatedPlayer);
-        }
-
-        binding.personaRecord().ifPresent(boundPersona -> {
-            PersonaRecord personaRecord = personas.get(boundPersona.id());
-            if (personaRecord != null) {
-                personas.put(personaRecord.id(), new PersonaRecord(
-                        personaRecord.id(),
-                        personaRecord.entity(),
-                        Optional.empty(),
-                        personaRecord.mudlibBehaviorProjection()));
-            }
-        });
-    }
-
-    private String normalizeSessionText(String value) {
-        if (value == null) {
-            return null;
-        }
-        String normalized = value.trim();
-        return normalized.isEmpty() ? null : normalized;
     }
 
     private void removeEntityAliases(Object object) {
@@ -2756,53 +2504,4 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private record CommandAction(String verb, Object handler, String methodName, boolean prefixMatch,
             boolean persistent, long sequence) {}
 
-    private record PendingSessionInput(Object handler, String methodName, boolean noEcho, Object[] extraArgs) {
-        private PendingSessionInput {
-            extraArgs = extraArgs == null ? new Object[0] : extraArgs.clone();
-        }
-
-        @Override
-        public Object[] extraArgs() {
-            return extraArgs.clone();
-        }
-    }
-
-    private void flushPendingTargetedOutput(Object persona, SessionBinding binding) {
-        StringBuilder pendingOutput = pendingTargetedOutputByPersona.remove(persona);
-        if (pendingOutput != null && !pendingOutput.isEmpty()) {
-            writeToSession(binding, pendingOutput.toString());
-        }
-    }
-
-    private record SessionBinding(
-            SessionRecord sessionRecord,
-            PlayerRecord playerRecord,
-            Optional<PersonaRecord> personaRecord,
-            Consumer<String> outputSink,
-            SessionProtocolState protocolState) {
-        private Object personaProjection() {
-            return personaRecord
-                    .flatMap(PersonaRecord::mudlibBehaviorProjection)
-                    .map(projection -> projection instanceof MudlibProjection mudlibProjection
-                            ? mudlibProjection.object()
-                            : projection)
-                    .orElse(null);
-        }
-
-        private SessionBinding touch(Instant now) {
-            SessionRecord touchedSession = new SessionRecord(
-                    sessionRecord.id(),
-                    sessionRecord.playerId(),
-                    sessionRecord.remoteAddress(),
-                    sessionRecord.connectedAt(),
-                    now,
-                    sessionRecord.attachedPersonaId());
-            return new SessionBinding(touchedSession, playerRecord, personaRecord, outputSink, protocolState);
-        }
-    }
-
-    private static final class SessionProtocolState {
-        private final Set<String> enabledProtocols = new HashSet<>();
-        private BiConsumer<String, String> outputSink = (ignoredProtocol, ignoredMessage) -> {};
-    }
 }

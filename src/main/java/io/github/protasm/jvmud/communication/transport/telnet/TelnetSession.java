@@ -1,7 +1,7 @@
 package io.github.protasm.jvmud.communication.transport.telnet;
 
 import io.github.protasm.jvmud.engine.instance.InstanceHost;
-import io.github.protasm.jvmud.engine.instance.InstancePersona;
+import io.github.protasm.jvmud.engine.instance.session.InstanceSession;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -90,7 +90,7 @@ final class TelnetSession implements Runnable {
         // A Telnet client does not echo the Return key while server-side echo suppression is
         // active. Supply the terminal line ending before the mudlib writes its next hidden-input
         // prompt so that it begins in column one on every client.
-        if (mud.isCapturingNoEchoInput(session.persona)) {
+        if (mud.isCapturingNoEchoInput(session.instanceSession)) {
             out.print("\r\n");
             out.flush();
         }
@@ -102,11 +102,11 @@ final class TelnetSession implements Runnable {
             executePlayerCommand(session, out, commandLine);
         }
         out.flush();
-        if (!mud.isAttached(session.persona)) {
+        if (!mud.isOpen(session.instanceSession)) {
             session.running = false;
         }
         if (session.running) {
-            mud.printPromptIfReady(session.persona, out);
+            mud.printPromptIfReady(session.instanceSession, out);
         }
         updateEchoMode(session, rawOut, out);
     }
@@ -114,14 +114,14 @@ final class TelnetSession implements Runnable {
     /** Begins this mudlib's login flow; engine selection has already completed upstream. */
     private void attachPlayer(SessionState session, OutputStream rawOut, PrintWriter out) throws IOException {
         try {
-            session.persona = mud.attachPersona(out, clientAddress);
-            mud.bindClientProtocolSink(session.persona, (protocol, message) -> {
+            session.instanceSession = mud.attachSession(out, clientAddress);
+            mud.bindClientProtocolSink(session.instanceSession, (protocol, message) -> {
                 if (!"GMCP".equalsIgnoreCase(protocol)) return;
                 try { writeGmcp(rawOut, out, message); }
                 catch (IOException e) { throw new UncheckedIOException(e); }
             });
-            if (session.gmcpNegotiated) mud.setClientProtocolEnabled(session.persona, "GMCP", true);
-            mud.printPromptIfReady(session.persona, out);
+            if (session.gmcpNegotiated) mud.setClientProtocolEnabled(session.instanceSession, "GMCP", true);
+            mud.printPromptIfReady(session.instanceSession, out);
             updateEchoMode(session, rawOut, out);
         } catch (RuntimeException e) {
             out.println("Could not attach player: " + e.getMessage());
@@ -146,7 +146,7 @@ final class TelnetSession implements Runnable {
 
     private void executePlayerCommand(SessionState session, PrintWriter out, String commandLine) {
         try {
-            mud.dispatch(session.persona, out, commandLine);
+            mud.dispatch(session.instanceSession, out, commandLine);
         } catch (RuntimeException e) {
             System.err.println("Unhandled telnet command error: " + e.getMessage());
         }
@@ -181,14 +181,14 @@ final class TelnetSession implements Runnable {
                 if (option == GMCP && command == DO && session.gmcpOffered) {
                     if (!session.gmcpNegotiated) {
                         session.gmcpNegotiated = true;
-                        if (mud != null) mud.setClientProtocolEnabled(session.persona, "GMCP", true);
+                        if (mud != null) mud.setClientProtocolEnabled(session.instanceSession, "GMCP", true);
                     }
                     return true;
                 }
                 if (option == GMCP && command == DONT) {
                     if (session.gmcpNegotiated) {
                         session.gmcpNegotiated = false;
-                        if (mud != null) mud.setClientProtocolEnabled(session.persona, "GMCP", false);
+                        if (mud != null) mud.setClientProtocolEnabled(session.instanceSession, "GMCP", false);
                     }
                     return true;
                 }
@@ -227,7 +227,7 @@ final class TelnetSession implements Runnable {
         }
         if (option == GMCP && session.gmcpNegotiated && mud != null) {
             mud.receiveClientProtocolMessage(
-                    session.persona, "GMCP", payload.toString(StandardCharsets.UTF_8));
+                    session.instanceSession, "GMCP", payload.toString(StandardCharsets.UTF_8));
         }
     }
 
@@ -243,7 +243,7 @@ final class TelnetSession implements Runnable {
     }
 
     private void updateEchoMode(SessionState session, OutputStream rawOut, PrintWriter out) throws IOException {
-        if (session == null || session.persona == null || session.detached || !session.running || !mud.isAttached(session.persona)) {
+        if (session == null || session.instanceSession == null || session.detached || !session.running || !mud.isOpen(session.instanceSession)) {
             if (session != null && session.noEchoNegotiated) {
                 writeTelnetCommand(rawOut, out, WONT, ECHO);
                 session.noEchoNegotiated = false;
@@ -251,7 +251,7 @@ final class TelnetSession implements Runnable {
             return;
         }
 
-        boolean shouldSuppressEcho = mud.isCapturingNoEchoInput(session.persona);
+        boolean shouldSuppressEcho = mud.isCapturingNoEchoInput(session.instanceSession);
         if (shouldSuppressEcho == session.noEchoNegotiated) {
             return;
         }
@@ -290,7 +290,7 @@ final class TelnetSession implements Runnable {
     }
 
     private static final class SessionState {
-        private InstancePersona persona;
+        private InstanceSession instanceSession;
         private boolean running = true;
         private boolean detached;
         private boolean noEchoNegotiated;
@@ -299,14 +299,14 @@ final class TelnetSession implements Runnable {
 
 
         private void detach(InstanceHost mud) {
-            if (detached || persona == null) {
+            if (detached || instanceSession == null) {
                 return;
             }
             if (gmcpNegotiated) {
-                mud.setClientProtocolEnabled(persona, "GMCP", false);
+                mud.setClientProtocolEnabled(instanceSession, "GMCP", false);
                 gmcpNegotiated = false;
             }
-            mud.detachPersona(persona);
+            mud.detachSession(instanceSession);
             detached = true;
         }
     }

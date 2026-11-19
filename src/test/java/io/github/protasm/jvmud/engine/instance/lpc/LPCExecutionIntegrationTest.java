@@ -4592,7 +4592,7 @@ final class LPCExecutionIntegrationTest {
         assertEquals(firstPersona.id(), firstPlayer.activePersonaId().orElseThrow());
         assertEquals(first.instance(), firstPersona.mudlibBehaviorProjection().orElseThrow());
         assertEquals(firstPlayer.id(), firstPersona.controllingPlayerId().orElseThrow());
-        assertTrue(firstPersona.entity().isEmpty());
+        assertEquals(runtime.worldProjection().projectedEntity(first.instance()), firstPersona.entity());
 
         first.invoke("write_self");
         first.invoke("tell", second.instance());

@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.protasm.jvmud.engine.configuration.MudlibConfiguration;
 import io.github.protasm.jvmud.engine.instance.CombinedPlayerPersonaAdapter;
-import io.github.protasm.jvmud.engine.instance.InstancePersona;
 import io.github.protasm.jvmud.engine.instance.MudInstance;
 import io.github.protasm.jvmud.engine.instance.MudlibBoot;
 import io.github.protasm.jvmud.engine.instance.MudlibBootProgress;

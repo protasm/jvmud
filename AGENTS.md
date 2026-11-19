@@ -32,7 +32,9 @@ static docs.
   public endpoints, worker supervision, and installation updates; `model/` owns worlds,
   identities, time, and mudlib lifecycle contracts; `configuration/` reads and assembles
   manifest policy; `instance/` assembles and executes one mudlib inside its worker JVM.
-  `instance/lpc/` connects authored LPC to world, session, and storage services;
+  `instance/session/` owns connection lifetime and Persona attachment; `session/login/`
+  supplies optional policies that return profile data. `instance/lpc/` connects authored LPC
+  to world, session, and storage services;
   `instance/efun/` supplies engine operations; `diagnostics/` checks configured startup content.
 - `src/main/java/io/github/protasm/jvmud/communication/`: `transport/` owns sockets,
   Telnet, and administration protocols; `admin/` interprets administrative commands;

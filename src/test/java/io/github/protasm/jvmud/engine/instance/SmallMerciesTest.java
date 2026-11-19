@@ -1,5 +1,7 @@
 package io.github.protasm.jvmud.engine.instance;
 
+import io.github.protasm.jvmud.engine.instance.session.InstanceSession;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -13,14 +15,14 @@ import org.junit.jupiter.api.Test;
 /** Exercises the bundled toy through real session input and world time. */
 final class SmallMerciesTest {
     /** Captures one independently connected adventurer's output. */
-    private record Guest(InstancePersona persona, StringWriter text, PrintWriter writer) {}
+    private record Guest(InstanceSession session, StringWriter text, PrintWriter writer) {}
 
     /** Attaches and completes the mudlib-owned guest creation flow. */
     private Guest login(MudInstance mud, String name, String gender, String profession) {
         StringWriter text = new StringWriter();
         PrintWriter writer = new PrintWriter(text, true);
-        InstancePersona persona = mud.attachPersona(writer, "127.0.0.1");
-        Guest guest = new Guest(persona, text, writer);
+        InstanceSession session = mud.attachSession(writer, "127.0.0.1");
+        Guest guest = new Guest(session, text, writer);
         command(mud, guest, name);
         command(mud, guest, gender);
         assertTrue(command(mud, guest, profession).contains("Village Square"));
@@ -30,7 +32,7 @@ final class SmallMerciesTest {
     /** Sends input through the same dispatcher as a Telnet session. */
     private String command(MudInstance mud, Guest guest, String line) {
         guest.text().getBuffer().setLength(0);
-        mud.dispatch(guest.persona(), guest.writer(), line);
+        mud.dispatch(guest.session(), guest.writer(), line);
         return guest.text().toString();
     }
 
@@ -81,7 +83,7 @@ final class SmallMerciesTest {
             Guest alice = login(mud, "Alice", "female", "mage");
             StringWriter text = new StringWriter();
             PrintWriter writer = new PrintWriter(text, true);
-            Guest bob = new Guest(mud.attachPersona(writer, "127.0.0.1"), text, writer);
+            Guest bob = new Guest(mud.attachSession(writer, "127.0.0.1"), text, writer);
             assertTrue(command(mud, bob, "A").contains("2-16 letters"));
             assertTrue(command(mud, bob, "a1").contains("Letters only"));
             assertTrue(command(mud, bob, "ALICE").contains("visiting already"));
@@ -105,10 +107,10 @@ final class SmallMerciesTest {
             assertTrue(alice.text().toString().contains("cast a spark"));
             command(mud, alice, "stop");
             assertTrue(command(mud, bob, "attack goose").contains("begin sparring"));
-            mud.detachPersona(bob.persona());
+            mud.detachSession(bob.session());
             assertTrue(command(mud, alice, "attack goose").contains("begin sparring"));
             command(mud, alice, "quit");
-            assertFalse(mud.isAttached(alice.persona()));
+            assertFalse(mud.isOpen(alice.session()));
         } finally { mud.shutdown(null); }
     }
 
@@ -159,9 +161,9 @@ final class SmallMerciesTest {
 
     /** Sets a generated LPC field solely to establish a deterministic combat fixture. */
     private void setAttribute(Guest guest, String name, int value) throws Exception {
-        var field = guest.persona().actor().getClass().getDeclaredField(name);
+        var field = guest.session().personaObject().getClass().getDeclaredField(name);
         field.setAccessible(true);
-        field.set(guest.persona().actor(), value);
+        field.set(guest.session().personaObject(), value);
     }
 
 }

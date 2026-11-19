@@ -1,6 +1,7 @@
 package io.github.protasm.jvmud.engine.instance.lpc;
 
 import io.github.protasm.jvmud.engine.configuration.MudlibConfiguration;
+import io.github.protasm.jvmud.engine.instance.session.InstanceSessions;
 import io.github.protasm.jvmud.engine.model.identity.PersonaID;
 import io.github.protasm.jvmud.engine.model.identity.PersonaRecord;
 import io.github.protasm.jvmud.engine.model.identity.PlayerID;
@@ -712,6 +713,11 @@ public final class MudlibRuntime implements LPCExecution {
             return 0;
         }
         return objectStateStore.restore(resolved, runtimeContext.objectReceiver(object));
+    }
+
+    /** Returns the authoritative connection and Persona-attachment owner for this mudlib. */
+    public InstanceSessions sessions() {
+        return runtimeContext.sessions();
     }
 
     /** Returns the selected mudlib configuration that assembles this engine host. */
