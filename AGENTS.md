@@ -26,7 +26,8 @@ static docs.
 - `src/main/java/io/github/protasm/jvmud/language/`: `compiler/` owns LPC compilation,
   types, source resolution, and selected compatibility transformations; `execution/`
   owns compiled-class and object invocation contracts; `runtime/` owns generated-code
-  context and value operations; `efun/` owns callable contracts; `formatter/` owns formatting.
+  context and value operations; `efun/` owns callable contracts and language-only built-ins;
+  `formatter/` owns formatting.
   Language code does not import engine, communication, or storage implementations.
 - `src/main/java/io/github/protasm/jvmud/engine/`: `application/` owns startup,
   public endpoints, worker supervision, and installation updates; `model/` owns worlds,
@@ -35,7 +36,8 @@ static docs.
   `instance/session/` owns connection lifetime and Persona attachment; `session/login/`
   supplies optional policies that return profile data. `instance/lpc/` connects authored LPC
   to world, session, and storage services;
-  `instance/efun/` supplies engine operations; `diagnostics/` checks configured startup content.
+  `instance/efun/` supplies engine-service efuns and composes the hosted catalog;
+  `diagnostics/` checks configured startup content.
 - `src/main/java/io/github/protasm/jvmud/communication/`: `transport/` owns sockets,
   Telnet, and administration protocols; `admin/` interprets administrative commands;
   `console/` owns the terminal client; `protocol/` and `output/` handle messages and text.

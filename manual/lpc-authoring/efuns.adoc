@@ -1,10 +1,10 @@
 === Efuns
 
-The `jvmud_` identifier prefix is reserved for JVMud engine symbols. Mudlib code
+The `jvmud_` identifier prefix is reserved for JVMud-native symbols. Mudlib code
 may call `jvmud_*` efuns, but may not declare names with that prefix, including
 functions, fields, parameters, locals, or macros. This also applies to mfuns and
 compatibility shims. The compiler rejects violations even when the particular
-name is not yet an engine efun. Strings and comments are unaffected.
+name is not yet a registered native efun. Strings and comments are unaffected.
 Profile predefines and engine-function aliases cannot repurpose reserved names
 either; an alias may retain an engine function's identical native spelling.
 
@@ -12,8 +12,8 @@ Name game policy separately: Small Mercies uses `mercy_random(n)` for favorable
 dodge rolls and `jvmud_random(n)` for the engine's uniform random primitive.
 Explicit `efun::` and `jvmud::` calls still bypass mudlib function resolution.
 
-Efuns expose host operations to LPC. Ordinary calls may resolve through mudlib
-functions or the active boundary's translation table. `efun::name(...)` selects
+Efuns expose language operations and engine services to LPC. Ordinary calls may
+resolve through mudlib functions or the active boundary's translation table. `efun::name(...)` selects
 that efun surface; `jvmud::name(...)` requires an exact native JVMud efun name.
 
 [source,lpc]
@@ -28,10 +28,47 @@ Legacy aliases belong in the profile. A recognized efun can still require an
 `engine_capabilities` grant, such as `mudlib_files`, `database`, `session_control`,
 or `host_control`.
 
-Use <<efun-catalog,the efun catalog>> for signatures and categories, and
-`engine.instance.efun.EngineEfuns` for implementation details. Do not duplicate the
-catalog in a mudlib guide. When a call fails, check its spelling, argument types,
-profile mapping, and required capability.
+Use <<efun-catalog,the efun catalog>> for signatures and categories. When a call
+fails, check its spelling, argument types, profile mapping, and required
+capability.
+
+==== Implementation ownership
+
+`language.efun.LanguageEfuns` composes the language-only built-ins. The neighboring
+`TextEfuns`, `CollectionEfuns`, `RegularExpressionEfuns`, and `ValueEfuns` group their
+implementations by responsibility; `EfunDefinition` gives them one signature and
+invocation contract. A language-only embedder can call
+`LanguageEfuns.register(EfunRegistry)` without creating engine services.
+
+These functions operate on LPC values and use the neutral
+`language.runtime.RuntimeContext` contract for callable invocation. Named-method
+collection callbacks use that context's lexical receiver, which need not have a
+world location. Text conversion, collections, ordinary JSON, and regular
+expressions can therefore be understood and exercised without a world,
+connection, or database. An authored callback can still request services from the
+host that executes it.
+
+`engine.instance.efun` owns service adapters grouped as `LPCObjectEfuns`,
+`WorldEfuns`, `SessionEfuns`, `CommandEfuns`, `SchedulingEfuns`, `FileEfuns`,
+`DatabaseEfuns`, and `HostEfuns`. Scheduling uses the owning mudlib's clock;
+`HostEfuns` supplies the host's wall clock, timezone, randomness, and password
+hashing. Runtime-information and shutdown declarations retain their existing
+placeholder behavior.
+
+`EngineEfuns.registerCore(...)` remains the hosted composition entry point. It
+installs the language catalog and the engine-service catalogs, applying the
+selected profile's existing capability grants. Each `EngineEfunDefinition`
+declares a service's capability beside its implementation. Registration preserves
+the same name, arity, return-type, and varargs contracts as ordinary LPC calls.
+Existing `jvmud_*` names and compatibility aliases retain their meanings.
+Service ownership and access grants are distinct: file and database operations
+retain their existing grants, while clock, random, and password helpers retain
+their existing core availability.
+
+Choose the source owner by the operation's dependencies. Parsing JSON text belongs
+to the language catalog; reading a mudlib JSON file belongs to the file service
+and requires `MUDLIB_FILES`. Keep a mudlib guide focused on its selected policy;
+shared signatures remain in the catalog below.
 
 ==== Ordinary JSON
 

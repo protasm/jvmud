@@ -17,6 +17,14 @@ public abstract class RuntimeContext {
     /** Invokes a built-in function without passing through mudlib global-function overrides. */
     public abstract Object invokeEngineEfun(String name, int arity, Object[] arguments);
 
+    /**
+     * Returns the lexical LPC receiver for operations such as named-method collection callbacks.
+     * A context without an executing object returns {@code null}; this does not imply world presence.
+     */
+    public Object currentObject() {
+        return null;
+    }
+
     /** Invokes a required LPC object method, reporting an error when it cannot be resolved. */
     public abstract Object invokeObject(Object target, String methodName, Object... arguments);
 

@@ -37,6 +37,39 @@ The boundary has two directions:
 Both directions should use JVMud-native terms in engine design. Compatibility
 objects translate legacy mudlib terms into those native operations.
 
+## Language Functions And Engine Services
+
+LPC calls share the `language.efun` signature and invocation contract. Their Java
+implementations have two owners:
+
+- `language.efun.LanguageEfuns` composes language-only built-ins from text,
+  collection, regular-expression, and value groups. They use the neutral language
+  runtime contract and do not depend on engine, communication, or storage
+  implementations. `LanguageEfuns.register(EfunRegistry)` supports standalone
+  language embedding without creating engine services.
+- Engine-service efuns under `engine.instance.efun` adapt authored requests to live
+  objects, world rules, sessions, commands, scheduling, files, and databases.
+  `HostEfuns` retains wall-clock time, timezone formatting, randomness, password
+  hashing, and compatibility declarations for runtime information and shutdown.
+  The selected manifest grants access
+  to host resources through `engine_capabilities`; each `EngineEfunDefinition`
+  states its existing grant beside the implementation. Clock, random, and
+  password helpers retain their existing core availability.
+
+`EngineEfuns.registerCore(...)` remains the hosted composition entry point. It
+installs the language catalog together with the permitted engine-service catalog.
+This ownership split preserves the native `jvmud_*` names, overloads, parameter and
+return types, varargs, and mudlib-selected aliases. A callback-taking language
+function can invoke authored code through `language.runtime.RuntimeContext`.
+Named-method collection callbacks use its lexical `currentObject()` receiver,
+which does not imply world presence. Any engine services requested by that
+authored code still belong to its host.
+
+For example, parsing JSON text is a language operation. Reading and parsing a file
+inside the mudlib's filesystem is an engine file operation and retains its
+`MUDLIB_FILES` grant. A reader should find that access boundary in the service
+adapter that owns it.
+
 ## Live LPC Object Reload
 
 Reload replaces a loaded shared object's compiled behavior while preserving the

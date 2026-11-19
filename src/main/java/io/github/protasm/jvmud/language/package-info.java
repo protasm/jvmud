@@ -1,5 +1,5 @@
 /**
- * LPC compilation, execution contracts, generated-code support, and source formatting.
+ * LPC compilation, execution contracts, value operations, built-in functions and source formatting.
  *
  * <p>{@code compiler} follows LPC source through preprocessing, scanning, parsing, semantic
  * analysis, typed IR, and bytecode generation. Start with {@link
@@ -9,8 +9,8 @@
  *
  * <p>{@code execution} provides compiled-class and object invocation contracts. {@code runtime}
  * defines the context consumed by generated code and implements LPC value operations. The
- * {@code efun} package defines callable signatures and implementations, while {@code formatter}
- * handles LPC source layout.</p>
+ * {@code efun} package defines callable signatures and language-only built-ins, while
+ * {@code formatter} handles LPC source layout.</p>
  *
  * <p>These language facilities do not own worlds, player connections, manifest files, or durable
  * storage. The engine supplies those services when it assembles a running mudlib. Package boundaries

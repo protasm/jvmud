@@ -1741,6 +1741,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
     private record DeferredCallback(long id, long dueTick, Object commandActor, ScheduledTask task) {}
 
+    @Override
     public Object currentObject() {
         return currentObjectStack.get().peek();
     }

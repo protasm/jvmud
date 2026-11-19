@@ -11,7 +11,8 @@ families organize responsibilities within one Maven artifact.
 `JVMudCompiler`, the staged `pipeline`, source resolution, and compatibility
 transformations. `execution` contains compiled-class and object-handle contracts;
 `runtime` supplies generated-code context and value operations. `efun` defines
-callable signatures and implementations; `formatter` formats LPC source.
+callable signatures and language-only built-ins through `LanguageEfuns`;
+`formatter` formats LPC source.
 |`engine` |`application` owns startup, worker supervision, and updates;
 `model` defines worlds, identities, time, and mudlib lifecycle contracts;
 `configuration` reads and assembles manifest policy; `instance` runs one mudlib.
@@ -22,8 +23,9 @@ live object identity and state separate from that behavior's program revision.
 `InstanceSession` represents a connection before and after login, and
 `PersonaAttachment` relates its selected Persona, Entity, and authored behavior.
 Managed login policies and prompt flows live under `instance.session.login`.
-`instance.efun.EngineEfuns` registers the
-engine operations, and `diagnostics` checks a selected mudlib's preload manifest.
+`instance.efun.EngineEfuns` composes the language catalog with capability-filtered
+object, world, session, command, scheduling, file, database, and host catalogs.
+`diagnostics` checks a selected mudlib's preload manifest.
 |`communication` |`transport` owns connection mechanics, `admin` interprets
 administrative commands, and `console` supplies the terminal client.
 `protocol` and `output` handle structured messages and text presentation.
@@ -82,8 +84,10 @@ Former package: `engine.instance`
 |`InstanceSession` in `engine.instance.session` represents the connection lifetime;
 `PersonaAttachment` explicitly represents its selected Persona and Entity.
 |`CoreEfuns` +
-Built-in engine operations
-|`EngineEfuns` in `engine.instance.efun`
+Former combined built-in catalog
+|`EngineEfuns` in `engine.instance.efun` composes language-only built-ins and
+engine-service adapters. `LanguageEfuns` under `language.efun` provides the
+standalone language catalog.
 |Mudlib boundary declaration and reader
 |`MudlibConfiguration` and `MudlibConfigurationReader` in `engine.configuration`
 |`JVMudCompiler` +

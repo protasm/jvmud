@@ -32,8 +32,9 @@ transformations selected for a profile; it preserves upstream source files.
 
 Compilation uses language-owned source resolution, settings, and callable
 signatures. Runtime implementations of efuns are separate from the signatures
-used for analysis. `language.efun` defines that callable contract; the engine's
-`instance.efun.EngineEfuns` supplies JVMud's host operations.
+used for analysis. `language.efun` defines that callable contract and supplies
+language-only built-ins through `LanguageEfuns`. The engine's
+`instance.efun.EngineEfuns` composes those functions with JVMud's host operations.
 
 After compilation, `language.execution` supplies class-loading and invocation
 contracts. `language.runtime` contains the generated-code context contract and

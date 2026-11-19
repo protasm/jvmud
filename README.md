@@ -208,7 +208,7 @@ local site. Website changes appear online only after publication.
 
 | Path | Responsibility |
 | --- | --- |
-| `src/main/java/io/github/protasm/jvmud/language/` | Compiler stages (`compiler`), compiled-code contracts (`execution`), generated-code support (`runtime`), efun contracts, and formatting |
+| `src/main/java/io/github/protasm/jvmud/language/` | Compiler stages (`compiler`), compiled-code contracts (`execution`), generated-code support (`runtime`), efun contracts and language-only built-ins, and formatting |
 | `src/main/java/io/github/protasm/jvmud/engine/` | Application supervision (`application`), game concepts (`model`), manifest policy (`configuration`), mudlib assembly and host integration (`instance`), and startup diagnostics |
 | `src/main/java/io/github/protasm/jvmud/communication/` | Connection transports, administrative commands, terminal client, structured messages, and text output |
 | `src/main/java/io/github/protasm/jvmud/storage/` | Filesystem, JDBC, and administrator-registry storage adapters |

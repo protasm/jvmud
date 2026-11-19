@@ -5,14 +5,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
- * Instance-scoped registry for LPC-facing engine functions.
+ * Instance-scoped declarations and implementations for LPC-facing functions.
  *
  * <p>The registry is owned by a runtime context rather than by global process state, so each hosted
- * mudlib/runtime can choose which efuns it exposes. Built-in JVMud efuns are registered from
- * {@code EngineEfuns}; embedders and tests may register additional implementations before compiled
- * LPC code executes.</p>
+ * mudlib/runtime can choose which efuns it exposes. {@link LanguageEfuns} supplies language-only
+ * functions; a host can compose those with its own service functions. Embedders and tests may
+ * register additional implementations before compiled LPC code executes.</p>
  *
  * <p>Lookup is by function name and compatible arity. Exact fixed-arity signatures are preferred
  * over varargs signatures. Registering two equally good implementations is allowed at insertion
@@ -106,6 +107,17 @@ public final class EfunRegistry {
         }
 
         return exact != null ? exact : varargs;
+    }
+
+    /**
+     * Returns an immutable snapshot of every declared function name.
+     *
+     * <p>Compiler-only declarations are included even when the host has not supplied executable
+     * implementations. Catalog inspection can enumerate names without depending on registry storage
+     * or interpreting a particular host's composition policy.</p>
+     */
+    public Set<String> names() {
+        return Set.copyOf(declarations.keySet());
     }
 
     /**

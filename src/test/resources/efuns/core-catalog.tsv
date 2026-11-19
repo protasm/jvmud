@@ -1,0 +1,144 @@
+# JVMud core efun declarations before the language/service split.
+# Baseline: ed4dfc43b (captured from its complete compiled catalog).
+# name	return type	fixed parameter types	varargs tail type	required capability
+jvmud_add_action	LPCVOID	LPCSTRING	-	-
+jvmud_add_action	LPCVOID	LPCSTRING,LPCSTRING	-	-
+jvmud_add_action	LPCVOID	LPCSTRING,LPCSTRING,LPCSTATUS	-	-
+jvmud_add_verb	LPCVOID	LPCSTRING	-	-
+jvmud_allocate	LPCARRAY	LPCINT	-	-
+jvmud_append_mudlib_text	LPCSTATUS	LPCSTRING,LPCMIXED	-	MUDLIB_FILES
+jvmud_apply_callable	LPCMIXED	LPCMIXED	LPCMIXED	-
+jvmud_bind_entity_alias	LPCVOID	LPCOBJECT,LPCSTRING,LPCMIXED	-	-
+jvmud_cancel_deferred_callback	LPCINT	LPCSTRING	-	-
+jvmud_capitalize_text	LPCSTRING	LPCMIXED	-	-
+jvmud_capture_session_input	LPCVOID	LPCSTRING,LPCINT	LPCMIXED	SESSION_CONTROL
+jvmud_clone_lpc_object	LPCOBJECT	LPCSTRING	-	-
+jvmud_configure_command_aliases	LPCVOID	LPCMIXED	-	-
+jvmud_configure_lpc_object	LPCSTATUS	LPCMIXED,LPCINT,LPCMIXED	-	-
+jvmud_configure_object	LPCSTATUS	LPCMIXED,LPCINT,LPCMIXED	-	-
+jvmud_copy_mudlib_text	LPCINT	LPCSTRING,LPCSTRING	-	MUDLIB_FILES
+jvmud_create_mudlib_directory	LPCSTATUS	LPCSTRING	-	MUDLIB_FILES
+jvmud_current_actor	LPCOBJECT		-	-
+jvmud_current_agent	LPCOBJECT		-	-
+jvmud_current_lpc_object	LPCOBJECT		-	-
+jvmud_current_verb	LPCSTRING		-	-
+jvmud_db_close	LPCSTATUS	LPCINT	-	DATABASE
+jvmud_db_connect	LPCINT	LPCSTRING	-	DATABASE
+jvmud_db_connect	LPCINT	LPCSTRING,LPCSTRING,LPCSTRING	-	DATABASE
+jvmud_db_error	LPCMIXED	LPCINT	-	DATABASE
+jvmud_db_escape	LPCSTRING	LPCMIXED	-	DATABASE
+jvmud_db_exec	LPCINT	LPCINT,LPCSTRING	-	DATABASE
+jvmud_db_fetch	LPCMIXED	LPCINT	-	DATABASE
+jvmud_db_handles	LPCARRAY		-	DATABASE
+jvmud_deliver_world_event	LPCVOID	LPCMIXED,LPCSTRING,LPCMIXED,LPCSTRING	-	-
+jvmud_deserialize_lpc_value	LPCMIXED	LPCSTRING	-	-
+jvmud_destroy_lpc_object	LPCVOID	LPCOBJECT	-	-
+jvmud_dispatch_entity_command	LPCMIXED	LPCMIXED,LPCSTRING	-	-
+jvmud_emit_perceivable	LPCVOID	LPCMIXED,LPCMIXED	-	-
+jvmud_emit_perceivable_at	LPCVOID	LPCMIXED,LPCMIXED	-	-
+jvmud_emit_perceivable_except	LPCVOID	LPCMIXED,LPCMIXED,LPCMIXED	-	-
+jvmud_emit_world_event	LPCVOID	LPCMIXED,LPCSTRING,LPCMIXED,LPCSTRING	-	-
+jvmud_enable_commands	LPCVOID		-	-
+jvmud_entity_commands_enabled	LPCSTATUS	LPCMIXED	-	-
+jvmud_entity_has_alias	LPCSTATUS	LPCMIXED,LPCSTRING	-	-
+jvmud_entity_location	LPCOBJECT		-	-
+jvmud_entity_location	LPCOBJECT	LPCMIXED	-	-
+jvmud_entity_translucent	LPCSTATUS	LPCMIXED	-	-
+jvmud_extract_text	LPCSTRING	LPCMIXED,LPCINT	-	-
+jvmud_extract_text	LPCSTRING	LPCMIXED,LPCINT,LPCINT	-	-
+jvmud_filter	LPCMIXED	LPCMIXED,LPCFUNCTION	LPCMIXED	-
+jvmud_filter_indices	LPCMAPPING	LPCMAPPING,LPCFUNCTION	LPCMIXED	-
+jvmud_find_entity	LPCOBJECT	LPCMIXED	-	-
+jvmud_find_entity	LPCOBJECT	LPCMIXED,LPCMIXED	-	-
+jvmud_find_entity_alias	LPCOBJECT	LPCSTRING,LPCMIXED	-	-
+jvmud_find_lpc_object	LPCMIXED	LPCSTRING	-	-
+jvmud_find_object	LPCMIXED	LPCSTRING	-	-
+jvmud_find_player	LPCOBJECT	LPCSTRING	-	SESSION_CONTROL
+jvmud_first_entity_at	LPCOBJECT	LPCMIXED	-	-
+jvmud_format_json	LPCSTRING	LPCMIXED	-	-
+jvmud_format_text	LPCSTRING	LPCSTRING	LPCMIXED	-
+jvmud_format_time	LPCSTRING	LPCINT	-	-
+jvmud_gmcp_enabled	LPCSTATUS		-	SESSION_CONTROL
+jvmud_gmcp_enabled	LPCSTATUS	LPCMIXED	-	SESSION_CONTROL
+jvmud_hash_password	LPCSTRING	LPCSTRING	-	-
+jvmud_inherited_programs	LPCARRAY	LPCMIXED	-	-
+jvmud_interactive	LPCSTATUS	LPCMIXED	-	SESSION_CONTROL
+jvmud_interactive_info	LPCMIXED	LPCMIXED,LPCINT	-	SESSION_CONTROL
+jvmud_invoke_lpc_object	LPCMIXED	LPCMIXED,LPCSTRING	LPCMIXED	-
+jvmud_is_array	LPCSTATUS	LPCMIXED	-	-
+jvmud_is_float	LPCSTATUS	LPCMIXED	-	-
+jvmud_is_int	LPCSTATUS	LPCMIXED	-	-
+jvmud_is_mapping	LPCSTATUS	LPCMIXED	-	-
+jvmud_is_object	LPCSTATUS	LPCMIXED	-	-
+jvmud_is_string	LPCSTATUS	LPCMIXED	-	-
+jvmud_list_mudlib_paths	LPCARRAY	LPCSTRING	-	MUDLIB_FILES
+jvmud_list_mudlib_paths	LPCARRAY	LPCSTRING,LPCINT	-	MUDLIB_FILES
+jvmud_load_lpc_object	LPCOBJECT	LPCSTRING	-	-
+jvmud_lowercase_text	LPCSTRING	LPCMIXED	-	-
+jvmud_lpc_object_id	LPCSTRING	LPCMIXED	-	-
+jvmud_lpc_object_info	LPCMIXED	LPCMIXED,LPCINT	-	-
+jvmud_lpc_object_methods	LPCARRAY	LPCMIXED	-	-
+jvmud_map	LPCMIXED	LPCMIXED,LPCFUNCTION	LPCMIXED	-
+jvmud_mapping_delete	LPCMAPPING	LPCMAPPING,LPCMIXED	-	-
+jvmud_mapping_from_keys	LPCMAPPING	LPCARRAY	-	-
+jvmud_mapping_keys	LPCARRAY	LPCMAPPING	-	-
+jvmud_mapping_values	LPCARRAY	LPCMAPPING	-	-
+jvmud_mapping_values	LPCARRAY	LPCMAPPING,LPCINT	-	-
+jvmud_member	LPCINT	LPCMIXED,LPCMIXED	-	-
+jvmud_method_exists	LPCSTATUS	LPCSTRING	-	-
+jvmud_method_exists	LPCSTATUS	LPCSTRING,LPCMIXED	-	-
+jvmud_move_entity	LPCVOID	LPCMIXED,LPCMIXED	-	-
+jvmud_next_entity_at	LPCOBJECT	LPCMIXED	-	-
+jvmud_notify_fail	LPCINT	LPCMIXED	-	-
+jvmud_object_info	LPCMIXED	LPCMIXED,LPCINT	-	-
+jvmud_parse_json	LPCMIXED	LPCSTRING	-	-
+jvmud_previous_lpc_object	LPCOBJECT		-	-
+jvmud_previous_object	LPCOBJECT		-	-
+jvmud_query_idle	LPCINT	LPCMIXED	-	SESSION_CONTROL
+jvmud_query_ip_name	LPCMIXED	LPCMIXED	-	SESSION_CONTROL
+jvmud_query_ip_number	LPCMIXED	LPCMIXED	-	SESSION_CONTROL
+jvmud_raise_error	LPCVOID	LPCMIXED	-	-
+jvmud_random	LPCINT	LPCINT	-	-
+jvmud_read_mudlib_json	LPCMIXED	LPCSTRING	-	MUDLIB_FILES
+jvmud_read_mudlib_json_array	LPCMIXED	LPCSTRING,LPCSTRING,LPCINT,LPCINT	-	MUDLIB_FILES
+jvmud_read_mudlib_text	LPCMIXED	LPCSTRING	-	MUDLIB_FILES
+jvmud_read_mudlib_text	LPCMIXED	LPCSTRING,LPCINT,LPCINT	-	MUDLIB_FILES
+jvmud_rebind_session_lpc_object	LPCSTATUS	LPCOBJECT,LPCOBJECT	-	SESSION_CONTROL
+jvmud_regex_explode	LPCARRAY	LPCSTRING,LPCSTRING	-	-
+jvmud_regex_match	LPCMIXED	LPCARRAY,LPCSTRING	-	-
+jvmud_regex_match	LPCMIXED	LPCARRAY,LPCSTRING,LPCINT	-	-
+jvmud_regex_replace	LPCSTRING	LPCSTRING,LPCSTRING,LPCMIXED,LPCINT	-	-
+jvmud_remove_action	LPCINT	LPCINT	-	-
+jvmud_remove_action	LPCINT	LPCINT,LPCMIXED	-	-
+jvmud_remove_mudlib_directory	LPCSTATUS	LPCSTRING	-	MUDLIB_FILES
+jvmud_remove_mudlib_text	LPCSTATUS	LPCSTRING	-	MUDLIB_FILES
+jvmud_rename_mudlib_text	LPCINT	LPCSTRING,LPCSTRING	-	MUDLIB_FILES
+jvmud_restore_lpc_object_state	LPCSTATUS	LPCSTRING	-	MUDLIB_FILES
+jvmud_runtime_info	LPCMIXED	LPCINT	-	-
+jvmud_save_lpc_object_state	LPCSTATUS	LPCSTRING	-	MUDLIB_FILES
+jvmud_schedule_deferred_callback	LPCVOID	LPCSTRING,LPCINT	LPCMIXED	-
+jvmud_schedule_recurring_tick	LPCVOID	LPCINT,LPCINT	-	-
+jvmud_send_gmcp	LPCSTATUS	LPCSTRING	-	SESSION_CONTROL
+jvmud_send_gmcp	LPCSTATUS	LPCSTRING,LPCMIXED	-	SESSION_CONTROL
+jvmud_serialize_lpc_value	LPCSTRING	LPCMIXED	-	-
+jvmud_set_entity_location	LPCVOID	LPCMIXED,LPCMIXED	-	-
+jvmud_set_entity_translucent	LPCVOID	LPCMIXED,LPCSTATUS	-	-
+jvmud_set_light	LPCINT	LPCINT	-	-
+jvmud_set_this_player	LPCVOID	LPCMIXED	-	-
+jvmud_shutdown	LPCVOID		-	HOST_CONTROL
+jvmud_size	LPCINT	LPCMIXED	-	-
+jvmud_sort_array	LPCARRAY	LPCARRAY,LPCMIXED	LPCMIXED	-
+jvmud_split_text	LPCARRAY	LPCSTRING,LPCSTRING	-	-
+jvmud_sqrt	LPCFLOAT	LPCMIXED	-	-
+jvmud_sscanf	LPCINT	LPCMIXED,LPCMIXED,LPCMIXED	LPCMIXED	-
+jvmud_time	LPCINT		-	-
+jvmud_to_int	LPCINT	LPCMIXED	-	-
+jvmud_to_lpc_object	LPCMIXED	LPCMIXED	-	-
+jvmud_to_string	LPCSTRING	LPCMIXED	-	-
+jvmud_uppercase_text	LPCSTRING	LPCMIXED	-	-
+jvmud_users	LPCARRAY		-	SESSION_CONTROL
+jvmud_verify_password	LPCSTATUS	LPCSTRING,LPCSTRING	-	-
+jvmud_wrap_text	LPCSTRING	LPCMIXED	-	-
+jvmud_wrap_text	LPCSTRING	LPCMIXED,LPCINT	-	-
+jvmud_write	LPCVOID	LPCMIXED	-	-
+jvmud_write_to_lpc_object	LPCVOID	LPCOBJECT,LPCMIXED	-	-
