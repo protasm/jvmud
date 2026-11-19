@@ -83,9 +83,8 @@ Hosted LPC invocation has three collaborators under `engine.instance.lpc`:
   and field sharing with historical receivers captured by inline closures.
 
 `MudlibRuntimeContext` delegates these operations while remaining the adapter to
-generated code and hosted services. Command actor, verb, failure text, and pending
-action registration remain separate state in that context; they describe command
-dispatch independently of LPC object call scopes.
+generated code and hosted services. `LPCCommands` owns command actors, verbs,
+failure text, and action registration independently of LPC object call scopes.
 
 `LPCInvocationStack` and `LPCMethodInvoker` are package-private implementation
 owners behind the context. Target loading and destroyed-object checks remain
@@ -112,6 +111,40 @@ closures deliberately retain their captured receiver and code while sharing live
 field state through `LPCObjectLifecycle`; invocation must preserve that distinction
 across reload.
 
+## LPC Command Ownership
+
+The package-private `engine.instance.lpc.LPCCommands` owns command actor scopes,
+active verbs and failure text, pending and scoped registration, command enablement,
+aliases, action tables, dispatch order, and command cleanup on destruction.
+`MudlibRuntimeContext` keeps its existing LPC-facing methods and delegates command
+operations to that owner. Movement, lifecycle, session, and timer orchestration
+remain with the context and hosted runtime; all mutations run on the instance's
+execution queue.
+
+`LPCCommands` uses `LPCInvocationStack` to identify the lexical action handler,
+`LPCObjectLifecycle` to canonicalize actors and select live behavior, and
+`LPCMethodInvoker` to inspect and call action methods. Its narrow host interface
+supplies current ordering and catch-all argument flags, environment lookup, actor
+activity updates, and private output. The host reads those policy flags when
+requested. Callers establish command actor scopes before dispatch,
+independently of lexical LPC object scopes.
+
+Command dispatch follows these rules:
+
+- Persistent registrations survive interaction-scope refresh; nearby lifecycle
+  callbacks rebuild scoped actions. The hosted runtime coordinates that refresh.
+- Aliases rewrite the first word before action lookup, and the active verb is the
+  expanded verb. Manifest policy still selects newest-first ordering and whether
+  catch-all actions receive parsed arguments or the complete command line.
+- Dispatch uses a snapshot of matching actions. A truthy action result or a change
+  in the actor's environment accepts the command. The environment's legacy
+  movement fallback runs before the last failure message is delivered.
+- Nested calls restore the enclosing actor, verb, and failure scopes after returns
+  or exceptions. Command enablement remains metadata used by lifecycle decisions;
+  it is not a gate on direct dispatch.
+- Destruction removes the object's actor table, enablement, and registrations as a
+  handler in other actors' tables. Reload retains bindings to its stable identity.
+
 ## Live LPC Object Reload
 
 Reload replaces a loaded shared object's compiled behavior while preserving the
@@ -125,8 +158,9 @@ object that participates in the world. Three concepts have distinct owners:
   receivers. An LPC object reference continues to identify the same live object.
 - Engine owners retain the object's bindings: `MudlibWorldProjection` supplies
   containment, `InstanceSessions` supplies session attachment, and
-  `MudlibRuntimeContext` adapts command and scheduled-work operations. A new program
-  revision does not require destroying or recreating those bindings.
+  `LPCCommands` supplies command bindings. `MudlibRuntimeContext` adapts authored
+  requests to those owners and schedules work. A new program revision does not
+  require destroying or recreating those bindings.
 
 The authenticated mudlib administration command `reload <path>` prepares a fresh
 program revision and Java receiver before installing either. It checks that the

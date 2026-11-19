@@ -42,11 +42,9 @@ import io.github.protasm.jvmud.storage.jdbc.RuntimeDatabaseService;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -63,7 +61,7 @@ import java.util.function.Supplier;
 /**
  * Engine-owned state and services for executing LPC inside one mudlib instance.
  *
- * <p>World projection, commands, scheduling and storage integration live here. Connection and
+ * <p>World projection, scheduling and storage integration live here. Connection and
  * Player/Persona attachment state belongs to {@link InstanceSessions}; this context adapts LPC calls
  * to that owner. Generated code sees only the language's {@link RuntimeContext} contract. Compilation uses a
  * separate {@link LPCCompilerContext}; this adapter shares callable signatures with it without
@@ -72,6 +70,7 @@ import java.util.function.Supplier;
  * <p>{@code LPCInvocationStack} owns lexical object scopes and execution membership.
  * {@code LPCMethodInvoker} owns method selection, argument adaptation and diagnostics, with named
  * policies for required, optional, lifecycle and caller-preserving global calls.
+ * {@code LPCCommands} owns command actors, registration, dispatch and failure scopes.
  * {@link LPCObjectLifecycle} retains ownership of live identities and behavior receivers.</p>
  *
  * <p>A running instance confines mutations to its execution thread. The isolated defaults also make
@@ -82,6 +81,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private final LPCInvocationStack invocationStack = new LPCInvocationStack(objectLifecycle);
     private final LPCMethodInvoker methodInvoker = new LPCMethodInvoker(
             invocationStack, this::resolveInvocationTarget, this::objectIdOrDescription);
+    private final LPCCommands commands;
     private final EfunRegistry efunRegistry;
     private final LPCCompilerContext compilerContext;
     private final Map<String, Object> objects = new LinkedHashMap<>();
@@ -95,11 +95,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private final Map<Object, Integer> lightLevels = new IdentityHashMap<>();
     private final Set<Object> opaqueEntities =
             Collections.newSetFromMap(new IdentityHashMap<>());
-    private final Set<Object> commandEnabledEntities =
-            Collections.newSetFromMap(new IdentityHashMap<>());
-    private long commandActionSequence;
-    private final Map<Object, Map<String, List<CommandAction>>> commandActions = new IdentityHashMap<>();
-    private final Map<String, String> commandAliases = new LinkedHashMap<>();
     private final Map<Object, ScheduledTask> recurringTickTasks = new IdentityHashMap<>();
     private final Map<Object, Map<String, List<DeferredCallback>>> deferredCallbackTasks =
             new IdentityHashMap<>();
@@ -107,16 +102,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private final InstanceSessions instanceSessions;
     private final RuntimeDatabaseService databaseService = new RuntimeDatabaseService();
     private final StringBuilder outputTranscript = new StringBuilder();
-    private final ThreadLocal<Deque<Object>> commandActorStack =
-            ThreadLocal.withInitial(ArrayDeque::new);
-    private final ThreadLocal<Deque<String>> commandVerbStack =
-            ThreadLocal.withInitial(ArrayDeque::new);
-    private final ThreadLocal<Deque<String>> commandFailureStack =
-            ThreadLocal.withInitial(ArrayDeque::new);
-    private final ThreadLocal<Deque<PendingAction>> pendingActionStack =
-            ThreadLocal.withInitial(ArrayDeque::new);
-    private final ThreadLocal<Integer> scopedCommandRegistrationDepth =
-            ThreadLocal.withInitial(() -> 0);
     private Consumer<String> outputSink = ignored -> {};
     private Function<String, Object> objectFactory = path -> null;
     private Function<String, Object> objectLoader = path -> null;
@@ -145,6 +130,32 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         this.efunRegistry = Objects.requireNonNull(efunRegistry, "efunRegistry");
         this.compilerContext = new LPCCompilerContext(includeResolver, efunRegistry);
         this.instanceSessions = new InstanceSessions(this::objectReference, outputTranscript::append);
+        this.commands = new LPCCommands(objectLifecycle, invocationStack, methodInvoker, new LPCCommands.Host() {
+            @Override
+            public Object environmentOf(Object actor) {
+                return MudlibRuntimeContext.this.environment(actor);
+            }
+
+            @Override
+            public void touchActor(Object actor) {
+                touchPersona(actor);
+            }
+
+            @Override
+            public void writeToActor(Object actor, Object message) {
+                writeToLpcObject(actor, message);
+            }
+
+            @Override
+            public boolean newestActionsFirst() {
+                return configuration.commandActionsNewestFirst();
+            }
+
+            @Override
+            public boolean catchAllArgumentsOnly() {
+                return configuration.commandActionsArgumentsOnly();
+            }
+        });
     }
 
     /** Returns the single owner of this instance's connection and Persona attachment state. */
@@ -1174,7 +1185,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
         worldProjection.move(object, destination);
         if (previousLocation != null
-                && (instanceSessions.isInteractive(object) || commandEnabledEntities.contains(object))) {
+                && (instanceSessions.isInteractive(object) || commands.isEnabled(object))) {
             invokeDepartureLifecycle(object, previousLocation);
         }
         // Departure cleanup may destroy or redirect the actor. Do not deliver a stale arrival.
@@ -1349,20 +1360,19 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return aliasesByEntity.getOrDefault(object, Map.of()).containsKey(normalizedNamespace) ? 1 : 0;
     }
 
+    /** Marks an object as command-enabled for lifecycle and mudlib queries. */
     public void enableEntityCommands(Object object) {
-        if (object != null) {
-            commandEnabledEntities.add(object);
-        }
+        commands.enable(object);
     }
 
+    /** Clears command enablement metadata without removing registered actions. */
     public void disableEntityCommands(Object object) {
-        if (object != null) {
-            commandEnabledEntities.remove(object);
-        }
+        commands.disable(object);
     }
 
+    /** Returns LPC status for enablement metadata; dispatch itself is not gated by this flag. */
     public int entityCommandsEnabled(Object object) {
-        return commandEnabledEntities.contains(object) ? 1 : 0;
+        return commands.isEnabled(object) ? 1 : 0;
     }
 
     public void setEntityTranslucent(Object object, boolean translucent) {
@@ -1422,9 +1432,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         lightLevels.remove(object);
         opaqueEntities.remove(object);
         removeEntityAliases(object);
-        commandEnabledEntities.remove(object);
-        commandActions.remove(object);
-        removeCommandHandler(object);
+        commands.discardObject(object);
         String id = objectIds.remove(object);
         if (id != null) {
             objects.remove(id);
@@ -1631,12 +1639,14 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return invocationStack.previousObject();
     }
 
+    /** Returns the active canonical command actor independently of the lexical LPC object. */
     public Object currentCommandActor() {
-        return commandActorStack.get().peek();
+        return commands.currentActor();
     }
 
+    /** Returns the expanded verb of the active dispatch, or {@code null} outside dispatch. */
     public String currentCommandVerb() {
-        return commandVerbStack.get().peek();
+        return commands.currentVerb();
     }
 
     /**
@@ -1648,17 +1658,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      * {@code query_verb()} sees the expanded verb.</p>
      */
     public void configureCommandAliases(Object aliases) {
-        commandAliases.clear();
-        if (!(aliases instanceof Map<?, ?> map)) {
-            return;
-        }
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            String alias = String.valueOf(entry.getKey()).trim();
-            String command = String.valueOf(entry.getValue()).trim();
-            if (!alias.isEmpty() && !command.isEmpty()) {
-                commandAliases.put(alias, command);
-            }
-        }
+        commands.configureAliases(aliases);
     }
 
     /**
@@ -1669,13 +1669,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      * declined the command.</p>
      */
     public int notifyCommandFailure(Object message) {
-        Deque<String> failures = commandFailureStack.get();
-        if (failures.isEmpty()) {
-            return 0;
-        }
-        failures.pop();
-        failures.push(String.valueOf(message));
-        return 0;
+        return commands.notifyFailure(message);
     }
 
     /** Enters a canonical lexical frame; prefer {@link #withCurrentObject(Object, Supplier)} for scoped calls. */
@@ -1714,25 +1708,19 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         });
     }
 
+    /** Runs within a canonical actor scope, restoring its caller on normal return or failure. */
     public <T> T withCommandActor(Object actor, Supplier<T> action) {
-        Objects.requireNonNull(actor, "actor");
-        Objects.requireNonNull(action, "action");
-        commandActorStack.get().push(objectLifecycle.identityOf(actor));
-        try {
-            return action.get();
-        } finally {
-            commandActorStack.get().pop();
-        }
+        return commands.withActor(actor, action);
     }
 
+    /** Remembers a pending action method with its current registration lifetime. */
     public void rememberActionMethod(String methodName) {
-        pendingActionStack.get().push(new PendingAction(
-                Objects.requireNonNull(methodName, "methodName"),
-                scopedCommandRegistrationDepth.get() == 0));
+        commands.rememberActionMethod(methodName);
     }
 
+    /** Binds the latest pending method to an exact verb for the current actor and handler. */
     public void registerVerb(String verb) {
-        registerVerb(verb, false);
+        commands.registerVerb(verb);
     }
 
     /**
@@ -1745,41 +1733,12 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      * the refresh pass.</p>
      */
     public void registerVerb(String verb, boolean prefixMatch) {
-        Objects.requireNonNull(verb, "verb");
-        Deque<PendingAction> pendingActions = pendingActionStack.get();
-        if (pendingActions.isEmpty()) {
-            return;
-        }
-
-        PendingAction pendingAction = pendingActions.pop();
-        Object actor = currentCommandActor();
-        Object handler = currentObject();
-        if (actor == null && pendingAction.persistent()) {
-            actor = handler;
-        }
-        if (actor == null || handler == null) {
-            return;
-        }
-
-        commandActions
-                .computeIfAbsent(actor, ignored -> new LinkedHashMap<>())
-                .computeIfAbsent(verb, ignored -> new ArrayList<>())
-                .add(new CommandAction(verb, handler, pendingAction.methodName(), prefixMatch,
-                        pendingAction.persistent(), ++commandActionSequence));
+        commands.registerVerb(verb, prefixMatch);
     }
 
+    /** Clears temporary interaction actions for the actor, retaining persistent declarations. */
     public void clearCommandActions(Object actor) {
-        Map<String, List<CommandAction>> actionsByVerb = commandActions.get(actor);
-        if (actionsByVerb == null) {
-            return;
-        }
-        for (List<CommandAction> actions : actionsByVerb.values()) {
-            actions.removeIf(action -> !action.persistent());
-        }
-        actionsByVerb.entrySet().removeIf(entry -> entry.getValue().isEmpty());
-        if (actionsByVerb.isEmpty()) {
-            commandActions.remove(actor);
-        }
+        commands.clearTemporaryActions(actor);
     }
 
     /**
@@ -1790,136 +1749,26 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      * the current LPC object as the owning action handler.</p>
      */
     public int removeCommandActions(Object actor, Object handler) {
-        if (actor == null || handler == null) {
-            return 0;
-        }
-        Map<String, List<CommandAction>> actionsByVerb = commandActions.get(actor);
-        if (actionsByVerb == null) {
-            return 0;
-        }
-        int removed = 0;
-        for (List<CommandAction> actions : actionsByVerb.values()) {
-            int before = actions.size();
-            actions.removeIf(action -> action.handler() == handler);
-            removed += before - actions.size();
-        }
-        actionsByVerb.entrySet().removeIf(entry -> entry.getValue().isEmpty());
-        if (actionsByVerb.isEmpty()) {
-            commandActions.remove(actor);
-        }
-        return removed;
+        return commands.removeActionsForHandler(actor, handler);
     }
 
+    /** Clears all pending unbound action methods on the current thread. */
     public void clearPendingActionMethods() {
-        pendingActionStack.get().clear();
+        commands.clearPendingActionMethods();
     }
 
+    /** Marks newly remembered action methods as temporary for an interaction lifecycle scope. */
     public <T> T withScopedCommandRegistration(Supplier<T> action) {
-        Objects.requireNonNull(action, "action");
-        scopedCommandRegistrationDepth.set(scopedCommandRegistrationDepth.get() + 1);
-        try {
-            return action.get();
-        } finally {
-            scopedCommandRegistrationDepth.set(scopedCommandRegistrationDepth.get() - 1);
-        }
+        return commands.withScopedRegistration(action);
     }
 
-    /** Dispatches a snapshot of matching actions. The boundary may select newest-first order
+    /** Dispatches a snapshot of matching actions within the caller's explicit actor scope.
+     * The boundary may select newest-first order
      * and parsed arguments for catch-alls; default exact-first and whole-line behavior is retained.
      * Nested commands restore the enclosing verb and failure context on return.
      */
     public Object dispatchCommand(Object actor, String commandLine) {
-        Objects.requireNonNull(actor, "actor");
-        Objects.requireNonNull(commandLine, "commandLine");
-        touchPersona(actor);
-        String trimmed = commandLine.trim();
-        if (trimmed.isEmpty()) {
-            return 0;
-        }
-
-        trimmed = applyCommandAlias(trimmed);
-
-        String verb = trimmed;
-        String argument = null;
-        int space = trimmed.indexOf(' ');
-        if (space != -1) {
-            verb = trimmed.substring(0, space);
-            argument = trimmed.substring(space + 1).trim();
-            if (argument.isEmpty()) {
-                argument = null;
-            }
-        }
-
-        List<CommandAction> actions = commandActionsFor(actor, verb);
-        commandVerbStack.get().push(verb);
-        commandFailureStack.get().push("");
-        try {
-            for (CommandAction action : actions) {
-                Object environmentBefore = environment(actor);
-                Object result = invokeCommandAction(action, trimmed, argument);
-                if (Truth.isTruthy(result)) {
-                    return result;
-                }
-                if (environment(actor) != environmentBefore) {
-                    return 1;
-                }
-            }
-            if (tryEnvironmentMovementAction(actor, verb, argument)) {
-                return 1;
-            }
-            String failureMessage = commandFailureStack.get().peek();
-            if (failureMessage != null && !failureMessage.isEmpty()) {
-                writeToLpcObject(actor, failureMessage);
-            }
-        } finally {
-            commandFailureStack.get().pop();
-            commandVerbStack.get().pop();
-        }
-        return 0;
-    }
-
-    private boolean tryEnvironmentMovementAction(Object actor, String verb, String argument) {
-        Object environment = environment(actor);
-        if (environment == null || !methodInvoker.hasMethod(objectReceiver(environment).getClass(), "move", 1)) {
-            return false;
-        }
-        Object exits = invokeOptionalObject(environment, "exits");
-        if (!(exits instanceof List<?> exitList) || !exitList.contains(verb)) {
-            return false;
-        }
-        Object environmentBefore = environment(actor);
-        Object result = invokeObject(environment, "move", argument);
-        return Truth.isTruthy(result) || environment(actor) != environmentBefore;
-    }
-
-    private String applyCommandAlias(String commandLine) {
-        int space = commandLine.indexOf(' ');
-        String verb = space == -1 ? commandLine : commandLine.substring(0, space);
-        String replacement = commandAliases.get(verb);
-        if (replacement == null) {
-            return commandLine;
-        }
-        return space == -1 ? replacement : replacement + commandLine.substring(space);
-    }
-
-    private List<CommandAction> commandActionsFor(Object actor, String verb) {
-        Map<String, List<CommandAction>> actionsByVerb = commandActions.getOrDefault(actor, Map.of());
-        List<CommandAction> actions = new ArrayList<>(actionsByVerb.getOrDefault(verb, List.of()));
-        for (Map.Entry<String, List<CommandAction>> entry : actionsByVerb.entrySet()) {
-            if (entry.getKey().equals(verb) || !verb.startsWith(entry.getKey())) {
-                continue;
-            }
-            List<CommandAction> prefixActions = entry.getValue();
-            for (int i = prefixActions.size() - 1; i >= 0; i--) {
-                CommandAction action = prefixActions.get(i);
-                if (action.prefixMatch()) {
-                    actions.add(action);
-                }
-            }
-        }
-        if (configuration.commandActionsNewestFirst())
-            actions.sort(java.util.Comparator.comparingLong(CommandAction::sequence).reversed());
-        return actions;
+        return commands.dispatch(actor, commandLine);
     }
 
     public int setLight(int delta) {
@@ -1984,24 +1833,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return false;
     }
 
-    private Object invokeCommandAction(CommandAction action, String commandLine, String argument) {
-        String actionArgument = action.verb().isEmpty() && !configuration.commandActionsArgumentsOnly()
-                ? commandLine : argument;
-        boolean hasOneArgument = methodInvoker.hasMethodAcceptingMissingArguments(
-                objectReceiver(action.handler()).getClass(), action.methodName(), 1);
-        boolean hasNoArguments = methodInvoker.hasMethod(objectReceiver(action.handler()).getClass(), action.methodName(), 0);
-        if (actionArgument != null && hasOneArgument) {
-            return invokeObject(action.handler(), action.methodName(), actionArgument);
-        }
-        if (actionArgument == null && hasOneArgument && !hasNoArguments) {
-            return invokeObject(action.handler(), action.methodName(), actionArgument);
-        }
-        if (hasNoArguments) {
-            return invokeObject(action.handler(), action.methodName());
-        }
-        return 0;
-    }
-
     /** Resolves paths and tombstones through host policy, then selects the lifecycle's live receiver. */
     private Object resolveInvocationTarget(Object target) {
         if (target instanceof String path) {
@@ -2056,14 +1887,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return normalized.isEmpty() ? null : normalized;
     }
 
-    private void removeCommandHandler(Object handler) {
-        for (Map<String, List<CommandAction>> actionsByVerb : commandActions.values()) {
-            actionsByVerb.values().forEach(actions -> actions.removeIf(action -> action.handler() == handler));
-            actionsByVerb.entrySet().removeIf(entry -> entry.getValue().isEmpty());
-        }
-        commandActions.entrySet().removeIf(entry -> entry.getValue().isEmpty());
-    }
-
     /** An existing identifier method decides the match; only absence permits canonical-ID fallback. */
     private boolean matchesIdentifier(Object object, Object identifier) {
         if (identifier == null) {
@@ -2092,9 +1915,5 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return id.equals(objectId(object));
     }
 
-    private record PendingAction(String methodName, boolean persistent) {}
-
-    private record CommandAction(String verb, Object handler, String methodName, boolean prefixMatch,
-            boolean persistent, long sequence) {}
 
 }

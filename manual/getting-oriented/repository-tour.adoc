@@ -21,6 +21,7 @@ live object identity and state separate from that behavior's program revision.
 `lpc.MudlibRuntimeContext` adapts execution to world, session, and storage services.
 `lpc.LPCInvocationStack` owns current/previous-object identity and call scopes;
 `lpc.LPCMethodInvoker` selects methods, adapts arguments, and reports call failures.
+`lpc.LPCCommands` owns command context, action registration, and dispatch.
 `instance.session.InstanceSessions` owns connection and attachment transitions;
 `InstanceSession` represents a connection before and after login, and
 `PersonaAttachment` relates its selected Persona, Entity, and authored behavior.

@@ -7,6 +7,9 @@
  * {@code LPCInvocationStack} owns lexical current/previous-object scopes and the active-object
  * reload check. {@code LPCMethodInvoker} makes required, optional, lifecycle and caller-preserving
  * invocation policies explicit, including method selection, argument adaptation and diagnostics.
+ * {@code LPCCommands} owns actor scopes, action registration, enablement, aliases, dispatch and
+ * command failure state. Its narrow host bridge leaves containment, session activity and output
+ * with the context and their existing owners.
  * {@link io.github.protasm.jvmud.engine.instance.lpc.MudlibRuntimeContext} implements the neutral
  * generated-code contract and adapts authored behavior to world projection, commands, scheduling
  * and configured storage. Session state belongs to

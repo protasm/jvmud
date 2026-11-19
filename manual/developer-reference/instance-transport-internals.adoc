@@ -33,8 +33,8 @@ canonical current/previous-object identities and restores call scopes after
 normal returns and exceptions. Its execution-membership query also guards live
 object reload. `LPCMethodInvoker` owns reflective selection, argument adaptation,
 and invocation diagnostics. `MudlibRuntimeContext` delegates to those owners.
-Command actor, verb, failure text, and pending-action registration remain context
-state; they describe command dispatch rather than the LPC object call stack.
+`LPCCommands` owns command actor, verb, failure text, and action registration
+independently of the LPC object call stack.
 Both invocation owners are package-private collaborators of the context. Target
 loading and destroyed-object checks stay in the context, as do the absence and
 failure rules for identifier and message-permission probes; those probes use the
@@ -53,6 +53,33 @@ Ordinary calls and named-method callables follow the selected live revision;
 inline closures retain captured code and share current fields with their
 historical receiver. Nested same-object calls inside a historical closure stay
 on that receiver until its scope ends.
+
+==== LPC command dispatch
+
+The package-private `engine.instance.lpc.LPCCommands` owns command actor scopes,
+active verbs and failures, registration scopes, action tables, aliases, command
+enablement, ordering, and dispatch. `MudlibRuntimeContext` delegates its existing
+command API. The hosted runtime retains interaction refresh, and the context
+coordinates movement, lifecycle, sessions, and timers on the instance queue.
+
+The command owner uses `LPCInvocationStack` for lexical handlers,
+`LPCObjectLifecycle` for canonical actors and live receivers, and
+`LPCMethodInvoker` for action method calls. A narrow host interface supplies
+environment lookup, actor activity, private output, and the current ordering and
+catch-all argument flags. Those policy flags are read from the host when needed.
+Callers establish an actor scope before dispatch. Nested calls restore the outer
+actor, verb, and failure state even after exceptions.
+
+[%unbreakable]
+--
+Persistent actions survive interaction refresh while nearby lifecycle callbacks
+rebuild scoped actions. Dispatch snapshots matching actions, retaining the
+manifest's ordering and catch-all argument policy. An accepted action or actor
+movement handles the command; otherwise the environment movement fallback runs
+before failure text is written. Command enablement remains lifecycle metadata,
+not a dispatch gate. Destruction removes actor and handler registrations; reload
+keeps their stable object identity.
+--
 
 ==== Administration and storage
 

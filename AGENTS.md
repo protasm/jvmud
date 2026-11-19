@@ -82,8 +82,10 @@ to hosted owners. `LPCInvocationStack` owns current/previous-object identity and
 scoped execution membership; `LPCMethodInvoker` owns method selection, argument
 adaptation, and invocation diagnostics. Keep required, optional, lifecycle, and
 caller-preserving global calls explicit. `LPCObjectLifecycle` remains the owner
-of live receivers, reload, and historical-closure field sharing. Command actor,
-verb, failure, and pending-action state are separate from the LPC object stack.
+of live receivers, reload, and historical-closure field sharing. `LPCCommands`
+owns command actors, verbs, failures, registration scopes, enablement, aliases,
+action tables, and dispatch. The context retains movement, lifecycle, session,
+and timer orchestration; command enablement is metadata, not a dispatch gate.
 Keep target loading, destroyed-object checks, and specialized probe absence and
 failure rules in the hosted context; method plans supply reflection mechanics.
 

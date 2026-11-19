@@ -914,6 +914,7 @@ one running mudlib. <code>lpc.MudlibRuntime</code> loads authored behavior;
 <code>lpc.LPCInvocationStack</code> owns current/previous-object identity and call scopes;
 <code>lpc.LPCMethodInvoker</code> owns method selection and argument adaptation.
 <code>lpc.LPCObjectLifecycle</code> owns live receivers and behavior replacement.
+<code>lpc.LPCCommands</code> owns command context, action registration, and dispatch.
 <code>efun.EngineEfuns</code> composes language-only functions with engine-service adapters.
 Input, administration, and ticks run on the instance&#8217;s execution queue.</p>
 </li>
@@ -989,6 +990,7 @@ live object identity and state separate from that behavior&#8217;s program revis
 <code>lpc.MudlibRuntimeContext</code> adapts execution to world, session, and storage services.
 <code>lpc.LPCInvocationStack</code> owns current/previous-object identity and call scopes;
 <code>lpc.LPCMethodInvoker</code> selects methods, adapts arguments, and reports call failures.
+<code>lpc.LPCCommands</code> owns command context, action registration, and dispatch.
 <code>instance.session.InstanceSessions</code> owns connection and attachment transitions;
 <code>InstanceSession</code> represents a connection before and after login, and
 <code>PersonaAttachment</code> relates its selected Persona, Entity, and authored behavior.
@@ -1799,6 +1801,14 @@ against the selected live mudlib. They are not player Telnet commands.</p>
 <p>If a command is unrecognized, first identify which of these contexts received it.
 Then check the active profile&#8217;s lifecycle mappings and command registration.</p>
 </div>
+<div class="paragraph">
+<p>To trace gameplay input in Java, start with <code>MudlibRuntime.refreshCommandActions</code>
+and <code>dispatchCommand</code>. The package-private <code>engine.instance.lpc.LPCCommands</code>
+owns the actor&#8217;s action table, command aliases, active verb, failure text, and
+dispatch order. <code>MudlibRuntimeContext</code> delegates LPC command operations to that
+owner and coordinates movement and lifecycle callbacks. The mudlib still supplies
+the action methods and decides which commands it accepts.</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_transcript_regressions"><a class="anchor" href="#_transcript_regressions"></a><a class="link" href="#_transcript_regressions">Transcript Regressions</a></h3>
@@ -2076,7 +2086,8 @@ already loaded rooms keep their own revisions.</p>
 <code>language.execution.LPCProgramRevision</code> names compiled behavior,
 <code>engine.instance.lpc.LPCObjectLifecycle</code> owns identity and behavior replacement,
 <code>MudlibWorldProjection</code> owns world bindings, and <code>InstanceSessions</code> owns session
-attachments. <code>MudlibRuntimeContext</code> adapts authored calls to those owners.
+attachments. <code>LPCCommands</code> owns command registrations bound to the same stable
+identity. <code>MudlibRuntimeContext</code> adapts authored calls to those owners.
 <code>LPCInvocationStack</code> tracks canonical current/previous-object identities and the
 execution membership used to guard reload; <code>LPCMethodInvoker</code> selects and invokes
 authored methods. Existing inline closures retain their captured code while
@@ -3967,8 +3978,8 @@ canonical current/previous-object identities and restores call scopes after
 normal returns and exceptions. Its execution-membership query also guards live
 object reload. <code>LPCMethodInvoker</code> owns reflective selection, argument adaptation,
 and invocation diagnostics. <code>MudlibRuntimeContext</code> delegates to those owners.
-Command actor, verb, failure text, and pending-action registration remain context
-state; they describe command dispatch rather than the LPC object call stack.
+<code>LPCCommands</code> owns command actor, verb, failure text, and action registration
+independently of the LPC object call stack.
 Both invocation owners are package-private collaborators of the context. Target
 loading and destroyed-object checks stay in the context, as do the absence and
 failure rules for identifier and message-permission probes; those probes use the
@@ -3989,6 +4000,38 @@ Ordinary calls and named-method callables follow the selected live revision;
 inline closures retain captured code and share current fields with their
 historical receiver. Nested same-object calls inside a historical closure stay
 on that receiver until its scope ends.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_lpc_command_dispatch"><a class="anchor" href="#_lpc_command_dispatch"></a><a class="link" href="#_lpc_command_dispatch">LPC command dispatch</a></h4>
+<div class="paragraph">
+<p>The package-private <code>engine.instance.lpc.LPCCommands</code> owns command actor scopes,
+active verbs and failures, registration scopes, action tables, aliases, command
+enablement, ordering, and dispatch. <code>MudlibRuntimeContext</code> delegates its existing
+command API. The hosted runtime retains interaction refresh, and the context
+coordinates movement, lifecycle, sessions, and timers on the instance queue.</p>
+</div>
+<div class="paragraph">
+<p>The command owner uses <code>LPCInvocationStack</code> for lexical handlers,
+<code>LPCObjectLifecycle</code> for canonical actors and live receivers, and
+<code>LPCMethodInvoker</code> for action method calls. A narrow host interface supplies
+environment lookup, actor activity, private output, and the current ordering and
+catch-all argument flags. Those policy flags are read from the host when needed.
+Callers establish an actor scope before dispatch. Nested calls restore the outer
+actor, verb, and failure state even after exceptions.</p>
+</div>
+<div class="openblock">
+<div class="content">
+<div class="paragraph">
+<p>Persistent actions survive interaction refresh while nearby lifecycle callbacks
+rebuild scoped actions. Dispatch snapshots matching actions, retaining the
+manifest&#8217;s ordering and catch-all argument policy. An accepted action or actor
+movement handles the command; otherwise the environment movement fallback runs
+before failure text is written. Command enablement remains lifecycle metadata,
+not a dispatch gate. Destruction removes actor and handler registrations; reload
+keeps their stable object identity.</p>
+</div>
+</div>
 </div>
 </div>
 <div class="sect3">

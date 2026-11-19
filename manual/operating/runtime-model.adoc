@@ -95,7 +95,8 @@ The source separates these responsibilities deliberately:
 `language.execution.LPCProgramRevision` names compiled behavior,
 `engine.instance.lpc.LPCObjectLifecycle` owns identity and behavior replacement,
 `MudlibWorldProjection` owns world bindings, and `InstanceSessions` owns session
-attachments. `MudlibRuntimeContext` adapts authored calls to those owners.
+attachments. `LPCCommands` owns command registrations bound to the same stable
+identity. `MudlibRuntimeContext` adapts authored calls to those owners.
 `LPCInvocationStack` tracks canonical current/previous-object identities and the
 execution membership used to guard reload; `LPCMethodInvoker` selects and invokes
 authored methods. Existing inline closures retain their captured code while
