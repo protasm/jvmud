@@ -11,7 +11,7 @@ else
     JVMUD_JAVA=$(command -v java || true)
 fi
 if [ -z "$JVMUD_JAVA" ] || [ ! -x "$JVMUD_JAVA" ]; then
-    echo "JVMud requires Java 21 or newer. Extract the matching bundled package, set JVMUD_JAVA_HOME, or install Java." >&2
+    echo "JVMud requires Java 25 or newer. Extract the matching bundled package, set JVMUD_JAVA_HOME, or install Java." >&2
     exit 1
 fi
 if ! JVMUD_JAVA_SETTINGS=$("$JVMUD_JAVA" -XshowSettings:properties -version 2>&1); then
@@ -21,11 +21,11 @@ fi
 JVMUD_JAVA_VERSION=$(printf '%s\n' "$JVMUD_JAVA_SETTINGS" | sed -n 's/^[[:space:]]*java.specification.version = //p')
 case "$JVMUD_JAVA_VERSION" in
     ''|*[!0-9]*)
-        echo "JVMud requires Java 21 or newer; unable to use Java version '$JVMUD_JAVA_VERSION'." >&2
+        echo "JVMud requires Java 25 or newer; unable to use Java version '$JVMUD_JAVA_VERSION'." >&2
         exit 1 ;;
 esac
-if [ "$JVMUD_JAVA_VERSION" -lt 21 ]; then
-    echo "JVMud requires Java 21 or newer; found Java $JVMUD_JAVA_VERSION." >&2
+if [ "$JVMUD_JAVA_VERSION" -lt 25 ]; then
+    echo "JVMud requires Java 25 or newer; found Java $JVMUD_JAVA_VERSION." >&2
     exit 1
 fi
 if [ ! -d "$JVMUD_ROOT/lib" ]; then

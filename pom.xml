@@ -5,16 +5,16 @@
 
   <groupId>io.github.protasm.jvmud</groupId>
   <artifactId>jvmud</artifactId>
-  <version>0.1.0-preview.9</version>
+  <version>0.1.0-preview.10</version>
   <packaging>jar</packaging>
 
   <name>JVMud</name>
   <description>Experimental Java-based LPMud platform.</description>
 
   <properties>
-    <maven.compiler.release>21</maven.compiler.release>
+    <maven.compiler.release>25</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <asm.version>9.7.1</asm.version>
+    <asm.version>9.11.1</asm.version>
     <jackson.version>2.21.3</jackson.version>
     <mysql.connector.version>9.2.0</mysql.connector.version>
     <junit.version>5.11.4</junit.version>

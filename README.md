@@ -18,15 +18,19 @@ governs all project work; see the [guiding principles](docs/PRINCIPLES.md).
 
 ## Requirements
 
-This source checkout currently requires a Java 21-capable JDK, Maven, and a
+This source checkout requires a Java 25-capable JDK, Maven, and a
 POSIX shell (for example, macOS/Linux, or a suitably configured Windows WSL
 installation). Java and Maven must be available in your terminal. The launch
 scripts compile the engine and resolve its dependencies automatically; the first
 run needs access to Maven repositories. A binary distribution can also be built
 with precompiled JARs, runtime dependencies, Small Mercies, and LP245; see
-[building a distribution](distribution/BUILDING.md). Bundled macOS and Linux packages include Java 21 and require a POSIX shell;
-the runtime-free archive requires an existing Java 21 or newer installation. The experimental [preview download](https://jvmud.org/downloads.html) is available
-as a tar.gz package.
+[building a distribution](distribution/BUILDING.md). Preview.10 builds require
+Java 25 or newer; bundled macOS and Linux packages include a Java 25 runtime.
+
+The currently published [preview.9 downloads](https://jvmud.org/downloads.html)
+remain available as tar.gz packages. Their bundled runtime is Java 21, and their
+runtime-free archive requires Java 21 or newer. The published archives retain
+their original requirements while preview.10 is prepared locally.
 
 Run the commands below from the repository root, the folder containing this
 README and `pom.xml`.

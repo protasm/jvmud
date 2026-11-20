@@ -236,7 +236,7 @@ final class LPCObjectLifecycleTest {
     private static LPCProgramRevision revision(String countDescriptor, boolean brokenConstructor) {
         String name = "reload/room";
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, name, null, "java/lang/Object", null);
+        writer.visit(Opcodes.V25, Opcodes.ACC_PUBLIC, name, null, "java/lang/Object", null);
         writer.visitField(Opcodes.ACC_PUBLIC, "count", countDescriptor, null, null).visitEnd();
         writer.visitField(Opcodes.ACC_PUBLIC, "data", "Ljava/util/Map;", null, null).visitEnd();
         writer.visitField(Opcodes.ACC_PUBLIC, "reference", "Ljava/lang/Object;", null, null).visitEnd();

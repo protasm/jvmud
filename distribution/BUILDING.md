@@ -1,6 +1,7 @@
 # Building a JVMud distribution
 
-From a source checkout, with a Java 21-capable JDK, Maven, and Python 3 (3.12 or newer for bundled packages) and curl:
+From a source checkout, with a Java 25-capable JDK, Maven, Python 3 (3.12 or newer
+for bundled packages), and curl:
 
 ```sh
 python3 scripts/build-distribution.py --with-jre
@@ -26,7 +27,8 @@ checkout launchers still build using Maven and run from the repository root.
 
 `--with-jre` additionally builds `target/jvmud-<version>-<platform>.tar.gz` for
 `macos-aarch64`, `macos-x64`, `linux-aarch64`, and `linux-x64`. Each includes a
-complete vendor JRE, a SHA-256 sidecar, and a separate `.validation.json` report.
+complete Eclipse Temurin Java 25 JRE, a SHA-256 sidecar, and a separate
+`.validation.json` report.
 Checksums identify archive contents; the report distinguishes structural checks
 from execution on a matching host. Run the smoke test on each matching platform
 before claiming it is runtime-validated. Linux runtimes require glibc.
@@ -45,6 +47,25 @@ python3 scripts/bundle-distributions.py --targets linux-x64
 Omit `--with-jre` to build only the runtime-free archives and source JAR.
 No native installers, signing, notarization, or website publication are performed.
 
+## Checking a Java baseline change
+
+The regular updater smoke test simulates an older release using the current
+application and runtime. When raising the Java minimum, also test actual old
+and new bundled archives on their matching host:
+
+```sh
+python3 src/test/scripts/java-baseline-update-smoke.py \
+  docs/downloads/jvmud-0.1.0-preview.9-macos-aarch64.tar.gz \
+  target/jvmud-0.1.0-preview.10-macos-aarch64.tar.gz
+```
+
+This checks failed-restart rollback and a successful upgrade across both the
+application bytecode and bundled Java versions, with a connected LP245 player,
+shutdown saves, authored content, and an intact old-runtime backup. Use archives
+for the host's own platform. This scenario clears Java environment overrides to
+verify bundled-runtime selection; externally selected runtimes must already
+meet the new minimum.
+
 ## Website publication
 
 The website offers the four bundled platform tar.gz packages and the optional
@@ -60,7 +81,9 @@ GitHub Pages publishes `docs/`. Verify the public archive against its checksum.
 Never overwrite an existing versioned archive with different contents.
 The archive root remains versioned for updater verification; installation examples
 strip that root into a new stable `current` directory before launching servers.
-Keep packaged and website installation examples aligned when changing versions.
+Keep the packaged README's examples aligned with the version being built. Update
+website installation examples when the corresponding archives are published;
+historical download descriptions must retain their original Java requirements.
 
 The build script creates local artifacts only. It does not publish a release or
 change the live website. Do not label an untested platform as verified.

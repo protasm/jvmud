@@ -8,9 +8,9 @@ See `RELEASE-STATUS.md` for this preview's validation and licensing status.
 ## Requirements
 
 Use a POSIX terminal and the package matching your operating system and processor.
-The macOS and Linux packages bundle Eclipse Temurin Java 21; no Java installation
+The macOS and Linux packages bundle Eclipse Temurin Java 25; no Java installation
 is needed. Linux packages target glibc systems, not Alpine/musl. The runtime-free
-`-bin` archive instead requires Java 21 or newer (also usable in Windows WSL).
+`-bin` archive instead requires Java 25 or newer (also usable in Windows WSL).
 Maven, a source checkout, and Internet access are not needed to run these packages. A MUD client is needed to play. Native Windows launchers
 are not included.
 
@@ -22,7 +22,7 @@ Apple Silicon example; substitute your package filename for another platform:
 
 ```sh
 mkdir current &&
-tar -xzf jvmud-0.1.0-preview.9-macos-aarch64.tar.gz --strip-components=1 -C current &&
+tar -xzf jvmud-0.1.0-preview.10-macos-aarch64.tar.gz --strip-components=1 -C current &&
 cd current
 ```
 
@@ -150,6 +150,10 @@ names and player/admin ports. Back up the external engine state directory
 (default `~/.jvmud/engine-4000`) separately; it contains administrator grants,
 token hashes, TLS keys and directory blurbs. The updater's installation backup
 does not include that external directory.
+
+When upgrading to preview.10, any separately installed runtime selected through
+`JVMUD_JAVA_HOME`, `JAVA_HOME`, or `PATH` must be Java 25 or newer. Check this
+before updating a runtime-free installation or overriding the bundled runtime.
 
 From your existing `current` directory:
 

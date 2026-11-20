@@ -13,6 +13,7 @@ import io.github.protasm.jvmud.language.compiler.preprocessor.SearchPathIncludeR
 import io.github.protasm.jvmud.language.compiler.type.LPCType;
 import io.github.protasm.jvmud.language.efun.EfunSignature;
 
+import java.lang.reflect.ClassFileFormatVersion;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -21,6 +22,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.objectweb.asm.ClassReader;
 
 /** Examples of compiling with source policy and declarations, without creating a game instance. */
 class LPCCompilerContextTest {
@@ -37,6 +39,8 @@ class LPCCompilerContextTest {
         assertNotNull(result.getSemanticModel());
         assertNotNull(result.getTypedIr());
         assertTrue(result.getBytecode().length > 0);
+        assertEquals(ClassFileFormatVersion.RELEASE_25,
+                ClassFileFormatVersion.fromMajor(new ClassReader(result.getBytecode()).readUnsignedShort(6)));
     }
 
     @Test

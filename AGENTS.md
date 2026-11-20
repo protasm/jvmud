@@ -111,7 +111,8 @@ position. For example, use `LPCObject`, `ASTNode`, `GMCPCodec`, `PlayerID`, and
 
 Root Maven build wiring uses the standard `src/` and `target/` layout. Use
 `mvn test` for the baseline test suite unless the task calls for a narrower
-command.
+command. The source build and generated LPC bytecode target Java 25; use a
+Java 25-capable JDK. New runtime distributions require Java 25 or newer.
 
 ## Working Guidance
 

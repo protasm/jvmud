@@ -1162,7 +1162,16 @@ it. Database requirements depend on the selected profile.</p>
 <div class="sect3">
 <h4 id="_installing_a_preview_package"><a class="anchor" href="#_installing_a_preview_package"></a><a class="link" href="#_installing_a_preview_package">Installing a preview package</a></h4>
 <div class="paragraph">
-<p>Download the archive matching your platform from <a href="../downloads.html">Downloads</a>. A POSIX terminal and a Telnet-capable MUD client are required. The platform packages include Java; the runtime-free package requires Java 21 or newer. Maven is not needed.</p>
+<p>Download the archive matching your platform from
+<a href="../downloads.html">Downloads</a>. The currently published preview.9
+platform packages include Java 21; their runtime-free package requires Java 21
+or newer. A POSIX terminal and a Telnet-capable MUD client are required. Maven is
+not needed.</p>
+</div>
+<div class="paragraph">
+<p>Current source and locally built preview.10 packages require Java 25 or newer.
+Preview.10 platform packages bundle Java 25. The download examples below continue
+to describe the published preview.9 archives.</p>
 </div>
 <div class="paragraph">
 <p>In a terminal, go to the writable folder containing your download. For Apple Silicon, run the commands below; for another platform, replace the archive filename with your download:</p>
@@ -1223,7 +1232,7 @@ the updater performing that upgrade is still the older installed version.</p>
 <div class="sect3">
 <h4 id="_building_from_source"><a class="anchor" href="#_building_from_source"></a><a class="link" href="#_building_from_source">Building from source</a></h4>
 <div class="paragraph">
-<p>You need a JDK that can compile Java 21, Maven, Git, and a POSIX shell for the
+<p>You need a JDK that can compile Java 25, Maven, Git, and a POSIX shell for the
 repository launch scripts. Some profile-owned smoke scripts also require Bash or Python 3.
 A Telnet-capable client is needed for interactive play. The bundled Small Mercies
 walkthrough needs no database or saved-account setup.</p>
@@ -1238,7 +1247,7 @@ mvn -DskipTests compile</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Check that Maven reports the intended JDK. The compiler release is set to 21 in
+<p>Check that Maven reports the intended JDK. The compiler release is set to 25 in
 <code>pom.xml</code>. The first build needs access to Maven dependencies; later builds may
 use the local cache. Successful compilation creates <code>target/classes/</code>.</p>
 </div>
@@ -4237,8 +4246,8 @@ the exact manifest path; later errors may be consequences of the first failure.<
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Release 21 not supported:</strong> compare <code>java -version</code> and <code>mvn -version</code>; Maven
-may be using a different JDK. Select the intended JDK before rebuilding.</p>
+<p><strong>Release 25 not supported:</strong> compare <code>java -version</code> and <code>mvn -version</code>; Maven
+may be using a different JDK. Select a Java 25-capable JDK before rebuilding.</p>
 </li>
 <li>
 <p><strong>Dependencies cannot resolve:</strong> check access to the configured Maven repository.

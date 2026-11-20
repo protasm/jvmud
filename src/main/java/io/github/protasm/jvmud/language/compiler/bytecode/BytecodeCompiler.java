@@ -33,7 +33,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 
 /**
- * Emits JVM bytecode from the typed IR.
+ * Emits Java 25 JVM bytecode from the typed IR, matching JVMud's host baseline.
  *
  * <p>This emitter assumes the IR has already been semantically validated; it does not perform
  * additional semantic checks or fallbacks. Calls use their declared JVM signature; surplus
@@ -77,7 +77,7 @@ public final class BytecodeCompiler {
 
         // Map LPC inheritance onto Java's single-inheritance model by wiring the resolved parent
         // class into the generated superclass slot.
-        cw.visit(V21, ACC_SUPER | ACC_PUBLIC, internalName, null, parentName, null);
+        cw.visit(V25, ACC_SUPER | ACC_PUBLIC, internalName, null, parentName, null);
 
         activeClassWriter = cw;
         activeInternalName = internalName;

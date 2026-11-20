@@ -179,7 +179,8 @@ def main():
         with zipfile.ZipFile(next((root / "lib").glob("jvmud-*.jar"))) as jar:
             classes = [name for name in jar.namelist() if name.endswith(".class")]
             assert classes
-            assert all(int.from_bytes(jar.read(name)[6:8], "big") <= 65 for name in classes)
+            assert all(int.from_bytes(jar.read(name)[6:8], "big") == 69 for name in classes), \
+                "JVMud classes must target Java 25"
         # An intentionally minimal PATH proves these launchers do not call Maven.
         path = work / "tools"
         path.mkdir()
@@ -195,7 +196,7 @@ def main():
             assert not shutil.which("java", path=str(path))
             settings = subprocess.run([str(root / "jre/bin/java"), "-XshowSettings:properties", "-version"],
                                       capture_output=True, text=True, check=True)
-            assert "java.specification.version = 21" in settings.stderr
+            assert "java.specification.version = 25" in settings.stderr
         cwd = work / "caller directory"
         cwd.mkdir()
         for launcher in ("jvmud-start", "jvmud-console", "jvmud-format"):
@@ -204,7 +205,21 @@ def main():
         invalid = dict(env, JVMUD_JAVA_HOME=str(work / "missing-java"))
         result = subprocess.run([str(root / "scripts/jvmud-start"), "--help"],
                                 cwd=cwd, env=invalid, capture_output=True, text=True)
-        assert result.returncode != 0 and "Java 21" in result.stderr
+        assert result.returncode != 0 and "Java 25" in result.stderr
+        # Stub version output checks launcher rejection before class loading; these are not real Java 21/24 JVMs.
+        older_java_home = work / "older Java home"
+        older_java = older_java_home / "bin/java"
+        older_java.parent.mkdir(parents=True)
+        for major_version in (21, 24):
+            older_java.write_text(
+                "#!/bin/sh\n"
+                f"printf '%s\\n' '    java.specification.version = {major_version}' >&2\n")
+            older_java.chmod(0o755)
+            result = subprocess.run([str(root / "scripts/jvmud-start"), "--help"],
+                                    cwd=cwd, env=dict(env, JVMUD_JAVA_HOME=str(older_java_home)),
+                                    capture_output=True, text=True)
+            assert result.returncode != 0 and \
+                f"requires Java 25 or newer; found Java {major_version}" in result.stderr
         sample = cwd / "sample file.c"
         sample.write_text("int answer(){return 42;}\n")
         subprocess.run([str(root / "scripts/jvmud-format"), sample.name],

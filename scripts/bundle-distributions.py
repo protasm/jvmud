@@ -72,7 +72,7 @@ def main():
             assert (app / 'jre/bin/java').stat().st_mode & 0o111
             assert (app / 'jre/legal').is_dir()
             release = (app / 'jre/release').read_text()
-            assert 'JAVA_VERSION="21.' in release
+            assert 'JAVA_VERSION="25.' in release
             assert f'OS_ARCH="{item["architecture"] if item["architecture"] != "x64" else "x86_64"}"' in release
             metadata = dict(item, target=target, runtime_path=runtime_target)
             (app / 'metadata/runtime.json').write_text(json.dumps(metadata, indent=2) + '\n')

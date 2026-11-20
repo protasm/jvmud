@@ -2,7 +2,15 @@
 
 ==== Installing a preview package
 
-Download the archive matching your platform from link:{site-url}/downloads.html[Downloads]. A POSIX terminal and a Telnet-capable MUD client are required. The platform packages include Java; the runtime-free package requires Java 21 or newer. Maven is not needed.
+Download the archive matching your platform from
+link:{site-url}/downloads.html[Downloads]. The currently published preview.9
+platform packages include Java 21; their runtime-free package requires Java 21
+or newer. A POSIX terminal and a Telnet-capable MUD client are required. Maven is
+not needed.
+
+Current source and locally built preview.10 packages require Java 25 or newer.
+Preview.10 platform packages bundle Java 25. The download examples below continue
+to describe the published preview.9 archives.
 
 In a terminal, go to the writable folder containing your download. For Apple Silicon, run the commands below; for another platform, replace the archive filename with your download:
 
@@ -52,7 +60,7 @@ the updater performing that upgrade is still the older installed version.
 
 ==== Building from source
 
-You need a JDK that can compile Java 21, Maven, Git, and a POSIX shell for the
+You need a JDK that can compile Java 25, Maven, Git, and a POSIX shell for the
 repository launch scripts. Some profile-owned smoke scripts also require Bash or Python 3.
 A Telnet-capable client is needed for interactive play. The bundled Small Mercies
 walkthrough needs no database or saved-account setup.
@@ -66,7 +74,7 @@ mvn -version
 mvn -DskipTests compile
 ----
 
-Check that Maven reports the intended JDK. The compiler release is set to 21 in
+Check that Maven reports the intended JDK. The compiler release is set to 25 in
 `pom.xml`. The first build needs access to Maven dependencies; later builds may
 use the local cache. Successful compilation creates `target/classes/`.
 

@@ -1,7 +1,7 @@
 === Build Failures
 
-* *Release 21 not supported:* compare `java -version` and `mvn -version`; Maven
-  may be using a different JDK. Select the intended JDK before rebuilding.
+* *Release 25 not supported:* compare `java -version` and `mvn -version`; Maven
+  may be using a different JDK. Select a Java 25-capable JDK before rebuilding.
 * *Dependencies cannot resolve:* check access to the configured Maven repository.
   An offline cache must already contain the required artifacts.
 * *Tests fail on database setup:* inspect the selected profile's external service
