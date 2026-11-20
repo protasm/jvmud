@@ -28,6 +28,8 @@ Language code does not own worlds, connections, manifests, or storage adapters.
   `lpc.LPCInvocationStack` owns current/previous-object identity and call scopes;
   `lpc.LPCMethodInvoker` owns method selection and argument adaptation.
   `lpc.LPCObjectLifecycle` owns live receivers and behavior replacement.
+  `lpc.LPCWorldInteractions` coordinates authored movement, nearby interactions,
+  and perception through the native world's projection adapter.
   `lpc.LPCCommands` owns command context, action registration, and dispatch.
   `lpc.LPCScheduledCallbacks` owns authored callback registration and delivery
   using the model's deterministic `WorldScheduler`.

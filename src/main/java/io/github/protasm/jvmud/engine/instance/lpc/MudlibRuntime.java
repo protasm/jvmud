@@ -50,7 +50,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.zip.GZIPInputStream;
@@ -758,32 +757,18 @@ public final class MudlibRuntime implements LPCExecution {
     /**
      * Rebuilds command actions for a Persona from nearby mudlib objects.
      *
-     * <p>This invokes the configured interaction-scope lifecycle method on the Persona, its
+     * <p>This invokes the configured interaction-scope lifecycle method on the actor, its
      * environment, and immediately nearby inventory objects so LPC {@code init}/{@code add_action}
-     * style registrations can be refreshed.</p>
+     * style registrations can be refreshed. The world-interaction owner controls traversal and
+     * registration lifetime; this runtime retains configured hook selection and binding.</p>
      */
     public void refreshCommandActions(Object actor) {
         Objects.requireNonNull(actor, "actor");
-        withRuntimeContext(() -> runtimeContext.withCommandActor(actor, () -> {
-            runtimeContext.clearCommandActions(actor);
-            runtimeContext.clearPendingActionMethods();
-            try {
-                return runtimeContext.withScopedCommandRegistration(() -> {
-                invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, actor);
-                Object environment = runtimeContext.environment(actor);
-                if (environment != null) {
-                    invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, environment);
-                    forEachInventory(environment, object ->
-                            invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, object));
-                }
-                forEachInventory(actor, object ->
-                        invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, object));
-                    return null;
-                });
-            } finally {
-                runtimeContext.clearPendingActionMethods();
-            }
-        }));
+        withRuntimeContext(() -> {
+            runtimeContext.refreshCommandActions(actor,
+                    object -> invokeLifecycleIfPresent(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED, object));
+            return null;
+        });
     }
 
     /** Dispatches one player command line through the Persona's registered command actions. */
@@ -1043,15 +1028,6 @@ public final class MudlibRuntime implements LPCExecution {
                         targetException);
             }
         });
-    }
-
-    private void forEachInventory(Object container, Consumer<Object> action) {
-        Object child = runtimeContext.firstInventory(container);
-        while (child != null) {
-            Object next = runtimeContext.nextInventory(child);
-            action.accept(child);
-            child = next;
-        }
     }
 
     private void resetIfPresent(Object object) {

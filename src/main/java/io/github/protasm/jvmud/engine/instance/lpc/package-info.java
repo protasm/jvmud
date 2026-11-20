@@ -9,7 +9,11 @@
  * invocation policies explicit, including method selection, argument adaptation and diagnostics.
  * {@code LPCCommands} owns actor scopes, action registration, enablement, aliases, dispatch and
  * command failure state. Its narrow host bridge leaves containment, session activity and output
- * with the context and their existing owners.
+ * with their existing owners through the context's adapters.
+ * {@code LPCWorldInteractions} coordinates movement lifecycle, nearby-object refresh and world
+ * perception; it also owns LPC presence, aliases and light metadata. Its projection adapts to the
+ * authoritative native world graph, while the context retains sessions, private output and the
+ * overall destruction sequence.
  * {@code LPCScheduledCallbacks} owns recurring and deferred registrations, cancellation and
  * delivery policy; {@link io.github.protasm.jvmud.engine.model.time.WorldScheduler} retains
  * deterministic time and generic task ordering. The context supplies runtime binding and timed

@@ -16,9 +16,6 @@ import io.github.protasm.jvmud.engine.model.mudlib.MudlibLifecycleEvent;
 import io.github.protasm.jvmud.engine.model.mudlib.MudlibProjection;
 import io.github.protasm.jvmud.engine.model.time.WorldScheduler;
 import io.github.protasm.jvmud.engine.model.world.MudlibWorldProjection;
-import io.github.protasm.jvmud.engine.model.world.PerceptionEvent;
-import io.github.protasm.jvmud.engine.model.world.World;
-import io.github.protasm.jvmud.engine.model.world.WorldRuntime;
 import io.github.protasm.jvmud.language.compiler.LPCCompilationEnvironment;
 import io.github.protasm.jvmud.language.compiler.LPCCompilationOptions;
 import io.github.protasm.jvmud.language.compiler.LPCCompilerContext;
@@ -59,7 +56,7 @@ import java.util.function.Supplier;
 /**
  * Engine-owned state and services for executing LPC inside one mudlib instance.
  *
- * <p>World projection and storage integration live here. Connection and
+ * <p>Object registration and configured storage integration live here. Connection and
  * Player/Persona attachment state belongs to {@link InstanceSessions}; this context adapts LPC calls
  * to that owner. Generated code sees only the language's {@link RuntimeContext} contract. Compilation uses a
  * separate {@link LPCCompilerContext}; this adapter shares callable signatures with it without
@@ -69,6 +66,8 @@ import java.util.function.Supplier;
  * {@code LPCMethodInvoker} owns method selection, argument adaptation and diagnostics, with named
  * policies for required, optional, lifecycle and caller-preserving global calls.
  * {@code LPCCommands} owns command actors, registration, dispatch and failure scopes.
+ * {@code LPCWorldInteractions} coordinates authored movement, nearby interaction and perception
+ * over the native world projection, including presence queries and world metadata.
  * {@code LPCScheduledCallbacks} owns recurring and deferred registrations, cancellation, delivery
  * and timed-failure policy, using the host's runtime binding and error reporter.
  * {@link LPCObjectLifecycle} retains ownership of live identities and behavior receivers.</p>
@@ -82,19 +81,13 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
     private final LPCMethodInvoker methodInvoker = new LPCMethodInvoker(
             invocationStack, this::resolveInvocationTarget, this::objectIdOrDescription);
     private final LPCCommands commands;
+    private final LPCWorldInteractions worldInteractions;
     private final LPCScheduledCallbacks scheduledCallbacks;
     private final EfunRegistry efunRegistry;
     private final LPCCompilerContext compilerContext;
     private final Map<String, Object> objects = new LinkedHashMap<>();
     private final Map<Object, String> objectIds = new IdentityHashMap<>();
     private final Set<Object> destroyedObjects =
-            Collections.newSetFromMap(new IdentityHashMap<>());
-    private MudlibWorldProjection worldProjection = new MudlibWorldProjection(
-            new WorldRuntime(new World("mudlib-runtime", "Mudlib Runtime")));
-    private final Map<String, Map<String, Object>> entityAliases = new LinkedHashMap<>();
-    private final Map<Object, Map<String, String>> aliasesByEntity = new IdentityHashMap<>();
-    private final Map<Object, Integer> lightLevels = new IdentityHashMap<>();
-    private final Set<Object> opaqueEntities =
             Collections.newSetFromMap(new IdentityHashMap<>());
     private final InstanceSessions instanceSessions;
     private final RuntimeDatabaseService databaseService = new RuntimeDatabaseService();
@@ -152,6 +145,53 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
                 return configuration.commandActionsArgumentsOnly();
             }
         });
+        this.worldInteractions = new LPCWorldInteractions(
+                objectLifecycle, invocationStack, methodInvoker, commands, new LPCWorldInteractions.Host() {
+            @Override
+            public Object loadOrGetObject(String path) {
+                return MudlibRuntimeContext.this.loadOrGetObject(path);
+            }
+
+            @Override
+            public String lifecycleMethod(MudlibLifecycleEvent event) {
+                return configuration.lifecycleMethod(event).orElse(null);
+            }
+
+            @Override
+            public Object perceptionBoundaryObject() {
+                return configuration.boundaryObjectPath().map(MudlibRuntimeContext.this::loadOrGetObject).orElse(null);
+            }
+
+            @Override
+            public String objectId(Object object) {
+                return MudlibRuntimeContext.this.objectId(object);
+            }
+
+            @Override
+            public boolean isInteractive(Object object) {
+                return instanceSessions.isInteractive(object);
+            }
+
+            @Override
+            public boolean isDestroyedIdentity(Object object) {
+                return destroyedObjects.contains(object);
+            }
+
+            @Override
+            public String messageText(Object value) {
+                return MudlibRuntimeContext.this.messageText(value);
+            }
+
+            @Override
+            public void writePerceptionText(Object observer, Object value) {
+                writeToProjection(observer, value, true);
+            }
+
+            @Override
+            public void withRuntimeContext(Runnable action) {
+                runWithRuntimeContext(action);
+            }
+        });
         this.scheduledCallbacks = new LPCScheduledCallbacks(
                 objectLifecycle, invocationStack, methodInvoker, commands, new LPCScheduledCallbacks.Host() {
             @Override
@@ -166,13 +206,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
             @Override
             public void withRuntimeContext(Runnable action) {
-                RuntimeContext previous = RuntimeContextHolder.current();
-                RuntimeContextHolder.setCurrent(MudlibRuntimeContext.this);
-                try {
-                    action.run();
-                } finally {
-                    RuntimeContextHolder.setCurrent(previous);
-                }
+                runWithRuntimeContext(action);
             }
 
             @Override
@@ -180,6 +214,22 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
                 timedRuntimeErrorHandler.onError(target, context, operation, error);
             }
         });
+    }
+
+    /** Binds host-entered lifecycle or timed work; callers that inherit a binding do not enter here. */
+    private void runWithRuntimeContext(Runnable action) {
+        RuntimeContext previous = RuntimeContextHolder.current();
+        RuntimeContextHolder.setCurrent(this);
+        try {
+            action.run();
+        } finally {
+            RuntimeContextHolder.setCurrent(previous);
+        }
+    }
+
+    /** Delegates explicit nearby-object refresh while the runtime retains hook selection and binding. */
+    void refreshCommandActions(Object actor, Consumer<Object> interactionHook) {
+        worldInteractions.refreshCommandActions(actor, interactionHook);
     }
 
     /** Returns the single owner of this instance's connection and Persona attachment state. */
@@ -207,12 +257,12 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      * retain an isolated native world by default.</p>
      */
     public void setWorldProjection(MudlibWorldProjection worldProjection) {
-        this.worldProjection = Objects.requireNonNull(worldProjection, "worldProjection");
+        worldInteractions.setProjection(worldProjection);
     }
 
     /** Returns the native world projection currently used for LPC containment operations. */
     public MudlibWorldProjection worldProjection() {
-        return worldProjection;
+        return worldInteractions.projection();
     }
 
     @Override
@@ -440,78 +490,29 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return instanceSessions.writeToPersona(Objects.requireNonNull(personaId, "personaId"), formattedMessageText(value));
     }
 
+    /** Emits text to the emitter's location and immediate neighbors, excluding the emitter. */
     public void emitPerceivable(Object emitter, Object value) {
-        emitWorldEvent(emitter, "text", value, messageText(value));
+        worldInteractions.emitPerceivable(emitter, value);
     }
 
+    /** Emits text while excluding the emitter and one supplied object reference. */
     public void emitPerceivableExcept(Object emitter, Object value, Object excluded) {
-        emitAt(environment(emitter), new PerceptionEvent(currentCommandActor(), emitter,
-                environment(emitter), "text", value, messageText(value), false), emitter, excluded);
+        worldInteractions.emitPerceivableExcept(emitter, value, excluded);
     }
 
+    /** Emits text to the location and its immediate contents without a source exclusion. */
     public void emitPerceivableAt(Object location, Object value) {
-        emitAt(location, new PerceptionEvent(currentCommandActor(), currentObject(), location,
-                "text", value, messageText(value), false));
+        worldInteractions.emitPerceivableAt(location, value);
     }
 
     /** Emits a structured event to the location and its immediate contents, excluding the source. */
     public void emitWorldEvent(Object source, String kind, Object content, String text) {
-        Object location = environment(source);
-        emitAt(location, new PerceptionEvent(currentCommandActor(), source, location,
-                kind, content, text, false), source);
+        worldInteractions.emitEvent(source, kind, content, text);
     }
 
     /** Directed world communication, distinct from private interface output. */
     public void deliverWorldEvent(Object target, String kind, Object content, String text) {
-        if (target != null) {
-            perceive(target, new PerceptionEvent(currentCommandActor(), currentObject(), environment(target),
-                    kind, content, text, true));
-        }
-    }
-
-    private void emitAt(Object location, PerceptionEvent event, Object... excluded) {
-        if (location == null) return;
-        List<Object> observers = new ArrayList<>();
-        observers.add(location);
-        observers.addAll(List.copyOf(inventoryFor(location)));
-        for (Object observer : observers) {
-            if (!isExcluded(observer, excluded)) perceive(observer, event);
-        }
-    }
-
-    // Nested speech is legitimate. Bound cycles explicitly instead of suppressing responses.
-    private int perceptionDepth;
-
-    private void perceive(Object observer, PerceptionEvent event) {
-        if (destroyedObjects.contains(observer)) return;
-        if (perceptionDepth >= 64) throw new IllegalStateException("Perception callback nesting exceeds 64");
-        perceptionDepth++;
-        try {
-            if (instanceSessions.isInteractive(observer)) writeToProjection(observer, event.text(), true);
-            Supplier<Object> delivery = () -> {
-                String receiver = configuration.lifecycleMethod(MudlibLifecycleEvent.PERCEPTION_RECEIVED).orElse(null);
-                if (receiver != null) invokeOptionalObject(observer, receiver, event.toMapping());
-                String adapter = configuration.lifecycleMethod(MudlibLifecycleEvent.PERCEPTION_DELIVERY).orElse(null);
-                if (adapter != null && !destroyedObjects.contains(observer)) {
-                    Object boundary = configuration.boundaryObjectPath().map(this::loadOrGetObject).orElse(null);
-                    if (boundary != null) invokeOptionalObject(boundary, adapter, observer, event.toMapping());
-                }
-                return null;
-            };
-            if (event.actor() == null) delivery.get();
-            else withCommandActor(event.actor(), delivery);
-        } finally {
-            perceptionDepth--;
-        }
-    }
-
-    private boolean isExcluded(Object target, Object... excluded) {
-        for (Object object : excluded) {
-            if (target == object) {
-                return true;
-            }
-        }
-        return false;
+        worldInteractions.deliverEvent(target, kind, content, text);
     }
 
     private void writeToProjection(Object target, Object value, boolean playerBound) {
@@ -887,7 +888,7 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
             throw new IllegalArgumentException("Persona attachment requires a live authored object.");
         }
         Object identity = behavior;
-        var entity = worldProjection.projectedEntity(identity).orElseGet(() -> worldProjection.realizeEntity(identity));
+        var entity = worldProjection().projectedEntity(identity).orElseGet(() -> worldProjection().realizeEntity(identity));
         MudlibProjection canonicalProjection = projection == null ? null : new MudlibProjection(
                 projection.sourcePath(), objectLifecycle.identityOf(projection.object()), projection.roles());
         PersonaRecord record = new PersonaRecord(instanceSessions.personaId(behavior), Optional.of(entity),
@@ -1200,196 +1201,32 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
      * temporary interactions are installed.</p>
      */
     public void moveObject(Object object, Object destination) {
-        Objects.requireNonNull(object, "object");
-        if (destination instanceof String path) {
-            destination = loadOrGetObject(path);
-        }
-        if (destination != null && wouldCreateContainmentCycle(object, destination)) {
-            throw new IllegalArgumentException(
-                    "Cannot move " + objectIdOrDescription(object) + " into "
-                            + objectIdOrDescription(destination) + " because it would create a containment cycle.");
-        }
-
-        Object previousLocation = worldProjection.environment(object);
-        if (previousLocation == destination) {
-            return;
-        }
-
-        worldProjection.move(object, destination);
-        if (previousLocation != null
-                && (instanceSessions.isInteractive(object) || commands.isEnabled(object))) {
-            invokeDepartureLifecycle(object, previousLocation);
-        }
-        // Departure cleanup may destroy or redirect the actor. Do not deliver a stale arrival.
-        if (destination != null && !destroyedObjects.contains(object)
-                && worldProjection.environment(object) == destination) {
-            invokeArrivalLifecycle(object, destination);
-        }
+        worldInteractions.move(object, destination);
     }
 
-    private void invokeDepartureLifecycle(Object actor, Object previousLocation) {
-        String methodName = configuration.lifecycleMethod(MudlibLifecycleEvent.ENTITY_DEPARTED_FROM_PLACE)
-                .orElse(null);
-        if (methodName == null) return;
-        boolean acceptsActor = methodInvoker.hasMethod(objectReceiver(previousLocation).getClass(), methodName, 1);
-        if (!acceptsActor && !methodInvoker.hasMethod(objectReceiver(previousLocation).getClass(), methodName, 0)) return;
-
-        RuntimeContext previous = RuntimeContextHolder.current();
-        RuntimeContextHolder.setCurrent(this);
-        try {
-            withCommandActor(actor, () -> acceptsActor
-                    ? invokeObject(previousLocation, methodName, actor)
-                    : invokeObject(previousLocation, methodName));
-        } finally {
-            RuntimeContextHolder.setCurrent(previous);
-        }
-    }
-
-    private void invokeArrivalLifecycle(Object object, Object destination) {
-        if (instanceSessions.isInteractive(destination)) {
-            invokeInteractionLifecycle(destination, object);
-        }
-
-        for (Object nearby : List.copyOf(inventoryFor(destination))) {
-            if (nearby != object && instanceSessions.isInteractive(nearby)) {
-                invokeInteractionLifecycle(nearby, object);
-            }
-        }
-
-        if (instanceSessions.isInteractive(object)) {
-            clearCommandActions(object);
-            clearPendingActionMethods();
-            try {
-                invokeInteractionLifecycle(object, object);
-                invokeInteractionLifecycle(object, destination);
-                for (Object nearby : List.copyOf(inventoryFor(destination))) {
-                    if (nearby != object) {
-                        invokeInteractionLifecycle(object, nearby);
-                    }
-                }
-                for (Object carried : List.copyOf(inventoryFor(object))) {
-                    invokeInteractionLifecycle(object, carried);
-                }
-            } finally {
-                clearPendingActionMethods();
-            }
-        }
-    }
-
-    private void invokeInteractionLifecycle(Object actor, Object handler) {
-        String methodName = configuration.lifecycleMethod(MudlibLifecycleEvent.INTERACTION_SCOPE_STARTED).orElse(null);
-        if (methodName == null) {
-            return;
-        }
-
-        RuntimeContext previous = RuntimeContextHolder.current();
-        RuntimeContextHolder.setCurrent(this);
-        try {
-            withCommandActor(actor, () -> withScopedCommandRegistration(() -> {
-                invokeLifecycleObject(handler, methodName);
-                return null;
-            }));
-        } finally {
-            RuntimeContextHolder.setCurrent(previous);
-        }
-    }
-
+    /** Returns immediate containment, using the lexical object when no object is supplied. */
     public Object environment(Object object) {
-        Object target = (object != null) ? object : currentObject();
-        return (target != null) ? worldProjection.environment(target) : null;
+        return worldInteractions.environment(object);
     }
 
+    /** Searches immediate inventory; an omitted container also permits the lexical object's environment. */
     public Object present(Object identifier, Object container) {
-        Object targetContainer = (container != null) ? container : currentObject();
-        if (targetContainer == null) {
-            return null;
-        }
-
-        Object found = findPresent(identifier, targetContainer);
-        if (found != null) {
-            return found;
-        }
-
-        if (container == null) {
-            Object ambientContainer = environment(targetContainer);
-            if (ambientContainer != null && ambientContainer != targetContainer) {
-                return findPresent(identifier, ambientContainer);
-            }
-        }
-
-        return null;
+        return worldInteractions.present(identifier, container);
     }
 
-    private Object findPresent(Object identifier, Object container) {
-        for (Object object : inventoryFor(container)) {
-            if (object == identifier || matchesIdentifier(object, identifier)) {
-                return object;
-            }
-        }
-        return null;
-    }
-
+    /** Replaces an object's namespaced alias, retaining the existing normalization and ownership rules. */
     public void bindEntityAlias(Object object, Object namespace, Object alias) {
-        if (object == null) {
-            return;
-        }
-
-        String normalizedNamespace = normalizeRegistryText(namespace);
-        if (normalizedNamespace == null) {
-            return;
-        }
-
-        Map<String, String> aliases = aliasesByEntity.computeIfAbsent(object, ignored -> new LinkedHashMap<>());
-        String existing = aliases.remove(normalizedNamespace);
-        if (existing != null) {
-            Map<String, Object> namespaceAliases = entityAliases.get(normalizedNamespace);
-            if (namespaceAliases != null) {
-                namespaceAliases.remove(existing);
-                if (namespaceAliases.isEmpty()) {
-                    entityAliases.remove(normalizedNamespace);
-                }
-            }
-        }
-
-        String normalizedAlias = normalizeRegistryText(alias);
-        if (normalizedAlias == null) {
-            if (aliases.isEmpty()) {
-                aliasesByEntity.remove(object);
-            }
-            return;
-        }
-
-        aliases.put(normalizedNamespace, normalizedAlias);
-        Object previousOwner = entityAliases
-                .computeIfAbsent(normalizedNamespace, ignored -> new LinkedHashMap<>())
-                .put(normalizedAlias, object);
-        // A replaced object must no longer own this alias, including during later cleanup.
-        if (previousOwner != null && previousOwner != object) {
-            Map<String, String> previousAliases = aliasesByEntity.get(previousOwner);
-            if (previousAliases != null) {
-                previousAliases.remove(normalizedNamespace);
-                if (previousAliases.isEmpty()) {
-                    aliasesByEntity.remove(previousOwner);
-                }
-            }
-        }
+        worldInteractions.bindAlias(object, namespace, alias);
     }
 
+    /** Looks up a normalized namespaced alias without loading or realizing an object. */
     public Object findEntityAlias(Object namespace, Object alias) {
-        String normalizedNamespace = normalizeRegistryText(namespace);
-        String normalizedAlias = normalizeRegistryText(alias);
-        if (normalizedNamespace == null || normalizedAlias == null) {
-            return null;
-        }
-        return entityAliases.getOrDefault(normalizedNamespace, Map.of()).get(normalizedAlias);
+        return worldInteractions.findAlias(namespace, alias);
     }
 
+    /** Returns LPC status for an object's alias in the normalized namespace. */
     public int entityHasAlias(Object object, Object namespace) {
-        String normalizedNamespace = normalizeRegistryText(namespace);
-        if (object == null || normalizedNamespace == null) {
-            return 0;
-        }
-        return aliasesByEntity.getOrDefault(object, Map.of()).containsKey(normalizedNamespace) ? 1 : 0;
+        return worldInteractions.entityHasAlias(object, namespace);
     }
 
     /** Marks an object as command-enabled for lifecycle and mudlib queries. */
@@ -1407,38 +1244,24 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return commands.isEnabled(object) ? 1 : 0;
     }
 
+    /** Selects whether the object's contents contribute to LPC ambient light. */
     public void setEntityTranslucent(Object object, boolean translucent) {
-        if (object == null) {
-            return;
-        }
-        if (translucent) {
-            opaqueEntities.remove(object);
-        } else {
-            opaqueEntities.add(object);
-        }
+        worldInteractions.setTranslucent(object, translucent);
     }
 
+    /** Reports LPC light transparency; null and unconfigured objects are translucent. */
     public boolean entityTranslucent(Object object) {
-        return object == null || !opaqueEntities.contains(object);
+        return worldInteractions.isTranslucent(object);
     }
 
+    /** Returns the first object in the native projection's immediate inventory, or null. */
     public Object firstInventory(Object container) {
-        List<Object> inventory = inventoryFor(container);
-        return inventory.isEmpty() ? null : inventory.get(0);
+        return worldInteractions.firstInventory(container);
     }
 
+    /** Returns the next inventory entry in the containing location, or null. */
     public Object nextInventory(Object object) {
-        Object container = environment(object);
-        if (container == null) {
-            return null;
-        }
-
-        List<Object> inventory = inventoryFor(container);
-        int index = inventory.indexOf(object);
-        if (index == -1 || index + 1 >= inventory.size()) {
-            return null;
-        }
-        return inventory.get(index + 1);
+        return worldInteractions.nextInventory(object);
     }
 
     public void destructObject(Object object) {
@@ -1453,16 +1276,13 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
 
         instanceSessions.discardObject(object);
         scheduledCallbacks.discardObject(object);
-        List<Object> contents = new ArrayList<>(inventoryFor(object));
+        List<Object> contents = new ArrayList<>(worldInteractions.inventory(object));
         for (Object child : contents) {
             moveObject(child, null);
         }
 
         moveObject(object, null);
-        worldProjection.remove(object);
-        lightLevels.remove(object);
-        opaqueEntities.remove(object);
-        removeEntityAliases(object);
+        worldInteractions.discardObject(object);
         commands.discardObject(object);
         String id = objectIds.remove(object);
         if (id != null) {
@@ -1660,66 +1480,9 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
         return commands.dispatch(actor, commandLine);
     }
 
+    /** Updates the lexical object's light and returns visible light from its outermost container. */
     public int setLight(int delta) {
-        Object object = currentObject();
-        if (object == null) {
-            return delta;
-        }
-        int light = lightLevels.getOrDefault(object, 0);
-        if (delta != 0) {
-            light += delta;
-            lightLevels.put(object, light);
-        }
-        return visibleLight(object);
-    }
-
-    private int visibleLight(Object object) {
-        return visibleLight(object, Collections.newSetFromMap(new IdentityHashMap<>()));
-    }
-
-    private int visibleLight(Object object, Set<Object> visited) {
-        Object root = outermostEnvironment(object);
-        return visibleLightIn(root, visited);
-    }
-
-    private Object outermostEnvironment(Object object) {
-        Object root = object;
-        Object current = worldProjection.environment(object);
-        while (current != null) {
-            root = current;
-            current = worldProjection.environment(current);
-        }
-        return root;
-    }
-
-    private int visibleLightIn(Object object, Set<Object> visited) {
-        if (object == null || !visited.add(object)) {
-            return 0;
-        }
-
-        int light = lightLevels.getOrDefault(object, 0);
-        if (!entityTranslucent(object)) {
-            return light;
-        }
-        for (Object child : inventoryFor(object)) {
-            light += visibleLightIn(child, visited);
-        }
-        return light;
-    }
-
-    private List<Object> inventoryFor(Object object) {
-        return worldProjection.inventory(object);
-    }
-
-    private boolean wouldCreateContainmentCycle(Object object, Object destination) {
-        Object current = destination;
-        while (current != null) {
-            if (current == object) {
-                return true;
-            }
-            current = worldProjection.environment(current);
-        }
-        return false;
+        return worldInteractions.setLight(delta);
     }
 
     /** Resolves paths and tombstones through host policy, then selects the lifecycle's live receiver. */
@@ -1749,59 +1512,6 @@ public final class MudlibRuntimeContext extends RuntimeContext implements LPCCom
             return id;
         }
         return object.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(object));
-    }
-
-    private void removeEntityAliases(Object object) {
-        Map<String, String> aliases = aliasesByEntity.remove(object);
-        if (aliases == null) {
-            return;
-        }
-        for (Map.Entry<String, String> alias : aliases.entrySet()) {
-            Map<String, Object> namespaceAliases = entityAliases.get(alias.getKey());
-            if (namespaceAliases == null) {
-                continue;
-            }
-            namespaceAliases.remove(alias.getValue());
-            if (namespaceAliases.isEmpty()) {
-                entityAliases.remove(alias.getKey());
-            }
-        }
-    }
-
-    private String normalizeRegistryText(Object value) {
-        if (value == null) {
-            return null;
-        }
-        String normalized = value.toString().trim().toLowerCase();
-        return normalized.isEmpty() ? null : normalized;
-    }
-
-    /** An existing identifier method decides the match; only absence permits canonical-ID fallback. */
-    private boolean matchesIdentifier(Object object, Object identifier) {
-        if (identifier == null) {
-            return false;
-        }
-        String id = identifier.toString();
-        if (id.isBlank()) {
-            return false;
-        }
-
-        try {
-            Object receiver = objectReceiver(object);
-            LPCMethodInvoker.InvocationPlan invocation = methodInvoker.findInvocation(
-                    receiver.getClass(), "id", new Object[] {id});
-            return withCurrentObject(object, () -> {
-                try {
-                    return Truth.isTruthy(invocation.invoke(receiver));
-                } catch (ReflectiveOperationException e) {
-                    return false;
-                }
-            });
-        } catch (NoSuchMethodException e) {
-            // Fall back to exact object id matching below.
-        }
-
-        return id.equals(objectId(object));
     }
 
 }

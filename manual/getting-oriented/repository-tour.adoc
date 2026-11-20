@@ -21,6 +21,9 @@ live object identity and state separate from that behavior's program revision.
 `lpc.MudlibRuntimeContext` adapts execution to world, session, and storage services.
 `lpc.LPCInvocationStack` owns current/previous-object identity and call scopes;
 `lpc.LPCMethodInvoker` selects methods, adapts arguments, and reports call failures.
+`lpc.LPCWorldInteractions` owns authored movement, nearby interaction, perception,
+and world metadata through `model.world.MudlibWorldProjection`; `WorldRuntime`
+remains the authoritative containment graph.
 `lpc.LPCCommands` owns command context, action registration, and dispatch.
 `lpc.LPCScheduledCallbacks` owns recurring and deferred LPC callbacks;
 `model.time.WorldScheduler` owns deterministic time and generic queued work.

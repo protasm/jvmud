@@ -46,8 +46,10 @@ Possible future shape:
 
 `WorldRuntime` is the authoritative containment graph. `MudlibWorldProjection`
 associates opaque LPC objects with that graph; it does not maintain a second
-location/inventory graph. The engine's `MudlibRuntimeContext` handles the LPC
-lifecycle and interaction behavior around movement.
+location/inventory graph. The engine's `LPCWorldInteractions` coordinates LPC
+movement lifecycles, nearby interactions, and perception through that adapter.
+`MudlibRuntimeContext` delegates authored requests and supplies hosted policy,
+session integration, private output, and destruction orchestration.
 
 Native integration is still incomplete. Boot explicitly binds the starting room
 as a Place, while other LPC destinations can become container Entities on demand.

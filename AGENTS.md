@@ -87,11 +87,19 @@ owns command actors, verbs, failures, registration scopes, enablement, aliases,
 action tables, and dispatch; command enablement is metadata, not a dispatch gate.
 `LPCScheduledCallbacks` owns authored recurring and deferred registrations,
 cancellation, delivery, and failure policy. `engine.model.time.WorldScheduler`
-owns deterministic time and generic queued work. The context retains movement,
-lifecycle, session, and destruction orchestration and adapts callback policy,
-runtime binding, and error reporting to the scheduled-callback owner.
-Keep target loading, destroyed-object checks, and specialized probe absence and
-failure rules in the hosted context; method plans supply reflection mechanics.
+owns deterministic time and generic queued work. `LPCWorldInteractions` owns the
+selected `MudlibWorldProjection`, movement and nearby interaction ordering,
+command-refresh traversal, presence and inventory queries, aliases, light,
+translucence, and world perception. The native `WorldRuntime` remains the sole
+containment graph. The context retains session
+integration, private output, the object registry, and destruction orchestration.
+It adapts callback policy, runtime binding, and error reporting. Identifier
+matching belongs to world interactions; message-permission probes remain with
+private output in the context.
+Their domain rules use method plans from `LPCMethodInvoker`.
+Keep invocation target loading and destroyed-object checks in the hosted context.
+`MudlibRuntime.refreshCommandActions` delegates traversal through a package-private
+context bridge while retaining its configured hook invocation and runtime binding.
 
 ## Naming
 

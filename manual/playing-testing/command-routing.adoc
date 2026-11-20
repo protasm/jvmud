@@ -17,5 +17,7 @@ To trace gameplay input in Java, start with `MudlibRuntime.refreshCommandActions
 and `dispatchCommand`. The package-private `engine.instance.lpc.LPCCommands`
 owns the actor's action table, command aliases, active verb, failure text, and
 dispatch order. `MudlibRuntimeContext` delegates LPC command operations to that
-owner and coordinates movement and lifecycle callbacks. The mudlib still supplies
-the action methods and decides which commands it accepts.
+owner. `LPCWorldInteractions` coordinates movement, nearby lifecycle callbacks,
+and explicit refresh traversal; `MudlibRuntime` retains its selected refresh hook
+and runtime binding. The mudlib supplies the action methods and decides which
+commands it accepts.

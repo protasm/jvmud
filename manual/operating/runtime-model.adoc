@@ -6,10 +6,12 @@ Players participate through Personas attached to Sessions. Time-dependent work
 uses the engine scheduler.
 
 `MudlibWorldProjection` maps LPC object identity into the same `WorldRuntime`
-containment graph. `engine.instance.lpc.MudlibRuntimeContext` adapts movement,
-interaction, and sessions to engine services; the language's generated-code
-context contract does not own a world. Hosted mutation runs on the instance's
-single queue.
+containment graph. `engine.instance.lpc.LPCWorldInteractions` uses that adapter
+to coordinate authored movement, nearby interactions, and perception, and owns
+aliases, light, and translucence metadata. `MudlibRuntimeContext` delegates world
+requests and connects sessions and private output to engine services. The
+language's generated-code context contract does not own a world. Hosted mutation
+runs on the instance's single queue.
 
 Native integration is still partial. The starting room is explicitly bound as a
 Place; other LPC destinations can become container Entities, and scripted exits
@@ -115,9 +117,10 @@ already loaded rooms keep their own revisions.
 The source separates these responsibilities deliberately:
 `language.execution.LPCProgramRevision` names compiled behavior,
 `engine.instance.lpc.LPCObjectLifecycle` owns identity and behavior replacement,
-`MudlibWorldProjection` owns world bindings, and `InstanceSessions` owns session
-attachments. `LPCCommands` owns command registrations bound to the same stable
-identity, and `LPCScheduledCallbacks` owns its scheduled callbacks.
+`LPCWorldInteractions` coordinates world behavior through `MudlibWorldProjection`
+bindings, and `InstanceSessions` owns session attachments. `LPCCommands` owns
+command registrations bound to the same stable identity, and
+`LPCScheduledCallbacks` owns its scheduled callbacks.
 `MudlibRuntimeContext` adapts authored calls to those owners.
 `LPCInvocationStack` tracks canonical current/previous-object identities and the
 execution membership used to guard reload; `LPCMethodInvoker` selects and invokes

@@ -88,10 +88,11 @@ failure text, and action registration independently of LPC object call scopes.
 
 `LPCInvocationStack` and `LPCMethodInvoker` are package-private implementation
 owners behind the context. Target loading and destroyed-object checks remain
-host policy there. Identifier and message-permission probes request prepared
-method-and-argument plans from the invoker while retaining their own rules:
-only an absent identifier method permits object-ID fallback; an absent
-message-permission hook allows delivery, while a failing hook reports its error.
+host policy there. Identifier matching in `LPCWorldInteractions` and private-output
+message-permission probes in the context request prepared method-and-argument
+plans from the invoker while retaining their own rules: only an absent identifier
+method permits object-ID fallback; an absent message-permission hook allows
+delivery, while a failing hook reports its error.
 
 The invocation policies preserve existing LPC behavior:
 
@@ -111,15 +112,66 @@ closures deliberately retain their captured receiver and code while sharing live
 field state through `LPCObjectLifecycle`; invocation must preserve that distinction
 across reload.
 
+## Authored World Interactions
+
+The package-private `engine.instance.lpc.LPCWorldInteractions` coordinates authored
+world behavior through the selected `MudlibWorldProjection`. `WorldRuntime`
+remains the authoritative containment graph; the projection adapts LPC identity
+to native locations. The interaction owner has no second location/inventory graph.
+Existing Java projection accessors continue to expose that same selected adapter.
+It owns movement and nearby lifecycle ordering, explicit command-refresh traversal,
+presence and inventory queries, identifier matching, entity aliases, light and
+translucence, world events, and perception nesting state.
+
+`MudlibRuntimeContext` delegates its existing world API. Its narrow host seam
+supplies live lifecycle policy, object and boundary loading, object IDs, session
+interactivity, destroyed-identity checks, message normalization, player-bound
+perception output, and runtime binding for movement lifecycles. Private output
+and its message-permission policy, session integration, the object registry, and
+destruction orchestration remain with the context. The interaction owner uses
+the existing LPC lifecycle, invocation, and command collaborators.
+
+`MudlibRuntime.refreshCommandActions` retains its public API, configured hook
+invocation, and outer runtime binding. It supplies the hook to a package-private
+context bridge and delegates traversal and registration scopes to the world
+interaction owner. Explicit refresh saves the next inventory object before
+invoking each handler, with one registration scope across handlers. Movement
+arrival retains fresh inventory snapshots and separate per-handler interaction
+scopes. Explicit refresh also applies to detached actors and visits the actor
+again if encountered in its environment's inventory.
+
+These boundaries preserve the existing world behavior:
+
+- Movement validates containment and changes the native location before departure
+  callbacks. Departure cleanup may redirect or destroy the actor; arrival runs
+  only while the actor remains live at the intended destination. Same-location
+  moves do not repeat movement callbacks. Hook failures restore execution scopes
+  without rolling back world or authored state already changed.
+- Arrival establishes nearby interactions immediately. Interactive actors refresh
+  temporary commands through the configured interaction-scope hook on themselves,
+  the destination, nearby objects, and carried objects. `LPCCommands` owns those
+  registrations and their actor scopes.
+- Presence searches explicit-container contents, or the current object's contents
+  and then its surrounding contents when no container is supplied. An existing
+  identifier method decides a match; only its absence permits object-ID fallback.
+- Emitted events fan out to the selected location and a snapshot of its immediate
+  contents, honoring source and explicit exclusions. Directed events target one
+  observer. Player-bound text precedes configured perception callbacks; nested
+  delivery retains actor scopes and the existing limit of 64 perception levels.
+- Movement lifecycles bind the hosted runtime. Perception callbacks retain the
+  caller's runtime binding and add only their event actor scope. Context-led
+  destruction removes projection and interaction metadata at its existing cleanup
+  phase; reload retains stable identity and world bindings.
+
 ## LPC Command Ownership
 
 The package-private `engine.instance.lpc.LPCCommands` owns command actor scopes,
 active verbs and failure text, pending and scoped registration, command enablement,
 aliases, action tables, dispatch order, and command cleanup on destruction.
 `MudlibRuntimeContext` keeps its existing LPC-facing methods and delegates command
-operations to that owner. Movement, lifecycle, and session orchestration
-remain with the context and hosted runtime; all mutations run on the instance's
-execution queue.
+operations to that owner. `LPCWorldInteractions` coordinates movement and nearby
+lifecycles; session and destruction orchestration remain with the context and
+hosted runtime. All mutations run on the instance's execution queue.
 
 `LPCCommands` uses `LPCInvocationStack` to identify the lexical action handler,
 `LPCObjectLifecycle` to canonicalize actors and select live behavior, and
@@ -132,7 +184,8 @@ independently of lexical LPC object scopes.
 Command dispatch follows these rules:
 
 - Persistent registrations survive interaction-scope refresh; nearby lifecycle
-  callbacks rebuild scoped actions. The hosted runtime coordinates that refresh.
+  callbacks rebuild scoped actions. `MudlibRuntime` supplies the selected hook and
+  runtime binding while `LPCWorldInteractions` owns refresh traversal and scopes.
 - Aliases rewrite the first word before action lookup, and the active verb is the
   expanded verb. Manifest policy still selects newest-first ordering and whether
   catch-all actions receive parsed arguments or the complete command line.
@@ -196,8 +249,9 @@ object that participates in the world. Three concepts have distinct owners:
 - `engine.instance.lpc.LPCObjectLifecycle` associates a stable live object identity
   with its current behavior receiver and copies compatible instance state between
   receivers. An LPC object reference continues to identify the same live object.
-- Engine owners retain the object's bindings: `MudlibWorldProjection` supplies
-  containment, `InstanceSessions` supplies session attachment, and
+- Engine owners retain the object's bindings: `LPCWorldInteractions` coordinates
+  world behavior through `MudlibWorldProjection` and the native containment graph;
+  `InstanceSessions` supplies session attachment, and
   `LPCCommands` supplies command bindings. `LPCScheduledCallbacks` retains timed
   registrations. `MudlibRuntimeContext` adapts authored requests to those owners.
   A new program revision does not require destroying or recreating those bindings.
